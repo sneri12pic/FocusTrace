@@ -121,7 +121,16 @@ class MainActivity : FlutterActivity() {
         return FocusTracePermissions.hasUsageAccess(this)
     }
 
-    private fun openUsageAccessSettings() {
+    // The two special-access permissions live on separate system screens with
+    // no combined grant. Instead we chain them: after opening one, arm the other
+    // so it opens automatically when the user returns (see onResume). One-shot,
+    // so backing out without granting just ends the flow.
+    private var pendingPermission: String? = null
+
+    private fun openUsageAccessSettings(chainOverlay: Boolean = true) {
+        if (chainOverlay && !FocusTracePermissions.hasOverlayPermission(this)) {
+            pendingPermission = "overlay"
+        }
         val usageSettingsIntent = Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
 
@@ -135,7 +144,10 @@ class MainActivity : FlutterActivity() {
         }
     }
 
-    private fun openOverlaySettings() {
+    private fun openOverlaySettings(chainUsage: Boolean = true) {
+        if (chainUsage && !hasUsageAccess()) {
+            pendingPermission = "usage"
+        }
         val intent = Intent(
             Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
             Uri.parse("package:$packageName")
@@ -148,6 +160,18 @@ class MainActivity : FlutterActivity() {
                 Intent(Settings.ACTION_SETTINGS)
                     .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             )
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        val next = pendingPermission ?: return
+        pendingPermission = null
+        when (next) {
+            "usage" -> if (!hasUsageAccess()) openUsageAccessSettings(chainOverlay = false)
+            "overlay" -> if (!FocusTracePermissions.hasOverlayPermission(this)) {
+                openOverlaySettings(chainUsage = false)
+            }
         }
     }
 

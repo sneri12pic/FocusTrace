@@ -40,6 +40,22 @@ class UsageStatsTest {
     }
 
     @Test
+    fun switchingAppsWithoutABackgroundEventDoesNotOverlapTime() {
+        // Newer Android omits the background event for the outgoing app.
+        val totals = UsageStats.aggregateEvents(
+            events = listOf(
+                foreground("a", 0),
+                foreground("b", 1_000),
+                foreground("a", 2_000),
+            ),
+            toMs = 3_000,
+        )
+
+        assertEquals(2_000, totals.getValue("a").totalMs)
+        assertEquals(1_000, totals.getValue("b").totalMs)
+    }
+
+    @Test
     fun returningAfterALongBackgroundGapCountsANewLaunch() {
         val totals = UsageStats.aggregateEvents(
             events = listOf(

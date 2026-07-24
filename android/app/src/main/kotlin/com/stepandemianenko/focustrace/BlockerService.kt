@@ -95,6 +95,8 @@ class BlockerService : Service() {
         maybeNotifyDailyLimitWarnings(usageSeconds, now)
 
         val foregroundPackage = currentForegroundPackage(now)
+
+        // Our own block screen (TikTok path) is foreground while active.
         if (foregroundPackage == null || foregroundPackage == packageName) {
             removeOverlay()
             return
@@ -118,12 +120,24 @@ class BlockerService : Service() {
             now,
             usageSeconds[blockingRule.appKey] ?: 0L,
         )
-        showOverlay(
-            appKey = foregroundPackage,
-            appName = blockingRule.appName,
-            reason = reasonFor(blockingRule),
-            untilMs = untilMs,
-        )
+        if (foregroundPackage in TIKTOK_PACKAGES) {
+            // TikTok autoplays video; only a real foreground activity pauses it.
+            removeOverlay()
+            BlockActivity.start(
+                this,
+                appKey = foregroundPackage,
+                appName = blockingRule.appName,
+                reason = reasonFor(blockingRule),
+                untilMs = untilMs,
+            )
+        } else {
+            showOverlay(
+                appKey = foregroundPackage,
+                appName = blockingRule.appName,
+                reason = reasonFor(blockingRule),
+                untilMs = untilMs,
+            )
+        }
     }
 
     private fun loadRules(): List<RestrictionRule> {
@@ -264,20 +278,26 @@ class BlockerService : Service() {
                 setPadding(0, 8, 0, 24)
             })
         }
-        root.addView(Button(this).apply {
-            text = FocusTraceLocale.getString(
-                this@BlockerService,
-                R.string.restriction_leave,
-            )
-            setOnClickListener {
-                startActivity(
-                    Intent(Intent.ACTION_MAIN)
-                        .addCategory(Intent.CATEGORY_HOME)
-                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        root.addView(
+            Button(this).apply {
+                text = FocusTraceLocale.getString(
+                    this@BlockerService,
+                    R.string.restriction_leave,
                 )
-                removeOverlay()
-            }
-        })
+                setOnClickListener {
+                    startActivity(
+                        Intent(Intent.ACTION_MAIN)
+                            .addCategory(Intent.CATEGORY_HOME)
+                            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    )
+                    removeOverlay()
+                }
+            },
+            LinearLayout.LayoutParams(
+                resources.displayMetrics.widthPixels / 2,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            ).apply { gravity = Gravity.CENTER_HORIZONTAL },
+        )
 
         val overlayType = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
@@ -423,5 +443,9 @@ class BlockerService : Service() {
         const val WARNING_CHANNEL_ID = "focustrace_restriction_warnings"
         const val SERVICE_NOTIFICATION_ID = 7301
         const val WARNING_NOTIFICATION_BASE_ID = 7400
+        val TIKTOK_PACKAGES = setOf(
+            "com.zhiliaoapp.musically",
+            "com.ss.android.ugc.trill",
+        )
     }
 }

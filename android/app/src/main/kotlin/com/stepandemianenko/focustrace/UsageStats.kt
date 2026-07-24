@@ -101,6 +101,21 @@ object UsageStats {
                     lastForegroundPackage = packageName
                     if (!isRequested) continue
 
+                    // Only one app is foreground at a time. Newer Android often
+                    // omits the background event for the outgoing app, so close
+                    // any other open session here or its time overlaps this one
+                    // and totals stack past wall-clock.
+                    val stale = foregroundSince.keys.filter { it != packageName }
+                    for (other in stale) {
+                        val start = foregroundSince.remove(other) ?: continue
+                        if (event.timeStampMs > start) {
+                            totals[other] =
+                                (totals[other] ?: 0L) + (event.timeStampMs - start)
+                        }
+                        lastBackground[other] = event.timeStampMs
+                        lastUsed[other] = event.timeStampMs
+                    }
+
                     // Some Android versions emit both the legacy MOVE event and
                     // ACTIVITY_RESUMED. Keep the first timestamp and count the
                     // pair as one launch.
