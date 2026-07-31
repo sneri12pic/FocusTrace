@@ -17,6 +17,9 @@ class FocusTraceApp extends ConsumerWidget {
       locale: appLanguageState.language.locale,
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
+      // Flutter falls back to supportedLocales.first, which is alphabetical
+      // ('de'). Match the device's preferred languages in order, then English.
+      localeListResolutionCallback: resolveLocale,
       theme: ThemeData(
         brightness: Brightness.dark,
         colorScheme: ColorScheme.fromSeed(

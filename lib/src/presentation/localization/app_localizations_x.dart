@@ -4,6 +4,20 @@ import '../../../l10n/generated/app_localizations.dart';
 import '../../domain/models/app_language.dart';
 import '../../domain/models/usage_item.dart';
 
+/// Picks the first device language we ship, falling back to English.
+/// ponytail: language-code match only; add script/country matching if we ever
+/// ship two variants of one language (e.g. pt-BR next to pt-PT).
+Locale resolveLocale(List<Locale>? preferred, Iterable<Locale> supported) {
+  for (final locale in preferred ?? const <Locale>[]) {
+    for (final candidate in supported) {
+      if (candidate.languageCode == locale.languageCode) {
+        return candidate;
+      }
+    }
+  }
+  return const Locale('en');
+}
+
 extension AppLocalizationsBuildContext on BuildContext {
   AppLocalizations get l10n => AppLocalizations.of(this);
 }
