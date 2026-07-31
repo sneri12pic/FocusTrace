@@ -19,7 +19,8 @@ class _HomeShellState extends State<HomeShell> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      extendBody: true,
+      // No extendBody: it let tab content scroll under the nav strip, hiding
+      // the last row (e.g. Settings > Send feedback) with no way to reach it.
       body: IndexedStack(
         index: _index,
         children: const [

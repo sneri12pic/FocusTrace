@@ -19,7 +19,9 @@ class SettingsScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(title: Text(l10n.settingsTitle)),
       body: ListView(
-        padding: const EdgeInsets.all(16),
+        // Extra bottom space so the last card is never flush against the
+        // nav strip and stays comfortably scrollable into view.
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 40),
         children: [
           Card(
             elevation: 0,
