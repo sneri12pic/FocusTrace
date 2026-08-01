@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../domain/models/usage_item.dart';
+import '../localization/app_localizations_x.dart';
 
 class UsageBubble extends StatelessWidget {
   const UsageBubble({
@@ -8,8 +9,10 @@ class UsageBubble extends StatelessWidget {
     required this.radius,
     required this.isSelected,
     required this.isBlocked,
+    required this.isNearLimit,
+    required this.warningAnimation,
     required this.onTap,
-    required this.onLongPress,
+    this.onLongPress,
     super.key,
   });
 
@@ -17,17 +20,22 @@ class UsageBubble extends StatelessWidget {
   final double radius;
   final bool isSelected;
   final bool isBlocked;
+  final bool isNearLimit;
+  final Animation<double> warningAnimation;
   final VoidCallback onTap;
-  final VoidCallback onLongPress;
+  final VoidCallback? onLongPress;
 
   @override
   Widget build(BuildContext context) {
     final diameter = radius * 2;
     final colors = _colorsFor(item.name);
+    final category = context.l10n.usageCategoryLabel(item.category);
 
     return Semantics(
       button: true,
-      label: '${item.name}, ${item.category}',
+      label: isNearLimit
+          ? context.l10n.usageBubbleNearLimitSemanticsLabel(item.name, category)
+          : context.l10n.usageBubbleSemanticsLabel(item.name, category),
       child: GestureDetector(
         onTap: onTap,
         onLongPress: onLongPress,
@@ -35,62 +43,123 @@ class UsageBubble extends StatelessWidget {
           scale: isSelected ? 1.08 : 1,
           duration: const Duration(milliseconds: 180),
           curve: Curves.easeOutCubic,
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 180),
-            width: diameter,
-            height: diameter,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: colors,
-              ),
-              border: Border.all(
-                color: isSelected
-                    ? Colors.white.withValues(alpha: 0.9)
-                    : Colors.white.withValues(alpha: 0.22),
-                width: isSelected ? 2.4 : 1.2,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: colors.last.withValues(alpha: isSelected ? 0.5 : 0.3),
-                  blurRadius: isSelected ? 24 : 14,
-                  offset: const Offset(0, 8),
+          child: AnimatedBuilder(
+            animation: warningAnimation,
+            builder: (context, child) {
+              final pulse = isNearLimit
+                  ? Curves.easeInOut.transform(warningAnimation.value)
+                  : 0.0;
+              final warningColor = Theme.of(context).colorScheme.error;
+              final gradientColors = isNearLimit
+                  ? [
+                      Color.lerp(
+                        colors.first,
+                        warningColor,
+                        0.12 + 0.08 * pulse,
+                      )!,
+                      Color.lerp(
+                        colors.last,
+                        warningColor,
+                        0.18 + 0.1 * pulse,
+                      )!,
+                    ]
+                  : colors;
+              return AnimatedContainer(
+                duration: const Duration(milliseconds: 180),
+                width: diameter,
+                height: diameter,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: gradientColors,
+                  ),
+                  border: Border.all(
+                    color: isNearLimit
+                        ? warningColor.withValues(alpha: 0.65 + 0.3 * pulse)
+                        : isSelected
+                        ? Colors.white.withValues(alpha: 0.9)
+                        : Colors.white.withValues(alpha: 0.22),
+                    width: isNearLimit
+                        ? 2 + pulse
+                        : isSelected
+                        ? 2.4
+                        : 1.2,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: colors.last.withValues(
+                        alpha: isSelected ? 0.5 : 0.3,
+                      ),
+                      blurRadius: isSelected ? 24 : 14,
+                      offset: const Offset(0, 8),
+                    ),
+                    if (isNearLimit)
+                      BoxShadow(
+                        color: warningColor.withValues(
+                          alpha: 0.26 + 0.28 * pulse,
+                        ),
+                        blurRadius: 18 + 12 * pulse,
+                        spreadRadius: 2 + 3 * pulse,
+                      ),
+                  ],
                 ),
-              ],
-            ),
+                child: child,
+              );
+            },
             child: Stack(
               children: [
                 Center(
                   child: _BubbleContent(item: item, radius: radius),
                 ),
+                if (isNearLimit)
+                  Positioned(
+                    right: radius * 0.2,
+                    top: radius * 0.2,
+                    child: _BubbleStatusBadge(
+                      icon: Icons.priority_high_rounded,
+                      radius: radius,
+                    ),
+                  ),
                 if (isBlocked)
                   Positioned(
                     right: radius * 0.24,
                     bottom: radius * 0.24,
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.error,
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.72),
-                          width: 1.2,
-                        ),
-                      ),
-                      child: Padding(
-                        padding: EdgeInsets.all((radius * 0.08).clamp(3, 5)),
-                        child: Icon(
-                          Icons.lock,
-                          color: Colors.white,
-                          size: (radius * 0.22).clamp(10, 15),
-                        ),
-                      ),
-                    ),
+                    child: _BubbleStatusBadge(icon: Icons.lock, radius: radius),
                   ),
               ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _BubbleStatusBadge extends StatelessWidget {
+  const _BubbleStatusBadge({required this.icon, required this.radius});
+
+  final IconData icon;
+  final double radius;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.error,
+        shape: BoxShape.circle,
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.72),
+          width: 1.2,
+        ),
+      ),
+      child: Padding(
+        padding: EdgeInsets.all((radius * 0.08).clamp(3, 5)),
+        child: Icon(
+          icon,
+          color: Colors.white,
+          size: (radius * 0.22).clamp(10, 15),
         ),
       ),
     );
@@ -106,7 +175,6 @@ class _BubbleContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final iconSize = (radius * 0.58).clamp(18.0, 34.0);
-    final labelSize = (radius * 0.34).clamp(11.0, 19.0);
     final iconBytes = item.iconBytes;
 
     return Column(
@@ -119,29 +187,13 @@ class _BubbleContent extends StatelessWidget {
               iconBytes,
               width: iconSize * 1.3,
               height: iconSize * 1.3,
+              cacheWidth: 132,
               fit: BoxFit.cover,
               gaplessPlayback: true,
             ),
           )
         else
           Icon(_iconFor(item.name), color: Colors.white, size: iconSize),
-        if (radius >= 34) ...[
-          const SizedBox(height: 3),
-          Padding(
-            padding: EdgeInsets.symmetric(horizontal: radius * 0.22),
-            child: Text(
-              item.initials,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: labelSize,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-          ),
-        ],
       ],
     );
   }

@@ -1,0 +1,299 @@
+{
+  "@@locale": "uk",
+  "appTitle": "FocusTrace",
+  "durationLessThanOneMinute": "<1 хв",
+  "durationMinutesShort": "{minutes} хв",
+  "@durationMinutesShort": {
+    "placeholders": {
+      "minutes": {"type": "int"}
+    }
+  },
+  "durationHoursShort": "{hours} год",
+  "@durationHoursShort": {
+    "placeholders": {
+      "hours": {"type": "int"}
+    }
+  },
+  "durationHoursMinutesShort": "{hours} год {minutes} хв",
+  "@durationHoursMinutesShort": {
+    "placeholders": {
+      "hours": {"type": "int"},
+      "minutes": {"type": "int"}
+    }
+  },
+  "categoryEntertainment": "Розваги",
+  "categoryProductivity": "Продуктивність",
+  "categoryWeb": "Інтернет",
+  "categoryCommunication": "Спілкування",
+  "categorySystem": "Система",
+  "categoryActivity": "Активність",
+  "onboardingSkip": "Пропустити",
+  "onboardingGetStarted": "Розпочати",
+  "onboardingContinue": "Продовжити",
+  "onboardingStartSoftBlocks": "Увімкнути м'які блокування",
+  "onboardingChooseLater": "Вибрати пізніше",
+  "onboardingChooseWhatToLimit": "Виберіть, що обмежити",
+  "onboardingChooseWhatToLimitDescription": "Виберіть застосунки та встановіть денну ціль для м'яких блокувань.",
+  "onboardingNoAppsToChooseTitle": "Поки немає застосунків для вибору",
+  "onboardingNoAppsToChooseBody": "FocusTrace потребує актуальних даних про використання, щоб показати застосунки тут. Ви можете пропустити налаштування та додати обмеження пізніше в Налаштуваннях.",
+  "onboardingNoMatchingAppsTitle": "Немає відповідних застосунків",
+  "onboardingNoMatchingAppsBody": "Спробуйте інший пошуковий запит.",
+  "onboardingWelcomeTitle": "Поверніть контроль над екранним часом",
+  "onboardingWelcomeBody": "Зрозумійте, куди йде ваша увага.\nВстановіть м'які обмеження.\nФормуйте кращі звички у своєму темпі.",
+  "onboardingAccessTitle": "Надайте FocusTrace доступ",
+  "onboardingAccessBody": "Для роботи FocusTrace потрібні два дозволи.\nУсе залишається на вашому пристрої.",
+  "onboardingNoPermissionsTitle": "Тут нічого надавати",
+  "onboardingNoPermissionsBody": "Ці дозволи потрібні лише на Android.",
+  "onboardingUsageAccessTitle": "Доступ до даних про використання",
+  "onboardingUsageAccessSubtitle": "Щоб вимірювати час у застосунках",
+  "onboardingOverlayAccessTitle": "Показ поверх інших застосунків",
+  "onboardingOverlayAccessSubtitle": "Щоб показувати екран блокування поверх обмежених застосунків",
+  "onboardingPermissionsSettingsHint": "Це можна змінити пізніше в налаштуваннях.",
+  "onboardingAllow": "Дозволити",
+  "onboardingSearchApps": "Пошук застосунків",
+  "onboardingAppUsageToday": "{appKey} · {duration} сьогодні",
+  "@onboardingAppUsageToday": {
+    "placeholders": {
+      "appKey": {"type": "String"},
+      "duration": {"type": "String"}
+    }
+  },
+  "onboardingDailyTarget": "Денна ціль",
+  "restrictionsTitle": "Обмеження",
+  "restrictionsSearchApps": "Пошук застосунків",
+  "restrictionsAddRestriction": "Додати обмеження",
+  "restrictionsAddRoutine": "Нова рутина",
+  "restrictionsRoutinesTitle": "Рутини блокування",
+  "restrictionsRoutinesEmptyTitle": "Немає рутин блокування",
+  "restrictionsRoutinesEmptyBody": "Об’єднайте застосунки в рутину та вмикайте або вимикайте всю групу.",
+  "restrictionsIndividualRulesTitle": "Окремі обмеження",
+  "restrictionsRoutineAppCount": "Застосунків: {count}",
+  "@restrictionsRoutineAppCount": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "restrictionsDeleteRoutine": "Видалити рутину",
+  "routineEditorNewTitle": "Нова рутина блокування",
+  "routineEditorEditTitle": "Редагувати рутину блокування",
+  "routineEditorName": "Назва рутини",
+  "routineEditorSearchApps": "Пошук застосунків",
+  "routineEditorNoMatchingApps": "Немає відповідних застосунків",
+  "routineEditorSave": "Зберегти рутину",
+  "restrictionsPlatformStatusTitle": "На цій платформі — лише статус",
+  "restrictionsPlatformStatusBody": "Правила зберігаються та відображаються тут. Повноекранне блокування наразі працює лише на Android.",
+  "restrictionsEmptyTitle": "Немає обмежень застосунків",
+  "restrictionsEmptyBody": "Утримуйте застосунок у бульбашках використання або в поточному списку, щоб додати правило.",
+  "restrictionsNoAppsAvailable": "Застосунки поки недоступні. Відкрийте панель після появи даних про використання, потім шукайте тут.",
+  "restrictionsNoMatchingApps": "Немає відповідних застосунків",
+  "restrictionsDeleteRule": "Видалити правило",
+  "restrictionsUnblockNow": "Розблокувати зараз",
+  "restrictionsBlockedUntil": "Заблоковано до {time}",
+  "@restrictionsBlockedUntil": {
+    "placeholders": {
+      "time": {"type": "String"}
+    }
+  },
+  "restrictionsTemporaryBlockExpired": "Тимчасове блокування завершилося",
+  "restrictionsDailyLimitStatus": "Денний ліміт {limitDuration} · використано {usedDuration}",
+  "@restrictionsDailyLimitStatus": {
+    "placeholders": {
+      "limitDuration": {"type": "String"},
+      "usedDuration": {"type": "String"}
+    }
+  },
+  "restrictionsScheduleStatus": "Розклад {startTime}–{endTime}",
+  "@restrictionsScheduleStatus": {
+    "placeholders": {
+      "startTime": {"type": "String"},
+      "endTime": {"type": "String"}
+    }
+  },
+  "restrictionsOverlayPermissionTitle": "Потрібен дозвіл на накладання",
+  "restrictionsOverlayPermissionBody": "Android потребує дозволу «Показ поверх інших застосунків», щоб FocusTrace міг показувати екран блокування.",
+  "restrictionsOpenOverlaySettings": "Відкрити налаштування накладання",
+  "restrictionsRecheck": "Перевірити ще раз",
+  "restrictionEditorAllowFullScreenTitle": "Дозволити повноекранне блокування?",
+  "restrictionEditorAllowFullScreenBody": "FocusTrace потребує дозволу «Показ поверх інших застосунків», щоб показувати екран блокування, коли відкривається обмежений застосунок.",
+  "restrictionEditorLater": "Пізніше",
+  "restrictionEditorOpenSettings": "Відкрити налаштування",
+  "restrictionEditorTypeNow": "Зараз",
+  "restrictionEditorTypeLimit": "Ліміт",
+  "restrictionEditorTypeSchedule": "Розклад",
+  "restrictionEditorSaveRule": "Зберегти правило",
+  "restrictionEditorTomorrow": "Завтра",
+  "restrictionEditorDailyLimitPerDay": "{duration} на день",
+  "@restrictionEditorDailyLimitPerDay": {
+    "placeholders": {
+      "duration": {"type": "String"}
+    }
+  },
+  "dashboardDayTracked": "Відстежено · {duration}",
+  "@dashboardDayTracked": {
+    "placeholders": {
+      "duration": {"type": "String"}
+    }
+  },
+  "dashboardDayToday": "Сьогодні",
+  "dashboardDayYesterday": "Вчора",
+  "dashboardPreviousDayTooltip": "Попередній день",
+  "dashboardNextDayTooltip": "Наступний день",
+  "navHome": "Головна",
+  "trackingRunsWhileOpen": "Відстеження працює лише коли FocusTrace відкрито.",
+  "dashboardStopTracking": "Зупинити відстеження",
+  "dashboardStartTracking": "Почати відстеження",
+  "dashboardNoUsageToday": "За сьогодні використання не зафіксовано.",
+  "dashboardNoUsageDay": "За цей день використання не зафіксовано.",
+  "dashboardAllTimeMostUsedTitle": "Найчастіше використовуваний застосунок",
+  "dashboardUnsupportedPlatform": "MVP FocusTrace підтримує Android і Windows. Інші платформи можна додати пізніше через ізольовані платформні джерела даних.",
+  "commonRetry": "Повторити",
+  "commonUnexpectedError": "Щось пішло не так. Спробуйте ще раз.",
+  "usageBubblesTitle": "Бульбашки використання",
+  "usageBubblesDescription": "Більші бульбашки означають більше витраченого часу",
+  "usageBubblesCurrentList": "Поточний список",
+  "actionUnblockNow": "Розблокувати зараз",
+  "actionUnblockNowDescription": "Видалити активні правила блокування",
+  "actionRestrictApp": "Обмежити застосунок...",
+  "actionRestrictAppDescription": "Заблокувати зараз, встановити ліміт або додати розклад",
+  "percentageValue": "{percentage}%",
+  "@percentageValue": {
+    "placeholders": {
+      "percentage": {"type": "String"}
+    }
+  },
+  "actionRemoveFromToday": "Прибрати з сьогодні",
+  "actionRemoveFromTodayDescription": "Сховати цей застосунок зі статистики за сьогодні",
+  "actionExcludeFromTracking": "Виключити з відстеження",
+  "actionExcludeFromTrackingDescription": "Припинити відстеження та сховати з усієї статистики",
+  "excludeAppDialogTitle": "Виключити {appName}?",
+  "@excludeAppDialogTitle": {
+    "placeholders": {
+      "appName": {"type": "String"}
+    }
+  },
+  "excludeAppDialogBody": "Застосунок більше не відстежуватиметься й не показуватиметься у статистиці. Це можна скасувати в Налаштуваннях.",
+  "commonCancel": "Скасувати",
+  "actionExclude": "Виключити",
+  "sessionTotal": "Усього · {duration}",
+  "@sessionTotal": {
+    "placeholders": {
+      "duration": {"type": "String"}
+    }
+  },
+  "sessionDetailsUnavailable": "Деталі сеансів недоступні на цій платформі.",
+  "sessionNoneRecorded": "Немає записаних сеансів.",
+  "sessionLongestTitle": "Найдовші сеанси",
+  "sessionOngoingLabel": "{startTime} · {duration}",
+  "@sessionOngoingLabel": {
+    "placeholders": {
+      "startTime": {"type": "String"},
+      "duration": {"type": "String"}
+    }
+  },
+  "sessionRangeLabel": "{startTime} – {endTime} · {duration}",
+  "@sessionRangeLabel": {
+    "placeholders": {
+      "startTime": {"type": "String"},
+      "endTime": {"type": "String"},
+      "duration": {"type": "String"}
+    }
+  },
+  "permissionWindowsPrivacyTitle": "Конфіденційність Windows",
+  "permissionUsageAccessRequiredTitle": "Потрібен доступ до даних про використання",
+  "permissionUsageAccessRequiredBody": "FocusTrace потребує доступу Android до даних про використання, щоб читати використання ваших власних застосунків. Дані залишаються локально на цьому пристрої.",
+  "permissionOpenUsageAccessSettings": "Відкрити налаштування доступу",
+  "commonRecheck": "Перевірити ще раз",
+  "trackingWindowsRunning": "Відстеження Windows працює, поки FocusTrace відкрито.",
+  "trackingWindowsIdle": "Відстеження Windows працює лише коли FocusTrace відкрито.",
+  "trackingAndroidUsageAccess": "Дані Android зчитуються через доступ до даних про використання.",
+  "trackingUnsupportedPlatform": "Відстеження використання поки не підтримується на цій платформі.",
+  "trackingError": "Під час відстеження сталася помилка. Спробу буде повторено автоматично.",
+  "bubblePercentageOfToday": "{percentage}% від сьогодні",
+  "@bubblePercentageOfToday": {
+    "placeholders": {
+      "percentage": {"type": "String"}
+    }
+  },
+  "usageBubbleSemanticsLabel": "{appName}, {category}",
+  "@usageBubbleSemanticsLabel": {
+    "placeholders": {
+      "appName": {"type": "String"},
+      "category": {"type": "String"}
+    }
+  },
+  "usageBubbleNearLimitSemanticsLabel": "{appName}, {category}, денний ліміт майже вичерпано",
+  "@usageBubbleNearLimitSemanticsLabel": {
+    "placeholders": {
+      "appName": {"type": "String"},
+      "category": {"type": "String"}
+    }
+  },
+  "summaryLaunchCount": "Запуски: {count}",
+  "@summaryLaunchCount": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "usageTrendDayShort": "Д",
+  "usageTrendWeekShort": "Т",
+  "usageTrendMonthShort": "М",
+  "usageTrendIncrease": "{period}: використання зросло на {percentage}%",
+  "@usageTrendIncrease": {
+    "placeholders": {
+      "period": {"type": "String"},
+      "percentage": {"type": "int"}
+    }
+  },
+  "usageTrendDecrease": "{period}: використання зменшилося на {percentage}%",
+  "@usageTrendDecrease": {
+    "placeholders": {
+      "period": {"type": "String"},
+      "percentage": {"type": "int"}
+    }
+  },
+  "usageTrendUnchanged": "{period}: використання без змін",
+  "@usageTrendUnchanged": {
+    "placeholders": {
+      "period": {"type": "String"}
+    }
+  },
+  "usageDetailsLastSevenDays": "Останні 7 днів",
+  "usageDetailsMoreThanYesterday": "На {percentage}% більше, ніж учора",
+  "@usageDetailsMoreThanYesterday": {"placeholders": {"percentage": {"type": "int"}}},
+  "usageDetailsLessThanYesterday": "На {percentage}% менше, ніж учора",
+  "@usageDetailsLessThanYesterday": {"placeholders": {"percentage": {"type": "int"}}},
+  "usageDetailsSameAsYesterday": "Так само, як учора",
+  "usageDetailsNoYesterdayComparison": "Порівняння з учора ще немає",
+  "usageDetailsRankLabel": "№{rank} за використанням",
+  "@usageDetailsRankLabel": {"placeholders": {"rank": {"type": "int"}}},
+  "usageDetailsRankLead": "на {duration} більше, ніж {appName}",
+  "@usageDetailsRankLead": {"placeholders": {"duration": {"type": "String"}, "appName": {"type": "String"}}},
+  "usageDetailsDayValue": "{date}: {duration}",
+  "@usageDetailsDayValue": {"placeholders": {"date": {"type": "String"}, "duration": {"type": "String"}}},
+  "settingsTitle": "Налаштування",
+  "settingsPrivacyTitle": "Конфіденційність",
+  "settingsPrivacyBody": "FocusTrace зберігає дані про використання локально на цьому пристрої. Дані про відстежені застосунки чи вікна нікуди не надсилаються.",
+  "settingsClearLocalData": "Очистити локальні дані",
+  "settingsLanguageTitle": "Мова",
+  "settingsLanguageSystemDefault": "Системна за замовчуванням",
+  "settingsChooseLanguage": "Виберіть мову",
+  "settingsLanguageUpdateError": "Не вдалося застосувати мовне налаштування. Спробуйте ще раз.",
+  "settingsExcludedAppsTitle": "Виключені застосунки",
+  "settingsExcludedAppsEmpty": "Немає виключених застосунків. Утримуйте застосунок на панелі, щоб виключити його з відстеження.",
+  "settingsStopExcluding": "Не виключати",
+  "settingsWindowsTrackingComingSoon": "Незабаром: відстеження Windows",
+  "settingsSendFeedback": "Надіслати відгук",
+  "settingsWindowsTrackingInterval": "Інтервал відстеження Windows",
+  "settingsWindowsIdleTimeout": "Тайм-аут бездіяльності Windows",
+  "settingsClearDataDialogTitle": "Очистити локальні дані?",
+  "settingsClearDataDialogBody": "Це видалить збережені сеанси використання та налаштування з цього пристрою. Ваш вибір мови буде збережено.",
+  "settingsCancel": "Скасувати",
+  "settingsClear": "Очистити",
+  "settingsSave": "Зберегти",
+  "secondsCount": "{count, plural, =1{1 секунда} few{{count} секунди} many{{count} секунд} other{{count} секунди}}",
+  "@secondsCount": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  }
+}

@@ -5,6 +5,7 @@ class AppUsageSummary {
     required this.appName,
     required this.totalDurationSeconds,
     required this.percentageOfTotal,
+    this.launchCount = 0,
     this.packageName,
     this.processName,
     this.lastUsedAt,
@@ -16,6 +17,7 @@ class AppUsageSummary {
   final String? processName;
   final int totalDurationSeconds;
   final double percentageOfTotal;
+  final int launchCount;
   final DateTime? lastUsedAt;
   final Uint8List? iconBytes;
 
@@ -29,6 +31,7 @@ class AppUsageSummary {
     String? processName,
     int? totalDurationSeconds,
     double? percentageOfTotal,
+    int? launchCount,
     DateTime? lastUsedAt,
     Uint8List? iconBytes,
   }) {
@@ -38,6 +41,7 @@ class AppUsageSummary {
       processName: processName ?? this.processName,
       totalDurationSeconds: totalDurationSeconds ?? this.totalDurationSeconds,
       percentageOfTotal: percentageOfTotal ?? this.percentageOfTotal,
+      launchCount: launchCount ?? this.launchCount,
       lastUsedAt: lastUsedAt ?? this.lastUsedAt,
       iconBytes: iconBytes ?? this.iconBytes,
     );
@@ -52,6 +56,7 @@ class AppUsageSummary {
             other.processName == processName &&
             other.totalDurationSeconds == totalDurationSeconds &&
             other.percentageOfTotal == percentageOfTotal &&
+            other.launchCount == launchCount &&
             other.lastUsedAt == lastUsedAt;
   }
 
@@ -62,6 +67,7 @@ class AppUsageSummary {
     processName,
     totalDurationSeconds,
     percentageOfTotal,
+    launchCount,
     lastUsedAt,
   );
 }

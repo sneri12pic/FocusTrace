@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../../application/utils/duration_format.dart';
 import '../../domain/models/usage_item.dart';
+import '../localization/app_localizations_x.dart';
 
 class BubbleTooltip extends StatelessWidget {
   const BubbleTooltip({required this.item, super.key});
@@ -44,7 +44,7 @@ class BubbleTooltip extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               Text(
-                DurationFormat.compact(item.totalDuration),
+                context.l10n.compactDuration(item.totalDuration),
                 style: const TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w800,
@@ -52,12 +52,14 @@ class BubbleTooltip extends StatelessWidget {
               ),
               const SizedBox(height: 4),
               Text(
-                '${percentage.toStringAsFixed(0)}% of today',
+                context.l10n.bubblePercentageOfToday(
+                  percentage.toStringAsFixed(0),
+                ),
                 style: TextStyle(color: Colors.white.withValues(alpha: 0.76)),
               ),
               const SizedBox(height: 2),
               Text(
-                item.category,
+                context.l10n.usageCategoryLabel(item.category),
                 style: TextStyle(color: Colors.white.withValues(alpha: 0.76)),
               ),
             ],

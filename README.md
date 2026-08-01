@@ -9,6 +9,7 @@ The MVP supports:
 - Local SQLite storage for usage sessions and settings
 - A dashboard for today's tracked usage, including a usage bubble chart where bigger bubbles mean more time spent
 - A settings screen to configure the Windows tracking interval and idle timeout, and to clear local data
+- In-app language switching with translated Flutter and Android blocker UI
 
 FocusTrace does not implement hidden monitoring, keylogging, screenshots, clipboard reading, browser history reading, or content monitoring.
 
@@ -23,6 +24,10 @@ FocusTrace does not implement hidden monitoring, keylogging, screenshots, clipbo
 - Windows: tracks the active desktop window only while FocusTrace is open and tracking is manually started.
 
 iOS, macOS, and Linux are not part of the MVP, but the architecture keeps platform data sources isolated so they can be added later.
+
+## Languages
+
+FocusTrace can follow the device language or use a language selected in Settings. The initial language pack includes English, Spanish, French, German, Brazilian Portuguese, Japanese, and Ukrainian. The choice is stored locally and is preserved when usage data is cleared.
 
 ## Android Usage Access
 

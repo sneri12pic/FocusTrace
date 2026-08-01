@@ -131,6 +131,25 @@ class _InMemoryLocalDataSource implements FocusTraceLocalDataSource {
   }
 
   @override
+  Future<void> saveDailySummaries(
+    DateTime day,
+    List<AppUsageSummary> summaries,
+  ) async {}
+
+  @override
+  Future<List<AppUsageSummary>> getDailySummaries(DateTime day) async =>
+      const [];
+
+  @override
+  Future<List<AppUsageSummary>> getAllTimeSummaries() async => const [];
+
+  @override
+  Future<List<DailyAppUsage>> getUsageHistory(
+    DateTime fromInclusive,
+    DateTime toExclusive,
+  ) async => const [];
+
+  @override
   Future<String?> readSetting(String key) async => _settings[key];
 
   @override

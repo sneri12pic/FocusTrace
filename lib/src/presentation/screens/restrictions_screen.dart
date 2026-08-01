@@ -3,12 +3,15 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../application/utils/duration_format.dart';
 import '../../domain/models/app_usage_summary.dart';
+import '../../domain/models/block_routine.dart';
 import '../../domain/models/restriction_rule.dart';
 import '../../domain/models/usage_session.dart';
+import '../localization/app_localizations_x.dart';
 import '../providers.dart';
+import '../widgets/app_icon_avatar.dart';
 import 'restriction_editor_sheet.dart';
+import 'routine_editor_sheet.dart';
 
 class RestrictionsScreen extends ConsumerWidget {
   const RestrictionsScreen({super.key});
@@ -17,17 +20,22 @@ class RestrictionsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(restrictionsViewModelProvider);
     final viewModel = ref.read(restrictionsViewModelProvider.notifier);
-    final summaries = ref.watch(dashboardViewModelProvider).summaries;
+    final dashboardState = ref.watch(dashboardViewModelProvider);
+    final summaries = dashboardState.summaries;
+    final topApps = dashboardState.allTimeTopApps;
+    final installedApps =
+        ref.watch(installedAppsProvider).valueOrNull ?? const [];
+    final routineCandidates = _mergeAppCandidates(summaries, installedApps);
     final usageByApp = {
       for (final summary in summaries) summary.appKey: summary,
     };
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Restrictions'),
+        title: Text(context.l10n.restrictionsTitle),
         actions: [
           IconButton(
-            tooltip: 'Search apps',
+            tooltip: context.l10n.restrictionsSearchApps,
             onPressed: () => _chooseAppAndCreateRule(
               context,
               ref,
@@ -43,6 +51,18 @@ class RestrictionsScreen extends ConsumerWidget {
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
+            if (topApps.isNotEmpty) ...[
+              _TopUsedCard(
+                apps: topApps,
+                onAppTap: (app) => createRestrictionForApp(
+                  context,
+                  ref,
+                  appKey: app.appKey,
+                  appName: app.appName,
+                ),
+              ),
+              const SizedBox(height: 12),
+            ],
             FilledButton.icon(
               onPressed: () => _chooseAppAndCreateRule(
                 context,
@@ -51,7 +71,13 @@ class RestrictionsScreen extends ConsumerWidget {
                 rules: state.rules,
               ),
               icon: const Icon(Icons.search),
-              label: const Text('Add restriction'),
+              label: Text(context.l10n.restrictionsAddRestriction),
+            ),
+            const SizedBox(height: 8),
+            OutlinedButton.icon(
+              onPressed: () => _createRoutine(context, ref, routineCandidates),
+              icon: const Icon(Icons.playlist_add),
+              label: Text(context.l10n.restrictionsAddRoutine),
             ),
             const SizedBox(height: 12),
             if (state.platform == UsagePlatform.android &&
@@ -63,16 +89,15 @@ class RestrictionsScreen extends ConsumerWidget {
               const SizedBox(height: 12),
             ],
             if (state.platform != UsagePlatform.android) ...[
-              const _InfoCard(
-                title: 'Status only on this platform',
-                body:
-                    'Rules are saved and shown here. Full-screen blocking currently runs only on Android.',
+              _InfoCard(
+                title: context.l10n.restrictionsPlatformStatusTitle,
+                body: context.l10n.restrictionsPlatformStatusBody,
               ),
               const SizedBox(height: 12),
             ],
             if (state.errorMessage != null) ...[
               Text(
-                state.errorMessage!,
+                context.l10n.commonUnexpectedError,
                 style: TextStyle(color: Theme.of(context).colorScheme.error),
               ),
               const SizedBox(height: 12),
@@ -82,13 +107,43 @@ class RestrictionsScreen extends ConsumerWidget {
                 padding: EdgeInsets.symmetric(vertical: 40),
                 child: Center(child: CircularProgressIndicator()),
               )
-            else if (state.rules.isEmpty)
-              const _InfoCard(
-                title: 'No app restrictions',
-                body:
-                    'Long-press an app in the usage bubbles or current list to add a rule.',
+            else if (state.rules.isEmpty && state.routines.isEmpty)
+              _InfoCard(
+                title: context.l10n.restrictionsEmptyTitle,
+                body: context.l10n.restrictionsEmptyBody,
               )
-            else
+            else ...[
+              _SectionTitle(
+                title: context.l10n.restrictionsRoutinesTitle,
+                onAdd: () => _createRoutine(context, ref, routineCandidates),
+              ),
+              if (state.routines.isEmpty)
+                _InfoCard(
+                  title: context.l10n.restrictionsRoutinesEmptyTitle,
+                  body: context.l10n.restrictionsRoutinesEmptyBody,
+                )
+              else
+                for (final routine in state.routines)
+                  _RoutineTile(
+                    routine: routine,
+                    isSaving: state.isSaving,
+                    onToggle: (enabled) =>
+                        viewModel.setRoutineEnabled(routine, enabled),
+                    onTap: () =>
+                        _editRoutine(context, ref, routineCandidates, routine),
+                    onDelete: () => viewModel.deleteRoutine(routine.id),
+                  ),
+              const SizedBox(height: 14),
+              if (state.rules.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Text(
+                    context.l10n.restrictionsIndividualRulesTitle,
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
               for (final rule in state.rules)
                 _RestrictionRuleTile(
                   rule: rule,
@@ -116,10 +171,57 @@ class RestrictionsScreen extends ConsumerWidget {
                   },
                   onDelete: () => viewModel.deleteRule(rule.appKey, rule.type),
                 ),
+            ],
           ],
         ),
       ),
     );
+  }
+
+  List<AppUsageSummary> _mergeAppCandidates(
+    List<AppUsageSummary> summaries,
+    List<AppUsageSummary> installedApps,
+  ) {
+    final byKey = <String, AppUsageSummary>{};
+    for (final app in installedApps) {
+      byKey[app.appKey] = app;
+    }
+    for (final app in summaries) {
+      byKey[app.appKey] = app;
+    }
+    return byKey.values.toList();
+  }
+
+  Future<void> _createRoutine(
+    BuildContext context,
+    WidgetRef ref,
+    List<AppUsageSummary> apps,
+  ) async {
+    final routine = await showRoutineEditor(context, apps: apps);
+    if (routine == null || !context.mounted) {
+      return;
+    }
+    await ref.read(restrictionsViewModelProvider.notifier).saveRoutine(routine);
+    if (context.mounted) {
+      await promptRestrictionPermissionsIfNeeded(context, ref);
+    }
+  }
+
+  Future<void> _editRoutine(
+    BuildContext context,
+    WidgetRef ref,
+    List<AppUsageSummary> apps,
+    BlockRoutine existing,
+  ) async {
+    final routine = await showRoutineEditor(
+      context,
+      apps: apps,
+      existing: existing,
+    );
+    if (routine == null || !context.mounted) {
+      return;
+    }
+    await ref.read(restrictionsViewModelProvider.notifier).saveRoutine(routine);
   }
 
   Future<void> _chooseAppAndCreateRule(
@@ -138,19 +240,12 @@ class RestrictionsScreen extends ConsumerWidget {
     if (selected == null || !context.mounted) {
       return;
     }
-
-    final rule = await showRestrictionEditor(
+    await createRestrictionForApp(
       context,
+      ref,
       appKey: selected.appKey,
       appName: selected.appName,
     );
-    if (rule == null || !context.mounted) {
-      return;
-    }
-    await ref.read(restrictionsViewModelProvider.notifier).saveRule(rule);
-    if (context.mounted) {
-      await promptRestrictionPermissionsIfNeeded(context, ref);
-    }
   }
 
   List<_AppCandidate> _appCandidates(
@@ -185,6 +280,159 @@ class RestrictionsScreen extends ConsumerWidget {
   }
 }
 
+class _TopUsedCard extends StatelessWidget {
+  const _TopUsedCard({required this.apps, required this.onAppTap});
+
+  final List<AppUsageSummary> apps;
+  final ValueChanged<AppUsageSummary> onAppTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Card(
+      elevation: 0,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+              child: Text(
+                context.l10n.dashboardAllTimeMostUsedTitle,
+                style: theme.textTheme.labelLarge?.copyWith(
+                  color: theme.colorScheme.primary,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+            for (var index = 0; index < apps.length; index++)
+              ListTile(
+                dense: true,
+                onTap: () => onAppTap(apps[index]),
+                leading: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    SizedBox(
+                      width: 24,
+                      child: Text(
+                        '#${index + 1}',
+                        style: theme.textTheme.titleSmall?.copyWith(
+                          color: theme.colorScheme.primary,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    AppIconAvatar(
+                      appName: apps[index].appName,
+                      iconBytes: apps[index].iconBytes,
+                      size: 32,
+                    ),
+                  ],
+                ),
+                title: Text(
+                  apps[index].appName,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                trailing: Text(
+                  context.l10n.compactDuration(apps[index].totalDuration),
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SectionTitle extends StatelessWidget {
+  const _SectionTitle({required this.title, required this.onAdd});
+
+  final String title;
+  final VoidCallback onAdd;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              title,
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+            ),
+          ),
+          IconButton(
+            tooltip: context.l10n.restrictionsAddRoutine,
+            onPressed: onAdd,
+            icon: const Icon(Icons.add),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _RoutineTile extends StatelessWidget {
+  const _RoutineTile({
+    required this.routine,
+    required this.isSaving,
+    required this.onToggle,
+    required this.onTap,
+    required this.onDelete,
+  });
+
+  final BlockRoutine routine;
+  final bool isSaving;
+  final ValueChanged<bool> onToggle;
+  final VoidCallback onTap;
+  final VoidCallback onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    final appNames = routine.apps.map((app) => app.appName).join(', ');
+    return Card(
+      elevation: 0,
+      margin: const EdgeInsets.only(bottom: 10),
+      child: ListTile(
+        leading: const Icon(Icons.library_add_check_outlined),
+        title: Text(routine.name, maxLines: 1, overflow: TextOverflow.ellipsis),
+        subtitle: Text(
+          '${context.l10n.restrictionsRoutineAppCount(routine.apps.length)} · $appNames',
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+        ),
+        onTap: onTap,
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Switch(
+              value: routine.isEnabled,
+              onChanged: isSaving ? null : onToggle,
+            ),
+            IconButton(
+              tooltip: context.l10n.restrictionsDeleteRoutine,
+              onPressed: isSaving ? null : onDelete,
+              icon: const Icon(Icons.delete_outline),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _AppCandidate {
   const _AppCandidate({
     required this.appKey,
@@ -196,7 +444,7 @@ class _AppCandidate {
   final String appKey;
   final String appName;
   final String? subtitle;
-  final List<int>? iconBytes;
+  final Uint8List? iconBytes;
 }
 
 class _AppSearchSheet extends StatefulWidget {
@@ -226,31 +474,30 @@ class _AppSearchSheetState extends State<_AppSearchSheet> {
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 18, 16, 8),
                 child: TextField(
-                  autofocus: true,
-                  decoration: const InputDecoration(
-                    prefixIcon: Icon(Icons.search),
-                    hintText: 'Search apps',
-                    border: OutlineInputBorder(),
+                  decoration: InputDecoration(
+                    prefixIcon: const Icon(Icons.search),
+                    hintText: context.l10n.restrictionsSearchApps,
+                    border: const OutlineInputBorder(),
                   ),
                   onChanged: (value) => setState(() => _query = value),
                 ),
               ),
               Expanded(
                 child: widget.candidates.isEmpty
-                    ? const Center(
+                    ? Center(
                         child: Padding(
-                          padding: EdgeInsets.all(24),
+                          padding: const EdgeInsets.all(24),
                           child: Text(
-                            'No apps available yet. Open the dashboard after usage data is available, then search here.',
+                            context.l10n.restrictionsNoAppsAvailable,
                             textAlign: TextAlign.center,
                           ),
                         ),
                       )
                     : filtered.isEmpty
-                    ? const Center(
+                    ? Center(
                         child: Padding(
-                          padding: EdgeInsets.all(24),
-                          child: Text('No matching apps'),
+                          padding: const EdgeInsets.all(24),
+                          child: Text(context.l10n.restrictionsNoMatchingApps),
                         ),
                       )
                     : ListView.builder(
@@ -259,7 +506,10 @@ class _AppSearchSheetState extends State<_AppSearchSheet> {
                         itemBuilder: (context, index) {
                           final candidate = filtered[index];
                           return ListTile(
-                            leading: _AppIcon(candidate: candidate),
+                            leading: AppIconAvatar(
+                              appName: candidate.appName,
+                              iconBytes: candidate.iconBytes,
+                            ),
                             title: Text(
                               candidate.appName,
                               maxLines: 1,
@@ -300,33 +550,6 @@ class _AppSearchSheetState extends State<_AppSearchSheet> {
   }
 }
 
-class _AppIcon extends StatelessWidget {
-  const _AppIcon({required this.candidate});
-
-  final _AppCandidate candidate;
-
-  @override
-  Widget build(BuildContext context) {
-    final iconBytes = candidate.iconBytes;
-    if (iconBytes != null) {
-      return ClipOval(
-        child: Image.memory(
-          Uint8List.fromList(iconBytes),
-          width: 40,
-          height: 40,
-          fit: BoxFit.cover,
-          gaplessPlayback: true,
-        ),
-      );
-    }
-    return CircleAvatar(
-      child: Text(
-        candidate.appName.isEmpty ? '?' : candidate.appName[0].toUpperCase(),
-      ),
-    );
-  }
-}
-
 class _RestrictionRuleTile extends StatelessWidget {
   const _RestrictionRuleTile({
     required this.rule,
@@ -361,10 +584,10 @@ class _RestrictionRuleTile extends StatelessWidget {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
-            subtitle: Text(_statusText(rule, summary)),
+            subtitle: Text(_statusText(context, rule, summary)),
             onTap: onTap,
             trailing: IconButton(
-              tooltip: 'Delete rule',
+              tooltip: context.l10n.restrictionsDeleteRule,
               onPressed: isSaving ? null : onDelete,
               icon: const Icon(Icons.delete_outline),
             ),
@@ -373,11 +596,11 @@ class _RestrictionRuleTile extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
               child: Align(
-                alignment: Alignment.centerLeft,
+                alignment: AlignmentDirectional.centerStart,
                 child: FilledButton.tonalIcon(
                   onPressed: isSaving ? null : onUnblockNow,
                   icon: const Icon(Icons.lock_open_outlined),
-                  label: const Text('Unblock now'),
+                  label: Text(context.l10n.restrictionsUnblockNow),
                 ),
               ),
             ),
@@ -386,7 +609,11 @@ class _RestrictionRuleTile extends StatelessWidget {
     );
   }
 
-  String _statusText(RestrictionRule rule, AppUsageSummary? summary) {
+  String _statusText(
+    BuildContext context,
+    RestrictionRule rule,
+    AppUsageSummary? summary,
+  ) {
     final now = DateTime.now();
     final usageSeconds = summary?.totalDurationSeconds ?? 0;
     final blockedUntil = rule.blockedUntil(
@@ -394,17 +621,27 @@ class _RestrictionRuleTile extends StatelessWidget {
       usageSecondsToday: usageSeconds,
     );
     if (blockedUntil != null) {
-      return 'Blocked until ${_clock(blockedUntil)}';
+      return context.l10n.restrictionsBlockedUntil(
+        _formatTime(context, TimeOfDay.fromDateTime(blockedUntil)),
+      );
     }
 
     switch (rule.type) {
       case RestrictionRuleType.blockNow:
-        return 'Temporary block expired';
+        return context.l10n.restrictionsTemporaryBlockExpired;
       case RestrictionRuleType.dailyLimit:
-        final used = DurationFormat.compact(Duration(seconds: usageSeconds));
-        return 'Daily limit ${rule.limitMinutes ?? 0} min · $used used';
+        final limit = context.l10n.compactDuration(
+          Duration(minutes: rule.limitMinutes ?? 0),
+        );
+        final used = context.l10n.compactDuration(
+          Duration(seconds: usageSeconds),
+        );
+        return context.l10n.restrictionsDailyLimitStatus(limit, used);
       case RestrictionRuleType.schedule:
-        return 'Schedule ${_minuteClock(rule.startMinute)}-${_minuteClock(rule.endMinute)}';
+        return context.l10n.restrictionsScheduleStatus(
+          _minuteTime(context, rule.startMinute),
+          _minuteTime(context, rule.endMinute),
+        );
     }
   }
 
@@ -419,19 +656,21 @@ class _RestrictionRuleTile extends StatelessWidget {
     }
   }
 
-  String _clock(DateTime time) {
-    final hours = time.hour.toString().padLeft(2, '0');
-    final minutes = time.minute.toString().padLeft(2, '0');
-    return '$hours:$minutes';
+  String _formatTime(BuildContext context, TimeOfDay time) {
+    return MaterialLocalizations.of(context).formatTimeOfDay(
+      time,
+      alwaysUse24HourFormat: MediaQuery.alwaysUse24HourFormatOf(context),
+    );
   }
 
-  String _minuteClock(int? minute) {
+  String _minuteTime(BuildContext context, int? minute) {
     if (minute == null) {
       return '--:--';
     }
-    final hours = (minute ~/ 60).toString().padLeft(2, '0');
-    final minutes = (minute % 60).toString().padLeft(2, '0');
-    return '$hours:$minutes';
+    return _formatTime(
+      context,
+      TimeOfDay(hour: minute ~/ 60, minute: minute % 60),
+    );
   }
 }
 
@@ -455,15 +694,13 @@ class _OverlayPermissionCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Overlay permission required',
+              context.l10n.restrictionsOverlayPermissionTitle,
               style: theme.textTheme.titleMedium?.copyWith(
                 fontWeight: FontWeight.w700,
               ),
             ),
             const SizedBox(height: 8),
-            const Text(
-              'Android needs Display over other apps permission before FocusTrace can show a block screen.',
-            ),
+            Text(context.l10n.restrictionsOverlayPermissionBody),
             const SizedBox(height: 12),
             Wrap(
               spacing: 8,
@@ -472,12 +709,12 @@ class _OverlayPermissionCard extends StatelessWidget {
                 FilledButton.icon(
                   onPressed: onOpenSettings,
                   icon: const Icon(Icons.settings),
-                  label: const Text('Open Overlay Settings'),
+                  label: Text(context.l10n.restrictionsOpenOverlaySettings),
                 ),
                 OutlinedButton.icon(
                   onPressed: onRecheck,
                   icon: const Icon(Icons.refresh),
-                  label: const Text('Recheck'),
+                  label: Text(context.l10n.restrictionsRecheck),
                 ),
               ],
             ),

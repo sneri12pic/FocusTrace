@@ -4,6 +4,8 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
+import '../../domain/models/app_usage_summary.dart';
+import '../../domain/models/daily_app_usage.dart';
 import '../../domain/models/usage_session.dart';
 
 abstract class FocusTraceLocalDataSource {
@@ -12,6 +14,24 @@ abstract class FocusTraceLocalDataSource {
   Future<void> insertSessions(List<UsageSession> sessions);
 
   Future<List<UsageSession>> getSessionsForDate(DateTime date);
+
+  /// Replaces the stored per-app totals for [day] with [summaries].
+  Future<void> saveDailySummaries(
+    DateTime day,
+    List<AppUsageSummary> summaries,
+  );
+
+  /// Stored per-app totals for [day], longest first. Icons are not persisted.
+  Future<List<AppUsageSummary>> getDailySummaries(DateTime day);
+
+  /// Aggregated per-app totals across every stored daily snapshot.
+  Future<List<AppUsageSummary>> getAllTimeSummaries();
+
+  /// Stored per-app daily rows in the half-open date range.
+  Future<List<DailyAppUsage>> getUsageHistory(
+    DateTime fromInclusive,
+    DateTime toExclusive,
+  );
 
   Future<String?> readSetting(String key);
 
@@ -46,7 +66,17 @@ class SqfliteFocusTraceLocalDataSource implements FocusTraceLocalDataSource {
     final opened = await factory.openDatabase(
       path,
       options: OpenDatabaseOptions(
-        version: 1,
+        version: 3,
+        onUpgrade: (db, oldVersion, newVersion) async {
+          if (oldVersion < 2) {
+            await _createDailyUsageTable(db);
+          } else if (oldVersion < 3) {
+            await db.execute('''
+ALTER TABLE daily_app_usage
+ADD COLUMN launch_count INTEGER NOT NULL DEFAULT 0
+''');
+          }
+        },
         onCreate: (db, version) async {
           await db.execute('''
 CREATE TABLE usage_sessions (
@@ -73,12 +103,34 @@ CREATE TABLE settings (
   value TEXT NOT NULL
 )
 ''');
+          await _createDailyUsageTable(db);
         },
       ),
     );
 
     _database = opened;
     return opened;
+  }
+
+  /// Closes the underlying database (used by tests to release the file).
+  Future<void> close() async {
+    await _database?.close();
+    _database = null;
+  }
+
+  Future<void> _createDailyUsageTable(Database db) {
+    return db.execute('''
+CREATE TABLE daily_app_usage (
+  day TEXT NOT NULL,
+  app_key TEXT NOT NULL,
+  app_name TEXT NOT NULL,
+  package_name TEXT,
+  process_name TEXT,
+  duration_seconds INTEGER NOT NULL,
+  launch_count INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (day, app_key)
+)
+''');
   }
 
   Future<DatabaseFactory> get _databaseFactory async {
@@ -151,6 +203,119 @@ CREATE TABLE settings (
   }
 
   @override
+  Future<void> saveDailySummaries(
+    DateTime day,
+    List<AppUsageSummary> summaries,
+  ) async {
+    final db = await _db;
+    final dayKey = _dayKey(day);
+    await db.transaction((txn) async {
+      await txn.delete(
+        'daily_app_usage',
+        where: 'day = ?',
+        whereArgs: [dayKey],
+      );
+      for (final summary in summaries) {
+        await txn.insert('daily_app_usage', {
+          'day': dayKey,
+          'app_key': summary.appKey,
+          'app_name': summary.appName,
+          'package_name': summary.packageName,
+          'process_name': summary.processName,
+          'duration_seconds': summary.totalDurationSeconds,
+          'launch_count': summary.launchCount,
+        }, conflictAlgorithm: ConflictAlgorithm.replace);
+      }
+    });
+  }
+
+  @override
+  Future<List<AppUsageSummary>> getDailySummaries(DateTime day) async {
+    final db = await _db;
+    final rows = await db.query(
+      'daily_app_usage',
+      where: 'day = ?',
+      whereArgs: [_dayKey(day)],
+      orderBy: 'duration_seconds DESC',
+    );
+    return rows
+        .map(
+          (row) => AppUsageSummary(
+            appName: row['app_name'] as String,
+            packageName: row['package_name'] as String?,
+            processName: row['process_name'] as String?,
+            totalDurationSeconds: row['duration_seconds'] as int,
+            percentageOfTotal: 0,
+            launchCount: row['launch_count'] as int? ?? 0,
+          ),
+        )
+        .toList();
+  }
+
+  @override
+  Future<List<AppUsageSummary>> getAllTimeSummaries() async {
+    final db = await _db;
+    final rows = await db.rawQuery('''
+SELECT
+  app_key,
+  MAX(app_name) AS app_name,
+  MAX(package_name) AS package_name,
+  MAX(process_name) AS process_name,
+  SUM(duration_seconds) AS duration_seconds,
+  SUM(launch_count) AS launch_count
+FROM daily_app_usage
+GROUP BY app_key
+ORDER BY duration_seconds DESC, app_name COLLATE NOCASE ASC
+''');
+    return rows
+        .map(
+          (row) => AppUsageSummary(
+            appName: row['app_name'] as String,
+            packageName: row['package_name'] as String?,
+            processName: row['process_name'] as String?,
+            totalDurationSeconds: row['duration_seconds'] as int,
+            percentageOfTotal: 0,
+            launchCount: row['launch_count'] as int? ?? 0,
+          ),
+        )
+        .toList();
+  }
+
+  @override
+  Future<List<DailyAppUsage>> getUsageHistory(
+    DateTime fromInclusive,
+    DateTime toExclusive,
+  ) async {
+    final db = await _db;
+    final rows = await db.query(
+      'daily_app_usage',
+      where: 'day >= ? AND day < ?',
+      whereArgs: [_dayKey(fromInclusive), _dayKey(toExclusive)],
+      orderBy: 'day ASC, duration_seconds DESC',
+    );
+    return rows
+        .map(
+          (row) => DailyAppUsage(
+            day: DateTime.parse(row['day'] as String),
+            summary: AppUsageSummary(
+              appName: row['app_name'] as String,
+              packageName: row['package_name'] as String?,
+              processName: row['process_name'] as String?,
+              totalDurationSeconds: row['duration_seconds'] as int,
+              percentageOfTotal: 0,
+              launchCount: row['launch_count'] as int? ?? 0,
+            ),
+          ),
+        )
+        .toList();
+  }
+
+  String _dayKey(DateTime day) =>
+      '${day.year.toString().padLeft(4, '0')}-'
+      '${day.month.toString().padLeft(2, '0')}-'
+      '${day.day.toString().padLeft(2, '0')}';
+
+  @override
   Future<String?> readSetting(String key) async {
     final db = await _db;
     final rows = await db.query(
@@ -181,6 +346,7 @@ CREATE TABLE settings (
     await db.transaction((txn) async {
       await txn.delete('usage_sessions');
       await txn.delete('settings');
+      await txn.delete('daily_app_usage');
     });
   }
 

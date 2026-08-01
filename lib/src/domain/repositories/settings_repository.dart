@@ -1,3 +1,4 @@
+import '../models/block_routine.dart';
 import '../models/restriction_rule.dart';
 
 abstract class SettingsRepository {
@@ -30,4 +31,10 @@ abstract class SettingsRepository {
   Future<void> saveRestrictionRule(RestrictionRule rule);
 
   Future<void> removeRestrictionRule(String appKey, RestrictionRuleType type);
+
+  Future<List<BlockRoutine>> blockRoutines();
+
+  Future<void> saveBlockRoutine(BlockRoutine routine);
+
+  Future<void> removeBlockRoutine(String id);
 }

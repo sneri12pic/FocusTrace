@@ -1,39 +1,52 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../application/utils/duration_format.dart';
 import '../../domain/models/app_usage_summary.dart';
+import '../../domain/models/daily_app_usage.dart';
 import '../../domain/models/restriction_rule.dart';
-import '../../domain/models/usage_session.dart';
+import '../localization/app_localizations_x.dart';
 import '../providers.dart';
 import '../screens/restriction_editor_sheet.dart';
+import '../screens/usage_details_screen.dart';
+import '../view_models/app_usage_details_view_model.dart';
+import 'app_icon_avatar.dart';
+import 'trend_color.dart';
 
 const _sheetColor = Color(0xFF0D111A);
 
 class SummaryTile extends ConsumerWidget {
-  const SummaryTile(this.summary, {super.key});
+  const SummaryTile(
+    this.summary, {
+    required this.isToday,
+    this.trend,
+    super.key,
+  });
 
   final AppUsageSummary summary;
+  final bool isToday;
+  final UsageTrend? trend;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final percentage = (summary.percentageOfTotal * 100).clamp(0, 100);
     final restrictionState = ref.watch(restrictionsViewModelProvider);
-    final isBlocked = isAppBlocked(
-      appKey: summary.appKey,
-      rules: restrictionState.rules,
-      now: DateTime.now(),
-      usageSecondsToday: summary.totalDurationSeconds,
-    );
+    final isBlocked =
+        isToday &&
+        isAppBlocked(
+          appKey: summary.appKey,
+          rules: restrictionState.rules,
+          now: DateTime.now(),
+          usageSecondsToday: summary.totalDurationSeconds,
+        );
 
     return Card(
       elevation: 0,
       margin: const EdgeInsets.only(bottom: 10),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
-        onTap: () => _showSessionDetails(context, ref),
-        onLongPress: () => _showActions(context, ref),
+        onTap: () => _openUsageDetails(context, ref),
+        onLongPress: isToday ? () => _showActions(context, ref) : null,
         child: Padding(
           padding: const EdgeInsets.all(14),
           child: Column(
@@ -41,37 +54,17 @@ class SummaryTile extends ConsumerWidget {
             children: [
               Row(
                 children: [
-                  if (summary.iconBytes != null)
-                    Stack(
-                      clipBehavior: Clip.none,
-                      children: [
-                        ClipOval(
-                          child: Image.memory(
-                            summary.iconBytes!,
-                            width: 36,
-                            height: 36,
-                            fit: BoxFit.cover,
-                            gaplessPlayback: true,
-                          ),
-                        ),
-                        if (isBlocked) const _LockBadge(),
-                      ],
-                    )
-                  else
-                    Stack(
-                      clipBehavior: Clip.none,
-                      children: [
-                        CircleAvatar(
-                          radius: 18,
-                          child: Text(
-                            summary.appName.isEmpty
-                                ? '?'
-                                : summary.appName[0].toUpperCase(),
-                          ),
-                        ),
-                        if (isBlocked) const _LockBadge(),
-                      ],
-                    ),
+                  Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      AppIconAvatar(
+                        appName: summary.appName,
+                        iconBytes: summary.iconBytes,
+                        size: 36,
+                      ),
+                      if (isBlocked) const _LockBadge(),
+                    ],
+                  ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Column(
@@ -83,12 +76,11 @@ class SummaryTile extends ConsumerWidget {
                           overflow: TextOverflow.ellipsis,
                           style: theme.textTheme.titleMedium,
                         ),
-                        if (summary.processName != null ||
-                            summary.packageName != null)
+                        if (summary.launchCount > 0)
                           Text(
-                            summary.processName ?? summary.packageName!,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                            context.l10n.summaryLaunchCount(
+                              summary.launchCount,
+                            ),
                             style: theme.textTheme.bodySmall,
                           ),
                       ],
@@ -99,19 +91,25 @@ class SummaryTile extends ConsumerWidget {
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
                       Text(
-                        DurationFormat.compact(summary.totalDuration),
+                        context.l10n.compactDuration(summary.totalDuration),
                         style: theme.textTheme.titleMedium?.copyWith(
                           fontWeight: FontWeight.w700,
                         ),
                       ),
                       Text(
-                        '${percentage.toStringAsFixed(0)}%',
+                        context.l10n.percentageValue(
+                          percentage.toStringAsFixed(0),
+                        ),
                         style: theme.textTheme.bodySmall,
                       ),
                     ],
                   ),
                 ],
               ),
+              if (trend?.hasData ?? false) ...[
+                const SizedBox(height: 10),
+                _UsageTrendBadges(trend: trend!),
+              ],
               const SizedBox(height: 12),
               LinearProgressIndicator(
                 value: summary.percentageOfTotal.clamp(0, 1),
@@ -125,22 +123,29 @@ class SummaryTile extends ConsumerWidget {
     );
   }
 
-  Future<void> _showSessionDetails(BuildContext context, WidgetRef ref) async {
-    final platform = ref.read(dashboardViewModelProvider).platform;
-    final sessions = await ref
-        .read(dashboardViewModelProvider.notifier)
-        .topSessionsForApp(summary);
-    if (!context.mounted) {
-      return;
-    }
-
-    await showModalBottomSheet<void>(
-      context: context,
-      backgroundColor: _sheetColor,
-      builder: (context) => _SessionDetailsSheet(
-        summary: summary,
-        sessions: sessions,
-        platform: platform,
+  Future<void> _openUsageDetails(BuildContext context, WidgetRef ref) {
+    final dashboardState = ref.read(dashboardViewModelProvider);
+    // Summaries arrive sorted by usage, so the list index is the day's rank.
+    final summaries = dashboardState.summaries;
+    final index = summaries.indexWhere((item) => item.appKey == summary.appKey);
+    final isTopThree = index >= 0 && index < 3;
+    final runnerUp = isTopThree && index + 1 < summaries.length
+        ? summaries[index + 1]
+        : null;
+    return Navigator.of(context).push<void>(
+      MaterialPageRoute(
+        builder: (context) => UsageDetailsScreen(
+          request: AppUsageDetailsRequest(
+            summary: summary,
+            selectedDate: dashboardState.selectedDate,
+            platform: dashboardState.platform,
+            rank: isTopThree ? index + 1 : null,
+            runnerUpName: runnerUp?.appName,
+            leadSeconds: runnerUp == null
+                ? null
+                : summary.totalDurationSeconds - runnerUp.totalDurationSeconds,
+          ),
+        ),
       ),
     );
   }
@@ -165,28 +170,28 @@ class SummaryTile extends ConsumerWidget {
             if (isBlocked)
               ListTile(
                 leading: const Icon(Icons.lock_open_outlined),
-                title: const Text('Unblock now'),
-                subtitle: const Text('Remove active blocking rules'),
+                title: Text(context.l10n.actionUnblockNow),
+                subtitle: Text(context.l10n.actionUnblockNowDescription),
                 onTap: () =>
                     Navigator.of(context).pop(_SummaryAction.unblockNow),
               ),
             ListTile(
               leading: const Icon(Icons.lock_outline),
-              title: const Text('Restrict app...'),
-              subtitle: const Text('Block now, set a limit, or add a schedule'),
+              title: Text(context.l10n.actionRestrictApp),
+              subtitle: Text(context.l10n.actionRestrictAppDescription),
               onTap: () => Navigator.of(context).pop(_SummaryAction.restrict),
             ),
             ListTile(
               leading: const Icon(Icons.visibility_off_outlined),
-              title: const Text('Remove from today'),
-              subtitle: const Text("Hide this app from today's stats"),
+              title: Text(context.l10n.actionRemoveFromToday),
+              subtitle: Text(context.l10n.actionRemoveFromTodayDescription),
               onTap: () =>
                   Navigator.of(context).pop(_SummaryAction.removeFromToday),
             ),
             ListTile(
               leading: const Icon(Icons.block_outlined),
-              title: const Text('Exclude from tracking'),
-              subtitle: const Text('Stop tracking and hide from all stats'),
+              title: Text(context.l10n.actionExcludeFromTracking),
+              subtitle: Text(context.l10n.actionExcludeFromTrackingDescription),
               onTap: () => Navigator.of(context).pop(_SummaryAction.exclude),
             ),
           ],
@@ -207,18 +212,12 @@ class SummaryTile extends ConsumerWidget {
               usageSecondsToday: summary.totalDurationSeconds,
             );
       case _SummaryAction.restrict:
-        final rule = await showRestrictionEditor(
+        await createRestrictionForApp(
           context,
+          ref,
           appKey: summary.appKey,
           appName: summary.appName,
         );
-        if (rule == null || !context.mounted) {
-          return;
-        }
-        await ref.read(restrictionsViewModelProvider.notifier).saveRule(rule);
-        if (context.mounted) {
-          await promptRestrictionPermissionsIfNeeded(context, ref);
-        }
       case _SummaryAction.removeFromToday:
         await dashboardViewModel.hideAppForToday(summary);
       case _SummaryAction.exclude:
@@ -236,24 +235,115 @@ class SummaryTile extends ConsumerWidget {
           context: context,
           builder: (context) {
             return AlertDialog(
-              title: Text('Exclude ${summary.appName}?'),
-              content: const Text(
-                'The app will no longer be tracked or shown in stats. You can undo this from Settings.',
-              ),
+              title: Text(context.l10n.excludeAppDialogTitle(summary.appName)),
+              content: Text(context.l10n.excludeAppDialogBody),
               actions: [
                 TextButton(
                   onPressed: () => Navigator.of(context).pop(false),
-                  child: const Text('Cancel'),
+                  child: Text(context.l10n.commonCancel),
                 ),
                 FilledButton(
                   onPressed: () => Navigator.of(context).pop(true),
-                  child: const Text('Exclude'),
+                  child: Text(context.l10n.actionExclude),
                 ),
               ],
             );
           },
         ) ??
         false;
+  }
+}
+
+class _UsageTrendBadges extends StatelessWidget {
+  const _UsageTrendBadges({required this.trend});
+
+  final UsageTrend trend;
+
+  @override
+  Widget build(BuildContext context) {
+    final values = <({String period, double? value})>[
+      (period: context.l10n.usageTrendDayShort, value: trend.dayChangePercent),
+      (
+        period: context.l10n.usageTrendWeekShort,
+        value: trend.weekChangePercent,
+      ),
+      (
+        period: context.l10n.usageTrendMonthShort,
+        value: trend.monthChangePercent,
+      ),
+    ];
+    return Wrap(
+      spacing: 6,
+      runSpacing: 6,
+      children: [
+        for (final entry in values)
+          if (entry.value != null)
+            _UsageTrendBadge(period: entry.period, value: entry.value!),
+      ],
+    );
+  }
+}
+
+class _UsageTrendBadge extends StatelessWidget {
+  const _UsageTrendBadge({required this.period, required this.value});
+
+  final String period;
+  final double value;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isFlat = value.abs() < 0.5;
+    final isIncrease = value > 0;
+    final color = trendColor(theme, isFlat: isFlat, isIncrease: isIncrease);
+    final rounded = value.abs().round();
+    final semanticLabel = isFlat
+        ? context.l10n.usageTrendUnchanged(period)
+        : isIncrease
+        ? context.l10n.usageTrendIncrease(period, rounded)
+        : context.l10n.usageTrendDecrease(period, rounded);
+
+    return Semantics(
+      label: semanticLabel,
+      excludeSemantics: true,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(color: color.withValues(alpha: 0.28)),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                isFlat
+                    ? Icons.remove
+                    : isIncrease
+                    ? Icons.trending_up
+                    : Icons.trending_down,
+                size: 14,
+                color: color,
+              ),
+              const SizedBox(width: 3),
+              Text(
+                '$period ${isIncrease && !isFlat
+                    ? '+'
+                    : isFlat
+                    ? ''
+                    : '-'}'
+                '$rounded%',
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: color,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
 
@@ -282,90 +372,10 @@ class _LockBadge extends StatelessWidget {
   }
 }
 
-class _SessionDetailsSheet extends StatelessWidget {
-  const _SessionDetailsSheet({
-    required this.summary,
-    required this.sessions,
-    required this.platform,
-  });
-
-  final AppUsageSummary summary;
-  final List<UsageSession> sessions;
-  final UsagePlatform platform;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return SafeArea(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          _SheetHeader(
-            title: summary.appName,
-            subtitle:
-                'Total today · ${DurationFormat.compact(summary.totalDuration)}',
-          ),
-          if (platform != UsagePlatform.windows)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
-              child: Text(
-                'Session details not available on this platform.',
-                style: theme.textTheme.bodyMedium,
-              ),
-            )
-          else if (sessions.isEmpty)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
-              child: Text(
-                'No sessions recorded today.',
-                style: theme.textTheme.bodyMedium,
-              ),
-            )
-          else ...[
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
-              child: Text(
-                'Longest sessions',
-                style: theme.textTheme.labelLarge,
-              ),
-            ),
-            for (final session in sessions)
-              ListTile(
-                dense: true,
-                leading: const Icon(Icons.schedule, size: 20),
-                title: Text(_sessionLabel(session)),
-              ),
-            const SizedBox(height: 12),
-          ],
-        ],
-      ),
-    );
-  }
-
-  String _sessionLabel(UsageSession session) {
-    final start = _clock(session.startedAt);
-    final duration = DurationFormat.compact(session.duration);
-    final endedAt = session.endedAt;
-    if (endedAt == null) {
-      return '$start · $duration';
-    }
-    return '$start – ${_clock(endedAt)} · $duration';
-  }
-
-  String _clock(DateTime time) {
-    final hours = time.hour.toString().padLeft(2, '0');
-    final minutes = time.minute.toString().padLeft(2, '0');
-    return '$hours:$minutes';
-  }
-}
-
 class _SheetHeader extends StatelessWidget {
-  const _SheetHeader({required this.title, this.subtitle});
+  const _SheetHeader({required this.title});
 
   final String title;
-  final String? subtitle;
 
   @override
   Widget build(BuildContext context) {
@@ -383,10 +393,6 @@ class _SheetHeader extends StatelessWidget {
               fontWeight: FontWeight.w800,
             ),
           ),
-          if (subtitle != null) ...[
-            const SizedBox(height: 2),
-            Text(subtitle!, style: theme.textTheme.bodySmall),
-          ],
         ],
       ),
     );

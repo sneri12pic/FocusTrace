@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name" translatable="false">FocusTrace</string>
+    <string name="usage_access_denied">使用状況へのアクセス権限が付与されていません。</string>
+    <string name="restriction_warning_title">%1$sの制限にまもなく達します</string>
+    <plurals name="restriction_warning_minutes">
+        <item quantity="other">約%1$d分後にブロックを開始します。</item>
+    </plurals>
+    <string name="restriction_until">%1$sまで</string>
+    <string name="restriction_leave">閉じる</string>
+    <string name="restriction_service_notification_title">FocusTraceの制限が有効です</string>
+    <string name="restriction_service_notification_body">この端末で制限対象のアプリを監視しています。</string>
+    <string name="restriction_service_channel_name">アプリ制限サービス</string>
+    <string name="restriction_warning_channel_name">アプリ制限の警告</string>
+    <string name="restriction_reason_block_now">一時的にブロック中</string>
+    <string name="restriction_reason_daily_limit">1日の上限に達しました</string>
+    <string name="restriction_reason_schedule">スケジュールによりブロック中</string>
+    <string name="restriction_reason_routine">有効なルーティンによりブロック中</string>
+    <string name="widget_title">今日のスクリーンタイム</string>
+    <string name="widget_bubbles_label">スクリーンタイムバブル</string>
+    <string name="widget_no_access">タップして使用状況へのアクセスを許可</string>
+    <string name="widget_hours_minutes">%1$d時間%2$d分</string>
+    <string name="widget_minutes">%1$d分</string>
+</resources>

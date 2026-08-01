@@ -1,5 +1,6 @@
 import '../../application/services/usage_aggregation_service.dart';
 import '../../domain/models/app_usage_summary.dart';
+import '../../domain/models/daily_app_usage.dart';
 import '../../domain/models/usage_session.dart';
 import '../../domain/repositories/usage_repository.dart';
 import '../datasources/focus_trace_local_data_source.dart';
@@ -34,6 +35,78 @@ class UsageRepositoryImpl implements UsageRepository {
 
   @override
   Future<List<AppUsageSummary>> getTodaySummaries() async {
+    final summaries = _aggregationService.withPercentages(
+      await _fetchTodaySummaries(),
+    );
+    try {
+      // Snapshot today's totals so history stays queryable for statistics.
+      await _localDataSource.saveDailySummaries(DateTime.now(), summaries);
+    } catch (_) {
+      // History is best-effort; never block the dashboard on a storage error.
+    }
+    return summaries;
+  }
+
+  @override
+  Future<List<AppUsageSummary>> getDailySummaries(DateTime day) async {
+    final stored = await _localDataSource.getDailySummaries(day);
+    return _withCurrentMetadata(stored);
+  }
+
+  @override
+  Future<List<AppUsageSummary>> getAllTimeSummaries() async {
+    final stored = await _localDataSource.getAllTimeSummaries();
+    return _withCurrentMetadata(stored);
+  }
+
+  @override
+  Future<List<DailyAppUsage>> getUsageHistory(
+    DateTime fromInclusive,
+    DateTime toExclusive,
+  ) {
+    return _localDataSource.getUsageHistory(fromInclusive, toExclusive);
+  }
+
+  Future<List<AppUsageSummary>> _withCurrentMetadata(
+    List<AppUsageSummary> stored,
+  ) async {
+    if (_platform != UsagePlatform.android || stored.isEmpty) {
+      return _aggregationService.withPercentages(stored);
+    }
+
+    if (_platformDataSource is! AppMetadataDataSource) {
+      return _aggregationService.withPercentages(stored);
+    }
+    final metadataDataSource = _platformDataSource as AppMetadataDataSource;
+
+    try {
+      final metadata = await metadataDataSource.getAppMetadata(
+        stored.map((summary) => summary.appKey),
+      );
+      final metadataByKey = {
+        for (final summary in metadata) summary.appKey: summary,
+      };
+      return _aggregationService.withPercentages(
+        stored.map((summary) {
+          final current = metadataByKey[summary.appKey];
+          if (current == null) {
+            return summary;
+          }
+          return summary.copyWith(
+            appName: current.appName.isEmpty
+                ? summary.appName
+                : current.appName,
+            iconBytes: current.iconBytes,
+          );
+        }),
+      );
+    } catch (_) {
+      // Historical totals stay useful even when package metadata lookup fails.
+      return _aggregationService.withPercentages(stored);
+    }
+  }
+
+  Future<List<AppUsageSummary>> _fetchTodaySummaries() async {
     switch (_platform) {
       case UsagePlatform.android:
         return _platformDataSource.getTodayUsageStats();

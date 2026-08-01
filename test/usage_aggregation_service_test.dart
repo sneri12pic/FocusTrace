@@ -48,6 +48,7 @@ void main() {
       expect(summaries, hasLength(2));
       expect(summaries.first.processName, 'editor.exe');
       expect(summaries.first.totalDurationSeconds, 5400);
+      expect(summaries.first.launchCount, 2);
       expect(summaries.first.percentageOfTotal, closeTo(0.75, 0.001));
       expect(summaries.last.processName, 'browser.exe');
     });

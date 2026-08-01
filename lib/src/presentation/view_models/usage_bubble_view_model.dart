@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../domain/models/app_usage_summary.dart';
+import '../../domain/models/restriction_rule.dart';
 import '../../domain/models/usage_item.dart';
 
 final usageBubbleViewModelProvider =
@@ -28,6 +29,8 @@ class UsageBubbleState {
 class UsageBubbleViewModel extends StateNotifier<UsageBubbleState> {
   UsageBubbleViewModel() : super(const UsageBubbleState());
 
+  static const nearLimitThreshold = 0.85;
+
   List<UsageItem> itemsFor(List<AppUsageSummary> summaries) {
     final items = summaries.map(UsageItem.fromSummary).toList()
       ..sort(
@@ -48,6 +51,47 @@ class UsageBubbleViewModel extends StateNotifier<UsageBubbleState> {
       }
     }
     return null;
+  }
+
+  Set<String> nearLimitItemIds({
+    required Iterable<AppUsageSummary> summaries,
+    required Iterable<RestrictionRule> rules,
+    required DateTime now,
+  }) {
+    final rulesByApp = <String, List<RestrictionRule>>{};
+    for (final rule in rules) {
+      rulesByApp.putIfAbsent(rule.appKey, () => []).add(rule);
+    }
+
+    return {
+      for (final summary in summaries)
+        if (_isNearLimit(summary, rulesByApp[summary.appKey] ?? const [], now))
+          summary.appKey,
+    };
+  }
+
+  bool _isNearLimit(
+    AppUsageSummary summary,
+    List<RestrictionRule> rules,
+    DateTime now,
+  ) {
+    if (rules.any((rule) => rule.blocksAt(now, summary.totalDurationSeconds))) {
+      return false;
+    }
+    for (final rule in rules) {
+      if (rule.type != RestrictionRuleType.dailyLimit) {
+        continue;
+      }
+      final limitMinutes = rule.limitMinutes;
+      if (limitMinutes == null || limitMinutes <= 0) {
+        continue;
+      }
+      final progress = summary.totalDurationSeconds / (limitMinutes * 60);
+      if (progress >= nearLimitThreshold && progress < 1) {
+        return true;
+      }
+    }
+    return false;
   }
 
   void selectItem(UsageItem item) {

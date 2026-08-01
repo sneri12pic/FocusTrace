@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../domain/models/tracking_status.dart';
 import '../../domain/models/usage_session.dart';
+import '../localization/app_localizations_x.dart';
 
 class TrackingStatusBanner extends StatelessWidget {
   const TrackingStatusBanner({required this.status, super.key});
@@ -42,7 +43,7 @@ class TrackingStatusBanner extends StatelessWidget {
           const SizedBox(width: 12),
           Expanded(
             child: Text(
-              status.errorMessage ?? _labelFor(status),
+              isError ? context.l10n.trackingError : _labelFor(context, status),
               style: TextStyle(color: textColor),
             ),
           ),
@@ -51,15 +52,15 @@ class TrackingStatusBanner extends StatelessWidget {
     );
   }
 
-  String _labelFor(TrackingStatus status) {
+  String _labelFor(BuildContext context, TrackingStatus status) {
     if (status.platform == UsagePlatform.windows) {
       return status.isTracking
-          ? 'Windows tracking is running while FocusTrace is open.'
-          : 'Windows tracking runs only while FocusTrace is open.';
+          ? context.l10n.trackingWindowsRunning
+          : context.l10n.trackingWindowsIdle;
     }
     if (status.platform == UsagePlatform.android) {
-      return 'Android usage is read from Usage Access.';
+      return context.l10n.trackingAndroidUsageAccess;
     }
-    return 'Usage tracking is not supported on this platform yet.';
+    return context.l10n.trackingUnsupportedPlatform;
   }
 }

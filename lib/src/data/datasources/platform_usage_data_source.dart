@@ -13,7 +13,7 @@ class ActiveWindowInfo {
   final String windowTitle;
   final double idleSeconds;
 
-  String get appName => processName.isEmpty ? 'Unknown app' : processName;
+  String get appName => processName;
 }
 
 abstract class PlatformUsageDataSource {
@@ -32,9 +32,20 @@ abstract class PlatformUsageDataSource {
   Future<List<AppUsageSummary>> getTodayUsageStats();
 
   Future<ActiveWindowInfo?> getActiveWindowInfo();
+
+  /// Launchable installed apps (name, package, icon) with zero usage.
+  /// Empty where unsupported.
+  Future<List<AppUsageSummary>> getInstalledApps();
 }
 
-class AndroidUsageDataSource implements PlatformUsageDataSource {
+abstract interface class AppMetadataDataSource {
+  /// Current metadata for the requested app keys. Missing/uninstalled apps are
+  /// omitted.
+  Future<List<AppUsageSummary>> getAppMetadata(Iterable<String> appKeys);
+}
+
+class AndroidUsageDataSource
+    implements PlatformUsageDataSource, AppMetadataDataSource {
   AndroidUsageDataSource({
     MethodChannel channel = const MethodChannel('focustrace/usage'),
   }) : _channel = channel;
@@ -87,19 +98,22 @@ class AndroidUsageDataSource implements PlatformUsageDataSource {
         .map((row) => _summaryFromAndroidMap(Map<String, Object?>.from(row)))
         .toList();
 
-    final totalSeconds = summaries.fold<int>(
-      0,
-      (total, summary) => total + summary.totalDurationSeconds,
-    );
+    return summaries;
+  }
 
-    return summaries
-        .map(
-          (summary) => summary.copyWith(
-            percentageOfTotal: totalSeconds == 0
-                ? 0
-                : summary.totalDurationSeconds / totalSeconds,
-          ),
-        )
+  @override
+  Future<List<AppUsageSummary>> getAppMetadata(Iterable<String> appKeys) async {
+    final requestedKeys = appKeys.toSet().toList(growable: false);
+    if (requestedKeys.isEmpty) {
+      return const <AppUsageSummary>[];
+    }
+    final rows = await _channel.invokeListMethod<Object?>(
+      'getAppMetadata',
+      requestedKeys,
+    );
+    return (rows ?? const <Object?>[])
+        .whereType<Map>()
+        .map((row) => _summaryFromAndroidMap(Map<String, Object?>.from(row)))
         .toList();
   }
 
@@ -110,21 +124,45 @@ class AndroidUsageDataSource implements PlatformUsageDataSource {
     );
   }
 
+  @override
+  Future<List<AppUsageSummary>> getInstalledApps() async {
+    final rows = await _channel.invokeListMethod<Object?>('getInstalledApps');
+    return (rows ?? const <Object?>[])
+        .whereType<Map>()
+        .map((row) => _summaryFromAndroidMap(Map<String, Object?>.from(row)))
+        .toList();
+  }
+
+  // Each channel fetch delivers fresh byte arrays; Flutter's image cache is
+  // keyed by object identity, so new bytes force a full PNG re-decode of every
+  // icon. Icons rarely change — reuse the first-seen bytes per package.
+  final _iconBytesByPackage = <String, Uint8List>{};
+
   AppUsageSummary _summaryFromAndroidMap(Map<String, Object?> row) {
     final durationMs = (row['totalTimeInForegroundMs'] as num?)?.toInt() ?? 0;
     final lastUsedMs = (row['lastTimeUsedMs'] as num?)?.toInt();
     final packageName = row['packageName'] as String?;
-    final appName = row['appName'] as String? ?? packageName ?? 'Unknown app';
+    final appName = row['appName'] as String? ?? packageName ?? '';
+
+    var iconBytes = row['iconBytes'] as Uint8List?;
+    final freshIconBytes = iconBytes;
+    if (freshIconBytes != null && packageName != null) {
+      iconBytes = _iconBytesByPackage.putIfAbsent(
+        packageName,
+        () => freshIconBytes,
+      );
+    }
 
     return AppUsageSummary(
       appName: appName,
       packageName: packageName,
       totalDurationSeconds: Duration(milliseconds: durationMs).inSeconds,
       percentageOfTotal: 0,
+      launchCount: (row['launchCount'] as num?)?.toInt() ?? 0,
       lastUsedAt: lastUsedMs == null
           ? null
           : DateTime.fromMillisecondsSinceEpoch(lastUsedMs),
-      iconBytes: row['iconBytes'] as Uint8List?,
+      iconBytes: iconBytes,
     );
   }
 }
@@ -175,6 +213,9 @@ class WindowsUsageDataSource implements PlatformUsageDataSource {
       idleSeconds: (row['idleSeconds'] as num?)?.toDouble() ?? 0,
     );
   }
+
+  @override
+  Future<List<AppUsageSummary>> getInstalledApps() async => const [];
 }
 
 class UnsupportedPlatformUsageDataSource implements PlatformUsageDataSource {
@@ -209,4 +250,7 @@ class UnsupportedPlatformUsageDataSource implements PlatformUsageDataSource {
   Future<ActiveWindowInfo?> getActiveWindowInfo() {
     throw UnsupportedError('Active window tracking is not supported.');
   }
+
+  @override
+  Future<List<AppUsageSummary>> getInstalledApps() async => const [];
 }

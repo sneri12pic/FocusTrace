@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import '../../domain/models/block_routine.dart';
 import '../../domain/models/restriction_rule.dart';
 import '../../domain/repositories/settings_repository.dart';
 import '../datasources/focus_trace_local_data_source.dart';
@@ -12,6 +13,7 @@ class SettingsRepositoryImpl implements SettingsRepository {
   static const _excludedAppsKey = 'excluded_apps';
   static const _hiddenAppsTodayKey = 'hidden_apps_today';
   static const _restrictionRulesKey = 'restriction_rules';
+  static const _blockRoutinesKey = 'block_routines';
   static const _onboardingCompletedKey = 'onboarding_completed';
 
   final FocusTraceLocalDataSource _localDataSource;
@@ -155,6 +157,31 @@ class SettingsRepositoryImpl implements SettingsRepository {
     );
   }
 
+  @override
+  Future<List<BlockRoutine>> blockRoutines() async {
+    return decodeBlockRoutines(
+      await _localDataSource.readSetting(_blockRoutinesKey),
+    );
+  }
+
+  @override
+  Future<void> saveBlockRoutine(BlockRoutine routine) async {
+    final routines = await blockRoutines();
+    await _writeBlockRoutines([
+      for (final existing in routines)
+        if (existing.id != routine.id) existing,
+      routine,
+    ]);
+  }
+
+  @override
+  Future<void> removeBlockRoutine(String id) async {
+    final routines = await blockRoutines();
+    await _writeBlockRoutines(
+      routines.where((routine) => routine.id != id).toList(),
+    );
+  }
+
   String _todayKey() {
     final now = DateTime.now();
     return '${now.year}-${now.month}-${now.day}';
@@ -187,6 +214,13 @@ class SettingsRepositoryImpl implements SettingsRepository {
     return _localDataSource.writeSetting(
       _restrictionRulesKey,
       encodeRules(rules),
+    );
+  }
+
+  Future<void> _writeBlockRoutines(List<BlockRoutine> routines) {
+    return _localDataSource.writeSetting(
+      _blockRoutinesKey,
+      encodeBlockRoutines(routines),
     );
   }
 }

@@ -1,0 +1,299 @@
+{
+  "@@locale": "ja",
+  "appTitle": "FocusTrace",
+  "durationLessThanOneMinute": "1分未満",
+  "durationMinutesShort": "{minutes}分",
+  "@durationMinutesShort": {
+    "placeholders": {
+      "minutes": {"type": "int"}
+    }
+  },
+  "durationHoursShort": "{hours}時間",
+  "@durationHoursShort": {
+    "placeholders": {
+      "hours": {"type": "int"}
+    }
+  },
+  "durationHoursMinutesShort": "{hours}時間{minutes}分",
+  "@durationHoursMinutesShort": {
+    "placeholders": {
+      "hours": {"type": "int"},
+      "minutes": {"type": "int"}
+    }
+  },
+  "categoryEntertainment": "エンターテインメント",
+  "categoryProductivity": "仕事効率化",
+  "categoryWeb": "ウェブ",
+  "categoryCommunication": "コミュニケーション",
+  "categorySystem": "システム",
+  "categoryActivity": "アクティビティ",
+  "onboardingSkip": "スキップ",
+  "onboardingGetStarted": "はじめる",
+  "onboardingContinue": "続ける",
+  "onboardingStartSoftBlocks": "ソフトブロックを開始",
+  "onboardingChooseLater": "後で選ぶ",
+  "onboardingChooseWhatToLimit": "制限するアプリを選ぶ",
+  "onboardingChooseWhatToLimitDescription": "アプリを選び、ソフトブロックの1日の目標を設定します。",
+  "onboardingNoAppsToChooseTitle": "選べるアプリがまだありません",
+  "onboardingNoAppsToChooseBody": "FocusTraceでアプリを表示するには、現在の使用状況データが必要です。設定をスキップし、後で「設定」から制限を追加できます。",
+  "onboardingNoMatchingAppsTitle": "一致するアプリがありません",
+  "onboardingNoMatchingAppsBody": "別の検索語をお試しください。",
+  "onboardingWelcomeTitle": "スクリーンタイムを取り戻そう",
+  "onboardingWelcomeBody": "時間の使い方を把握しましょう。\n無理のない制限を設定しましょう。\n自分のペースでより良い習慣を身につけましょう。",
+  "onboardingAccessTitle": "FocusTraceにアクセスを許可",
+  "onboardingAccessBody": "FocusTraceが機能するには2つの権限が必要です。\nすべてのデータは端末内に保存されます。",
+  "onboardingNoPermissionsTitle": "許可する項目はありません",
+  "onboardingNoPermissionsBody": "これらの権限が必要なのはAndroidだけです。",
+  "onboardingUsageAccessTitle": "使用状況へのアクセス",
+  "onboardingUsageAccessSubtitle": "アプリの使用時間を計測するため",
+  "onboardingOverlayAccessTitle": "他のアプリの上に表示",
+  "onboardingOverlayAccessSubtitle": "制限したアプリの上にブロック画面を表示するため",
+  "onboardingPermissionsSettingsHint": "後で設定から変更できます。",
+  "onboardingAllow": "許可",
+  "onboardingSearchApps": "アプリを検索",
+  "onboardingAppUsageToday": "{appKey}・今日 {duration}",
+  "@onboardingAppUsageToday": {
+    "placeholders": {
+      "appKey": {"type": "String"},
+      "duration": {"type": "String"}
+    }
+  },
+  "onboardingDailyTarget": "1日の目標",
+  "restrictionsTitle": "制限",
+  "restrictionsSearchApps": "アプリを検索",
+  "restrictionsAddRestriction": "制限を追加",
+  "restrictionsAddRoutine": "新しいルーティン",
+  "restrictionsRoutinesTitle": "ブロックルーティン",
+  "restrictionsRoutinesEmptyTitle": "ブロックルーティンはありません",
+  "restrictionsRoutinesEmptyBody": "アプリをルーティンにまとめ、グループ全体をオンまたはオフにできます。",
+  "restrictionsIndividualRulesTitle": "個別の制限",
+  "restrictionsRoutineAppCount": "{count}個のアプリ",
+  "@restrictionsRoutineAppCount": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "restrictionsDeleteRoutine": "ルーティンを削除",
+  "routineEditorNewTitle": "新しいブロックルーティン",
+  "routineEditorEditTitle": "ブロックルーティンを編集",
+  "routineEditorName": "ルーティン名",
+  "routineEditorSearchApps": "アプリを検索",
+  "routineEditorNoMatchingApps": "一致するアプリはありません",
+  "routineEditorSave": "ルーティンを保存",
+  "restrictionsPlatformStatusTitle": "このプラットフォームの状態のみ",
+  "restrictionsPlatformStatusBody": "ルールは保存され、ここに表示されます。全画面ブロックは現在Androidでのみ動作します。",
+  "restrictionsEmptyTitle": "アプリの制限はありません",
+  "restrictionsEmptyBody": "使用状況バブルまたは現在のリストでアプリを長押しすると、ルールを追加できます。",
+  "restrictionsNoAppsAvailable": "利用できるアプリはまだありません。使用状況データが取得されたらダッシュボードを開き、ここで検索してください。",
+  "restrictionsNoMatchingApps": "一致するアプリがありません",
+  "restrictionsDeleteRule": "ルールを削除",
+  "restrictionsUnblockNow": "今すぐブロック解除",
+  "restrictionsBlockedUntil": "{time}までブロック",
+  "@restrictionsBlockedUntil": {
+    "placeholders": {
+      "time": {"type": "String"}
+    }
+  },
+  "restrictionsTemporaryBlockExpired": "一時ブロックは終了しました",
+  "restrictionsDailyLimitStatus": "1日の上限 {limitDuration}・{usedDuration} 使用済み",
+  "@restrictionsDailyLimitStatus": {
+    "placeholders": {
+      "limitDuration": {"type": "String"},
+      "usedDuration": {"type": "String"}
+    }
+  },
+  "restrictionsScheduleStatus": "スケジュール {startTime}～{endTime}",
+  "@restrictionsScheduleStatus": {
+    "placeholders": {
+      "startTime": {"type": "String"},
+      "endTime": {"type": "String"}
+    }
+  },
+  "restrictionsOverlayPermissionTitle": "オーバーレイ権限が必要です",
+  "restrictionsOverlayPermissionBody": "FocusTraceがブロック画面を表示するには、Androidの「他のアプリの上に表示」権限が必要です。",
+  "restrictionsOpenOverlaySettings": "オーバーレイ設定を開く",
+  "restrictionsRecheck": "再確認",
+  "restrictionEditorAllowFullScreenTitle": "全画面ブロックを許可しますか？",
+  "restrictionEditorAllowFullScreenBody": "制限したアプリが開いたときにブロック画面を表示するには、FocusTraceに「他のアプリの上に表示」権限が必要です。",
+  "restrictionEditorLater": "後で",
+  "restrictionEditorOpenSettings": "設定を開く",
+  "restrictionEditorTypeNow": "今すぐ",
+  "restrictionEditorTypeLimit": "上限",
+  "restrictionEditorTypeSchedule": "スケジュール",
+  "restrictionEditorSaveRule": "ルールを保存",
+  "restrictionEditorTomorrow": "明日",
+  "restrictionEditorDailyLimitPerDay": "1日あたり {duration}",
+  "@restrictionEditorDailyLimitPerDay": {
+    "placeholders": {
+      "duration": {"type": "String"}
+    }
+  },
+  "dashboardDayTracked": "記録・{duration}",
+  "@dashboardDayTracked": {
+    "placeholders": {
+      "duration": {"type": "String"}
+    }
+  },
+  "dashboardDayToday": "今日",
+  "dashboardDayYesterday": "昨日",
+  "dashboardPreviousDayTooltip": "前の日",
+  "dashboardNextDayTooltip": "次の日",
+  "navHome": "ホーム",
+  "trackingRunsWhileOpen": "FocusTraceを開いている間のみ追跡します。",
+  "dashboardStopTracking": "追跡を停止",
+  "dashboardStartTracking": "追跡を開始",
+  "dashboardNoUsageToday": "今日は使用記録がありません。",
+  "dashboardNoUsageDay": "この日は使用記録がありません。",
+  "dashboardAllTimeMostUsedTitle": "最もよく使うアプリ",
+  "dashboardUnsupportedPlatform": "FocusTrace MVPはAndroidとWindowsに対応しています。その他のプラットフォームは、独立したプラットフォームデータソースを通じて今後追加できます。",
+  "commonRetry": "再試行",
+  "commonUnexpectedError": "問題が発生しました。もう一度お試しください。",
+  "usageBubblesTitle": "使用状況バブル",
+  "usageBubblesDescription": "バブルが大きいほど使用時間が長いことを示します",
+  "usageBubblesCurrentList": "現在のリスト",
+  "actionUnblockNow": "今すぐブロック解除",
+  "actionUnblockNowDescription": "有効なブロックルールを削除",
+  "actionRestrictApp": "アプリを制限...",
+  "actionRestrictAppDescription": "今すぐブロック、上限設定、スケジュール追加",
+  "percentageValue": "{percentage}%",
+  "@percentageValue": {
+    "placeholders": {
+      "percentage": {"type": "String"}
+    }
+  },
+  "actionRemoveFromToday": "今日から削除",
+  "actionRemoveFromTodayDescription": "今日の統計からこのアプリを非表示",
+  "actionExcludeFromTracking": "追跡から除外",
+  "actionExcludeFromTrackingDescription": "追跡を停止し、すべての統計から非表示",
+  "excludeAppDialogTitle": "{appName}を除外しますか？",
+  "@excludeAppDialogTitle": {
+    "placeholders": {
+      "appName": {"type": "String"}
+    }
+  },
+  "excludeAppDialogBody": "このアプリは追跡されず、統計にも表示されなくなります。「設定」から元に戻せます。",
+  "commonCancel": "キャンセル",
+  "actionExclude": "除外",
+  "sessionTotal": "合計・{duration}",
+  "@sessionTotal": {
+    "placeholders": {
+      "duration": {"type": "String"}
+    }
+  },
+  "sessionDetailsUnavailable": "このプラットフォームではセッションの詳細を利用できません。",
+  "sessionNoneRecorded": "記録されたセッションはありません。",
+  "sessionLongestTitle": "最長のセッション",
+  "sessionOngoingLabel": "{startTime}・{duration}",
+  "@sessionOngoingLabel": {
+    "placeholders": {
+      "startTime": {"type": "String"},
+      "duration": {"type": "String"}
+    }
+  },
+  "sessionRangeLabel": "{startTime}～{endTime}・{duration}",
+  "@sessionRangeLabel": {
+    "placeholders": {
+      "startTime": {"type": "String"},
+      "endTime": {"type": "String"},
+      "duration": {"type": "String"}
+    }
+  },
+  "permissionWindowsPrivacyTitle": "Windowsのプライバシー",
+  "permissionUsageAccessRequiredTitle": "使用状況へのアクセスが必要です",
+  "permissionUsageAccessRequiredBody": "FocusTraceがアプリの使用状況を読み取るには、Androidの「使用状況へのアクセス」が必要です。データはこの端末内に保存されます。",
+  "permissionOpenUsageAccessSettings": "使用状況へのアクセス設定を開く",
+  "commonRecheck": "再確認",
+  "trackingWindowsRunning": "FocusTraceを開いている間、Windowsの追跡が実行されています。",
+  "trackingWindowsIdle": "Windowsの追跡はFocusTraceを開いている間のみ実行されます。",
+  "trackingAndroidUsageAccess": "Androidの使用状況は「使用状況へのアクセス」から読み取られます。",
+  "trackingUnsupportedPlatform": "このプラットフォームでは使用状況の追跡にまだ対応していません。",
+  "trackingError": "追跡中に問題が発生しました。自動的に再試行します。",
+  "bubblePercentageOfToday": "今日の{percentage}%",
+  "@bubblePercentageOfToday": {
+    "placeholders": {
+      "percentage": {"type": "String"}
+    }
+  },
+  "usageBubbleSemanticsLabel": "{appName}、{category}",
+  "@usageBubbleSemanticsLabel": {
+    "placeholders": {
+      "appName": {"type": "String"},
+      "category": {"type": "String"}
+    }
+  },
+  "usageBubbleNearLimitSemanticsLabel": "{appName}、{category}、1日の上限にまもなく到達",
+  "@usageBubbleNearLimitSemanticsLabel": {
+    "placeholders": {
+      "appName": {"type": "String"},
+      "category": {"type": "String"}
+    }
+  },
+  "summaryLaunchCount": "起動回数: {count}",
+  "@summaryLaunchCount": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "usageTrendDayShort": "日",
+  "usageTrendWeekShort": "週",
+  "usageTrendMonthShort": "月",
+  "usageTrendIncrease": "{period}: 使用時間が{percentage}%増加",
+  "@usageTrendIncrease": {
+    "placeholders": {
+      "period": {"type": "String"},
+      "percentage": {"type": "int"}
+    }
+  },
+  "usageTrendDecrease": "{period}: 使用時間が{percentage}%減少",
+  "@usageTrendDecrease": {
+    "placeholders": {
+      "period": {"type": "String"},
+      "percentage": {"type": "int"}
+    }
+  },
+  "usageTrendUnchanged": "{period}: 使用時間に変化なし",
+  "@usageTrendUnchanged": {
+    "placeholders": {
+      "period": {"type": "String"}
+    }
+  },
+  "usageDetailsLastSevenDays": "過去7日間",
+  "usageDetailsMoreThanYesterday": "昨日より{percentage}%多い",
+  "@usageDetailsMoreThanYesterday": {"placeholders": {"percentage": {"type": "int"}}},
+  "usageDetailsLessThanYesterday": "昨日より{percentage}%少ない",
+  "@usageDetailsLessThanYesterday": {"placeholders": {"percentage": {"type": "int"}}},
+  "usageDetailsSameAsYesterday": "昨日と同じ",
+  "usageDetailsNoYesterdayComparison": "昨日との比較はまだありません",
+  "usageDetailsRankLabel": "利用時間第{rank}位",
+  "@usageDetailsRankLabel": {"placeholders": {"rank": {"type": "int"}}},
+  "usageDetailsRankLead": "{appName}より{duration}多い",
+  "@usageDetailsRankLead": {"placeholders": {"duration": {"type": "String"}, "appName": {"type": "String"}}},
+  "usageDetailsDayValue": "{date}: {duration}",
+  "@usageDetailsDayValue": {"placeholders": {"date": {"type": "String"}, "duration": {"type": "String"}}},
+  "settingsTitle": "設定",
+  "settingsPrivacyTitle": "プライバシー",
+  "settingsPrivacyBody": "FocusTraceは使用状況データをこの端末内に保存します。追跡したアプリやウィンドウの使用状況をアップロードすることはありません。",
+  "settingsClearLocalData": "ローカルデータを削除",
+  "settingsLanguageTitle": "言語",
+  "settingsLanguageSystemDefault": "システムのデフォルト",
+  "settingsChooseLanguage": "言語を選択",
+  "settingsLanguageUpdateError": "言語設定を適用できませんでした。もう一度お試しください。",
+  "settingsExcludedAppsTitle": "除外したアプリ",
+  "settingsExcludedAppsEmpty": "除外したアプリはありません。ダッシュボードでアプリを長押しすると、追跡から除外できます。",
+  "settingsStopExcluding": "除外を解除",
+  "settingsWindowsTrackingComingSoon": "近日公開: Windows追跡",
+  "settingsSendFeedback": "フィードバックを送信",
+  "settingsWindowsTrackingInterval": "Windowsの追跡間隔",
+  "settingsWindowsIdleTimeout": "Windowsのアイドルタイムアウト",
+  "settingsClearDataDialogTitle": "ローカルデータを削除しますか？",
+  "settingsClearDataDialogBody": "保存された使用セッションと設定をこの端末から削除します。言語の選択は保持されます。",
+  "settingsCancel": "キャンセル",
+  "settingsClear": "削除",
+  "settingsSave": "保存",
+  "secondsCount": "{count, plural, other{{count}秒}}",
+  "@secondsCount": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  }
+}

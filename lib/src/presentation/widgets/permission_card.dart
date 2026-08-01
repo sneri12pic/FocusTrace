@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../domain/models/usage_session.dart';
+import '../localization/app_localizations_x.dart';
 
 class PermissionCard extends StatelessWidget {
   const PermissionCard({
@@ -25,8 +26,8 @@ class PermissionCard extends StatelessWidget {
         elevation: 0,
         child: ListTile(
           leading: const Icon(Icons.privacy_tip_outlined),
-          title: const Text('Windows privacy'),
-          subtitle: const Text('Tracking runs only while FocusTrace is open.'),
+          title: Text(context.l10n.permissionWindowsPrivacyTitle),
+          subtitle: Text(context.l10n.trackingRunsWhileOpen),
           textColor: theme.colorScheme.onSurface,
         ),
       );
@@ -44,15 +45,13 @@ class PermissionCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Usage Access required',
+              context.l10n.permissionUsageAccessRequiredTitle,
               style: theme.textTheme.titleMedium?.copyWith(
                 fontWeight: FontWeight.w700,
               ),
             ),
             const SizedBox(height: 8),
-            const Text(
-              'FocusTrace needs Android Usage Access to read your own app usage. Data stays local on this device.',
-            ),
+            Text(context.l10n.permissionUsageAccessRequiredBody),
             const SizedBox(height: 12),
             Wrap(
               spacing: 8,
@@ -61,12 +60,12 @@ class PermissionCard extends StatelessWidget {
                 FilledButton.icon(
                   onPressed: onOpenSettings,
                   icon: const Icon(Icons.settings),
-                  label: const Text('Open Usage Access Settings'),
+                  label: Text(context.l10n.permissionOpenUsageAccessSettings),
                 ),
                 OutlinedButton.icon(
                   onPressed: onRecheck,
                   icon: const Icon(Icons.refresh),
-                  label: const Text('Recheck'),
+                  label: Text(context.l10n.commonRecheck),
                 ),
               ],
             ),

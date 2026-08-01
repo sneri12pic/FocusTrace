@@ -2,6 +2,15 @@ import 'dart:typed_data';
 
 import 'app_usage_summary.dart';
 
+enum UsageCategory {
+  entertainment,
+  productivity,
+  web,
+  communication,
+  system,
+  activity,
+}
+
 class UsageItem {
   const UsageItem({
     required this.id,
@@ -32,7 +41,7 @@ class UsageItem {
   final String? sourceName;
   final int totalDurationSeconds;
   final double percentageOfTotal;
-  final String category;
+  final UsageCategory category;
   final String initials;
   final Uint8List? iconBytes;
 
@@ -57,7 +66,7 @@ String _initialsFor(String name) {
   return parts.take(2).map((part) => part[0]).join().toUpperCase();
 }
 
-String _categoryFor(String name) {
+UsageCategory _categoryFor(String name) {
   final normalized = name.toLowerCase();
   if (_containsAny(normalized, const [
     'youtube',
@@ -66,7 +75,7 @@ String _categoryFor(String name) {
     'spotify',
     'netflix',
   ])) {
-    return 'Entertainment';
+    return UsageCategory.entertainment;
   }
   if (_containsAny(normalized, const [
     'code',
@@ -74,7 +83,7 @@ String _categoryFor(String name) {
     'terminal',
     'editor',
   ])) {
-    return 'Productivity';
+    return UsageCategory.productivity;
   }
   if (_containsAny(normalized, const [
     'chrome',
@@ -83,7 +92,7 @@ String _categoryFor(String name) {
     'safari',
     'browser',
   ])) {
-    return 'Web';
+    return UsageCategory.web;
   }
   if (_containsAny(normalized, const [
     'whatsapp',
@@ -93,12 +102,12 @@ String _categoryFor(String name) {
     'slack',
     'teams',
   ])) {
-    return 'Communication';
+    return UsageCategory.communication;
   }
   if (_containsAny(normalized, const ['settings', 'system'])) {
-    return 'System';
+    return UsageCategory.system;
   }
-  return 'Activity';
+  return UsageCategory.activity;
 }
 
 bool _containsAny(String value, List<String> terms) {

@@ -3,6 +3,21 @@ import 'package:focustrace/focus_trace.dart';
 
 class _FakeSettingsRepository implements SettingsRepository {
   final List<RestrictionRule> rules = <RestrictionRule>[];
+  final List<BlockRoutine> routines = <BlockRoutine>[];
+
+  @override
+  Future<List<BlockRoutine>> blockRoutines() async => List.of(routines);
+
+  @override
+  Future<void> saveBlockRoutine(BlockRoutine routine) async {
+    routines.removeWhere((existing) => existing.id == routine.id);
+    routines.add(routine);
+  }
+
+  @override
+  Future<void> removeBlockRoutine(String id) async {
+    routines.removeWhere((routine) => routine.id == id);
+  }
 
   @override
   Future<void> addExcludedApp(String appKey) async {}
@@ -64,6 +79,10 @@ class _FakePlatformDataSource implements PlatformUsageDataSource {
 
   @override
   Future<ActiveWindowInfo?> getActiveWindowInfo() async => null;
+
+  @override
+  Future<List<AppUsageSummary>> getInstalledApps() async =>
+      const <AppUsageSummary>[];
 
   @override
   Future<List<AppUsageSummary>> getTodayUsageStats() async =>
@@ -169,6 +188,33 @@ void main() {
 
     expect(viewModel.state.hasOverlayPermission, isFalse);
     expect(decodeRules(dataSource.syncedPayloads.single), hasLength(1));
+  });
+
+  test('routine mutations persist and sync only enabled app groups', () async {
+    final routine = BlockRoutine(
+      id: 'focus',
+      name: 'Focus',
+      apps: const [
+        RoutineApp(appKey: 'social', appName: 'Social'),
+        RoutineApp(appKey: 'video', appName: 'Video'),
+      ],
+    );
+
+    await viewModel.saveRoutine(routine);
+
+    expect(viewModel.state.routines, [routine]);
+    expect(dataSource.syncedPayloads.last, contains('"routineBlocks"'));
+    expect(dataSource.syncedPayloads.last, contains('"social"'));
+    expect(dataSource.syncedPayloads.last, contains('"video"'));
+
+    await viewModel.setRoutineEnabled(routine, false);
+
+    expect(viewModel.state.routines.single.isEnabled, isFalse);
+    expect(dataSource.syncedPayloads.last, isNot(contains('"social"')));
+
+    await viewModel.deleteRoutine(routine.id);
+
+    expect(viewModel.state.routines, isEmpty);
   });
 
   test('unblock now removes all currently blocking rules for an app', () async {

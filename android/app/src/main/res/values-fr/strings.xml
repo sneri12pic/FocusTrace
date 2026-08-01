@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name" translatable="false">FocusTrace</string>
+    <string name="usage_access_denied">L’autorisation d’accès aux données d’utilisation n’a pas été accordée.</string>
+    <string name="restriction_warning_title">La limite de %1$s est presque atteinte</string>
+    <plurals name="restriction_warning_minutes">
+        <item quantity="one">Le blocage commencera dans environ %1$d minute.</item>
+        <item quantity="other">Le blocage commencera dans environ %1$d minutes.</item>
+    </plurals>
+    <string name="restriction_until">Jusqu’à %1$s</string>
+    <string name="restriction_leave">Quitter</string>
+    <string name="restriction_service_notification_title">Restrictions FocusTrace actives</string>
+    <string name="restriction_service_notification_body">Surveillance des applications restreintes sur cet appareil.</string>
+    <string name="restriction_service_channel_name">Service de restrictions</string>
+    <string name="restriction_warning_channel_name">Alertes de restriction</string>
+    <string name="restriction_reason_block_now">Bloquée pour le moment</string>
+    <string name="restriction_reason_daily_limit">Limite quotidienne atteinte</string>
+    <string name="restriction_reason_schedule">Bloquée selon la plage horaire</string>
+    <string name="restriction_reason_routine">Bloquée par une routine active</string>
+    <string name="widget_title">Temps d’écran aujourd’hui</string>
+    <string name="widget_bubbles_label">Bulles de temps d’écran</string>
+    <string name="widget_no_access">Touchez pour autoriser l’accès à l’utilisation</string>
+    <string name="widget_hours_minutes">%1$d h %2$d min</string>
+    <string name="widget_minutes">%1$d min</string>
+</resources>

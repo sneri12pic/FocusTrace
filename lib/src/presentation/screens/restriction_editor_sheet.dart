@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../domain/models/restriction_rule.dart';
 import '../../domain/models/usage_session.dart';
+import '../localization/app_localizations_x.dart';
 import '../providers.dart';
 
 const _sheetColor = Color(0xFF0D111A);
@@ -25,6 +26,27 @@ Future<RestrictionRule?> showRestrictionEditor(
   );
 }
 
+/// Full "restrict an app" flow: editor sheet, save, then permission prompts.
+Future<void> createRestrictionForApp(
+  BuildContext context,
+  WidgetRef ref, {
+  required String appKey,
+  required String appName,
+}) async {
+  final rule = await showRestrictionEditor(
+    context,
+    appKey: appKey,
+    appName: appName,
+  );
+  if (rule == null || !context.mounted) {
+    return;
+  }
+  await ref.read(restrictionsViewModelProvider.notifier).saveRule(rule);
+  if (context.mounted) {
+    await promptRestrictionPermissionsIfNeeded(context, ref);
+  }
+}
+
 Future<void> promptRestrictionPermissionsIfNeeded(
   BuildContext context,
   WidgetRef ref,
@@ -40,18 +62,16 @@ Future<void> promptRestrictionPermissionsIfNeeded(
         await showDialog<bool>(
           context: context,
           builder: (context) => AlertDialog(
-            title: const Text('Allow full-screen blocking?'),
-            content: const Text(
-              'FocusTrace needs Display over other apps permission to show a block screen when a restricted app opens.',
-            ),
+            title: Text(context.l10n.restrictionEditorAllowFullScreenTitle),
+            content: Text(context.l10n.restrictionEditorAllowFullScreenBody),
             actions: [
               TextButton(
                 onPressed: () => Navigator.of(context).pop(false),
-                child: const Text('Later'),
+                child: Text(context.l10n.restrictionEditorLater),
               ),
               FilledButton(
                 onPressed: () => Navigator.of(context).pop(true),
-                child: const Text('Open settings'),
+                child: Text(context.l10n.restrictionEditorOpenSettings),
               ),
             ],
           ),
@@ -127,21 +147,21 @@ class _RestrictionEditorSheetState extends State<_RestrictionEditorSheet> {
             ),
             const SizedBox(height: 16),
             SegmentedButton<RestrictionRuleType>(
-              segments: const [
+              segments: [
                 ButtonSegment(
                   value: RestrictionRuleType.blockNow,
-                  icon: Icon(Icons.lock_clock_outlined),
-                  label: Text('Now'),
+                  icon: const Icon(Icons.lock_clock_outlined),
+                  label: Text(context.l10n.restrictionEditorTypeNow),
                 ),
                 ButtonSegment(
                   value: RestrictionRuleType.dailyLimit,
-                  icon: Icon(Icons.timer_outlined),
-                  label: Text('Limit'),
+                  icon: const Icon(Icons.timer_outlined),
+                  label: Text(context.l10n.restrictionEditorTypeLimit),
                 ),
                 ButtonSegment(
                   value: RestrictionRuleType.schedule,
-                  icon: Icon(Icons.bedtime_outlined),
-                  label: Text('Schedule'),
+                  icon: const Icon(Icons.bedtime_outlined),
+                  label: Text(context.l10n.restrictionEditorTypeSchedule),
                 ),
               ],
               selected: {_type},
@@ -177,7 +197,7 @@ class _RestrictionEditorSheetState extends State<_RestrictionEditorSheet> {
             FilledButton.icon(
               onPressed: () => Navigator.of(context).pop(_buildRule()),
               icon: const Icon(Icons.save_outlined),
-              label: const Text('Save rule'),
+              label: Text(context.l10n.restrictionEditorSaveRule),
             ),
           ],
         ),
@@ -255,22 +275,31 @@ class _BlockNowEditor extends StatelessWidget {
       tomorrow.month,
       tomorrow.day,
     ).difference(DateTime.now());
-    final presets = <String, Duration>{
-      '30m': const Duration(minutes: 30),
-      '1h': const Duration(hours: 1),
-      '2h': const Duration(hours: 2),
-      'Tomorrow': untilTomorrow,
-    };
+    final presets = <({String label, Duration duration})>[
+      (
+        label: context.l10n.compactDuration(const Duration(minutes: 30)),
+        duration: const Duration(minutes: 30),
+      ),
+      (
+        label: context.l10n.compactDuration(const Duration(hours: 1)),
+        duration: const Duration(hours: 1),
+      ),
+      (
+        label: context.l10n.compactDuration(const Duration(hours: 2)),
+        duration: const Duration(hours: 2),
+      ),
+      (label: context.l10n.restrictionEditorTomorrow, duration: untilTomorrow),
+    ];
     return Wrap(
       key: const ValueKey('blockNow'),
       spacing: 8,
       runSpacing: 8,
       children: [
-        for (final entry in presets.entries)
+        for (final preset in presets)
           ChoiceChip(
-            label: Text(entry.key),
-            selected: _sameMinute(duration, entry.value),
-            onSelected: (_) => onChanged(entry.value),
+            label: Text(preset.label),
+            selected: _sameMinute(duration, preset.duration),
+            onSelected: (_) => onChanged(preset.duration),
           ),
       ],
     );
@@ -289,17 +318,20 @@ class _DailyLimitEditor extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final formattedDuration = context.l10n.compactDuration(
+      Duration(minutes: value.round()),
+    );
     return Column(
       key: const ValueKey('dailyLimit'),
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text('${value.round()} minutes per day'),
+        Text(context.l10n.restrictionEditorDailyLimitPerDay(formattedDuration)),
         Slider(
           value: value.clamp(5, 480),
           min: 5,
           max: 480,
           divisions: 95,
-          label: '${value.round()}m',
+          label: formattedDuration,
           onChanged: onChanged,
         ),
       ],

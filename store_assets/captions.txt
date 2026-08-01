@@ -1,0 +1,8 @@
+FocusTrace - Google Play screenshots (1080x2340 PNG), in order:
+
+1. 01-dashboard.png          - See where your screen time goes
+2. 02-usage-details.png      - Understand how you spend your time
+3. 03-daily-limit-editor.png - Set daily limits that fit your routine
+4. 04-schedule-editor.png    - Schedule distraction-free periods
+5. 05-blocked-screen.png     - Pause distracting apps when needed
+6. 06-settings-privacy.png   - Your usage data stays on your device

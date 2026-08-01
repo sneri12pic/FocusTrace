@@ -10,6 +10,15 @@ class _FakeSettingsRepository implements SettingsRepository {
   int idleTimeout = 60;
 
   @override
+  Future<List<BlockRoutine>> blockRoutines() async => const [];
+
+  @override
+  Future<void> saveBlockRoutine(BlockRoutine routine) async {}
+
+  @override
+  Future<void> removeBlockRoutine(String id) async {}
+
+  @override
   Future<int> trackingIntervalSeconds() async => interval;
 
   @override
@@ -75,6 +84,20 @@ class _FakeUsageRepository implements UsageRepository {
       const <AppUsageSummary>[];
 
   @override
+  Future<List<AppUsageSummary>> getDailySummaries(DateTime day) async =>
+      const <AppUsageSummary>[];
+
+  @override
+  Future<List<AppUsageSummary>> getAllTimeSummaries() async =>
+      const <AppUsageSummary>[];
+
+  @override
+  Future<List<DailyAppUsage>> getUsageHistory(
+    DateTime fromInclusive,
+    DateTime toExclusive,
+  ) async => const [];
+
+  @override
   Future<void> insertSession(UsageSession session) async {
     final error = insertError;
     if (error != null) {
@@ -134,6 +157,10 @@ class _FakeWindowsDataSource implements PlatformUsageDataSource {
     }
     return info;
   }
+
+  @override
+  Future<List<AppUsageSummary>> getInstalledApps() async =>
+      const <AppUsageSummary>[];
 }
 
 void main() {

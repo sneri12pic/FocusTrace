@@ -8,3 +8,7 @@ gradle-wrapper.jar
 
 *.iml
 
+key.properties
+**/*.keystore
+**/*.jks
+

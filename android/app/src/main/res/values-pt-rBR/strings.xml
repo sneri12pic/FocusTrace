@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name" translatable="false">FocusTrace</string>
+    <string name="usage_access_denied">A permissão de acesso aos dados de uso não foi concedida.</string>
+    <string name="restriction_warning_title">O limite de %1$s está quase atingido</string>
+    <plurals name="restriction_warning_minutes">
+        <item quantity="one">O bloqueio começa em cerca de %1$d minuto.</item>
+        <item quantity="other">O bloqueio começa em cerca de %1$d minutos.</item>
+    </plurals>
+    <string name="restriction_until">Até %1$s</string>
+    <string name="restriction_leave">Sair</string>
+    <string name="restriction_service_notification_title">Restrições do FocusTrace ativas</string>
+    <string name="restriction_service_notification_body">Monitorando apps restritos neste dispositivo.</string>
+    <string name="restriction_service_channel_name">Serviço de restrições</string>
+    <string name="restriction_warning_channel_name">Avisos de restrição</string>
+    <string name="restriction_reason_block_now">Bloqueado por enquanto</string>
+    <string name="restriction_reason_daily_limit">Limite diário atingido</string>
+    <string name="restriction_reason_schedule">Bloqueado pelo horário</string>
+    <string name="restriction_reason_routine">Bloqueado por uma rotina ativa</string>
+    <string name="widget_title">Tempo de tela hoje</string>
+    <string name="widget_bubbles_label">Bolhas de tempo de tela</string>
+    <string name="widget_no_access">Toque para conceder acesso aos dados de uso</string>
+    <string name="widget_hours_minutes">%1$dh %2$dmin</string>
+    <string name="widget_minutes">%1$dmin</string>
+</resources>

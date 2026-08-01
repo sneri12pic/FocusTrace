@@ -1,5 +1,7 @@
 import 'dart:convert';
 
+import 'block_routine.dart';
+
 enum RestrictionRuleType {
   blockNow('blockNow'),
   dailyLimit('dailyLimit'),
@@ -224,6 +226,23 @@ String encodeRules(List<RestrictionRule> rules) {
   return jsonEncode({
     'version': 1,
     'rules': rules.map((rule) => rule.toJson()).toList(),
+  });
+}
+
+String encodeRestrictionConfiguration(
+  List<RestrictionRule> rules,
+  List<BlockRoutine> routines,
+) {
+  final routineApps = <String, RoutineApp>{};
+  for (final routine in routines.where((routine) => routine.isEnabled)) {
+    for (final app in routine.apps) {
+      routineApps[app.appKey] = app;
+    }
+  }
+  return jsonEncode({
+    'version': 2,
+    'rules': rules.map((rule) => rule.toJson()).toList(),
+    'routineBlocks': routineApps.values.map((app) => app.toJson()).toList(),
   });
 }
 

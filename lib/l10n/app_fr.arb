@@ -1,0 +1,299 @@
+{
+  "@@locale": "fr",
+  "appTitle": "FocusTrace",
+  "durationLessThanOneMinute": "<1 min",
+  "durationMinutesShort": "{minutes} min",
+  "@durationMinutesShort": {
+    "placeholders": {
+      "minutes": {"type": "int"}
+    }
+  },
+  "durationHoursShort": "{hours} h",
+  "@durationHoursShort": {
+    "placeholders": {
+      "hours": {"type": "int"}
+    }
+  },
+  "durationHoursMinutesShort": "{hours} h {minutes} min",
+  "@durationHoursMinutesShort": {
+    "placeholders": {
+      "hours": {"type": "int"},
+      "minutes": {"type": "int"}
+    }
+  },
+  "categoryEntertainment": "Divertissement",
+  "categoryProductivity": "Productivité",
+  "categoryWeb": "Web",
+  "categoryCommunication": "Communication",
+  "categorySystem": "Système",
+  "categoryActivity": "Activité",
+  "onboardingSkip": "Ignorer",
+  "onboardingGetStarted": "Commencer",
+  "onboardingContinue": "Continuer",
+  "onboardingStartSoftBlocks": "Activer les blocages souples",
+  "onboardingChooseLater": "Choisir plus tard",
+  "onboardingChooseWhatToLimit": "Choisissez les applications à limiter",
+  "onboardingChooseWhatToLimitDescription": "Sélectionnez des applications et définissez un objectif quotidien pour les blocages souples.",
+  "onboardingNoAppsToChooseTitle": "Aucune application à choisir pour le moment",
+  "onboardingNoAppsToChooseBody": "FocusTrace a besoin de données d’utilisation récentes avant de pouvoir afficher des applications ici. Vous pouvez ignorer la configuration et ajouter des restrictions plus tard dans les paramètres.",
+  "onboardingNoMatchingAppsTitle": "Aucune application trouvée",
+  "onboardingNoMatchingAppsBody": "Essayez un autre terme de recherche.",
+  "onboardingWelcomeTitle": "Reprenez le contrôle de votre temps d’écran",
+  "onboardingWelcomeBody": "Comprenez où va votre attention.\nFixez des limites souples.\nAdoptez de meilleures habitudes à votre rythme.",
+  "onboardingAccessTitle": "Accordez les accès à FocusTrace",
+  "onboardingAccessBody": "FocusTrace a besoin de deux autorisations pour fonctionner.\nToutes vos données restent sur votre appareil.",
+  "onboardingNoPermissionsTitle": "Aucune autorisation à accorder ici",
+  "onboardingNoPermissionsBody": "Ces autorisations ne sont nécessaires que sur Android.",
+  "onboardingUsageAccessTitle": "Accès aux données d’utilisation",
+  "onboardingUsageAccessSubtitle": "Pour mesurer le temps passé sur vos applications",
+  "onboardingOverlayAccessTitle": "Affichage par-dessus d’autres applications",
+  "onboardingOverlayAccessSubtitle": "Pour afficher l’écran de blocage sur les applications que vous limitez",
+  "onboardingPermissionsSettingsHint": "Vous pourrez modifier ce choix plus tard dans les paramètres.",
+  "onboardingAllow": "Autoriser",
+  "onboardingSearchApps": "Rechercher des applications",
+  "onboardingAppUsageToday": "{appKey} · {duration} aujourd’hui",
+  "@onboardingAppUsageToday": {
+    "placeholders": {
+      "appKey": {"type": "String"},
+      "duration": {"type": "String"}
+    }
+  },
+  "onboardingDailyTarget": "Objectif quotidien",
+  "restrictionsTitle": "Restrictions",
+  "restrictionsSearchApps": "Rechercher des applications",
+  "restrictionsAddRestriction": "Ajouter une restriction",
+  "restrictionsAddRoutine": "Nouvelle routine",
+  "restrictionsRoutinesTitle": "Routines de blocage",
+  "restrictionsRoutinesEmptyTitle": "Aucune routine de blocage",
+  "restrictionsRoutinesEmptyBody": "Regroupez des apps dans une routine, puis activez ou désactivez tout le groupe.",
+  "restrictionsIndividualRulesTitle": "Restrictions individuelles",
+  "restrictionsRoutineAppCount": "{count} applications",
+  "@restrictionsRoutineAppCount": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "restrictionsDeleteRoutine": "Supprimer la routine",
+  "routineEditorNewTitle": "Nouvelle routine de blocage",
+  "routineEditorEditTitle": "Modifier la routine de blocage",
+  "routineEditorName": "Nom de la routine",
+  "routineEditorSearchApps": "Rechercher des apps",
+  "routineEditorNoMatchingApps": "Aucune app correspondante",
+  "routineEditorSave": "Enregistrer la routine",
+  "restrictionsPlatformStatusTitle": "État disponible uniquement sur cette plateforme",
+  "restrictionsPlatformStatusBody": "Les règles sont enregistrées et affichées ici. Le blocage plein écran ne fonctionne actuellement que sur Android.",
+  "restrictionsEmptyTitle": "Aucune restriction d’application",
+  "restrictionsEmptyBody": "Appuyez longuement sur une application dans les bulles d’utilisation ou la liste actuelle pour ajouter une règle.",
+  "restrictionsNoAppsAvailable": "Aucune application disponible pour le moment. Ouvrez le tableau de bord une fois les données d’utilisation disponibles, puis effectuez une recherche ici.",
+  "restrictionsNoMatchingApps": "Aucune application trouvée",
+  "restrictionsDeleteRule": "Supprimer la règle",
+  "restrictionsUnblockNow": "Débloquer maintenant",
+  "restrictionsBlockedUntil": "Bloquée jusqu’à {time}",
+  "@restrictionsBlockedUntil": {
+    "placeholders": {
+      "time": {"type": "String"}
+    }
+  },
+  "restrictionsTemporaryBlockExpired": "Le blocage temporaire a expiré",
+  "restrictionsDailyLimitStatus": "Limite quotidienne : {limitDuration} · Utilisation : {usedDuration}",
+  "@restrictionsDailyLimitStatus": {
+    "placeholders": {
+      "limitDuration": {"type": "String"},
+      "usedDuration": {"type": "String"}
+    }
+  },
+  "restrictionsScheduleStatus": "Plage horaire : {startTime}–{endTime}",
+  "@restrictionsScheduleStatus": {
+    "placeholders": {
+      "startTime": {"type": "String"},
+      "endTime": {"type": "String"}
+    }
+  },
+  "restrictionsOverlayPermissionTitle": "Autorisation de superposition requise",
+  "restrictionsOverlayPermissionBody": "Android a besoin de l’autorisation d’affichage par-dessus d’autres applications avant que FocusTrace puisse afficher un écran de blocage.",
+  "restrictionsOpenOverlaySettings": "Ouvrir les paramètres de superposition",
+  "restrictionsRecheck": "Vérifier à nouveau",
+  "restrictionEditorAllowFullScreenTitle": "Autoriser le blocage plein écran ?",
+  "restrictionEditorAllowFullScreenBody": "FocusTrace a besoin de l’autorisation d’affichage par-dessus d’autres applications pour afficher un écran de blocage lorsqu’une application restreinte s’ouvre.",
+  "restrictionEditorLater": "Plus tard",
+  "restrictionEditorOpenSettings": "Ouvrir les paramètres",
+  "restrictionEditorTypeNow": "Maintenant",
+  "restrictionEditorTypeLimit": "Limite",
+  "restrictionEditorTypeSchedule": "Plage horaire",
+  "restrictionEditorSaveRule": "Enregistrer la règle",
+  "restrictionEditorTomorrow": "Demain",
+  "restrictionEditorDailyLimitPerDay": "{duration} par jour",
+  "@restrictionEditorDailyLimitPerDay": {
+    "placeholders": {
+      "duration": {"type": "String"}
+    }
+  },
+  "dashboardDayTracked": "Temps suivi · {duration}",
+  "@dashboardDayTracked": {
+    "placeholders": {
+      "duration": {"type": "String"}
+    }
+  },
+  "dashboardDayToday": "Aujourd’hui",
+  "dashboardDayYesterday": "Hier",
+  "dashboardPreviousDayTooltip": "Jour précédent",
+  "dashboardNextDayTooltip": "Jour suivant",
+  "navHome": "Accueil",
+  "trackingRunsWhileOpen": "Le suivi ne fonctionne que lorsque FocusTrace est ouvert.",
+  "dashboardStopTracking": "Arrêter le suivi",
+  "dashboardStartTracking": "Démarrer le suivi",
+  "dashboardNoUsageToday": "Aucune utilisation enregistrée aujourd’hui.",
+  "dashboardNoUsageDay": "Aucune utilisation enregistrée ce jour-là.",
+  "dashboardAllTimeMostUsedTitle": "Application la plus utilisée",
+  "dashboardUnsupportedPlatform": "Le MVP de FocusTrace prend en charge Android et Windows. D’autres plateformes pourront être ajoutées ultérieurement via des sources de données distinctes propres à chaque plateforme.",
+  "commonRetry": "Réessayer",
+  "commonUnexpectedError": "Un problème est survenu. Veuillez réessayer.",
+  "usageBubblesTitle": "Bulles d’utilisation",
+  "usageBubblesDescription": "Plus une bulle est grande, plus le temps d’utilisation est long",
+  "usageBubblesCurrentList": "Liste actuelle",
+  "actionUnblockNow": "Débloquer maintenant",
+  "actionUnblockNowDescription": "Supprimer les règles de blocage actives",
+  "actionRestrictApp": "Restreindre l’application...",
+  "actionRestrictAppDescription": "Bloquer maintenant, définir une limite ou ajouter une plage horaire",
+  "percentageValue": "{percentage}%",
+  "@percentageValue": {
+    "placeholders": {
+      "percentage": {"type": "String"}
+    }
+  },
+  "actionRemoveFromToday": "Retirer des données du jour",
+  "actionRemoveFromTodayDescription": "Masquer cette application dans les statistiques d’aujourd’hui",
+  "actionExcludeFromTracking": "Exclure du suivi",
+  "actionExcludeFromTrackingDescription": "Arrêter le suivi et masquer dans toutes les statistiques",
+  "excludeAppDialogTitle": "Exclure {appName} ?",
+  "@excludeAppDialogTitle": {
+    "placeholders": {
+      "appName": {"type": "String"}
+    }
+  },
+  "excludeAppDialogBody": "L’application ne sera plus suivie ni affichée dans les statistiques. Vous pouvez annuler ce choix dans les paramètres.",
+  "commonCancel": "Annuler",
+  "actionExclude": "Exclure",
+  "sessionTotal": "Total · {duration}",
+  "@sessionTotal": {
+    "placeholders": {
+      "duration": {"type": "String"}
+    }
+  },
+  "sessionDetailsUnavailable": "Les détails des sessions ne sont pas disponibles sur cette plateforme.",
+  "sessionNoneRecorded": "Aucune session enregistrée.",
+  "sessionLongestTitle": "Sessions les plus longues",
+  "sessionOngoingLabel": "{startTime} · {duration}",
+  "@sessionOngoingLabel": {
+    "placeholders": {
+      "startTime": {"type": "String"},
+      "duration": {"type": "String"}
+    }
+  },
+  "sessionRangeLabel": "{startTime} – {endTime} · {duration}",
+  "@sessionRangeLabel": {
+    "placeholders": {
+      "startTime": {"type": "String"},
+      "endTime": {"type": "String"},
+      "duration": {"type": "String"}
+    }
+  },
+  "permissionWindowsPrivacyTitle": "Confidentialité Windows",
+  "permissionUsageAccessRequiredTitle": "Accès aux données d’utilisation requis",
+  "permissionUsageAccessRequiredBody": "FocusTrace a besoin de l’accès aux données d’utilisation Android pour lire l’utilisation de vos propres applications. Les données restent stockées localement sur cet appareil.",
+  "permissionOpenUsageAccessSettings": "Ouvrir les paramètres d’accès aux données d’utilisation",
+  "commonRecheck": "Vérifier à nouveau",
+  "trackingWindowsRunning": "Le suivi Windows est actif tant que FocusTrace est ouvert.",
+  "trackingWindowsIdle": "Le suivi Windows ne fonctionne que tant que FocusTrace est ouvert.",
+  "trackingAndroidUsageAccess": "L’utilisation sur Android est lue via l’accès aux données d’utilisation.",
+  "trackingUnsupportedPlatform": "Le suivi de l’utilisation n’est pas encore pris en charge sur cette plateforme.",
+  "trackingError": "Un problème est survenu pendant le suivi. Une nouvelle tentative aura lieu automatiquement.",
+  "bubblePercentageOfToday": "{percentage}% du total d’aujourd’hui",
+  "@bubblePercentageOfToday": {
+    "placeholders": {
+      "percentage": {"type": "String"}
+    }
+  },
+  "usageBubbleSemanticsLabel": "{appName}, {category}",
+  "@usageBubbleSemanticsLabel": {
+    "placeholders": {
+      "appName": {"type": "String"},
+      "category": {"type": "String"}
+    }
+  },
+  "usageBubbleNearLimitSemanticsLabel": "{appName}, {category}, limite quotidienne presque atteinte",
+  "@usageBubbleNearLimitSemanticsLabel": {
+    "placeholders": {
+      "appName": {"type": "String"},
+      "category": {"type": "String"}
+    }
+  },
+  "summaryLaunchCount": "Lancements : {count}",
+  "@summaryLaunchCount": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "usageTrendDayShort": "J",
+  "usageTrendWeekShort": "S",
+  "usageTrendMonthShort": "M",
+  "usageTrendIncrease": "{period} : utilisation en hausse de {percentage} %",
+  "@usageTrendIncrease": {
+    "placeholders": {
+      "period": {"type": "String"},
+      "percentage": {"type": "int"}
+    }
+  },
+  "usageTrendDecrease": "{period} : utilisation en baisse de {percentage} %",
+  "@usageTrendDecrease": {
+    "placeholders": {
+      "period": {"type": "String"},
+      "percentage": {"type": "int"}
+    }
+  },
+  "usageTrendUnchanged": "{period} : utilisation inchangée",
+  "@usageTrendUnchanged": {
+    "placeholders": {
+      "period": {"type": "String"}
+    }
+  },
+  "usageDetailsLastSevenDays": "7 derniers jours",
+  "usageDetailsMoreThanYesterday": "{percentage} % de plus qu’hier",
+  "@usageDetailsMoreThanYesterday": {"placeholders": {"percentage": {"type": "int"}}},
+  "usageDetailsLessThanYesterday": "{percentage} % de moins qu’hier",
+  "@usageDetailsLessThanYesterday": {"placeholders": {"percentage": {"type": "int"}}},
+  "usageDetailsSameAsYesterday": "Identique à hier",
+  "usageDetailsNoYesterdayComparison": "Pas encore de comparaison avec hier",
+  "usageDetailsRankLabel": "N° {rank} des plus utilisées",
+  "@usageDetailsRankLabel": {"placeholders": {"rank": {"type": "int"}}},
+  "usageDetailsRankLead": "{duration} de plus que {appName}",
+  "@usageDetailsRankLead": {"placeholders": {"duration": {"type": "String"}, "appName": {"type": "String"}}},
+  "usageDetailsDayValue": "{date} : {duration}",
+  "@usageDetailsDayValue": {"placeholders": {"date": {"type": "String"}, "duration": {"type": "String"}}},
+  "settingsTitle": "Paramètres",
+  "settingsPrivacyTitle": "Confidentialité",
+  "settingsPrivacyBody": "FocusTrace stocke les données d’utilisation localement sur cet appareil. L’application ne transfère aucune donnée enregistrée sur l’utilisation des applications ou des fenêtres.",
+  "settingsClearLocalData": "Effacer les données locales",
+  "settingsLanguageTitle": "Langue",
+  "settingsLanguageSystemDefault": "Langue du système",
+  "settingsChooseLanguage": "Choisir la langue",
+  "settingsLanguageUpdateError": "La préférence linguistique n’a pas pu être appliquée. Veuillez réessayer.",
+  "settingsExcludedAppsTitle": "Applications exclues",
+  "settingsExcludedAppsEmpty": "Aucune application exclue. Appuyez longuement sur une application du tableau de bord pour l’exclure du suivi.",
+  "settingsStopExcluding": "Ne plus exclure",
+  "settingsWindowsTrackingComingSoon": "Bientôt disponible : suivi Windows",
+  "settingsSendFeedback": "Envoyer un commentaire",
+  "settingsWindowsTrackingInterval": "Intervalle de suivi Windows",
+  "settingsWindowsIdleTimeout": "Délai d’inactivité Windows",
+  "settingsClearDataDialogTitle": "Effacer les données locales ?",
+  "settingsClearDataDialogBody": "Cette action supprime de cet appareil les sessions d’utilisation et les paramètres enregistrés. Votre choix de langue est conservé.",
+  "settingsCancel": "Annuler",
+  "settingsClear": "Effacer",
+  "settingsSave": "Enregistrer",
+  "secondsCount": "{count, plural, =1{1 seconde} other{{count} secondes}}",
+  "@secondsCount": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  }
+}
