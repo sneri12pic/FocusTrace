@@ -15,7 +15,7 @@ FocusTrace does not implement hidden monitoring, keylogging, screenshots, clipbo
 
 ## Demo
 
-<img width="270" height="585" alt="image" src="https://github.com/user-attachments/assets/c1bdc372-2910-45bb-a1ac-ca4159ee372c" />
+<img width="300" height="630" alt="FocusTraceMenu" src="https://github.com/user-attachments/assets/af9e9fa5-a115-49d5-a3af-076748f390d6" />
 
 
 ## Platforms
