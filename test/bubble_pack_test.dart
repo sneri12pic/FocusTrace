@@ -59,4 +59,25 @@ void main() {
       );
     },
   );
+
+  test('smaller bubbles fill tangent pockets between placed bubbles', () {
+    const size = Size(800, 360);
+    final radii = [72.0, 60.0, 48.0, 36.0, 30.0, 26.0];
+    final positions = packBubbles(radii, size);
+
+    for (var index = 2; index < positions.length; index++) {
+      var tangentNeighbours = 0;
+      for (var placed = 0; placed < index; placed++) {
+        final distance = (positions[index] - positions[placed]).distance;
+        if ((distance - (radii[index] + radii[placed] + 4)).abs() < 1) {
+          tangentNeighbours++;
+        }
+      }
+      expect(
+        tangentNeighbours,
+        greaterThanOrEqualTo(2),
+        reason: 'bubble $index should occupy a pocket between two neighbours',
+      );
+    }
+  });
 }

@@ -95,13 +95,17 @@ open class UsageWidgetProvider : AppWidgetProvider() {
                     R.id.widget_message,
                     FocusTraceLocale.getString(context, R.string.widget_no_access),
                 )
-                views.setTextViewText(R.id.widget_total, "")
+                if (large) {
+                    views.setTextViewText(R.id.widget_total, "")
+                }
             } else {
                 val totals = suppliedTotals ?: UsageStats.todayTotals(context)
                     .entries
                     .sortedByDescending { it.value.totalMs }
-                val totalMs = totals.sumOf { it.value.totalMs }
-                views.setTextViewText(R.id.widget_total, formatDuration(context, totalMs))
+                if (large) {
+                    val totalMs = totals.sumOf { it.value.totalMs }
+                    views.setTextViewText(R.id.widget_total, formatDuration(context, totalMs))
+                }
                 views.setViewVisibility(R.id.widget_message, View.GONE)
                 views.setViewVisibility(R.id.widget_bubbles, View.VISIBLE)
 
