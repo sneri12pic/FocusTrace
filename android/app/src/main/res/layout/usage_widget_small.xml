@@ -14,6 +14,22 @@
         android:importantForAccessibility="no" />
 
     <TextView
+        android:id="@+id/widget_total"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top|center_horizontal"
+        android:background="@drawable/widget_total_badge"
+        android:ellipsize="end"
+        android:maxLines="1"
+        android:paddingStart="6dp"
+        android:paddingTop="2dp"
+        android:paddingEnd="6dp"
+        android:paddingBottom="2dp"
+        android:textColor="#FFFFFFFF"
+        android:textSize="12sp"
+        android:textStyle="bold" />
+
+    <TextView
         android:id="@+id/widget_message"
         android:layout_width="match_parent"
         android:layout_height="match_parent"

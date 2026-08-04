@@ -52,6 +52,14 @@ android {
     }
 
     buildTypes {
+        getByName("debug") {
+            // Keep normal `flutter run` sessions separate from the Play app.
+            // A debug APK is signed with a different certificate, so reusing the
+            // production application ID can make Flutter uninstall the Play copy.
+            applicationIdSuffix = ".dev"
+            versionNameSuffix = "-dev"
+        }
+
         release {
             // Falls back to debug signing when key.properties is absent
             // so `flutter run --release` still works on dev machines.

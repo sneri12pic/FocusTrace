@@ -27,7 +27,7 @@ class BubbleChart extends StatefulWidget {
   final ValueChanged<UsageItem>? onItemLongPressed;
   final VoidCallback onSelectionDismissed;
 
-  static const double _minRadius = 26;
+  static const double _minRadius = 20;
   static const double _maxRadius = 72;
 
   @override
@@ -208,12 +208,12 @@ class _BubbleChartState extends State<BubbleChart>
   }
 
   double _radiusFor(UsageItem item, double maxSeconds, double maxRadius) {
-    if (maxSeconds <= 0) {
-      return BubbleChart._minRadius;
-    }
-    final normalized = item.totalDurationSeconds / maxSeconds;
-    return BubbleChart._minRadius +
-        normalized * (maxRadius - BubbleChart._minRadius);
+    return bubbleRadiusForUsage(
+      durationSeconds: item.totalDurationSeconds,
+      maxDurationSeconds: maxSeconds,
+      minRadius: BubbleChart._minRadius,
+      maxRadius: maxRadius,
+    );
   }
 
   double _tooltipTop(_BubbleLayout layout, double height) {
@@ -223,6 +223,23 @@ class _BubbleChartState extends State<BubbleChart>
     }
     return math.max(8, layout.center.dy - layout.radius - 124);
   }
+}
+
+/// Converts usage to radius with extra contrast between light and heavy use.
+/// The 1.25 power counteracts the visual compression caused by a non-zero
+/// minimum radius while keeping every app large enough to tap.
+double bubbleRadiusForUsage({
+  required num durationSeconds,
+  required num maxDurationSeconds,
+  required double minRadius,
+  required double maxRadius,
+}) {
+  if (maxDurationSeconds <= 0 || maxRadius <= minRadius) {
+    return minRadius;
+  }
+  final normalized = (durationSeconds / maxDurationSeconds).clamp(0, 1);
+  final emphasized = math.pow(normalized, 1.25).toDouble();
+  return minRadius + emphasized * (maxRadius - minRadius);
 }
 
 class _BubbleLayout {

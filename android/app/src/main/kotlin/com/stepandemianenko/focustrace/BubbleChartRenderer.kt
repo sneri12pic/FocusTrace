@@ -12,6 +12,7 @@ import android.graphics.Shader
 import kotlin.math.cos
 import kotlin.math.max
 import kotlin.math.min
+import kotlin.math.pow
 import kotlin.math.sin
 import kotlin.math.sqrt
 
@@ -39,10 +40,10 @@ object BubbleChartRenderer {
 
         val maxMs = max(1L, apps.maxOf { it.second })
         val minDimension = min(widthPx, heightPx).toFloat()
-        val minRadius = minDimension * 0.13f
-        val maxRadius = minDimension * 0.24f
+        val minRadius = minDimension * 0.08f
+        val maxRadius = minDimension * 0.28f
         val radii = apps.map { (_, totalMs) ->
-            minRadius + (totalMs.toFloat() / maxMs) * (maxRadius - minRadius)
+            radiusForUsage(totalMs, maxMs, minRadius, maxRadius)
         }
         val centers = pack(radii, widthPx.toFloat(), heightPx.toFloat())
 
@@ -52,6 +53,18 @@ object BubbleChartRenderer {
             drawBubble(context, canvas, centers[index], radii[index], apps[index].first)
         }
         return bitmap
+    }
+
+    internal fun radiusForUsage(
+        totalMs: Long,
+        maxMs: Long,
+        minRadius: Float,
+        maxRadius: Float,
+    ): Float {
+        if (maxMs <= 0L || maxRadius <= minRadius) return minRadius
+        val normalized = (totalMs.toDouble() / maxMs).coerceIn(0.0, 1.0)
+        val emphasized = normalized.pow(1.25)
+        return minRadius + (emphasized * (maxRadius - minRadius)).toFloat()
     }
 
     /** Same relaxation loop as packBubbles in bubble_chart.dart, minus animation. */
