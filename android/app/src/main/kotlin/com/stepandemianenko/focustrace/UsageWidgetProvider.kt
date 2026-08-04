@@ -17,11 +17,19 @@ import android.widget.RemoteViews
 open class UsageWidgetProvider : AppWidgetProvider() {
     protected open val large: Boolean = true
 
+    override fun onEnabled(context: Context) {
+        super.onEnabled(context)
+        UsageSnapshotScheduler.schedule(context)
+    }
+
     override fun onUpdate(
         context: Context,
         appWidgetManager: AppWidgetManager,
         appWidgetIds: IntArray,
     ) {
+        // Existing widgets may survive an app update, so also make sure the
+        // background refresh is registered whenever Android updates them.
+        UsageSnapshotScheduler.schedule(context)
         for (appWidgetId in appWidgetIds) {
             appWidgetManager.updateAppWidget(
                 appWidgetId,
@@ -45,8 +53,14 @@ open class UsageWidgetProvider : AppWidgetProvider() {
     companion object {
         private const val MAX_BUBBLES = 8
 
-        fun refreshAll(context: Context) {
+        fun refreshAll(
+            context: Context,
+            usageTotals: Map<String, UsageStats.AppUsage>? = null,
+        ) {
             val manager = AppWidgetManager.getInstance(context)
+            val sortedTotals = usageTotals
+                ?.entries
+                ?.sortedByDescending { it.value.totalMs }
             for (providerClass in listOf(
                 UsageWidgetProvider::class.java,
                 UsageWidgetSmallProvider::class.java,
@@ -54,7 +68,10 @@ open class UsageWidgetProvider : AppWidgetProvider() {
                 val large = providerClass == UsageWidgetProvider::class.java
                 val ids = manager.getAppWidgetIds(ComponentName(context, providerClass))
                 for (id in ids) {
-                    manager.updateAppWidget(id, buildViews(context, manager, id, large))
+                    manager.updateAppWidget(
+                        id,
+                        buildViews(context, manager, id, large, sortedTotals),
+                    )
                 }
             }
         }
@@ -64,6 +81,7 @@ open class UsageWidgetProvider : AppWidgetProvider() {
             manager: AppWidgetManager,
             appWidgetId: Int,
             large: Boolean,
+            suppliedTotals: List<Map.Entry<String, UsageStats.AppUsage>>? = null,
         ): RemoteViews {
             val views = RemoteViews(
                 context.packageName,
@@ -77,17 +95,13 @@ open class UsageWidgetProvider : AppWidgetProvider() {
                     R.id.widget_message,
                     FocusTraceLocale.getString(context, R.string.widget_no_access),
                 )
-                if (large) {
-                    views.setTextViewText(R.id.widget_total, "")
-                }
+                views.setTextViewText(R.id.widget_total, "")
             } else {
-                val totals = UsageStats.todayTotals(context)
+                val totals = suppliedTotals ?: UsageStats.todayTotals(context)
                     .entries
                     .sortedByDescending { it.value.totalMs }
-                if (large) {
-                    val totalMs = totals.sumOf { it.value.totalMs }
-                    views.setTextViewText(R.id.widget_total, formatDuration(context, totalMs))
-                }
+                val totalMs = totals.sumOf { it.value.totalMs }
+                views.setTextViewText(R.id.widget_total, formatDuration(context, totalMs))
                 views.setViewVisibility(R.id.widget_message, View.GONE)
                 views.setViewVisibility(R.id.widget_bubbles, View.VISIBLE)
 

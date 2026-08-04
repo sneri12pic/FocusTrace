@@ -3,6 +3,24 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:focustrace/src/presentation/widgets/bubble_chart.dart';
 
 void main() {
+  test('bubble radius makes four hours clearly larger than ten minutes', () {
+    final fourHours = bubbleRadiusForUsage(
+      durationSeconds: 4 * 60 * 60,
+      maxDurationSeconds: 4 * 60 * 60,
+      minRadius: 20,
+      maxRadius: 72,
+    );
+    final tenMinutes = bubbleRadiusForUsage(
+      durationSeconds: 10 * 60,
+      maxDurationSeconds: 4 * 60 * 60,
+      minRadius: 20,
+      maxRadius: 72,
+    );
+
+    expect(fourHours, 72);
+    expect(fourHours / tenMinutes, greaterThan(3.4));
+  });
+
   test(
     'packBubbles resolves collisions and keeps the biggest at the center',
     () {

@@ -23,6 +23,8 @@ class UsageSnapshotWorker(
                 UsageStats.appLabelFor(applicationContext, packageName)
             }
             UsageSnapshotStore(applicationContext).replaceToday(rows)
+            // Keep both widgets current even when Flutter has not been opened.
+            UsageWidgetProvider.refreshAll(applicationContext, totals)
             Result.success()
         } catch (_: SecurityException) {
             // Permission can be revoked between the initial check and query.
