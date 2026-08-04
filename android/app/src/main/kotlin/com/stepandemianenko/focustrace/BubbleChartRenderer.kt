@@ -9,24 +9,20 @@ import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.RectF
 import android.graphics.Shader
-import kotlin.math.PI
-import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.max
 import kotlin.math.min
-import kotlin.math.pow
 import kotlin.math.sin
 import kotlin.math.sqrt
 
 /**
  * Draws the usage bubble chart into a [Bitmap] for the home screen widgets.
- * The packing geometry and bubble styling are a Kotlin port of the Flutter
+ * The packing simulation and bubble styling are a Kotlin port of the Flutter
  * chart in lib/src/presentation/widgets/bubble_chart.dart, so widget and app
  * render the same layout for the same data.
  */
 object BubbleChartRenderer {
-    private const val BUBBLE_GAP = 4f
-    private const val CANDIDATE_ANGLES = 72
+    private const val PACK_STEPS = 150
     private const val GOLDEN_ANGLE = 2.399963
 
     fun render(
@@ -43,14 +39,14 @@ object BubbleChartRenderer {
 
         val maxMs = max(1L, apps.maxOf { it.second })
         val minDimension = min(widthPx, heightPx).toFloat()
-        val minRadius = minDimension * 0.08f
-        val maxRadius = minDimension * 0.28f
+        val minRadius = minDimension * 0.13f
+        val maxRadius = minDimension * 0.24f
         val radii = apps.map { (_, totalMs) ->
-            radiusForUsage(totalMs, maxMs, minRadius, maxRadius)
+            minRadius + (totalMs.toFloat() / maxMs) * (maxRadius - minRadius)
         }
-        val centers = packBubbles(radii, widthPx.toFloat(), heightPx.toFloat())
+        val centers = pack(radii, widthPx.toFloat(), heightPx.toFloat())
 
-        // Draw small bubbles first so larger icons remain visually dominant.
+        // Draw small bubbles first so the big ones sit on top of overlaps.
         val order = apps.indices.sortedBy { radii[it] }
         for (index in order) {
             drawBubble(context, canvas, centers[index], radii[index], apps[index].first)
@@ -58,204 +54,57 @@ object BubbleChartRenderer {
         return bitmap
     }
 
-    internal fun radiusForUsage(
-        totalMs: Long,
-        maxMs: Long,
-        minRadius: Float,
-        maxRadius: Float,
-    ): Float {
-        if (maxMs <= 0L || maxRadius <= minRadius) return minRadius
-        val normalized = (totalMs.toDouble() / maxMs).coerceIn(0.0, 1.0)
-        val emphasized = normalized.pow(1.25)
-        return minRadius + (emphasized * (maxRadius - minRadius)).toFloat()
-    }
-
-    /**
-     * Greedy circle packing. Each new (smaller) bubble first tries the exact
-     * tangent pockets between two placed bubbles, then single-bubble tangent
-     * positions. This keeps the largest bubble central without loose stacks.
-     */
-    internal fun packBubbles(
-        radii: List<Float>,
-        width: Float,
-        height: Float,
-    ): List<FloatArray> {
-        if (radii.isEmpty()) return emptyList()
+    /** Same relaxation loop as packBubbles in bubble_chart.dart, minus animation. */
+    private fun pack(radii: List<Float>, width: Float, height: Float): List<FloatArray> {
         val centerX = width / 2
         val centerY = height / 2
-        val positions = mutableListOf(floatArrayOf(centerX, centerY))
+        val farOut = width + height
+        val positions = radii.indices.map { i ->
+            floatArrayOf(
+                (centerX + farOut * cos(i * GOLDEN_ANGLE)).toFloat(),
+                (centerY + farOut * sin(i * GOLDEN_ANGLE)).toFloat(),
+            ).also { clampToBounds(it, radii[i], width, height) }
+        }
+        val maxRadius = radii.maxOrNull() ?: return positions
 
-        for (index in 1 until radii.size) {
-            val radius = radii[index]
-            val candidates = mutableListOf<FloatArray>()
-
-            // Exact intersections are the pockets touching two existing circles.
-            for (first in positions.indices) {
-                for (second in first + 1 until positions.size) {
-                    candidates += tangentIntersections(
-                        positions[first],
-                        radii[first] + radius + BUBBLE_GAP,
-                        positions[second],
-                        radii[second] + radius + BUBBLE_GAP,
-                    )
+        for (step in 0 until PACK_STEPS) {
+            val gravity = 0.04f * (1 - step.toFloat() / PACK_STEPS)
+            for (i in positions.indices) {
+                val weight = (radii[i] * radii[i]) / (maxRadius * maxRadius)
+                val pull = gravity * (0.2f + 0.8f * weight)
+                positions[i][0] += (centerX - positions[i][0]) * pull
+                positions[i][1] += (centerY - positions[i][1]) * pull
+            }
+            for (i in positions.indices) {
+                for (j in i + 1 until positions.size) {
+                    var dx = positions[j][0] - positions[i][0]
+                    var dy = positions[j][1] - positions[i][1]
+                    var distance = sqrt(dx * dx + dy * dy)
+                    val minDistance = radii[i] + radii[j] + 4
+                    if (distance >= minDistance) {
+                        continue
+                    }
+                    if (distance < 0.01f) {
+                        dx = (0.01 * cos(j * GOLDEN_ANGLE)).toFloat()
+                        dy = (0.01 * sin(j * GOLDEN_ANGLE)).toFloat()
+                        distance = 0.01f
+                    }
+                    val overlap = minDistance - distance
+                    val massI = radii[i] * radii[i]
+                    val massJ = radii[j] * radii[j]
+                    val directionX = dx / distance
+                    val directionY = dy / distance
+                    positions[i][0] -= directionX * (overlap * massJ / (massI + massJ))
+                    positions[i][1] -= directionY * (overlap * massJ / (massI + massJ))
+                    positions[j][0] += directionX * (overlap * massI / (massI + massJ))
+                    positions[j][1] += directionY * (overlap * massI / (massI + massJ))
                 }
             }
-
-            // Sample every existing circumference for edge and one-neighbour gaps.
-            val startAngle = -PI / 2 + (index - 1) * GOLDEN_ANGLE
-            for (placedIndex in positions.indices) {
-                val tangentDistance = radii[placedIndex] + radius + BUBBLE_GAP
-                for (sample in 0 until CANDIDATE_ANGLES) {
-                    val angle = startAngle + 2 * PI * sample / CANDIDATE_ANGLES
-                    candidates += floatArrayOf(
-                        positions[placedIndex][0] +
-                            (tangentDistance * cos(angle)).toFloat(),
-                        positions[placedIndex][1] +
-                            (tangentDistance * sin(angle)).toFloat(),
-                    )
-                }
+            for (i in positions.indices) {
+                clampToBounds(positions[i], radii[i], width, height)
             }
-
-            val valid = candidates.filter {
-                isValidPosition(it, radius, positions, radii, width, height)
-            }
-            positions += bestPocket(valid, radius, positions, radii, centerX, centerY)
-                ?: firstOpenRingPosition(
-                    index,
-                    radius,
-                    positions,
-                    radii,
-                    centerX,
-                    centerY,
-                    width,
-                    height,
-                )
         }
         return positions
-    }
-
-    private fun bestPocket(
-        candidates: List<FloatArray>,
-        radius: Float,
-        positions: List<FloatArray>,
-        radii: List<Float>,
-        centerX: Float,
-        centerY: Float,
-    ): FloatArray? {
-        var best: FloatArray? = null
-        var bestTouches = -1
-        var bestDistanceSquared = Float.MAX_VALUE
-        for (candidate in candidates) {
-            val touches = positions.indices.count { index ->
-                val distance = distance(candidate, positions[index])
-                abs(distance - (radius + radii[index] + BUBBLE_GAP)) < 0.75f
-            }
-            val dx = candidate[0] - centerX
-            val dy = candidate[1] - centerY
-            val distanceSquared = dx * dx + dy * dy
-            if (
-                touches > bestTouches ||
-                (touches == bestTouches && distanceSquared < bestDistanceSquared)
-            ) {
-                best = candidate
-                bestTouches = touches
-                bestDistanceSquared = distanceSquared
-            }
-        }
-        return best
-    }
-
-    private fun firstOpenRingPosition(
-        index: Int,
-        radius: Float,
-        positions: List<FloatArray>,
-        radii: List<Float>,
-        centerX: Float,
-        centerY: Float,
-        width: Float,
-        height: Float,
-    ): FloatArray {
-        val step = max(2f, radius * 0.25f)
-        var ring = step
-        while (ring <= width + height) {
-            for (sample in 0 until CANDIDATE_ANGLES * 2) {
-                val angle = index * GOLDEN_ANGLE +
-                    2 * PI * sample / (CANDIDATE_ANGLES * 2)
-                val candidate = floatArrayOf(
-                    centerX + (ring * cos(angle)).toFloat(),
-                    centerY + (ring * sin(angle)).toFloat(),
-                )
-                if (isValidPosition(candidate, radius, positions, radii, width, height)) {
-                    return candidate
-                }
-            }
-            ring += step
-        }
-
-        // Only reachable when the launcher gives the widget less physical area
-        // than its declared minimum size.
-        return floatArrayOf(centerX, centerY).also {
-            clampToBounds(it, radius, width, height)
-        }
-    }
-
-    private fun isValidPosition(
-        candidate: FloatArray,
-        radius: Float,
-        positions: List<FloatArray>,
-        radii: List<Float>,
-        width: Float,
-        height: Float,
-    ): Boolean {
-        if (
-            candidate[0] < radius || candidate[0] > width - radius ||
-            candidate[1] < radius || candidate[1] > height - radius
-        ) {
-            return false
-        }
-        return positions.indices.none { index ->
-            distance(candidate, positions[index]) <
-                radius + radii[index] + BUBBLE_GAP - 0.25f
-        }
-    }
-
-    private fun tangentIntersections(
-        first: FloatArray,
-        firstDistance: Float,
-        second: FloatArray,
-        secondDistance: Float,
-    ): List<FloatArray> {
-        val dx = (second[0] - first[0]).toDouble()
-        val dy = (second[1] - first[1]).toDouble()
-        val distance = sqrt(dx * dx + dy * dy)
-        if (
-            distance < 0.001 ||
-            distance > firstDistance + secondDistance ||
-            distance < abs(firstDistance - secondDistance)
-        ) {
-            return emptyList()
-        }
-        val along = (
-            firstDistance * firstDistance - secondDistance * secondDistance +
-                distance * distance
-            ) / (2 * distance)
-        val heightSquared = firstDistance * firstDistance - along * along
-        if (heightSquared < -0.01) return emptyList()
-        val perpendicular = sqrt(max(0.0, heightSquared))
-        val middleX = first[0] + along * dx / distance
-        val middleY = first[1] + along * dy / distance
-        val offsetX = -dy * perpendicular / distance
-        val offsetY = dx * perpendicular / distance
-        return listOf(
-            floatArrayOf((middleX + offsetX).toFloat(), (middleY + offsetY).toFloat()),
-            floatArrayOf((middleX - offsetX).toFloat(), (middleY - offsetY).toFloat()),
-        )
-    }
-
-    private fun distance(first: FloatArray, second: FloatArray): Float {
-        val dx = first[0] - second[0]
-        val dy = first[1] - second[1]
-        return sqrt(dx * dx + dy * dy)
     }
 
     private fun clampToBounds(position: FloatArray, radius: Float, width: Float, height: Float) {

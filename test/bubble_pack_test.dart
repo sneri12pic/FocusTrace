@@ -3,24 +3,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:focustrace/src/presentation/widgets/bubble_chart.dart';
 
 void main() {
-  test('bubble radius makes four hours clearly larger than ten minutes', () {
-    final fourHours = bubbleRadiusForUsage(
-      durationSeconds: 4 * 60 * 60,
-      maxDurationSeconds: 4 * 60 * 60,
-      minRadius: 20,
-      maxRadius: 72,
-    );
-    final tenMinutes = bubbleRadiusForUsage(
-      durationSeconds: 10 * 60,
-      maxDurationSeconds: 4 * 60 * 60,
-      minRadius: 20,
-      maxRadius: 72,
-    );
-
-    expect(fourHours, 72);
-    expect(fourHours / tenMinutes, greaterThan(3.4));
-  });
-
   test(
     'packBubbles resolves collisions and keeps the biggest at the center',
     () {
@@ -59,25 +41,4 @@ void main() {
       );
     },
   );
-
-  test('smaller bubbles fill tangent pockets between placed bubbles', () {
-    const size = Size(800, 360);
-    final radii = [72.0, 60.0, 48.0, 36.0, 30.0, 26.0];
-    final positions = packBubbles(radii, size);
-
-    for (var index = 2; index < positions.length; index++) {
-      var tangentNeighbours = 0;
-      for (var placed = 0; placed < index; placed++) {
-        final distance = (positions[index] - positions[placed]).distance;
-        if ((distance - (radii[index] + radii[placed] + 4)).abs() < 1) {
-          tangentNeighbours++;
-        }
-      }
-      expect(
-        tangentNeighbours,
-        greaterThanOrEqualTo(2),
-        reason: 'bubble $index should occupy a pocket between two neighbours',
-      );
-    }
-  });
 }

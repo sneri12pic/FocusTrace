@@ -27,7 +27,7 @@ class BubbleChart extends StatefulWidget {
   final ValueChanged<UsageItem>? onItemLongPressed;
   final VoidCallback onSelectionDismissed;
 
-  static const double _minRadius = 20;
+  static const double _minRadius = 26;
   static const double _maxRadius = 72;
 
   @override
@@ -48,8 +48,9 @@ class _BubbleChartState extends State<BubbleChart>
   @override
   void initState() {
     super.initState();
-    // Interpolates from the chart edges into the packed layout on mount. The
-    // chart section unmounts during refresh, so each refresh replays it.
+    // Plays the packing simulation forward on mount, so bubbles fly in from
+    // the edges. The chart section unmounts during manual/pull refresh, so
+    // every fresh open and user refresh replays this automatically.
     _entranceController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1200),
@@ -126,7 +127,8 @@ class _BubbleChartState extends State<BubbleChart>
   }
 
   Widget _buildChart(Size size) {
-    // Each frame moves the bubbles from the edges toward their tangent pockets.
+    // Rendering a prefix of the deterministic packing simulation each frame
+    // replays the bubbles gravitating from the edges into their final spots.
     final steps = (_entranceController.value * packSteps).ceil();
     final layout = _layoutItems(widget.items, size, steps);
     final selectedLayout = layout.cast<_BubbleLayout?>().firstWhere(
@@ -206,12 +208,12 @@ class _BubbleChartState extends State<BubbleChart>
   }
 
   double _radiusFor(UsageItem item, double maxSeconds, double maxRadius) {
-    return bubbleRadiusForUsage(
-      durationSeconds: item.totalDurationSeconds,
-      maxDurationSeconds: maxSeconds,
-      minRadius: BubbleChart._minRadius,
-      maxRadius: maxRadius,
-    );
+    if (maxSeconds <= 0) {
+      return BubbleChart._minRadius;
+    }
+    final normalized = item.totalDurationSeconds / maxSeconds;
+    return BubbleChart._minRadius +
+        normalized * (maxRadius - BubbleChart._minRadius);
   }
 
   double _tooltipTop(_BubbleLayout layout, double height) {
@@ -221,23 +223,6 @@ class _BubbleChartState extends State<BubbleChart>
     }
     return math.max(8, layout.center.dy - layout.radius - 124);
   }
-}
-
-/// Converts usage to radius with extra contrast between light and heavy use.
-/// The 1.25 power counteracts the visual compression caused by a non-zero
-/// minimum radius while keeping every app large enough to tap.
-double bubbleRadiusForUsage({
-  required num durationSeconds,
-  required num maxDurationSeconds,
-  required double minRadius,
-  required double maxRadius,
-}) {
-  if (maxDurationSeconds <= 0 || maxRadius <= minRadius) {
-    return minRadius;
-  }
-  final normalized = (durationSeconds / maxDurationSeconds).clamp(0, 1);
-  final emphasized = math.pow(normalized, 1.25).toDouble();
-  return minRadius + emphasized * (maxRadius - minRadius);
 }
 
 class _BubbleLayout {
@@ -310,31 +295,27 @@ double _clamp(double value, double min, double max) {
 }
 
 const double _goldenAngle = 2.399963;
-const double _bubbleGap = 4;
-const int _candidateAngles = 72;
 
-/// Number of frames used to interpolate from the edge into the packed layout.
+/// Total relaxation steps of the packing simulation. Running [packBubbles]
+/// with a smaller [steps] value yields an exact prefix of the full run, which
+/// is what the entrance animation plays back frame by frame.
 const int packSteps = 150;
 
-/// Greedy tangent-pocket packing. Radii are expected largest-first: the first
-/// stays central and every later bubble chooses the closest valid gap touching
-/// one or, preferably, two already placed circles.
+/// Iterative circle packing: every bubble is pulled toward the center while
+/// colliding pairs push apart, with the displacement split by mass (radius²),
+/// so the heaviest bubbles claim the middle and light ones get pushed out.
+/// Deterministic — same radii always produce the same layout.
 List<Offset> packBubbles(
   List<double> radii,
   Size size, {
   int steps = packSteps,
 }) {
-  if (radii.isEmpty) {
-    return const [];
-  }
-  final packed = _packIntoPockets(radii, size);
-  if (steps >= packSteps) {
-    return packed;
-  }
-
   final center = Offset(size.width / 2, size.height / 2 + 10);
+  // Seed scattered around the chart edges (deterministic golden-angle fan) so
+  // playing the simulation forward shows the bubbles flying in from the edges
+  // and colliding until they settle.
   final farOut = size.width + size.height;
-  final initial = [
+  final positions = [
     for (var i = 0; i < radii.length; i++)
       _clampToBounds(
         center + Offset.fromDirection(i * _goldenAngle, farOut),
@@ -342,168 +323,44 @@ List<Offset> packBubbles(
         size,
       ),
   ];
-  final progress = (steps / packSteps).clamp(0.0, 1.0);
-  final eased = 1 - math.pow(1 - progress, 3).toDouble();
-  return [
-    for (var index = 0; index < radii.length; index++)
-      Offset.lerp(initial[index], packed[index], eased)!,
-  ];
-}
 
-List<Offset> _packIntoPockets(List<double> radii, Size size) {
-  final center = Offset(size.width / 2, size.height / 2 + 10);
-  final positions = <Offset>[center];
+  final maxRadius = radii.reduce(math.max);
 
-  for (var index = 1; index < radii.length; index++) {
-    final radius = radii[index];
-    final candidates = <Offset>[];
-
-    // Exact circle intersections are the pockets tangent to two neighbours.
-    for (var first = 0; first < positions.length; first++) {
-      for (var second = first + 1; second < positions.length; second++) {
-        candidates.addAll(
-          _tangentIntersections(
-            positions[first],
-            radii[first] + radius + _bubbleGap,
-            positions[second],
-            radii[second] + radius + _bubbleGap,
-          ),
-        );
+  // ponytail: fixed 150 relaxation steps for <=10 bubbles; converges long before that.
+  for (var step = 0; step < steps; step++) {
+    // Gravity fades out so late steps purely resolve collisions, and it is
+    // mass-weighted so heavy bubbles pull to the center harder than light ones.
+    final gravity = 0.04 * (1 - step / packSteps);
+    for (var i = 0; i < positions.length; i++) {
+      final weight = (radii[i] * radii[i]) / (maxRadius * maxRadius);
+      positions[i] +=
+          (center - positions[i]) * (gravity * (0.2 + 0.8 * weight));
+    }
+    for (var i = 0; i < positions.length; i++) {
+      for (var j = i + 1; j < positions.length; j++) {
+        var delta = positions[j] - positions[i];
+        var distance = delta.distance;
+        final minDistance = radii[i] + radii[j] + 4;
+        if (distance >= minDistance) {
+          continue;
+        }
+        if (distance < 0.01) {
+          delta = Offset.fromDirection(j * _goldenAngle, 0.01);
+          distance = 0.01;
+        }
+        final direction = delta / distance;
+        final overlap = minDistance - distance;
+        final massI = radii[i] * radii[i];
+        final massJ = radii[j] * radii[j];
+        positions[i] -= direction * (overlap * massJ / (massI + massJ));
+        positions[j] += direction * (overlap * massI / (massI + massJ));
       }
     }
-
-    // Circumference samples cover edge gaps and one-neighbour placements.
-    final startAngle = -math.pi / 2 + (index - 1) * _goldenAngle;
-    for (var placedIndex = 0; placedIndex < positions.length; placedIndex++) {
-      final tangentDistance = radii[placedIndex] + radius + _bubbleGap;
-      for (var sample = 0; sample < _candidateAngles; sample++) {
-        final angle = startAngle + 2 * math.pi * sample / _candidateAngles;
-        candidates.add(
-          positions[placedIndex] + Offset.fromDirection(angle, tangentDistance),
-        );
-      }
+    for (var i = 0; i < positions.length; i++) {
+      positions[i] = _clampToBounds(positions[i], radii[i], size);
     }
-
-    final valid = candidates.where(
-      (candidate) =>
-          _isValidPosition(candidate, radius, positions, radii, size),
-    );
-    positions.add(
-      _bestPocket(valid, radius, positions, radii, center) ??
-          _firstOpenRingPosition(index, radius, positions, radii, center, size),
-    );
   }
   return positions;
-}
-
-Offset? _bestPocket(
-  Iterable<Offset> candidates,
-  double radius,
-  List<Offset> positions,
-  List<double> radii,
-  Offset center,
-) {
-  Offset? best;
-  var bestTouches = -1;
-  var bestDistanceSquared = double.infinity;
-  for (final candidate in candidates) {
-    var touches = 0;
-    for (var index = 0; index < positions.length; index++) {
-      final tangentDistance = radius + radii[index] + _bubbleGap;
-      if (((candidate - positions[index]).distance - tangentDistance).abs() <
-          0.75) {
-        touches++;
-      }
-    }
-    final delta = candidate - center;
-    final distanceSquared = delta.dx * delta.dx + delta.dy * delta.dy;
-    if (touches > bestTouches ||
-        (touches == bestTouches && distanceSquared < bestDistanceSquared)) {
-      best = candidate;
-      bestTouches = touches;
-      bestDistanceSquared = distanceSquared;
-    }
-  }
-  return best;
-}
-
-Offset _firstOpenRingPosition(
-  int index,
-  double radius,
-  List<Offset> positions,
-  List<double> radii,
-  Offset center,
-  Size size,
-) {
-  final ringStep = math.max(2.0, radius * 0.25);
-  for (
-    var ring = ringStep;
-    ring <= size.width + size.height;
-    ring += ringStep
-  ) {
-    for (var sample = 0; sample < _candidateAngles * 2; sample++) {
-      final angle =
-          index * _goldenAngle + 2 * math.pi * sample / (_candidateAngles * 2);
-      final candidate = center + Offset.fromDirection(angle, ring);
-      if (_isValidPosition(candidate, radius, positions, radii, size)) {
-        return candidate;
-      }
-    }
-  }
-
-  // Only reachable if a host constrains the chart below its minimum size.
-  return _clampToBounds(center, radius, size);
-}
-
-bool _isValidPosition(
-  Offset candidate,
-  double radius,
-  List<Offset> positions,
-  List<double> radii,
-  Size size,
-) {
-  if (candidate.dx < radius ||
-      candidate.dx > size.width - radius ||
-      candidate.dy < radius ||
-      candidate.dy > size.height - radius) {
-    return false;
-  }
-  for (var index = 0; index < positions.length; index++) {
-    if ((candidate - positions[index]).distance <
-        radius + radii[index] + _bubbleGap - 0.25) {
-      return false;
-    }
-  }
-  return true;
-}
-
-List<Offset> _tangentIntersections(
-  Offset first,
-  double firstDistance,
-  Offset second,
-  double secondDistance,
-) {
-  final delta = second - first;
-  final distance = delta.distance;
-  if (distance < 0.001 ||
-      distance > firstDistance + secondDistance ||
-      distance < (firstDistance - secondDistance).abs()) {
-    return const [];
-  }
-  final along =
-      (firstDistance * firstDistance -
-          secondDistance * secondDistance +
-          distance * distance) /
-      (2 * distance);
-  final heightSquared = firstDistance * firstDistance - along * along;
-  if (heightSquared < -0.01) {
-    return const [];
-  }
-  final perpendicular = math.sqrt(math.max(0, heightSquared));
-  final direction = delta / distance;
-  final middle = first + direction * along;
-  final normal = Offset(-direction.dy, direction.dx) * perpendicular;
-  return [middle + normal, middle - normal];
 }
 
 Offset _clampToBounds(Offset position, double radius, Size size) {
