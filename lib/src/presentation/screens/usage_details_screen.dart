@@ -43,30 +43,16 @@ class UsageDetailsScreen extends ConsumerWidget {
                     changePercent: state.changeFromYesterdayPercent,
                   ),
                   const SizedBox(height: 16),
-                  Text(
-                    context.l10n.usageDetailsTimeTracked,
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                  const SizedBox(height: 10),
                   _PeriodSelector(
                     selected: state.period,
+                    totalText: context.l10n.compactDuration(
+                      state.totalDuration,
+                    ),
                     onSelected: (period) => ref
                         .read(
                           appUsageDetailsViewModelProvider(request).notifier,
                         )
                         .selectPeriod(period),
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    context.l10n.usageDetailsPeriodTotal(
-                      _periodLabel(context, state.period),
-                      context.l10n.compactDuration(state.totalDuration),
-                    ),
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.w800,
-                    ),
                   ),
                   const SizedBox(height: 10),
                   _UsageBarChart(points: state.points, period: state.period),
@@ -127,37 +113,49 @@ String _periodLabel(BuildContext context, UsageDetailsPeriod period) {
 }
 
 class _PeriodSelector extends StatelessWidget {
-  const _PeriodSelector({required this.selected, required this.onSelected});
+  const _PeriodSelector({
+    required this.selected,
+    required this.totalText,
+    required this.onSelected,
+  });
 
   final UsageDetailsPeriod selected;
+  final String totalText;
   final ValueChanged<UsageDetailsPeriod> onSelected;
 
   @override
   Widget build(BuildContext context) {
-    return InputDecorator(
-      decoration: const InputDecoration(
-        border: OutlineInputBorder(),
-        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-      ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<UsageDetailsPeriod>(
-          key: const ValueKey('usage-period-dropdown'),
-          value: selected,
-          isExpanded: true,
-          items: [
-            for (final period in UsageDetailsPeriod.values)
-              DropdownMenuItem(
-                value: period,
-                child: Text(_periodLabel(context, period)),
-              ),
-          ],
-          onChanged: (period) {
-            if (period != null) {
-              onSelected(period);
-            }
-          },
+    final textStyle = Theme.of(
+      context,
+    ).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w400);
+    return Row(
+      children: [
+        DropdownButtonHideUnderline(
+          child: DropdownButton<UsageDetailsPeriod>(
+            key: const ValueKey('usage-period-dropdown'),
+            value: selected,
+            style: textStyle,
+            items: [
+              for (final period in UsageDetailsPeriod.values)
+                DropdownMenuItem(
+                  value: period,
+                  child: Text(_periodLabel(context, period), style: textStyle),
+                ),
+            ],
+            onChanged: (period) {
+              if (period != null) {
+                onSelected(period);
+              }
+            },
+          ),
         ),
-      ),
+        const Spacer(),
+        Text(
+          totalText,
+          key: const ValueKey('usage-period-total'),
+          style: textStyle,
+        ),
+      ],
     );
   }
 }
