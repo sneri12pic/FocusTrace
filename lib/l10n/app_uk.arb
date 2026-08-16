@@ -258,6 +258,18 @@
     }
   },
   "usageDetailsLastSevenDays": "Останні 7 днів",
+  "usageDetailsTimeTracked": "Відстежений час",
+  "usageDetailsPeriodSevenDays": "7 днів",
+  "usageDetailsPeriodTwoWeeks": "2 тижні",
+  "usageDetailsPeriodMonth": "Місяць",
+  "usageDetailsPeriodYear": "Рік",
+  "usageDetailsPeriodTotal": "{period}: {duration}",
+  "@usageDetailsPeriodTotal": {
+    "placeholders": {
+      "period": {"type": "String"},
+      "duration": {"type": "String"}
+    }
+  },
   "usageDetailsMoreThanYesterday": "На {percentage}% більше, ніж учора",
   "@usageDetailsMoreThanYesterday": {"placeholders": {"percentage": {"type": "int"}}},
   "usageDetailsLessThanYesterday": "На {percentage}% менше, ніж учора",

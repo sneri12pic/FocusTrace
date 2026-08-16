@@ -258,6 +258,18 @@
     }
   },
   "usageDetailsLastSevenDays": "過去7日間",
+  "usageDetailsTimeTracked": "追跡時間",
+  "usageDetailsPeriodSevenDays": "7日間",
+  "usageDetailsPeriodTwoWeeks": "2週間",
+  "usageDetailsPeriodMonth": "1か月",
+  "usageDetailsPeriodYear": "1年間",
+  "usageDetailsPeriodTotal": "{period}: {duration}",
+  "@usageDetailsPeriodTotal": {
+    "placeholders": {
+      "period": {"type": "String"},
+      "duration": {"type": "String"}
+    }
+  },
   "usageDetailsMoreThanYesterday": "昨日より{percentage}%多い",
   "@usageDetailsMoreThanYesterday": {"placeholders": {"percentage": {"type": "int"}}},
   "usageDetailsLessThanYesterday": "昨日より{percentage}%少ない",

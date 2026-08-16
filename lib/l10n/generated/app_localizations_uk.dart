@@ -506,6 +506,26 @@ class AppLocalizationsUk extends AppLocalizations {
   String get usageDetailsLastSevenDays => 'Останні 7 днів';
 
   @override
+  String get usageDetailsTimeTracked => 'Відстежений час';
+
+  @override
+  String get usageDetailsPeriodSevenDays => '7 днів';
+
+  @override
+  String get usageDetailsPeriodTwoWeeks => '2 тижні';
+
+  @override
+  String get usageDetailsPeriodMonth => 'Місяць';
+
+  @override
+  String get usageDetailsPeriodYear => 'Рік';
+
+  @override
+  String usageDetailsPeriodTotal(String period, String duration) {
+    return '$period: $duration';
+  }
+
+  @override
   String usageDetailsMoreThanYesterday(int percentage) {
     return 'На $percentage% більше, ніж учора';
   }

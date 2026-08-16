@@ -258,6 +258,18 @@
     }
   },
   "usageDetailsLastSevenDays": "Últimos 7 días",
+  "usageDetailsTimeTracked": "Tiempo registrado",
+  "usageDetailsPeriodSevenDays": "7 días",
+  "usageDetailsPeriodTwoWeeks": "2 semanas",
+  "usageDetailsPeriodMonth": "Un mes",
+  "usageDetailsPeriodYear": "Año",
+  "usageDetailsPeriodTotal": "{period}: {duration}",
+  "@usageDetailsPeriodTotal": {
+    "placeholders": {
+      "period": {"type": "String"},
+      "duration": {"type": "String"}
+    }
+  },
   "usageDetailsMoreThanYesterday": "{percentage}% más que ayer",
   "@usageDetailsMoreThanYesterday": {"placeholders": {"percentage": {"type": "int"}}},
   "usageDetailsLessThanYesterday": "{percentage}% menos que ayer",

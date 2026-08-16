@@ -933,6 +933,42 @@ abstract class AppLocalizations {
   /// **'Last 7 days'**
   String get usageDetailsLastSevenDays;
 
+  /// No description provided for @usageDetailsTimeTracked.
+  ///
+  /// In en, this message translates to:
+  /// **'Time tracked'**
+  String get usageDetailsTimeTracked;
+
+  /// No description provided for @usageDetailsPeriodSevenDays.
+  ///
+  /// In en, this message translates to:
+  /// **'7 days'**
+  String get usageDetailsPeriodSevenDays;
+
+  /// No description provided for @usageDetailsPeriodTwoWeeks.
+  ///
+  /// In en, this message translates to:
+  /// **'2 weeks'**
+  String get usageDetailsPeriodTwoWeeks;
+
+  /// No description provided for @usageDetailsPeriodMonth.
+  ///
+  /// In en, this message translates to:
+  /// **'A month'**
+  String get usageDetailsPeriodMonth;
+
+  /// No description provided for @usageDetailsPeriodYear.
+  ///
+  /// In en, this message translates to:
+  /// **'Year'**
+  String get usageDetailsPeriodYear;
+
+  /// No description provided for @usageDetailsPeriodTotal.
+  ///
+  /// In en, this message translates to:
+  /// **'{period}: {duration}'**
+  String usageDetailsPeriodTotal(String period, String duration);
+
   /// No description provided for @usageDetailsMoreThanYesterday.
   ///
   /// In en, this message translates to:

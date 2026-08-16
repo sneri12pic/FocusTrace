@@ -507,6 +507,26 @@ class AppLocalizationsEs extends AppLocalizations {
   String get usageDetailsLastSevenDays => 'Últimos 7 días';
 
   @override
+  String get usageDetailsTimeTracked => 'Tiempo registrado';
+
+  @override
+  String get usageDetailsPeriodSevenDays => '7 días';
+
+  @override
+  String get usageDetailsPeriodTwoWeeks => '2 semanas';
+
+  @override
+  String get usageDetailsPeriodMonth => 'Un mes';
+
+  @override
+  String get usageDetailsPeriodYear => 'Año';
+
+  @override
+  String usageDetailsPeriodTotal(String period, String duration) {
+    return '$period: $duration';
+  }
+
+  @override
   String usageDetailsMoreThanYesterday(int percentage) {
     return '$percentage% más que ayer';
   }

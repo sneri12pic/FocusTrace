@@ -56,10 +56,36 @@ class DailyUsagePoint {
   Duration get duration => Duration(seconds: durationSeconds);
 }
 
+enum UsageDetailsPeriod {
+  sevenDays,
+  twoWeeks,
+  month,
+  year;
+
+  DateTime startDate(DateTime selectedDay) {
+    return switch (this) {
+      UsageDetailsPeriod.sevenDays => selectedDay.subtract(
+        const Duration(days: 6),
+      ),
+      UsageDetailsPeriod.twoWeeks => selectedDay.subtract(
+        const Duration(days: 13),
+      ),
+      UsageDetailsPeriod.month => selectedDay.subtract(
+        const Duration(days: 29),
+      ),
+      UsageDetailsPeriod.year => DateTime(
+        selectedDay.year,
+        selectedDay.month - 11,
+      ),
+    };
+  }
+}
+
 class AppUsageDetailsState {
   const AppUsageDetailsState({
     this.points = const <DailyUsagePoint>[],
     this.sessions = const <UsageSession>[],
+    this.period = UsageDetailsPeriod.sevenDays,
     this.changeFromYesterdayPercent,
     this.isLoading = false,
     this.errorMessage,
@@ -67,9 +93,15 @@ class AppUsageDetailsState {
 
   final List<DailyUsagePoint> points;
   final List<UsageSession> sessions;
+  final UsageDetailsPeriod period;
   final double? changeFromYesterdayPercent;
   final bool isLoading;
   final String? errorMessage;
+
+  int get totalDurationSeconds =>
+      points.fold(0, (total, point) => total + point.durationSeconds);
+
+  Duration get totalDuration => Duration(seconds: totalDurationSeconds);
 }
 
 class AppUsageDetailsViewModel extends StateNotifier<AppUsageDetailsState> {
@@ -83,12 +115,20 @@ class AppUsageDetailsViewModel extends StateNotifier<AppUsageDetailsState> {
   final UsageRepository _usageRepository;
   final AppUsageDetailsRequest _request;
 
-  Future<void> load() async {
-    state = const AppUsageDetailsState(isLoading: true);
+  Future<void> selectPeriod(UsageDetailsPeriod period) {
+    if (period == state.period) {
+      return Future<void>.value();
+    }
+    return load(period: period);
+  }
+
+  Future<void> load({UsageDetailsPeriod? period}) async {
+    final selectedPeriod = period ?? state.period;
+    state = AppUsageDetailsState(period: selectedPeriod, isLoading: true);
     final selectedDay = _day(_request.selectedDate);
     try {
       final historyFuture = _usageRepository.getUsageHistory(
-        selectedDay.subtract(const Duration(days: 6)),
+        selectedPeriod.startDate(selectedDay),
         selectedDay.add(const Duration(days: 1)),
       );
       final sessionsFuture = _usageRepository.topSessionsForApp(
@@ -113,24 +153,67 @@ class AppUsageDetailsViewModel extends StateNotifier<AppUsageDetailsState> {
       // best-effort SQLite snapshot.
       totalsByDay[selectedDay] = _request.summary.totalDurationSeconds;
 
-      final points = [
-        for (var daysAgo = 6; daysAgo >= 0; daysAgo--)
-          DailyUsagePoint(
-            day: selectedDay.subtract(Duration(days: daysAgo)),
-            durationSeconds:
-                totalsByDay[selectedDay.subtract(Duration(days: daysAgo))] ?? 0,
-          ),
-      ];
-      final current = points.last.durationSeconds;
-      final previous = points[points.length - 2].durationSeconds;
+      final points = _pointsFor(
+        period: selectedPeriod,
+        selectedDay: selectedDay,
+        totalsByDay: totalsByDay,
+      );
+      final current = totalsByDay[selectedDay] ?? 0;
+      final previous =
+          totalsByDay[selectedDay.subtract(const Duration(days: 1))] ?? 0;
       state = AppUsageDetailsState(
         points: points,
         sessions: sessions,
+        period: selectedPeriod,
         changeFromYesterdayPercent: _changePercent(current, previous),
       );
     } catch (error) {
-      state = AppUsageDetailsState(errorMessage: error.toString());
+      state = AppUsageDetailsState(
+        period: selectedPeriod,
+        errorMessage: error.toString(),
+      );
     }
+  }
+
+  List<DailyUsagePoint> _pointsFor({
+    required UsageDetailsPeriod period,
+    required DateTime selectedDay,
+    required Map<DateTime, int> totalsByDay,
+  }) {
+    final startDate = period.startDate(selectedDay);
+    if (period == UsageDetailsPeriod.year) {
+      return [
+        for (var monthOffset = 0; monthOffset < 12; monthOffset++)
+          DailyUsagePoint(
+            day: DateTime(startDate.year, startDate.month + monthOffset),
+            durationSeconds: totalsByDay.entries
+                .where(
+                  (entry) =>
+                      entry.key.year ==
+                          DateTime(
+                            startDate.year,
+                            startDate.month + monthOffset,
+                          ).year &&
+                      entry.key.month ==
+                          DateTime(
+                            startDate.year,
+                            startDate.month + monthOffset,
+                          ).month,
+                )
+                .fold(0, (total, entry) => total + entry.value),
+          ),
+      ];
+    }
+
+    final dayCount = selectedDay.difference(startDate).inDays + 1;
+    return [
+      for (var dayOffset = 0; dayOffset < dayCount; dayOffset++)
+        DailyUsagePoint(
+          day: startDate.add(Duration(days: dayOffset)),
+          durationSeconds:
+              totalsByDay[startDate.add(Duration(days: dayOffset))] ?? 0,
+        ),
+    ];
   }
 
   double? _changePercent(int current, int previous) {
