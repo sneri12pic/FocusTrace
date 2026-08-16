@@ -49,9 +49,35 @@ void main() {
     await tester.tap(find.byIcon(Icons.lock_outline));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 500));
+    expect(
+      find.byKey(const ValueKey('restrictions-scroll-view')),
+      findsOneWidget,
+    );
     expect(find.text('Most used of all time'), findsOneWidget);
     expect(find.text('#1'), findsOneWidget);
     expect(find.text('Archive'), findsOneWidget);
+    await tester.drag(
+      find.byKey(const ValueKey('restrictions-scroll-view')),
+      const Offset(0, -500),
+    );
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.text('Editor'), findsOneWidget);
+    expect(find.byIcon(Icons.timer_outlined), findsNothing);
+
+    await tester.tap(find.text('Editor'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(
+      find.byKey(const ValueKey('restriction-editor-scroll-view')),
+      findsOneWidget,
+    );
+    Navigator.of(
+      tester.element(
+        find.byKey(const ValueKey('restriction-editor-scroll-view')),
+      ),
+    ).pop();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
 
     await tester.tap(find.byIcon(Icons.home));
     await tester.pump();
