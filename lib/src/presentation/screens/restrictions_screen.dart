@@ -25,10 +25,8 @@ class RestrictionsScreen extends ConsumerWidget {
     final topApps = dashboardState.allTimeTopApps;
     final installedApps =
         ref.watch(installedAppsProvider).valueOrNull ?? const [];
-    final routineCandidates = _mergeAppCandidates(summaries, installedApps);
-    final usageByApp = {
-      for (final summary in summaries) summary.appKey: summary,
-    };
+    final appCandidates = _mergeAppCandidates(summaries, installedApps);
+    final appsByKey = {for (final app in appCandidates) app.appKey: app};
 
     return Scaffold(
       appBar: AppBar(
@@ -39,7 +37,7 @@ class RestrictionsScreen extends ConsumerWidget {
             onPressed: () => _chooseAppAndCreateRule(
               context,
               ref,
-              summaries: summaries,
+              apps: appCandidates,
               rules: state.rules,
             ),
             icon: const Icon(Icons.search),
@@ -49,6 +47,8 @@ class RestrictionsScreen extends ConsumerWidget {
       body: RefreshIndicator(
         onRefresh: viewModel.load,
         child: ListView(
+          key: const ValueKey('restrictions-scroll-view'),
+          physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.all(16),
           children: [
             if (topApps.isNotEmpty) ...[
@@ -67,7 +67,7 @@ class RestrictionsScreen extends ConsumerWidget {
               onPressed: () => _chooseAppAndCreateRule(
                 context,
                 ref,
-                summaries: summaries,
+                apps: appCandidates,
                 rules: state.rules,
               ),
               icon: const Icon(Icons.search),
@@ -75,7 +75,7 @@ class RestrictionsScreen extends ConsumerWidget {
             ),
             const SizedBox(height: 8),
             OutlinedButton.icon(
-              onPressed: () => _createRoutine(context, ref, routineCandidates),
+              onPressed: () => _createRoutine(context, ref, appCandidates),
               icon: const Icon(Icons.playlist_add),
               label: Text(context.l10n.restrictionsAddRoutine),
             ),
@@ -115,7 +115,7 @@ class RestrictionsScreen extends ConsumerWidget {
             else ...[
               _SectionTitle(
                 title: context.l10n.restrictionsRoutinesTitle,
-                onAdd: () => _createRoutine(context, ref, routineCandidates),
+                onAdd: () => _createRoutine(context, ref, appCandidates),
               ),
               if (state.routines.isEmpty)
                 _InfoCard(
@@ -130,7 +130,7 @@ class RestrictionsScreen extends ConsumerWidget {
                     onToggle: (enabled) =>
                         viewModel.setRoutineEnabled(routine, enabled),
                     onTap: () =>
-                        _editRoutine(context, ref, routineCandidates, routine),
+                        _editRoutine(context, ref, appCandidates, routine),
                     onDelete: () => viewModel.deleteRoutine(routine.id),
                   ),
               const SizedBox(height: 14),
@@ -147,12 +147,12 @@ class RestrictionsScreen extends ConsumerWidget {
               for (final rule in state.rules)
                 _RestrictionRuleTile(
                   rule: rule,
-                  summary: usageByApp[rule.appKey],
+                  summary: appsByKey[rule.appKey],
                   isSaving: state.isSaving,
                   onUnblockNow: () => viewModel.unblockAppNow(
                     appKey: rule.appKey,
                     usageSecondsToday:
-                        usageByApp[rule.appKey]?.totalDurationSeconds ?? 0,
+                        appsByKey[rule.appKey]?.totalDurationSeconds ?? 0,
                   ),
                   onTap: () async {
                     final updated = await showRestrictionEditor(
@@ -227,10 +227,10 @@ class RestrictionsScreen extends ConsumerWidget {
   Future<void> _chooseAppAndCreateRule(
     BuildContext context,
     WidgetRef ref, {
-    required List<AppUsageSummary> summaries,
+    required List<AppUsageSummary> apps,
     required List<RestrictionRule> rules,
   }) async {
-    final candidates = _appCandidates(summaries, rules);
+    final candidates = _appCandidates(apps, rules);
     final selected = await showModalBottomSheet<_AppCandidate>(
       context: context,
       isScrollControlled: true,
@@ -249,16 +249,16 @@ class RestrictionsScreen extends ConsumerWidget {
   }
 
   List<_AppCandidate> _appCandidates(
-    List<AppUsageSummary> summaries,
+    List<AppUsageSummary> apps,
     List<RestrictionRule> rules,
   ) {
     final candidatesByKey = <String, _AppCandidate>{};
-    for (final summary in summaries) {
-      candidatesByKey[summary.appKey] = _AppCandidate(
-        appKey: summary.appKey,
-        appName: summary.appName,
-        subtitle: summary.processName ?? summary.packageName,
-        iconBytes: summary.iconBytes,
+    for (final app in apps) {
+      candidatesByKey[app.appKey] = _AppCandidate(
+        appKey: app.appKey,
+        appName: app.appName,
+        subtitle: app.processName ?? app.packageName,
+        iconBytes: app.iconBytes,
       );
     }
     for (final rule in rules) {
@@ -578,7 +578,10 @@ class _RestrictionRuleTile extends StatelessWidget {
       child: Column(
         children: [
           ListTile(
-            leading: Icon(_iconFor(rule.type)),
+            leading: AppIconAvatar(
+              appName: rule.appName,
+              iconBytes: summary?.iconBytes,
+            ),
             title: Text(
               rule.appName,
               maxLines: 1,
@@ -642,17 +645,6 @@ class _RestrictionRuleTile extends StatelessWidget {
           _minuteTime(context, rule.startMinute),
           _minuteTime(context, rule.endMinute),
         );
-    }
-  }
-
-  IconData _iconFor(RestrictionRuleType type) {
-    switch (type) {
-      case RestrictionRuleType.blockNow:
-        return Icons.lock_clock_outlined;
-      case RestrictionRuleType.dailyLimit:
-        return Icons.timer_outlined;
-      case RestrictionRuleType.schedule:
-        return Icons.bedtime_outlined;
     }
   }
 
