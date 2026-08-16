@@ -134,17 +134,30 @@ class _PeriodSelector extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      children: [
-        for (final period in UsageDetailsPeriod.values)
-          ChoiceChip(
-            label: Text(_periodLabel(context, period)),
-            selected: selected == period,
-            onSelected: (_) => onSelected(period),
-          ),
-      ],
+    return InputDecorator(
+      decoration: const InputDecoration(
+        border: OutlineInputBorder(),
+        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<UsageDetailsPeriod>(
+          key: const ValueKey('usage-period-dropdown'),
+          value: selected,
+          isExpanded: true,
+          items: [
+            for (final period in UsageDetailsPeriod.values)
+              DropdownMenuItem(
+                value: period,
+                child: Text(_periodLabel(context, period)),
+              ),
+          ],
+          onChanged: (period) {
+            if (period != null) {
+              onSelected(period);
+            }
+          },
+        ),
+      ),
     );
   }
 }

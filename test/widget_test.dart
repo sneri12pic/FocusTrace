@@ -101,8 +101,18 @@ void main() {
     await tester.pump(const Duration(seconds: 1));
 
     expect(find.text('Time tracked'), findsOneWidget);
+    expect(find.byKey(const ValueKey('usage-period-dropdown')), findsOneWidget);
     expect(find.text('7 days'), findsOneWidget);
     expect(find.text('7 days: 2h 5m'), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('usage-period-dropdown')));
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.tap(find.text('2 weeks').last);
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+    expect(find.text('2 weeks'), findsOneWidget);
+    expect(find.text('2 weeks: 2h 5m'), findsOneWidget);
+
     expect(find.byKey(const ValueKey('usage-trend-line')), findsOneWidget);
     expect(find.text('#1 most used'), findsOneWidget);
     expect(find.text('50% more than yesterday'), findsOneWidget);
