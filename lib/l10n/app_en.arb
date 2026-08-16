@@ -258,6 +258,18 @@
     }
   },
   "usageDetailsLastSevenDays": "Last 7 days",
+  "usageDetailsTimeTracked": "Time tracked",
+  "usageDetailsPeriodSevenDays": "7 days",
+  "usageDetailsPeriodTwoWeeks": "2 weeks",
+  "usageDetailsPeriodMonth": "A month",
+  "usageDetailsPeriodYear": "Year",
+  "usageDetailsPeriodTotal": "{period}: {duration}",
+  "@usageDetailsPeriodTotal": {
+    "placeholders": {
+      "period": {"type": "String"},
+      "duration": {"type": "String"}
+    }
+  },
   "usageDetailsMoreThanYesterday": "{percentage}% more than yesterday",
   "@usageDetailsMoreThanYesterday": {
     "placeholders": {

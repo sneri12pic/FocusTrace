@@ -44,13 +44,32 @@ class UsageDetailsScreen extends ConsumerWidget {
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    context.l10n.usageDetailsLastSevenDays,
+                    context.l10n.usageDetailsTimeTracked,
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.w800,
                     ),
                   ),
                   const SizedBox(height: 10),
-                  _UsageBarChart(points: state.points),
+                  _PeriodSelector(
+                    selected: state.period,
+                    onSelected: (period) => ref
+                        .read(
+                          appUsageDetailsViewModelProvider(request).notifier,
+                        )
+                        .selectPeriod(period),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    context.l10n.usageDetailsPeriodTotal(
+                      _periodLabel(context, state.period),
+                      context.l10n.compactDuration(state.totalDuration),
+                    ),
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  _UsageBarChart(points: state.points, period: state.period),
                   if (request.platform == UsagePlatform.windows) ...[
                     const SizedBox(height: 20),
                     Text(
@@ -94,6 +113,38 @@ class UsageDetailsScreen extends ConsumerWidget {
     return MaterialLocalizations.of(context).formatTimeOfDay(
       TimeOfDay.fromDateTime(time),
       alwaysUse24HourFormat: MediaQuery.alwaysUse24HourFormatOf(context),
+    );
+  }
+}
+
+String _periodLabel(BuildContext context, UsageDetailsPeriod period) {
+  return switch (period) {
+    UsageDetailsPeriod.sevenDays => context.l10n.usageDetailsPeriodSevenDays,
+    UsageDetailsPeriod.twoWeeks => context.l10n.usageDetailsPeriodTwoWeeks,
+    UsageDetailsPeriod.month => context.l10n.usageDetailsPeriodMonth,
+    UsageDetailsPeriod.year => context.l10n.usageDetailsPeriodYear,
+  };
+}
+
+class _PeriodSelector extends StatelessWidget {
+  const _PeriodSelector({required this.selected, required this.onSelected});
+
+  final UsageDetailsPeriod selected;
+  final ValueChanged<UsageDetailsPeriod> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: [
+        for (final period in UsageDetailsPeriod.values)
+          ChoiceChip(
+            label: Text(_periodLabel(context, period)),
+            selected: selected == period,
+            onSelected: (_) => onSelected(period),
+          ),
+      ],
     );
   }
 }
@@ -262,9 +313,10 @@ class _ComparisonBadge extends StatelessWidget {
 }
 
 class _UsageBarChart extends StatelessWidget {
-  const _UsageBarChart({required this.points});
+  const _UsageBarChart({required this.points, required this.period});
 
   final List<DailyUsagePoint> points;
+  final UsageDetailsPeriod period;
 
   @override
   Widget build(BuildContext context) {
@@ -277,56 +329,80 @@ class _UsageBarChart extends StatelessWidget {
       elevation: 0,
       child: SizedBox(
         height: 210,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(12, 16, 12, 12),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              for (final point in points)
-                Expanded(
-                  child: Semantics(
-                    label: context.l10n.usageDetailsDayValue(
-                      DateFormat.MMMd(locale).format(point.day),
-                      context.l10n.compactDuration(point.duration),
-                    ),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        if (point.durationSeconds > 0)
-                          FittedBox(
-                            child: Text(
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final chartWidth = math.max(
+              constraints.maxWidth - 24,
+              points.length * 44.0,
+            );
+            return SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: SizedBox(
+                width: chartWidth,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 16, 12, 12),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      for (final point in points)
+                        Expanded(
+                          child: Semantics(
+                            label: context.l10n.usageDetailsDayValue(
+                              DateFormat.MMMd(locale).format(point.day),
                               context.l10n.compactDuration(point.duration),
-                              style: Theme.of(context).textTheme.labelSmall,
                             ),
-                          ),
-                        const SizedBox(height: 4),
-                        AnimatedContainer(
-                          duration: const Duration(milliseconds: 300),
-                          curve: Curves.easeOutCubic,
-                          width: 20,
-                          height: maxSeconds == 0
-                              ? 4
-                              : (point.durationSeconds / maxSeconds * 120)
-                                    .clamp(4, 120)
-                                    .toDouble(),
-                          decoration: BoxDecoration(
-                            color: Theme.of(context).colorScheme.primary,
-                            borderRadius: const BorderRadius.vertical(
-                              top: Radius.circular(6),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.end,
+                              children: [
+                                if (point.durationSeconds > 0)
+                                  FittedBox(
+                                    child: Text(
+                                      context.l10n.compactDuration(
+                                        point.duration,
+                                      ),
+                                      style: Theme.of(
+                                        context,
+                                      ).textTheme.labelSmall,
+                                    ),
+                                  ),
+                                const SizedBox(height: 4),
+                                AnimatedContainer(
+                                  duration: const Duration(milliseconds: 300),
+                                  curve: Curves.easeOutCubic,
+                                  width: 20,
+                                  height: maxSeconds == 0
+                                      ? 4
+                                      : (point.durationSeconds /
+                                                maxSeconds *
+                                                120)
+                                            .clamp(4, 120)
+                                            .toDouble(),
+                                  decoration: BoxDecoration(
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.primary,
+                                    borderRadius: const BorderRadius.vertical(
+                                      top: Radius.circular(6),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 7),
+                                Text(
+                                  period == UsageDetailsPeriod.year
+                                      ? DateFormat.MMM(locale).format(point.day)
+                                      : DateFormat.E(locale).format(point.day),
+                                  style: Theme.of(context).textTheme.labelSmall,
+                                ),
+                              ],
                             ),
                           ),
                         ),
-                        const SizedBox(height: 7),
-                        Text(
-                          DateFormat.E(locale).format(point.day),
-                          style: Theme.of(context).textTheme.labelSmall,
-                        ),
-                      ],
-                    ),
+                    ],
                   ),
                 ),
-            ],
-          ),
+              ),
+            );
+          },
         ),
       ),
     );
