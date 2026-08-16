@@ -77,6 +77,7 @@ void main() {
     expect(find.text('Time tracked'), findsOneWidget);
     expect(find.text('7 days'), findsOneWidget);
     expect(find.text('7 days: 2h 5m'), findsOneWidget);
+    expect(find.byKey(const ValueKey('usage-trend-line')), findsOneWidget);
     expect(find.text('#1 most used'), findsOneWidget);
     expect(find.text('50% more than yesterday'), findsOneWidget);
   });
