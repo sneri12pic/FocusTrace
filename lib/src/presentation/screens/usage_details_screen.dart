@@ -264,6 +264,8 @@ class _ComparisonBadge extends StatelessWidget {
 class _UsageBarChart extends StatelessWidget {
   const _UsageBarChart({required this.points});
 
+  static const _maxBarHeight = 120.0;
+
   final List<DailyUsagePoint> points;
 
   @override
@@ -279,57 +281,151 @@ class _UsageBarChart extends StatelessWidget {
         height: 210,
         child: Padding(
           padding: const EdgeInsets.fromLTRB(12, 16, 12, 12),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              for (final point in points)
-                Expanded(
-                  child: Semantics(
-                    label: context.l10n.usageDetailsDayValue(
-                      DateFormat.MMMd(locale).format(point.day),
-                      context.l10n.compactDuration(point.duration),
-                    ),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        if (point.durationSeconds > 0)
-                          FittedBox(
-                            child: Text(
-                              context.l10n.compactDuration(point.duration),
-                              style: Theme.of(context).textTheme.labelSmall,
+          child: CustomPaint(
+            key: const ValueKey('usage-trend-line'),
+            foregroundPainter: _UsageTrendLinePainter(
+              points: points,
+              maxSeconds: maxSeconds,
+              increaseColor: trendColor(
+                Theme.of(context),
+                isFlat: false,
+                isIncrease: true,
+              ),
+              decreaseColor: trendColor(
+                Theme.of(context),
+                isFlat: false,
+                isIncrease: false,
+              ),
+              flatColor: trendColor(
+                Theme.of(context),
+                isFlat: true,
+                isIncrease: false,
+              ),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                for (final point in points)
+                  Expanded(
+                    child: Semantics(
+                      label: context.l10n.usageDetailsDayValue(
+                        DateFormat.MMMd(locale).format(point.day),
+                        context.l10n.compactDuration(point.duration),
+                      ),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          if (point.durationSeconds > 0)
+                            FittedBox(
+                              child: Text(
+                                context.l10n.compactDuration(point.duration),
+                                style: Theme.of(context).textTheme.labelSmall,
+                              ),
+                            ),
+                          const SizedBox(height: 4),
+                          AnimatedContainer(
+                            duration: const Duration(milliseconds: 300),
+                            curve: Curves.easeOutCubic,
+                            width: 20,
+                            height: _barHeight(
+                              point.durationSeconds,
+                              maxSeconds,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Theme.of(context).colorScheme.primary,
+                              borderRadius: const BorderRadius.vertical(
+                                top: Radius.circular(6),
+                              ),
                             ),
                           ),
-                        const SizedBox(height: 4),
-                        AnimatedContainer(
-                          duration: const Duration(milliseconds: 300),
-                          curve: Curves.easeOutCubic,
-                          width: 20,
-                          height: maxSeconds == 0
-                              ? 4
-                              : (point.durationSeconds / maxSeconds * 120)
-                                    .clamp(4, 120)
-                                    .toDouble(),
-                          decoration: BoxDecoration(
-                            color: Theme.of(context).colorScheme.primary,
-                            borderRadius: const BorderRadius.vertical(
-                              top: Radius.circular(6),
-                            ),
+                          const SizedBox(height: 7),
+                          Text(
+                            DateFormat.E(locale).format(point.day),
+                            style: Theme.of(context).textTheme.labelSmall,
                           ),
-                        ),
-                        const SizedBox(height: 7),
-                        Text(
-                          DateFormat.E(locale).format(point.day),
-                          style: Theme.of(context).textTheme.labelSmall,
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
-                ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
     );
+  }
+
+  static double _barHeight(int seconds, int maxSeconds) {
+    if (maxSeconds == 0) {
+      return 4;
+    }
+    return (seconds / maxSeconds * _maxBarHeight)
+        .clamp(4, _maxBarHeight)
+        .toDouble();
+  }
+}
+
+class _UsageTrendLinePainter extends CustomPainter {
+  const _UsageTrendLinePainter({
+    required this.points,
+    required this.maxSeconds,
+    required this.increaseColor,
+    required this.decreaseColor,
+    required this.flatColor,
+  });
+
+  static const _chartBaselineOffset = 21.0;
+
+  final List<DailyUsagePoint> points;
+  final int maxSeconds;
+  final Color increaseColor;
+  final Color decreaseColor;
+  final Color flatColor;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (points.length < 2) {
+      return;
+    }
+
+    final columnWidth = size.width / points.length;
+    for (var index = 0; index < points.length - 1; index++) {
+      final current = points[index].durationSeconds;
+      final next = points[index + 1].durationSeconds;
+      final paint = Paint()
+        ..color = next == current
+            ? flatColor
+            : next > current
+            ? increaseColor
+            : decreaseColor
+        ..strokeWidth = 3
+        ..strokeCap = StrokeCap.round
+        ..style = PaintingStyle.stroke;
+      canvas.drawLine(
+        Offset(
+          columnWidth * (index + 0.5),
+          size.height -
+              _chartBaselineOffset -
+              _UsageBarChart._barHeight(current, maxSeconds),
+        ),
+        Offset(
+          columnWidth * (index + 1.5),
+          size.height -
+              _chartBaselineOffset -
+              _UsageBarChart._barHeight(next, maxSeconds),
+        ),
+        paint,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _UsageTrendLinePainter oldDelegate) {
+    return oldDelegate.points != points ||
+        oldDelegate.maxSeconds != maxSeconds ||
+        oldDelegate.increaseColor != increaseColor ||
+        oldDelegate.decreaseColor != decreaseColor ||
+        oldDelegate.flatColor != flatColor;
   }
 }
 

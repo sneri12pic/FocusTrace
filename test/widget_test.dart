@@ -75,6 +75,7 @@ void main() {
     await tester.pump(const Duration(seconds: 1));
 
     expect(find.text('Last 7 days'), findsOneWidget);
+    expect(find.byKey(const ValueKey('usage-trend-line')), findsOneWidget);
     expect(find.text('#1 most used'), findsOneWidget);
     expect(find.text('50% more than yesterday'), findsOneWidget);
   });
