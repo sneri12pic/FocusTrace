@@ -3,7 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/datasources/platform_usage_data_source.dart';
 import '../../domain/models/block_routine.dart';
 import '../../domain/models/restriction_rule.dart';
+import '../../domain/models/restriction_event.dart';
 import '../../domain/models/usage_session.dart';
+import '../../domain/repositories/report_repository.dart';
 import '../../domain/repositories/settings_repository.dart';
 
 class RestrictionsState {
@@ -12,6 +14,7 @@ class RestrictionsState {
     this.rules = const <RestrictionRule>[],
     this.routines = const <BlockRoutine>[],
     this.hasOverlayPermission = true,
+    this.hasNotificationsPermission = true,
     this.isLoading = false,
     this.isSaving = false,
     this.errorMessage,
@@ -21,6 +24,7 @@ class RestrictionsState {
     return RestrictionsState(
       platform: platform,
       hasOverlayPermission: platform != UsagePlatform.android,
+      hasNotificationsPermission: platform != UsagePlatform.android,
       isLoading: true,
     );
   }
@@ -29,6 +33,7 @@ class RestrictionsState {
   final List<RestrictionRule> rules;
   final List<BlockRoutine> routines;
   final bool hasOverlayPermission;
+  final bool hasNotificationsPermission;
   final bool isLoading;
   final bool isSaving;
   final String? errorMessage;
@@ -37,6 +42,7 @@ class RestrictionsState {
     List<RestrictionRule>? rules,
     List<BlockRoutine>? routines,
     bool? hasOverlayPermission,
+    bool? hasNotificationsPermission,
     bool? isLoading,
     bool? isSaving,
     String? errorMessage,
@@ -47,6 +53,8 @@ class RestrictionsState {
       rules: rules ?? this.rules,
       routines: routines ?? this.routines,
       hasOverlayPermission: hasOverlayPermission ?? this.hasOverlayPermission,
+      hasNotificationsPermission:
+          hasNotificationsPermission ?? this.hasNotificationsPermission,
       isLoading: isLoading ?? this.isLoading,
       isSaving: isSaving ?? this.isSaving,
       errorMessage: clearError ? null : errorMessage ?? this.errorMessage,
@@ -59,12 +67,15 @@ class RestrictionsViewModel extends StateNotifier<RestrictionsState> {
     required SettingsRepository settingsRepository,
     required PlatformUsageDataSource platformDataSource,
     required UsagePlatform platform,
+    ReportRepository? reportRepository,
   }) : _settingsRepository = settingsRepository,
        _platformDataSource = platformDataSource,
+       _reportRepository = reportRepository,
        super(RestrictionsState.initial(platform));
 
   final SettingsRepository _settingsRepository;
   final PlatformUsageDataSource _platformDataSource;
+  final ReportRepository? _reportRepository;
 
   Future<void> load() async {
     state = state.copyWith(isLoading: true, clearError: true);
@@ -73,12 +84,15 @@ class RestrictionsViewModel extends StateNotifier<RestrictionsState> {
         _settingsRepository.restrictionRules(),
         _settingsRepository.blockRoutines(),
       ).wait;
-      final hasOverlayPermission = await _platformDataSource
-          .hasOverlayPermission();
+      final (hasOverlayPermission, hasNotificationsPermission) = await (
+        _platformDataSource.hasOverlayPermission(),
+        _platformDataSource.hasNotificationsPermission(),
+      ).wait;
       state = state.copyWith(
         rules: rules,
         routines: routines,
         hasOverlayPermission: hasOverlayPermission,
+        hasNotificationsPermission: hasNotificationsPermission,
         isLoading: false,
       );
       await _sync(rules, routines);
@@ -105,13 +119,31 @@ class RestrictionsViewModel extends StateNotifier<RestrictionsState> {
     return _mutateRules(() async {
       final currentRules = await _settingsRepository.restrictionRules();
       final checkedAt = now ?? DateTime.now();
-      final blockingRules = currentRules.where(
-        (rule) =>
-            rule.appKey == appKey &&
-            rule.blocksAt(checkedAt, usageSecondsToday),
-      );
+      final blockingRules = currentRules
+          .where(
+            (rule) =>
+                rule.appKey == appKey &&
+                rule.blocksAt(checkedAt, usageSecondsToday),
+          )
+          .toList();
       for (final rule in blockingRules) {
         await _settingsRepository.removeRestrictionRule(rule.appKey, rule.type);
+      }
+      if (blockingRules.isNotEmpty) {
+        try {
+          await _reportRepository?.recordRestrictionEvent(
+            RestrictionEvent(
+              id: 'unblocked:${checkedAt.microsecondsSinceEpoch}:$appKey',
+              appKey: appKey,
+              appName: blockingRules.first.appName,
+              type: RestrictionEventType.unblocked,
+              occurredAt: checkedAt,
+              reason: 'manual',
+            ),
+          );
+        } catch (_) {
+          // Unblocking must succeed even if analytics persistence is unavailable.
+        }
       }
     });
   }
@@ -141,13 +173,19 @@ class RestrictionsViewModel extends StateNotifier<RestrictionsState> {
   }
 
   Future<void> requestNotificationsPermission() async {
-    await _platformDataSource.requestNotificationsPermission();
+    final granted = await _platformDataSource.requestNotificationsPermission();
+    state = state.copyWith(hasNotificationsPermission: granted);
   }
 
   Future<void> refreshOverlayPermission() async {
-    final hasOverlayPermission = await _platformDataSource
-        .hasOverlayPermission();
-    state = state.copyWith(hasOverlayPermission: hasOverlayPermission);
+    final (hasOverlayPermission, hasNotificationsPermission) = await (
+      _platformDataSource.hasOverlayPermission(),
+      _platformDataSource.hasNotificationsPermission(),
+    ).wait;
+    state = state.copyWith(
+      hasOverlayPermission: hasOverlayPermission,
+      hasNotificationsPermission: hasNotificationsPermission,
+    );
     await _sync(state.rules, state.routines);
   }
 

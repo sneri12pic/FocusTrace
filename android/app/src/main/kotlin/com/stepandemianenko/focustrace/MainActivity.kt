@@ -29,6 +29,9 @@ class MainActivity : FlutterActivity() {
                     "hasOverlayPermission" -> result.success(
                         FocusTracePermissions.hasOverlayPermission(this)
                     )
+                    "hasNotificationsPermission" -> result.success(
+                        hasNotificationsPermission()
+                    )
                     "openUsageAccessSettings" -> {
                         openUsageAccessSettings()
                         result.success(null)
@@ -38,8 +41,7 @@ class MainActivity : FlutterActivity() {
                         result.success(null)
                     }
                     "requestNotificationsPermission" -> {
-                        requestNotificationsPermission()
-                        result.success(null)
+                        requestNotificationsPermission(result)
                     }
                     "setAppLocale" -> {
                         setAppLocale(call.arguments as? String)
@@ -111,6 +113,32 @@ class MainActivity : FlutterActivity() {
                             }.start()
                         }
                     }
+                    "getUsageIntervals" -> {
+                        val arguments = call.arguments as? Map<*, *>
+                        val fromMs = (arguments?.get("fromMs") as? Number)?.toLong()
+                        val toMs = (arguments?.get("toMs") as? Number)?.toLong()
+                        if (!hasUsageAccess()) {
+                            result.error(
+                                "USAGE_ACCESS_DENIED",
+                                FocusTraceLocale.getString(this, R.string.usage_access_denied),
+                                null,
+                            )
+                        } else if (fromMs == null || toMs == null || fromMs >= toMs) {
+                            result.error("INVALID_RANGE", "A valid usage range is required.", null)
+                        } else {
+                            Thread {
+                                try {
+                                    val intervals = getUsageIntervals(fromMs, toMs)
+                                    runOnUiThread { result.success(intervals) }
+                                } catch (e: Exception) {
+                                    Log.e(LOG_TAG, "getUsageIntervals failed", e)
+                                    runOnUiThread {
+                                        result.error("USAGE_INTERVALS_FAILED", e.message, null)
+                                    }
+                                }
+                            }.start()
+                        }
+                    }
                     else -> result.notImplemented()
                 }
             }
@@ -121,16 +149,7 @@ class MainActivity : FlutterActivity() {
         return FocusTracePermissions.hasUsageAccess(this)
     }
 
-    // The two special-access permissions live on separate system screens with
-    // no combined grant. Instead we chain them: after opening one, arm the other
-    // so it opens automatically when the user returns (see onResume). One-shot,
-    // so backing out without granting just ends the flow.
-    private var pendingPermission: String? = null
-
-    private fun openUsageAccessSettings(chainOverlay: Boolean = true) {
-        if (chainOverlay && !FocusTracePermissions.hasOverlayPermission(this)) {
-            pendingPermission = "overlay"
-        }
+    private fun openUsageAccessSettings() {
         val usageSettingsIntent = Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
 
@@ -144,10 +163,7 @@ class MainActivity : FlutterActivity() {
         }
     }
 
-    private fun openOverlaySettings(chainUsage: Boolean = true) {
-        if (chainUsage && !hasUsageAccess()) {
-            pendingPermission = "usage"
-        }
+    private fun openOverlaySettings() {
         val intent = Intent(
             Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
             Uri.parse("package:$packageName")
@@ -163,28 +179,39 @@ class MainActivity : FlutterActivity() {
         }
     }
 
-    override fun onResume() {
-        super.onResume()
-        val next = pendingPermission ?: return
-        pendingPermission = null
-        when (next) {
-            "usage" -> if (!hasUsageAccess()) openUsageAccessSettings(chainOverlay = false)
-            "overlay" -> if (!FocusTracePermissions.hasOverlayPermission(this)) {
-                openOverlaySettings(chainUsage = false)
-            }
-        }
+    private var pendingNotificationPermissionResult: MethodChannel.Result? = null
+
+    private fun hasNotificationsPermission(): Boolean {
+        return Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
+            checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) ==
+            PackageManager.PERMISSION_GRANTED
     }
 
-    private fun requestNotificationsPermission() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-            checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) !=
-            PackageManager.PERMISSION_GRANTED
-        ) {
-            requestPermissions(
-                arrayOf(Manifest.permission.POST_NOTIFICATIONS),
-                NOTIFICATION_PERMISSION_REQUEST_CODE
-            )
+    private fun requestNotificationsPermission(result: MethodChannel.Result) {
+        if (hasNotificationsPermission()) {
+            result.success(true)
+            return
         }
+        if (pendingNotificationPermissionResult != null) {
+            result.error("NOTIFICATION_PERMISSION_PENDING", null, null)
+            return
+        }
+        pendingNotificationPermissionResult = result
+        requestPermissions(
+            arrayOf(Manifest.permission.POST_NOTIFICATIONS),
+            NOTIFICATION_PERMISSION_REQUEST_CODE
+        )
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray,
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode != NOTIFICATION_PERMISSION_REQUEST_CODE) return
+        pendingNotificationPermissionResult?.success(hasNotificationsPermission())
+        pendingNotificationPermissionResult = null
     }
 
     private fun setAppLocale(languageTag: String?) {
@@ -239,6 +266,24 @@ class MainActivity : FlutterActivity() {
                 )
             }
             .sortedByDescending { it["totalTimeInForegroundMs"] as Long }
+    }
+
+    private fun getUsageIntervals(
+        fromMs: Long,
+        toMs: Long,
+    ): List<Map<String, Any?>> {
+        val labels = HashMap<String, String>()
+        return UsageStats.foregroundIntervals(this, fromMs, toMs).map { interval ->
+            mapOf(
+                "id" to "${interval.packageName}:${interval.startedAtMs}",
+                "appKey" to interval.packageName,
+                "appName" to labels.getOrPut(interval.packageName) {
+                    appLabelFor(interval.packageName)
+                },
+                "startedAtMs" to interval.startedAtMs,
+                "endedAtMs" to interval.endedAtMs,
+            )
+        }
     }
 
     private fun isUserFacingApp(packageName: String): Boolean {

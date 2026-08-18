@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../domain/models/app_language.dart';
 import '../localization/app_localizations_x.dart';
 import '../providers.dart';
+import 'reports_screen.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -127,7 +128,7 @@ class SettingsScreen extends ConsumerWidget {
                       ListTile(
                         contentPadding: EdgeInsets.zero,
                         title: Text(
-                          appKey,
+                          state.excludedAppNames[appKey] ?? appKey,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -145,6 +146,19 @@ class SettingsScreen extends ConsumerWidget {
                         ),
                       ),
                 ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Card(
+            elevation: 0,
+            child: ListTile(
+              key: const ValueKey('settings-reports'),
+              leading: const Icon(Icons.insights_outlined),
+              title: Text(l10n.reportsTitle),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => Navigator.of(context).push<void>(
+                MaterialPageRoute(builder: (context) => const ReportsScreen()),
               ),
             ),
           ),

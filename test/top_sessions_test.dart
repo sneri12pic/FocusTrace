@@ -150,6 +150,24 @@ class _InMemoryLocalDataSource implements FocusTraceLocalDataSource {
   ) async => const [];
 
   @override
+  Future<void> insertUsageIntervals(List<AppUsageInterval> intervals) async {}
+
+  @override
+  Future<List<AppUsageInterval>> getUsageIntervals(
+    DateTime fromInclusive,
+    DateTime toExclusive,
+  ) async => const [];
+
+  @override
+  Future<void> insertRestrictionEvent(RestrictionEvent event) async {}
+
+  @override
+  Future<List<RestrictionEvent>> getRestrictionEvents(
+    DateTime fromInclusive,
+    DateTime toExclusive,
+  ) async => const [];
+
+  @override
   Future<String?> readSetting(String key) async => _settings[key];
 
   @override

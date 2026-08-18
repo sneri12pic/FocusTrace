@@ -44,6 +44,23 @@ class UsageSnapshotWorkerTest {
     }
 
     @Test
+    fun intervalMapperUsesStablePackageAndStartIdentifier() {
+        val rows = UsageSnapshotMapper.intervalRows(
+            listOf(
+                UsageStats.ForegroundInterval(
+                    packageName = "com.example.reader",
+                    startedAtMs = 1_000,
+                    endedAtMs = 4_000,
+                )
+            )
+        ) { "Reader" }
+
+        assertEquals("com.example.reader:1000", rows.single().id)
+        assertEquals("Reader", rows.single().appName)
+        assertEquals(4_000, rows.single().endedAtMs)
+    }
+
+    @Test
     fun schedulerUsesAndroidMinimumPeriodicInterval() {
         assertEquals(15L, UsageSnapshotScheduler.REPEAT_INTERVAL_MINUTES)
         assertEquals("focustrace_usage_snapshot", UsageSnapshotScheduler.UNIQUE_WORK_NAME)

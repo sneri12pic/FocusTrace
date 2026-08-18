@@ -43,14 +43,19 @@ class UsageDetailsScreen extends ConsumerWidget {
                     changePercent: state.changeFromYesterdayPercent,
                   ),
                   const SizedBox(height: 16),
-                  Text(
-                    context.l10n.usageDetailsLastSevenDays,
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w800,
+                  _PeriodSelector(
+                    selected: state.period,
+                    totalText: context.l10n.compactDuration(
+                      state.totalDuration,
                     ),
+                    onSelected: (period) => ref
+                        .read(
+                          appUsageDetailsViewModelProvider(request).notifier,
+                        )
+                        .selectPeriod(period),
                   ),
                   const SizedBox(height: 10),
-                  _UsageBarChart(points: state.points),
+                  _UsageBarChart(points: state.points, period: state.period),
                   if (request.platform == UsagePlatform.windows) ...[
                     const SizedBox(height: 20),
                     Text(
@@ -94,6 +99,63 @@ class UsageDetailsScreen extends ConsumerWidget {
     return MaterialLocalizations.of(context).formatTimeOfDay(
       TimeOfDay.fromDateTime(time),
       alwaysUse24HourFormat: MediaQuery.alwaysUse24HourFormatOf(context),
+    );
+  }
+}
+
+String _periodLabel(BuildContext context, UsageDetailsPeriod period) {
+  return switch (period) {
+    UsageDetailsPeriod.sevenDays => context.l10n.usageDetailsPeriodSevenDays,
+    UsageDetailsPeriod.twoWeeks => context.l10n.usageDetailsPeriodTwoWeeks,
+    UsageDetailsPeriod.month => context.l10n.usageDetailsPeriodMonth,
+    UsageDetailsPeriod.year => context.l10n.usageDetailsPeriodYear,
+  };
+}
+
+class _PeriodSelector extends StatelessWidget {
+  const _PeriodSelector({
+    required this.selected,
+    required this.totalText,
+    required this.onSelected,
+  });
+
+  final UsageDetailsPeriod selected;
+  final String totalText;
+  final ValueChanged<UsageDetailsPeriod> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final textStyle = Theme.of(
+      context,
+    ).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w400);
+    return Row(
+      children: [
+        DropdownButtonHideUnderline(
+          child: DropdownButton<UsageDetailsPeriod>(
+            key: const ValueKey('usage-period-dropdown'),
+            value: selected,
+            style: textStyle,
+            items: [
+              for (final period in UsageDetailsPeriod.values)
+                DropdownMenuItem(
+                  value: period,
+                  child: Text(_periodLabel(context, period), style: textStyle),
+                ),
+            ],
+            onChanged: (period) {
+              if (period != null) {
+                onSelected(period);
+              }
+            },
+          ),
+        ),
+        const Spacer(),
+        Text(
+          totalText,
+          key: const ValueKey('usage-period-total'),
+          style: textStyle,
+        ),
+      ],
     );
   }
 }
@@ -262,9 +324,12 @@ class _ComparisonBadge extends StatelessWidget {
 }
 
 class _UsageBarChart extends StatelessWidget {
-  const _UsageBarChart({required this.points});
+  const _UsageBarChart({required this.points, required this.period});
+
+  static const _maxBarHeight = 120.0;
 
   final List<DailyUsagePoint> points;
+  final UsageDetailsPeriod period;
 
   @override
   Widget build(BuildContext context) {
@@ -277,59 +342,181 @@ class _UsageBarChart extends StatelessWidget {
       elevation: 0,
       child: SizedBox(
         height: 210,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(12, 16, 12, 12),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              for (final point in points)
-                Expanded(
-                  child: Semantics(
-                    label: context.l10n.usageDetailsDayValue(
-                      DateFormat.MMMd(locale).format(point.day),
-                      context.l10n.compactDuration(point.duration),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final chartWidth = math.max(
+              constraints.maxWidth,
+              points.length * 44.0 + 24,
+            );
+            return SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: SizedBox(
+                width: chartWidth,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 16, 12, 12),
+                  child: CustomPaint(
+                    key: const ValueKey('usage-trend-line'),
+                    foregroundPainter: _UsageTrendLinePainter(
+                      points: points,
+                      maxSeconds: maxSeconds,
+                      increaseColor: trendColor(
+                        Theme.of(context),
+                        isFlat: false,
+                        isIncrease: true,
+                      ),
+                      decreaseColor: trendColor(
+                        Theme.of(context),
+                        isFlat: false,
+                        isIncrease: false,
+                      ),
+                      flatColor: trendColor(
+                        Theme.of(context),
+                        isFlat: true,
+                        isIncrease: false,
+                      ),
                     ),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.end,
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
-                        if (point.durationSeconds > 0)
-                          FittedBox(
-                            child: Text(
-                              context.l10n.compactDuration(point.duration),
-                              style: Theme.of(context).textTheme.labelSmall,
+                        for (final point in points)
+                          Expanded(
+                            child: Semantics(
+                              label: context.l10n.usageDetailsDayValue(
+                                DateFormat.MMMd(locale).format(point.day),
+                                context.l10n.compactDuration(point.duration),
+                              ),
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.end,
+                                children: [
+                                  if (point.durationSeconds > 0)
+                                    FittedBox(
+                                      child: Text(
+                                        context.l10n.compactDuration(
+                                          point.duration,
+                                        ),
+                                        style: Theme.of(
+                                          context,
+                                        ).textTheme.labelSmall,
+                                      ),
+                                    ),
+                                  const SizedBox(height: 4),
+                                  AnimatedContainer(
+                                    duration: const Duration(milliseconds: 300),
+                                    curve: Curves.easeOutCubic,
+                                    width: 20,
+                                    height: _barHeight(
+                                      point.durationSeconds,
+                                      maxSeconds,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.primary,
+                                      borderRadius: const BorderRadius.vertical(
+                                        top: Radius.circular(6),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 7),
+                                  Text(
+                                    period == UsageDetailsPeriod.year
+                                        ? DateFormat.MMM(
+                                            locale,
+                                          ).format(point.day)
+                                        : DateFormat.E(
+                                            locale,
+                                          ).format(point.day),
+                                    style: Theme.of(
+                                      context,
+                                    ).textTheme.labelSmall,
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
-                        const SizedBox(height: 4),
-                        AnimatedContainer(
-                          duration: const Duration(milliseconds: 300),
-                          curve: Curves.easeOutCubic,
-                          width: 20,
-                          height: maxSeconds == 0
-                              ? 4
-                              : (point.durationSeconds / maxSeconds * 120)
-                                    .clamp(4, 120)
-                                    .toDouble(),
-                          decoration: BoxDecoration(
-                            color: Theme.of(context).colorScheme.primary,
-                            borderRadius: const BorderRadius.vertical(
-                              top: Radius.circular(6),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 7),
-                        Text(
-                          DateFormat.E(locale).format(point.day),
-                          style: Theme.of(context).textTheme.labelSmall,
-                        ),
                       ],
                     ),
                   ),
                 ),
-            ],
-          ),
+              ),
+            );
+          },
         ),
       ),
     );
+  }
+
+  static double _barHeight(int seconds, int maxSeconds) {
+    if (maxSeconds == 0) {
+      return 4;
+    }
+    return (seconds / maxSeconds * _maxBarHeight)
+        .clamp(4, _maxBarHeight)
+        .toDouble();
+  }
+}
+
+class _UsageTrendLinePainter extends CustomPainter {
+  const _UsageTrendLinePainter({
+    required this.points,
+    required this.maxSeconds,
+    required this.increaseColor,
+    required this.decreaseColor,
+    required this.flatColor,
+  });
+
+  static const _chartBaselineOffset = 21.0;
+
+  final List<DailyUsagePoint> points;
+  final int maxSeconds;
+  final Color increaseColor;
+  final Color decreaseColor;
+  final Color flatColor;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (points.length < 2) {
+      return;
+    }
+
+    final columnWidth = size.width / points.length;
+    for (var index = 0; index < points.length - 1; index++) {
+      final current = points[index].durationSeconds;
+      final next = points[index + 1].durationSeconds;
+      final paint = Paint()
+        ..color = next == current
+            ? flatColor
+            : next > current
+            ? increaseColor
+            : decreaseColor
+        ..strokeWidth = 3
+        ..strokeCap = StrokeCap.round
+        ..style = PaintingStyle.stroke;
+      canvas.drawLine(
+        Offset(
+          columnWidth * (index + 0.5),
+          size.height -
+              _chartBaselineOffset -
+              _UsageBarChart._barHeight(current, maxSeconds),
+        ),
+        Offset(
+          columnWidth * (index + 1.5),
+          size.height -
+              _chartBaselineOffset -
+              _UsageBarChart._barHeight(next, maxSeconds),
+        ),
+        paint,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _UsageTrendLinePainter oldDelegate) {
+    return oldDelegate.points != points ||
+        oldDelegate.maxSeconds != maxSeconds ||
+        oldDelegate.increaseColor != increaseColor ||
+        oldDelegate.decreaseColor != decreaseColor ||
+        oldDelegate.flatColor != flatColor;
   }
 }
 

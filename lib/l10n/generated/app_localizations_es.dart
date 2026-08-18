@@ -123,10 +123,20 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get onboardingPermissionsSettingsHint =>
-      'Puedes cambiarlo más adelante en Ajustes.';
+      'Los dos primeros permisos se controlan desde los ajustes de Android.';
 
   @override
   String get onboardingAllow => 'Permitir';
+
+  @override
+  String get onboardingOpenSettings => 'Abrir ajustes';
+
+  @override
+  String get onboardingNotificationsTitle => 'Notificaciones';
+
+  @override
+  String get onboardingNotificationsSubtitle =>
+      'Opcional: recibe avisos antes de alcanzar un límite diario';
 
   @override
   String get onboardingSearchApps => 'Buscar aplicaciones';
@@ -507,6 +517,26 @@ class AppLocalizationsEs extends AppLocalizations {
   String get usageDetailsLastSevenDays => 'Últimos 7 días';
 
   @override
+  String get usageDetailsTimeTracked => 'Tiempo registrado';
+
+  @override
+  String get usageDetailsPeriodSevenDays => '7 días';
+
+  @override
+  String get usageDetailsPeriodTwoWeeks => '2 semanas';
+
+  @override
+  String get usageDetailsPeriodMonth => 'Un mes';
+
+  @override
+  String get usageDetailsPeriodYear => 'Año';
+
+  @override
+  String usageDetailsPeriodTotal(String period, String duration) {
+    return '$period: $duration';
+  }
+
+  @override
   String usageDetailsMoreThanYesterday(int percentage) {
     return '$percentage% más que ayer';
   }
@@ -537,6 +567,76 @@ class AppLocalizationsEs extends AppLocalizations {
   String usageDetailsDayValue(String date, String duration) {
     return '$date: $duration';
   }
+
+  @override
+  String get reportsTitle => 'Informes';
+
+  @override
+  String get reportsWeekly => 'Semanal';
+
+  @override
+  String get reportsMonthly => 'Mensual';
+
+  @override
+  String get reportsYearly => 'Anual';
+
+  @override
+  String get reportsTotalUsage => 'Uso total';
+
+  @override
+  String get reportsDailyAverage => 'Promedio diario';
+
+  @override
+  String get reportsActiveDays => 'Días activos';
+
+  @override
+  String get reportsTimeOfDayTitle => 'Uso por hora del día';
+
+  @override
+  String get reportsHabitTitle => 'Formación de hábitos';
+
+  @override
+  String get reportsPeakTime => 'Hora más activa';
+
+  @override
+  String get reportsFirstUse => 'Promedio del primer uso';
+
+  @override
+  String get reportsFirstApp => 'Primera app más frecuente';
+
+  @override
+  String get reportsConsistency => 'Constancia del primer uso';
+
+  @override
+  String reportsVariationMinutes(int minutes) {
+    return '± $minutes min';
+  }
+
+  @override
+  String get reportsWakeHeuristic =>
+      'El primer uso se estima tras al menos 4 horas de inactividad, entre las 04:00 y las 14:00.';
+
+  @override
+  String get reportsTopApps => 'Apps más usadas';
+
+  @override
+  String get reportsRestrictionsTitle => 'Actividad de restricciones';
+
+  @override
+  String get reportsBlockedAttempts => 'Intentos bloqueados';
+
+  @override
+  String get reportsManualUnblocks => 'Desbloqueos manuales';
+
+  @override
+  String get reportsBlocked => 'Bloqueado';
+
+  @override
+  String get reportsUnblocked => 'Desbloqueado';
+
+  @override
+  String get reportsEmpty =>
+      'Todavía no hay suficientes datos locales para este informe.';
 
   @override
   String get settingsTitle => 'Ajustes';

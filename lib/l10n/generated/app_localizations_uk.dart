@@ -120,10 +120,20 @@ class AppLocalizationsUk extends AppLocalizations {
 
   @override
   String get onboardingPermissionsSettingsHint =>
-      'Це можна змінити пізніше в налаштуваннях.';
+      'Перші два дозволи керуються в налаштуваннях Android.';
 
   @override
   String get onboardingAllow => 'Дозволити';
+
+  @override
+  String get onboardingOpenSettings => 'Відкрити налаштування';
+
+  @override
+  String get onboardingNotificationsTitle => 'Сповіщення';
+
+  @override
+  String get onboardingNotificationsSubtitle =>
+      'Необов’язково: отримуйте попередження перед досягненням денного ліміту';
 
   @override
   String get onboardingSearchApps => 'Пошук застосунків';
@@ -506,6 +516,26 @@ class AppLocalizationsUk extends AppLocalizations {
   String get usageDetailsLastSevenDays => 'Останні 7 днів';
 
   @override
+  String get usageDetailsTimeTracked => 'Відстежений час';
+
+  @override
+  String get usageDetailsPeriodSevenDays => '7 днів';
+
+  @override
+  String get usageDetailsPeriodTwoWeeks => '2 тижні';
+
+  @override
+  String get usageDetailsPeriodMonth => 'Місяць';
+
+  @override
+  String get usageDetailsPeriodYear => 'Рік';
+
+  @override
+  String usageDetailsPeriodTotal(String period, String duration) {
+    return '$period: $duration';
+  }
+
+  @override
   String usageDetailsMoreThanYesterday(int percentage) {
     return 'На $percentage% більше, ніж учора';
   }
@@ -535,6 +565,75 @@ class AppLocalizationsUk extends AppLocalizations {
   String usageDetailsDayValue(String date, String duration) {
     return '$date: $duration';
   }
+
+  @override
+  String get reportsTitle => 'Звіти';
+
+  @override
+  String get reportsWeekly => 'Тижневий';
+
+  @override
+  String get reportsMonthly => 'Місячний';
+
+  @override
+  String get reportsYearly => 'Річний';
+
+  @override
+  String get reportsTotalUsage => 'Загальне використання';
+
+  @override
+  String get reportsDailyAverage => 'Середнє за день';
+
+  @override
+  String get reportsActiveDays => 'Активні дні';
+
+  @override
+  String get reportsTimeOfDayTitle => 'Використання за часом доби';
+
+  @override
+  String get reportsHabitTitle => 'Формування звичок';
+
+  @override
+  String get reportsPeakTime => 'Найактивніший час';
+
+  @override
+  String get reportsFirstUse => 'Середній час першого використання';
+
+  @override
+  String get reportsFirstApp => 'Найчастіший перший застосунок';
+
+  @override
+  String get reportsConsistency => 'Стабільність першого використання';
+
+  @override
+  String reportsVariationMinutes(int minutes) {
+    return '± $minutes хв';
+  }
+
+  @override
+  String get reportsWakeHeuristic =>
+      'Перше використання визначається після щонайменше 4 годин бездіяльності між 04:00 і 14:00.';
+
+  @override
+  String get reportsTopApps => 'Найуживаніші застосунки';
+
+  @override
+  String get reportsRestrictionsTitle => 'Активність обмежень';
+
+  @override
+  String get reportsBlockedAttempts => 'Заблоковані спроби';
+
+  @override
+  String get reportsManualUnblocks => 'Ручні розблокування';
+
+  @override
+  String get reportsBlocked => 'Заблоковано';
+
+  @override
+  String get reportsUnblocked => 'Розблоковано';
+
+  @override
+  String get reportsEmpty => 'Для цього звіту ще недостатньо локальних даних.';
 
   @override
   String get settingsTitle => 'Налаштування';

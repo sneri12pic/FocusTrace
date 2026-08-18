@@ -115,10 +115,19 @@ class AppLocalizationsJa extends AppLocalizations {
   String get onboardingOverlayAccessSubtitle => '制限したアプリの上にブロック画面を表示するため';
 
   @override
-  String get onboardingPermissionsSettingsHint => '後で設定から変更できます。';
+  String get onboardingPermissionsSettingsHint => '最初の2つの権限はAndroidの設定で管理されます。';
 
   @override
   String get onboardingAllow => '許可';
+
+  @override
+  String get onboardingOpenSettings => '設定を開く';
+
+  @override
+  String get onboardingNotificationsTitle => '通知';
+
+  @override
+  String get onboardingNotificationsSubtitle => '任意：1日の上限に達する前にお知らせします';
 
   @override
   String get onboardingSearchApps => 'アプリを検索';
@@ -479,6 +488,26 @@ class AppLocalizationsJa extends AppLocalizations {
   String get usageDetailsLastSevenDays => '過去7日間';
 
   @override
+  String get usageDetailsTimeTracked => '追跡時間';
+
+  @override
+  String get usageDetailsPeriodSevenDays => '7日間';
+
+  @override
+  String get usageDetailsPeriodTwoWeeks => '2週間';
+
+  @override
+  String get usageDetailsPeriodMonth => '1か月';
+
+  @override
+  String get usageDetailsPeriodYear => '1年間';
+
+  @override
+  String usageDetailsPeriodTotal(String period, String duration) {
+    return '$period: $duration';
+  }
+
+  @override
   String usageDetailsMoreThanYesterday(int percentage) {
     return '昨日より$percentage%多い';
   }
@@ -508,6 +537,75 @@ class AppLocalizationsJa extends AppLocalizations {
   String usageDetailsDayValue(String date, String duration) {
     return '$date: $duration';
   }
+
+  @override
+  String get reportsTitle => 'レポート';
+
+  @override
+  String get reportsWeekly => '週間';
+
+  @override
+  String get reportsMonthly => '月間';
+
+  @override
+  String get reportsYearly => '年間';
+
+  @override
+  String get reportsTotalUsage => '合計使用時間';
+
+  @override
+  String get reportsDailyAverage => '1日平均';
+
+  @override
+  String get reportsActiveDays => '利用日数';
+
+  @override
+  String get reportsTimeOfDayTitle => '時間帯別の使用状況';
+
+  @override
+  String get reportsHabitTitle => '習慣形成';
+
+  @override
+  String get reportsPeakTime => '最も活発な時間';
+
+  @override
+  String get reportsFirstUse => '平均初回使用時刻';
+
+  @override
+  String get reportsFirstApp => '最も多い最初のアプリ';
+
+  @override
+  String get reportsConsistency => '初回使用の一貫性';
+
+  @override
+  String reportsVariationMinutes(int minutes) {
+    return '± $minutes分';
+  }
+
+  @override
+  String get reportsWakeHeuristic =>
+      '初回使用は、4時間以上操作がなく、04:00〜14:00の間に使われた時刻から推定されます。';
+
+  @override
+  String get reportsTopApps => '最も使用したアプリ';
+
+  @override
+  String get reportsRestrictionsTitle => '制限アクティビティ';
+
+  @override
+  String get reportsBlockedAttempts => 'ブロック回数';
+
+  @override
+  String get reportsManualUnblocks => '手動解除回数';
+
+  @override
+  String get reportsBlocked => 'ブロック';
+
+  @override
+  String get reportsUnblocked => '解除';
+
+  @override
+  String get reportsEmpty => 'このレポートを作成するためのローカルデータがまだ十分ではありません。';
 
   @override
   String get settingsTitle => '設定';

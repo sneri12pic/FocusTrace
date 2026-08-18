@@ -137,10 +137,13 @@ class _FakeWindowsDataSource implements PlatformUsageDataSource {
   Future<bool> hasOverlayPermission() async => true;
 
   @override
+  Future<bool> hasNotificationsPermission() async => true;
+
+  @override
   Future<void> openOverlaySettings() async {}
 
   @override
-  Future<void> requestNotificationsPermission() async {}
+  Future<bool> requestNotificationsPermission() async => true;
 
   @override
   Future<void> syncRestrictions(String json) async {}

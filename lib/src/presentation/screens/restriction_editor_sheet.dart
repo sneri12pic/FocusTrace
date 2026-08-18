@@ -119,7 +119,8 @@ class _RestrictionEditorSheetState extends State<_RestrictionEditorSheet> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return SafeArea(
-      child: Padding(
+      child: SingleChildScrollView(
+        key: const ValueKey('restriction-editor-scroll-view'),
         padding: EdgeInsets.fromLTRB(
           16,
           18,

@@ -76,6 +76,7 @@ class _FakeSettingsRepository implements SettingsRepository {
 class _FakePlatformDataSource implements PlatformUsageDataSource {
   final List<String> syncedPayloads = <String>[];
   bool overlayPermission = true;
+  bool notificationsPermission = true;
 
   @override
   Future<ActiveWindowInfo?> getActiveWindowInfo() async => null;
@@ -92,6 +93,9 @@ class _FakePlatformDataSource implements PlatformUsageDataSource {
   Future<bool> hasOverlayPermission() async => overlayPermission;
 
   @override
+  Future<bool> hasNotificationsPermission() async => notificationsPermission;
+
+  @override
   Future<bool> hasUsageAccess() async => true;
 
   @override
@@ -101,7 +105,8 @@ class _FakePlatformDataSource implements PlatformUsageDataSource {
   Future<void> openUsageAccessSettings() async {}
 
   @override
-  Future<void> requestNotificationsPermission() async {}
+  Future<bool> requestNotificationsPermission() async =>
+      notificationsPermission;
 
   @override
   Future<void> syncRestrictions(String json) async {
@@ -109,18 +114,40 @@ class _FakePlatformDataSource implements PlatformUsageDataSource {
   }
 }
 
+class _FakeReportRepository implements ReportRepository {
+  final events = <RestrictionEvent>[];
+
+  @override
+  Future<UsageReportSourceData> loadSourceData(
+    DateTime fromInclusive,
+    DateTime toExclusive,
+  ) async => const UsageReportSourceData(
+    dailyUsage: [],
+    intervals: [],
+    restrictionEvents: [],
+  );
+
+  @override
+  Future<void> recordRestrictionEvent(RestrictionEvent event) async {
+    events.add(event);
+  }
+}
+
 void main() {
   late _FakeSettingsRepository repository;
   late _FakePlatformDataSource dataSource;
+  late _FakeReportRepository reportRepository;
   late RestrictionsViewModel viewModel;
 
   setUp(() {
     repository = _FakeSettingsRepository();
     dataSource = _FakePlatformDataSource();
+    reportRepository = _FakeReportRepository();
     viewModel = RestrictionsViewModel(
       settingsRepository: repository,
       platformDataSource: dataSource,
       platform: UsagePlatform.android,
+      reportRepository: reportRepository,
     );
   });
 
@@ -188,6 +215,17 @@ void main() {
 
     expect(viewModel.state.hasOverlayPermission, isFalse);
     expect(decodeRules(dataSource.syncedPayloads.single), hasLength(1));
+  });
+
+  test('notification permission result updates state', () async {
+    dataSource.notificationsPermission = false;
+    await viewModel.load();
+    expect(viewModel.state.hasNotificationsPermission, isFalse);
+
+    dataSource.notificationsPermission = true;
+    await viewModel.requestNotificationsPermission();
+
+    expect(viewModel.state.hasNotificationsPermission, isTrue);
   });
 
   test('routine mutations persist and sync only enabled app groups', () async {
@@ -260,5 +298,8 @@ void main() {
       ).map((rule) => '${rule.appKey}:${rule.type.name}'),
       ['app:blockNow', 'other:schedule'],
     );
+    expect(reportRepository.events, hasLength(1));
+    expect(reportRepository.events.single.type, RestrictionEventType.unblocked);
+    expect(reportRepository.events.single.occurredAt, now);
   });
 }
