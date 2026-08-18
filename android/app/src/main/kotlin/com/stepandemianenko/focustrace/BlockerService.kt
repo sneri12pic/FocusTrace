@@ -38,6 +38,7 @@ class BlockerService : Service() {
     private var rules: List<RestrictionRule> = emptyList()
     private var overlayView: View? = null
     private var overlayAppKey: String? = null
+    private var lastBlockedAppKey: String? = null
     private var dayKey: String = ""
     private val warnedDailyLimitKeys = mutableSetOf<String>()
 
@@ -85,6 +86,7 @@ class BlockerService : Service() {
         if (!FocusTracePermissions.hasOverlayPermission(this) ||
             !FocusTracePermissions.hasUsageAccess(this)
         ) {
+            lastBlockedAppKey = null
             removeOverlay()
             return
         }
@@ -98,6 +100,7 @@ class BlockerService : Service() {
 
         // Our own block screen (TikTok path) is foreground while active.
         if (foregroundPackage == null || foregroundPackage == packageName) {
+            lastBlockedAppKey = null
             removeOverlay()
             return
         }
@@ -111,8 +114,20 @@ class BlockerService : Service() {
             )
         }
         if (blockingRule == null) {
+            lastBlockedAppKey = null
             removeOverlay()
             return
+        }
+
+        if (lastBlockedAppKey != foregroundPackage) {
+            lastBlockedAppKey = foregroundPackage
+            RestrictionEventStore.recordBlocked(
+                this,
+                appKey = foregroundPackage,
+                appName = blockingRule.appName,
+                reason = blockingRule.type.jsonName,
+                occurredAtMs = now,
+            )
         }
 
         val untilMs = RestrictionRules.blockedUntilMs(

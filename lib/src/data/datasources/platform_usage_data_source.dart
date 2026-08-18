@@ -1,5 +1,6 @@
 import 'package:flutter/services.dart';
 
+import '../../domain/models/app_usage_interval.dart';
 import '../../domain/models/app_usage_summary.dart';
 
 class ActiveWindowInfo {
@@ -25,7 +26,9 @@ abstract class PlatformUsageDataSource {
 
   Future<void> openOverlaySettings();
 
-  Future<void> requestNotificationsPermission();
+  Future<bool> hasNotificationsPermission();
+
+  Future<bool> requestNotificationsPermission();
 
   Future<void> syncRestrictions(String json);
 
@@ -44,8 +47,18 @@ abstract interface class AppMetadataDataSource {
   Future<List<AppUsageSummary>> getAppMetadata(Iterable<String> appKeys);
 }
 
+abstract interface class UsageIntervalDataSource {
+  Future<List<AppUsageInterval>> getUsageIntervals(
+    DateTime fromInclusive,
+    DateTime toExclusive,
+  );
+}
+
 class AndroidUsageDataSource
-    implements PlatformUsageDataSource, AppMetadataDataSource {
+    implements
+        PlatformUsageDataSource,
+        AppMetadataDataSource,
+        UsageIntervalDataSource {
   AndroidUsageDataSource({
     MethodChannel channel = const MethodChannel('focustrace/usage'),
   }) : _channel = channel;
@@ -73,8 +86,17 @@ class AndroidUsageDataSource
   }
 
   @override
-  Future<void> requestNotificationsPermission() {
-    return _channel.invokeMethod<void>('requestNotificationsPermission');
+  Future<bool> hasNotificationsPermission() async {
+    return await _channel.invokeMethod<bool>('hasNotificationsPermission') ??
+        false;
+  }
+
+  @override
+  Future<bool> requestNotificationsPermission() async {
+    return await _channel.invokeMethod<bool>(
+          'requestNotificationsPermission',
+        ) ??
+        false;
   }
 
   @override
@@ -133,6 +155,38 @@ class AndroidUsageDataSource
         .toList();
   }
 
+  @override
+  Future<List<AppUsageInterval>> getUsageIntervals(
+    DateTime fromInclusive,
+    DateTime toExclusive,
+  ) async {
+    if (!await hasUsageAccess()) {
+      return const <AppUsageInterval>[];
+    }
+    final rows = await _channel.invokeListMethod<Object?>('getUsageIntervals', {
+      'fromMs': fromInclusive.millisecondsSinceEpoch,
+      'toMs': toExclusive.millisecondsSinceEpoch,
+    });
+    return (rows ?? const <Object?>[])
+        .whereType<Map>()
+        .map((raw) {
+          final row = Map<String, Object?>.from(raw);
+          final appKey = row['appKey'] as String;
+          final startedAtMs = (row['startedAtMs'] as num).toInt();
+          return AppUsageInterval(
+            id: row['id'] as String? ?? '$appKey:$startedAtMs',
+            appKey: appKey,
+            appName: row['appName'] as String? ?? appKey,
+            startedAt: DateTime.fromMillisecondsSinceEpoch(startedAtMs),
+            endedAt: DateTime.fromMillisecondsSinceEpoch(
+              (row['endedAtMs'] as num).toInt(),
+            ),
+          );
+        })
+        .where((interval) => interval.durationSeconds > 0)
+        .toList();
+  }
+
   // Each channel fetch delivers fresh byte arrays; Flutter's image cache is
   // keyed by object identity, so new bytes force a full PNG re-decode of every
   // icon. Icons rarely change — reuse the first-seen bytes per package.
@@ -187,7 +241,10 @@ class WindowsUsageDataSource implements PlatformUsageDataSource {
   Future<void> openOverlaySettings() async {}
 
   @override
-  Future<void> requestNotificationsPermission() async {}
+  Future<bool> hasNotificationsPermission() async => true;
+
+  @override
+  Future<bool> requestNotificationsPermission() async => true;
 
   @override
   Future<void> syncRestrictions(String json) async {}
@@ -236,7 +293,10 @@ class UnsupportedPlatformUsageDataSource implements PlatformUsageDataSource {
   Future<void> openOverlaySettings() async {}
 
   @override
-  Future<void> requestNotificationsPermission() async {}
+  Future<bool> hasNotificationsPermission() async => true;
+
+  @override
+  Future<bool> requestNotificationsPermission() async => true;
 
   @override
   Future<void> syncRestrictions(String json) async {}

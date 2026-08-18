@@ -10,11 +10,12 @@ void main() {
         overrides: [
           usagePlatformProvider.overrideWithValue(UsagePlatform.windows),
           usageRepositoryProvider.overrideWithValue(_FakeUsageRepository()),
+          reportRepositoryProvider.overrideWithValue(_FakeReportRepository()),
           platformDataSourceProvider.overrideWithValue(
             _FakePlatformDataSource(),
           ),
           settingsRepositoryProvider.overrideWithValue(
-            _FakeSettingsRepository(),
+            _FakeSettingsRepository().._excludedApps.add('excluded.exe'),
           ),
           appLanguageRepositoryProvider.overrideWithValue(
             _FakeAppLanguageRepository(),
@@ -56,15 +57,18 @@ void main() {
     expect(find.text('Most used of all time'), findsOneWidget);
     expect(find.text('#1'), findsOneWidget);
     expect(find.text('Archive'), findsOneWidget);
-    await tester.drag(
-      find.byKey(const ValueKey('restrictions-scroll-view')),
-      const Offset(0, -500),
-    );
-    await tester.pump(const Duration(milliseconds: 300));
-    expect(find.text('Editor'), findsOneWidget);
-    expect(find.byIcon(Icons.timer_outlined), findsNothing);
 
-    await tester.tap(find.text('Editor'));
+    await tester.tap(find.text('Archive'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+    await tester.pump(const Duration(seconds: 1));
+    expect(find.byType(UsageDetailsScreen), findsOneWidget);
+    expect(find.byKey(const ValueKey('usage-period-dropdown')), findsOneWidget);
+    Navigator.of(tester.element(find.byType(UsageDetailsScreen))).pop();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+
+    await tester.longPress(find.text('Archive'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 500));
     expect(
@@ -76,6 +80,30 @@ void main() {
         find.byKey(const ValueKey('restriction-editor-scroll-view')),
       ),
     ).pop();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+
+    await tester.drag(
+      find.byKey(const ValueKey('restrictions-scroll-view')),
+      const Offset(0, -500),
+    );
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.text('Editor'), findsOneWidget);
+    expect(find.byIcon(Icons.timer_outlined), findsNothing);
+
+    await tester.tap(find.byIcon(Icons.settings));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(find.byKey(const ValueKey('settings-reports')), findsOneWidget);
+    expect(find.text('Excluded App'), findsOneWidget);
+    expect(find.text('excluded.exe'), findsNothing);
+    await tester.tap(find.byKey(const ValueKey('settings-reports')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(find.byKey(const ValueKey('reports-scroll-view')), findsOneWidget);
+    expect(find.text('Reports'), findsOneWidget);
+    expect(find.text('Habit formation'), findsOneWidget);
+    Navigator.of(tester.element(find.byType(ReportsScreen))).pop();
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 500));
 
@@ -131,6 +159,7 @@ void main() {
         overrides: [
           usagePlatformProvider.overrideWithValue(UsagePlatform.windows),
           usageRepositoryProvider.overrideWithValue(_FakeUsageRepository()),
+          reportRepositoryProvider.overrideWithValue(_FakeReportRepository()),
           platformDataSourceProvider.overrideWithValue(
             _FakePlatformDataSource(),
           ),
@@ -163,6 +192,56 @@ void main() {
     final settingsContext = tester.element(find.byType(SettingsScreen));
     expect(Localizations.localeOf(settingsContext).languageCode, 'es');
   });
+
+  testWidgets('onboarding distinguishes settings access from runtime prompt', (
+    tester,
+  ) async {
+    final usageRepository = _FakeUsageRepository(hasUsageAccessValue: false);
+    final platformDataSource = _FakePlatformDataSource(
+      overlayPermission: false,
+      notificationsPermission: false,
+      notificationRequestResult: true,
+    );
+    final settingsRepository = _FakeSettingsRepository()
+      .._onboardingCompleted = false;
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          usagePlatformProvider.overrideWithValue(UsagePlatform.android),
+          usageRepositoryProvider.overrideWithValue(usageRepository),
+          reportRepositoryProvider.overrideWithValue(_FakeReportRepository()),
+          platformDataSourceProvider.overrideWithValue(platformDataSource),
+          settingsRepositoryProvider.overrideWithValue(settingsRepository),
+          appLanguageRepositoryProvider.overrideWithValue(
+            _FakeAppLanguageRepository(),
+          ),
+        ],
+        child: const FocusTraceApp(),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pump(const Duration(seconds: 1));
+
+    await tester.tap(find.text('Get started'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+
+    expect(find.text('Open settings'), findsNWidgets(2));
+    await tester.drag(find.byType(ListView).first, const Offset(0, -300));
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.text('Notifications'), findsOneWidget);
+    expect(find.text('Allow'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+
+    await tester.tap(find.text('Allow'));
+    await tester.pump();
+
+    expect(find.text('Allow'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
 }
 
 class _FakeAppLanguageRepository implements AppLanguageRepository {
@@ -178,6 +257,10 @@ class _FakeAppLanguageRepository implements AppLanguageRepository {
 }
 
 class _FakeUsageRepository implements UsageRepository {
+  _FakeUsageRepository({this.hasUsageAccessValue = true});
+
+  final bool hasUsageAccessValue;
+
   @override
   Future<void> clearAllData() async {}
 
@@ -204,8 +287,15 @@ class _FakeUsageRepository implements UsageRepository {
       appName: 'Archive',
       processName: 'archive.exe',
       totalDurationSeconds: 7200,
-      percentageOfTotal: 1,
+      percentageOfTotal: 0.8,
       launchCount: 5,
+    ),
+    AppUsageSummary(
+      appName: 'Excluded App',
+      processName: 'excluded.exe',
+      totalDurationSeconds: 1800,
+      percentageOfTotal: 0.2,
+      launchCount: 2,
     ),
   ];
 
@@ -246,7 +336,7 @@ class _FakeUsageRepository implements UsageRepository {
   }) async => const <UsageSession>[];
 
   @override
-  Future<bool> hasUsageAccess() async => true;
+  Future<bool> hasUsageAccess() async => hasUsageAccessValue;
 
   @override
   Future<void> insertSession(UsageSession session) async {}
@@ -255,7 +345,55 @@ class _FakeUsageRepository implements UsageRepository {
   Future<void> openUsageAccessSettings() async {}
 }
 
+class _FakeReportRepository implements ReportRepository {
+  @override
+  Future<UsageReportSourceData> loadSourceData(
+    DateTime fromInclusive,
+    DateTime toExclusive,
+  ) async {
+    final now = DateTime.now();
+    final day = DateTime(now.year, now.month, now.day);
+    final startedAt = DateTime(now.year, now.month, now.day, 8);
+    return UsageReportSourceData(
+      dailyUsage: [
+        DailyAppUsage(
+          day: day,
+          summary: const AppUsageSummary(
+            appName: 'Reader',
+            processName: 'reader.exe',
+            totalDurationSeconds: 1800,
+            percentageOfTotal: 1,
+          ),
+        ),
+      ],
+      intervals: [
+        AppUsageInterval(
+          id: 'reader:${startedAt.millisecondsSinceEpoch}',
+          appKey: 'reader.exe',
+          appName: 'Reader',
+          startedAt: startedAt,
+          endedAt: startedAt.add(const Duration(minutes: 30)),
+        ),
+      ],
+      restrictionEvents: const [],
+    );
+  }
+
+  @override
+  Future<void> recordRestrictionEvent(RestrictionEvent event) async {}
+}
+
 class _FakePlatformDataSource implements PlatformUsageDataSource {
+  _FakePlatformDataSource({
+    this.overlayPermission = true,
+    this.notificationsPermission = true,
+    this.notificationRequestResult = true,
+  });
+
+  final bool overlayPermission;
+  final bool notificationsPermission;
+  final bool notificationRequestResult;
+
   @override
   Future<ActiveWindowInfo?> getActiveWindowInfo() async => null;
 
@@ -268,7 +406,10 @@ class _FakePlatformDataSource implements PlatformUsageDataSource {
       const <AppUsageSummary>[];
 
   @override
-  Future<bool> hasOverlayPermission() async => true;
+  Future<bool> hasOverlayPermission() async => overlayPermission;
+
+  @override
+  Future<bool> hasNotificationsPermission() async => notificationsPermission;
 
   @override
   Future<bool> hasUsageAccess() async => true;
@@ -280,7 +421,8 @@ class _FakePlatformDataSource implements PlatformUsageDataSource {
   Future<void> openUsageAccessSettings() async {}
 
   @override
-  Future<void> requestNotificationsPermission() async {}
+  Future<bool> requestNotificationsPermission() async =>
+      notificationRequestResult;
 
   @override
   Future<void> syncRestrictions(String json) async {}

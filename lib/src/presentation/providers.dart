@@ -2,22 +2,26 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../application/services/usage_aggregation_service.dart';
+import '../application/services/report_generation_service.dart';
 import '../application/services/usage_trend_service.dart';
 import '../data/datasources/focus_trace_local_data_source.dart';
 import '../data/datasources/platform_locale_data_source.dart';
 import '../data/datasources/platform_usage_data_source.dart';
 import '../data/repositories/app_language_repository_impl.dart';
+import '../data/repositories/report_repository_impl.dart';
 import '../data/repositories/settings_repository_impl.dart';
 import '../data/repositories/usage_repository_impl.dart';
 import '../domain/models/app_usage_summary.dart';
 import '../domain/models/usage_session.dart';
 import '../domain/repositories/app_language_repository.dart';
+import '../domain/repositories/report_repository.dart';
 import '../domain/repositories/settings_repository.dart';
 import '../domain/repositories/usage_repository.dart';
 import 'view_models/app_language_view_model.dart';
 import 'view_models/app_usage_details_view_model.dart';
 import 'view_models/dashboard_view_model.dart';
 import 'view_models/onboarding_view_model.dart';
+import 'view_models/reports_view_model.dart';
 import 'view_models/restrictions_view_model.dart';
 import 'view_models/settings_view_model.dart';
 import 'view_models/tracking_view_model.dart';
@@ -45,6 +49,10 @@ final usageAggregationServiceProvider = Provider<UsageAggregationService>(
 
 final usageTrendServiceProvider = Provider<UsageTrendService>(
   (ref) => const UsageTrendService(),
+);
+
+final reportGenerationServiceProvider = Provider<ReportGenerationService>(
+  (ref) => const ReportGenerationService(),
 );
 
 final localDataSourceProvider = Provider<FocusTraceLocalDataSource>(
@@ -106,6 +114,14 @@ final usageRepositoryProvider = Provider<UsageRepository>((ref) {
     localDataSource: ref.watch(localDataSourceProvider),
     platformDataSource: ref.watch(platformDataSourceProvider),
     aggregationService: ref.watch(usageAggregationServiceProvider),
+  );
+});
+
+final reportRepositoryProvider = Provider<ReportRepository>((ref) {
+  return ReportRepositoryImpl(
+    usageRepository: ref.watch(usageRepositoryProvider),
+    localDataSource: ref.watch(localDataSourceProvider),
+    platformDataSource: ref.watch(platformDataSourceProvider),
   );
 });
 
@@ -177,6 +193,17 @@ final restrictionsViewModelProvider =
         settingsRepository: ref.watch(settingsRepositoryProvider),
         platformDataSource: ref.watch(platformDataSourceProvider),
         platform: ref.watch(usagePlatformProvider),
+        reportRepository: ref.watch(reportRepositoryProvider),
+      );
+      viewModel.load();
+      return viewModel;
+    });
+
+final reportsViewModelProvider =
+    StateNotifierProvider<ReportsViewModel, ReportsState>((ref) {
+      final viewModel = ReportsViewModel(
+        repository: ref.watch(reportRepositoryProvider),
+        generationService: ref.watch(reportGenerationServiceProvider),
       );
       viewModel.load();
       return viewModel;
