@@ -9,9 +9,11 @@ import '../../domain/models/restriction_rule.dart';
 import '../../domain/models/usage_session.dart';
 import '../localization/app_localizations_x.dart';
 import '../providers.dart';
+import '../view_models/app_usage_details_view_model.dart';
 import '../widgets/app_icon_avatar.dart';
 import 'restriction_editor_sheet.dart';
 import 'routine_editor_sheet.dart';
+import 'usage_details_screen.dart';
 
 class RestrictionsScreen extends ConsumerWidget {
   const RestrictionsScreen({super.key});
@@ -54,7 +56,14 @@ class RestrictionsScreen extends ConsumerWidget {
             if (topApps.isNotEmpty) ...[
               _TopUsedCard(
                 apps: topApps,
-                onAppTap: (app) => createRestrictionForApp(
+                onAppTap: (app) => _openUsageDetails(
+                  context,
+                  app: app,
+                  selectedDayApps: summaries,
+                  selectedDate: dashboardState.selectedDate,
+                  platform: dashboardState.platform,
+                ),
+                onAppLongPress: (app) => createRestrictionForApp(
                   context,
                   ref,
                   appKey: app.appKey,
@@ -192,6 +201,36 @@ class RestrictionsScreen extends ConsumerWidget {
     return byKey.values.toList();
   }
 
+  Future<void> _openUsageDetails(
+    BuildContext context, {
+    required AppUsageSummary app,
+    required List<AppUsageSummary> selectedDayApps,
+    required DateTime selectedDate,
+    required UsagePlatform platform,
+  }) {
+    final selectedDaySummary = selectedDayApps
+        .where((summary) => summary.appKey == app.appKey)
+        .firstOrNull;
+    final detailsSummary =
+        selectedDaySummary ??
+        app.copyWith(
+          totalDurationSeconds: 0,
+          percentageOfTotal: 0,
+          launchCount: 0,
+        );
+    return Navigator.of(context).push<void>(
+      MaterialPageRoute(
+        builder: (context) => UsageDetailsScreen(
+          request: AppUsageDetailsRequest(
+            summary: detailsSummary,
+            selectedDate: selectedDate,
+            platform: platform,
+          ),
+        ),
+      ),
+    );
+  }
+
   Future<void> _createRoutine(
     BuildContext context,
     WidgetRef ref,
@@ -281,10 +320,15 @@ class RestrictionsScreen extends ConsumerWidget {
 }
 
 class _TopUsedCard extends StatelessWidget {
-  const _TopUsedCard({required this.apps, required this.onAppTap});
+  const _TopUsedCard({
+    required this.apps,
+    required this.onAppTap,
+    required this.onAppLongPress,
+  });
 
   final List<AppUsageSummary> apps;
   final ValueChanged<AppUsageSummary> onAppTap;
+  final ValueChanged<AppUsageSummary> onAppLongPress;
 
   @override
   Widget build(BuildContext context) {
@@ -308,8 +352,10 @@ class _TopUsedCard extends StatelessWidget {
             ),
             for (var index = 0; index < apps.length; index++)
               ListTile(
+                key: ValueKey('top-used-${apps[index].appKey}'),
                 dense: true,
                 onTap: () => onAppTap(apps[index]),
+                onLongPress: () => onAppLongPress(apps[index]),
                 leading: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [

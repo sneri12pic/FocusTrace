@@ -145,12 +145,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen>
       case 1:
         return _GradientButton(
           label: context.l10n.onboardingContinue,
-          onPressed: () {
-            ref
-                .read(restrictionsViewModelProvider.notifier)
-                .requestNotificationsPermission();
-            _goTo(2);
-          },
+          onPressed: () => _goTo(2),
         );
       default:
         return Column(
@@ -546,6 +541,7 @@ class _AccessPage extends ConsumerWidget {
             title: context.l10n.onboardingUsageAccessTitle,
             subtitle: context.l10n.onboardingUsageAccessSubtitle,
             isGranted: dashboardState.hasUsageAccess,
+            actionLabel: context.l10n.onboardingOpenSettings,
             onAllow: ref
                 .read(dashboardViewModelProvider.notifier)
                 .openPermissionSettings,
@@ -556,9 +552,21 @@ class _AccessPage extends ConsumerWidget {
             title: context.l10n.onboardingOverlayAccessTitle,
             subtitle: context.l10n.onboardingOverlayAccessSubtitle,
             isGranted: restrictionsState.hasOverlayPermission,
+            actionLabel: context.l10n.onboardingOpenSettings,
             onAllow: () => ref
                 .read(restrictionsViewModelProvider.notifier)
                 .openOverlaySettings(),
+          ),
+          const SizedBox(height: 12),
+          _PermissionTile(
+            icon: Icons.notifications_outlined,
+            title: context.l10n.onboardingNotificationsTitle,
+            subtitle: context.l10n.onboardingNotificationsSubtitle,
+            isGranted: restrictionsState.hasNotificationsPermission,
+            actionLabel: context.l10n.onboardingAllow,
+            onAllow: () => ref
+                .read(restrictionsViewModelProvider.notifier)
+                .requestNotificationsPermission(),
           ),
         ],
         const SizedBox(height: 20),
@@ -571,9 +579,12 @@ class _AccessPage extends ConsumerWidget {
               color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
             ),
             const SizedBox(width: 6),
-            Text(
-              context.l10n.onboardingPermissionsSettingsHint,
-              style: mutedStyle,
+            Flexible(
+              child: Text(
+                context.l10n.onboardingPermissionsSettingsHint,
+                textAlign: TextAlign.center,
+                style: mutedStyle,
+              ),
             ),
           ],
         ),
@@ -588,6 +599,7 @@ class _PermissionTile extends StatelessWidget {
     required this.title,
     required this.subtitle,
     required this.isGranted,
+    required this.actionLabel,
     required this.onAllow,
   });
 
@@ -595,6 +607,7 @@ class _PermissionTile extends StatelessWidget {
   final String title;
   final String subtitle;
   final bool isGranted;
+  final String actionLabel;
   final VoidCallback onAllow;
 
   @override
@@ -649,7 +662,7 @@ class _PermissionTile extends StatelessWidget {
               )
             else
               _GradientButton(
-                label: context.l10n.onboardingAllow,
+                label: actionLabel,
                 onPressed: onAllow,
                 compact: true,
               ),

@@ -303,7 +303,7 @@ abstract class AppLocalizations {
   /// No description provided for @onboardingPermissionsSettingsHint.
   ///
   /// In en, this message translates to:
-  /// **'You can change this later in settings.'**
+  /// **'Android Settings controls the first two permissions.'**
   String get onboardingPermissionsSettingsHint;
 
   /// No description provided for @onboardingAllow.
@@ -311,6 +311,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Allow'**
   String get onboardingAllow;
+
+  /// No description provided for @onboardingOpenSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Open settings'**
+  String get onboardingOpenSettings;
+
+  /// No description provided for @onboardingNotificationsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Notifications'**
+  String get onboardingNotificationsTitle;
+
+  /// No description provided for @onboardingNotificationsSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Optional: get alerts before reaching a daily limit'**
+  String get onboardingNotificationsSubtitle;
 
   /// No description provided for @onboardingSearchApps.
   ///
@@ -1010,6 +1028,138 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{date}: {duration}'**
   String usageDetailsDayValue(String date, String duration);
+
+  /// No description provided for @reportsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Reports'**
+  String get reportsTitle;
+
+  /// No description provided for @reportsWeekly.
+  ///
+  /// In en, this message translates to:
+  /// **'Weekly'**
+  String get reportsWeekly;
+
+  /// No description provided for @reportsMonthly.
+  ///
+  /// In en, this message translates to:
+  /// **'Monthly'**
+  String get reportsMonthly;
+
+  /// No description provided for @reportsYearly.
+  ///
+  /// In en, this message translates to:
+  /// **'Yearly'**
+  String get reportsYearly;
+
+  /// No description provided for @reportsTotalUsage.
+  ///
+  /// In en, this message translates to:
+  /// **'Total usage'**
+  String get reportsTotalUsage;
+
+  /// No description provided for @reportsDailyAverage.
+  ///
+  /// In en, this message translates to:
+  /// **'Daily average'**
+  String get reportsDailyAverage;
+
+  /// No description provided for @reportsActiveDays.
+  ///
+  /// In en, this message translates to:
+  /// **'Active days'**
+  String get reportsActiveDays;
+
+  /// No description provided for @reportsTimeOfDayTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Usage by time of day'**
+  String get reportsTimeOfDayTitle;
+
+  /// No description provided for @reportsHabitTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Habit formation'**
+  String get reportsHabitTitle;
+
+  /// No description provided for @reportsPeakTime.
+  ///
+  /// In en, this message translates to:
+  /// **'Most active time'**
+  String get reportsPeakTime;
+
+  /// No description provided for @reportsFirstUse.
+  ///
+  /// In en, this message translates to:
+  /// **'Average first use'**
+  String get reportsFirstUse;
+
+  /// No description provided for @reportsFirstApp.
+  ///
+  /// In en, this message translates to:
+  /// **'Most common first app'**
+  String get reportsFirstApp;
+
+  /// No description provided for @reportsConsistency.
+  ///
+  /// In en, this message translates to:
+  /// **'First-use consistency'**
+  String get reportsConsistency;
+
+  /// No description provided for @reportsVariationMinutes.
+  ///
+  /// In en, this message translates to:
+  /// **'± {minutes} min'**
+  String reportsVariationMinutes(int minutes);
+
+  /// No description provided for @reportsWakeHeuristic.
+  ///
+  /// In en, this message translates to:
+  /// **'First use is inferred after at least 4 hours inactive, between 04:00 and 14:00.'**
+  String get reportsWakeHeuristic;
+
+  /// No description provided for @reportsTopApps.
+  ///
+  /// In en, this message translates to:
+  /// **'Most used apps'**
+  String get reportsTopApps;
+
+  /// No description provided for @reportsRestrictionsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Restriction activity'**
+  String get reportsRestrictionsTitle;
+
+  /// No description provided for @reportsBlockedAttempts.
+  ///
+  /// In en, this message translates to:
+  /// **'Blocked attempts'**
+  String get reportsBlockedAttempts;
+
+  /// No description provided for @reportsManualUnblocks.
+  ///
+  /// In en, this message translates to:
+  /// **'Manual unblocks'**
+  String get reportsManualUnblocks;
+
+  /// No description provided for @reportsBlocked.
+  ///
+  /// In en, this message translates to:
+  /// **'Blocked'**
+  String get reportsBlocked;
+
+  /// No description provided for @reportsUnblocked.
+  ///
+  /// In en, this message translates to:
+  /// **'Unblocked'**
+  String get reportsUnblocked;
+
+  /// No description provided for @reportsEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'There is not enough local data for this report yet.'**
+  String get reportsEmpty;
 
   /// No description provided for @settingsTitle.
   ///

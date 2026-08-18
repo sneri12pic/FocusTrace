@@ -48,8 +48,11 @@
   "onboardingUsageAccessSubtitle": "To measure your app time",
   "onboardingOverlayAccessTitle": "Display over other apps",
   "onboardingOverlayAccessSubtitle": "To show the block screen over apps you limit",
-  "onboardingPermissionsSettingsHint": "You can change this later in settings.",
+  "onboardingPermissionsSettingsHint": "Android Settings controls the first two permissions.",
   "onboardingAllow": "Allow",
+  "onboardingOpenSettings": "Open settings",
+  "onboardingNotificationsTitle": "Notifications",
+  "onboardingNotificationsSubtitle": "Optional: get alerts before reaching a daily limit",
   "onboardingSearchApps": "Search apps",
   "onboardingAppUsageToday": "{appKey} · {duration} today",
   "@onboardingAppUsageToday": {
@@ -304,6 +307,33 @@
       "duration": {"type": "String"}
     }
   },
+  "reportsTitle": "Reports",
+  "reportsWeekly": "Weekly",
+  "reportsMonthly": "Monthly",
+  "reportsYearly": "Yearly",
+  "reportsTotalUsage": "Total usage",
+  "reportsDailyAverage": "Daily average",
+  "reportsActiveDays": "Active days",
+  "reportsTimeOfDayTitle": "Usage by time of day",
+  "reportsHabitTitle": "Habit formation",
+  "reportsPeakTime": "Most active time",
+  "reportsFirstUse": "Average first use",
+  "reportsFirstApp": "Most common first app",
+  "reportsConsistency": "First-use consistency",
+  "reportsVariationMinutes": "± {minutes} min",
+  "@reportsVariationMinutes": {
+    "placeholders": {
+      "minutes": {"type": "int"}
+    }
+  },
+  "reportsWakeHeuristic": "First use is inferred after at least 4 hours inactive, between 04:00 and 14:00.",
+  "reportsTopApps": "Most used apps",
+  "reportsRestrictionsTitle": "Restriction activity",
+  "reportsBlockedAttempts": "Blocked attempts",
+  "reportsManualUnblocks": "Manual unblocks",
+  "reportsBlocked": "Blocked",
+  "reportsUnblocked": "Unblocked",
+  "reportsEmpty": "There is not enough local data for this report yet.",
   "settingsTitle": "Settings",
   "settingsPrivacyTitle": "Privacy",
   "settingsPrivacyBody": "FocusTrace stores usage data locally on this device. It does not upload tracked app or window usage.",

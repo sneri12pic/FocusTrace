@@ -118,10 +118,20 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get onboardingPermissionsSettingsHint =>
-      'You can change this later in settings.';
+      'Android Settings controls the first two permissions.';
 
   @override
   String get onboardingAllow => 'Allow';
+
+  @override
+  String get onboardingOpenSettings => 'Open settings';
+
+  @override
+  String get onboardingNotificationsTitle => 'Notifications';
+
+  @override
+  String get onboardingNotificationsSubtitle =>
+      'Optional: get alerts before reaching a daily limit';
 
   @override
   String get onboardingSearchApps => 'Search apps';
@@ -544,6 +554,76 @@ class AppLocalizationsEn extends AppLocalizations {
   String usageDetailsDayValue(String date, String duration) {
     return '$date: $duration';
   }
+
+  @override
+  String get reportsTitle => 'Reports';
+
+  @override
+  String get reportsWeekly => 'Weekly';
+
+  @override
+  String get reportsMonthly => 'Monthly';
+
+  @override
+  String get reportsYearly => 'Yearly';
+
+  @override
+  String get reportsTotalUsage => 'Total usage';
+
+  @override
+  String get reportsDailyAverage => 'Daily average';
+
+  @override
+  String get reportsActiveDays => 'Active days';
+
+  @override
+  String get reportsTimeOfDayTitle => 'Usage by time of day';
+
+  @override
+  String get reportsHabitTitle => 'Habit formation';
+
+  @override
+  String get reportsPeakTime => 'Most active time';
+
+  @override
+  String get reportsFirstUse => 'Average first use';
+
+  @override
+  String get reportsFirstApp => 'Most common first app';
+
+  @override
+  String get reportsConsistency => 'First-use consistency';
+
+  @override
+  String reportsVariationMinutes(int minutes) {
+    return '± $minutes min';
+  }
+
+  @override
+  String get reportsWakeHeuristic =>
+      'First use is inferred after at least 4 hours inactive, between 04:00 and 14:00.';
+
+  @override
+  String get reportsTopApps => 'Most used apps';
+
+  @override
+  String get reportsRestrictionsTitle => 'Restriction activity';
+
+  @override
+  String get reportsBlockedAttempts => 'Blocked attempts';
+
+  @override
+  String get reportsManualUnblocks => 'Manual unblocks';
+
+  @override
+  String get reportsBlocked => 'Blocked';
+
+  @override
+  String get reportsUnblocked => 'Unblocked';
+
+  @override
+  String get reportsEmpty =>
+      'There is not enough local data for this report yet.';
 
   @override
   String get settingsTitle => 'Settings';

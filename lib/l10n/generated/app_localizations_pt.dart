@@ -118,10 +118,20 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get onboardingPermissionsSettingsHint =>
-      'Você pode alterar isso depois nas configurações.';
+      'As duas primeiras permissões são controladas nas configurações do Android.';
 
   @override
   String get onboardingAllow => 'Permitir';
+
+  @override
+  String get onboardingOpenSettings => 'Abrir configurações';
+
+  @override
+  String get onboardingNotificationsTitle => 'Notificações';
+
+  @override
+  String get onboardingNotificationsSubtitle =>
+      'Opcional: receba alertas antes de atingir um limite diário';
 
   @override
   String get onboardingSearchApps => 'Buscar apps';
@@ -550,6 +560,76 @@ class AppLocalizationsPt extends AppLocalizations {
   String usageDetailsDayValue(String date, String duration) {
     return '$date: $duration';
   }
+
+  @override
+  String get reportsTitle => 'Relatórios';
+
+  @override
+  String get reportsWeekly => 'Semanal';
+
+  @override
+  String get reportsMonthly => 'Mensal';
+
+  @override
+  String get reportsYearly => 'Anual';
+
+  @override
+  String get reportsTotalUsage => 'Uso total';
+
+  @override
+  String get reportsDailyAverage => 'Média diária';
+
+  @override
+  String get reportsActiveDays => 'Dias ativos';
+
+  @override
+  String get reportsTimeOfDayTitle => 'Uso por hora do dia';
+
+  @override
+  String get reportsHabitTitle => 'Formação de hábitos';
+
+  @override
+  String get reportsPeakTime => 'Horário mais ativo';
+
+  @override
+  String get reportsFirstUse => 'Média do primeiro uso';
+
+  @override
+  String get reportsFirstApp => 'Primeiro app mais frequente';
+
+  @override
+  String get reportsConsistency => 'Consistência do primeiro uso';
+
+  @override
+  String reportsVariationMinutes(int minutes) {
+    return '± $minutes min';
+  }
+
+  @override
+  String get reportsWakeHeuristic =>
+      'O primeiro uso é estimado após pelo menos 4 horas de inatividade, entre 04:00 e 14:00.';
+
+  @override
+  String get reportsTopApps => 'Apps mais usados';
+
+  @override
+  String get reportsRestrictionsTitle => 'Atividade de restrições';
+
+  @override
+  String get reportsBlockedAttempts => 'Tentativas bloqueadas';
+
+  @override
+  String get reportsManualUnblocks => 'Desbloqueios manuais';
+
+  @override
+  String get reportsBlocked => 'Bloqueado';
+
+  @override
+  String get reportsUnblocked => 'Desbloqueado';
+
+  @override
+  String get reportsEmpty =>
+      'Ainda não há dados locais suficientes para este relatório.';
 
   @override
   String get settingsTitle => 'Configurações';

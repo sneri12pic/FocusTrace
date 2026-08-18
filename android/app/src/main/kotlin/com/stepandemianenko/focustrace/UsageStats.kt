@@ -27,6 +27,12 @@ object UsageStats {
         val kind: EventKind,
     )
 
+    data class ForegroundInterval(
+        val packageName: String,
+        val startedAtMs: Long,
+        val endedAtMs: Long,
+    )
+
     fun startOfTodayMillis(): Long = Calendar.getInstance().apply {
         set(Calendar.HOUR_OF_DAY, 0)
         set(Calendar.MINUTE, 0)
@@ -46,28 +52,66 @@ object UsageStats {
         toMs: Long,
         packageNames: Set<String>? = null,
     ): Map<String, AppUsage> {
-        val usageStatsManager =
-            context.getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
-        val records = buildList {
-            val events = usageStatsManager.queryEvents(fromMs, toMs)
-            val event = UsageEvents.Event()
-            while (events.hasNextEvent()) {
-                events.getNextEvent(event)
-                val packageName = event.packageName ?: continue
-                add(
-                    EventRecord(
+        val records = eventRecords(context, fromMs, toMs)
+        return aggregateEvents(records, toMs, packageNames)
+    }
+
+    fun foregroundIntervals(
+        context: Context,
+        fromMs: Long,
+        toMs: Long,
+    ): List<ForegroundInterval> {
+        return aggregateIntervals(eventRecords(context, fromMs, toMs), toMs)
+            .filter {
+                it.endedAtMs > it.startedAtMs &&
+                    it.packageName != context.packageName &&
+                    isUserFacingApp(context, it.packageName)
+            }
+    }
+
+    internal fun aggregateIntervals(
+        events: Iterable<EventRecord>,
+        toMs: Long,
+        packageNames: Set<String>? = null,
+    ): List<ForegroundInterval> {
+        val intervals = mutableListOf<ForegroundInterval>()
+        var foregroundPackage: String? = null
+        var foregroundSince = 0L
+
+        fun closeForeground(endedAtMs: Long) {
+            val packageName = foregroundPackage ?: return
+            if (endedAtMs > foregroundSince &&
+                (packageNames == null || packageName in packageNames)
+            ) {
+                intervals.add(
+                    ForegroundInterval(
                         packageName = packageName,
-                        timeStampMs = event.timeStamp,
-                        kind = when {
-                            isForegroundEvent(event.eventType) -> EventKind.Foreground
-                            isBackgroundEvent(event.eventType) -> EventKind.Background
-                            else -> EventKind.Other
-                        },
+                        startedAtMs = foregroundSince,
+                        endedAtMs = endedAtMs,
                     )
                 )
             }
+            foregroundPackage = null
         }
-        return aggregateEvents(records, toMs, packageNames)
+
+        for (event in events) {
+            when (event.kind) {
+                EventKind.Foreground -> {
+                    if (foregroundPackage == event.packageName) continue
+                    closeForeground(event.timeStampMs)
+                    foregroundPackage = event.packageName
+                    foregroundSince = event.timeStampMs
+                }
+                EventKind.Background -> {
+                    if (foregroundPackage == event.packageName) {
+                        closeForeground(event.timeStampMs)
+                    }
+                }
+                EventKind.Other -> Unit
+            }
+        }
+        closeForeground(toMs)
+        return intervals
     }
 
     internal fun aggregateEvents(
@@ -176,6 +220,34 @@ object UsageStats {
             }
         }
         return current
+    }
+
+    private fun eventRecords(
+        context: Context,
+        fromMs: Long,
+        toMs: Long,
+    ): List<EventRecord> {
+        val usageStatsManager =
+            context.getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
+        return buildList {
+            val events = usageStatsManager.queryEvents(fromMs, toMs)
+            val event = UsageEvents.Event()
+            while (events.hasNextEvent()) {
+                events.getNextEvent(event)
+                val packageName = event.packageName ?: continue
+                add(
+                    EventRecord(
+                        packageName = packageName,
+                        timeStampMs = event.timeStamp,
+                        kind = when {
+                            isForegroundEvent(event.eventType) -> EventKind.Foreground
+                            isBackgroundEvent(event.eventType) -> EventKind.Background
+                            else -> EventKind.Other
+                        },
+                    )
+                )
+            }
+        }
     }
 
     // ponytail: launchable-in-app-drawer is the system-app filter; whitelist packages here if a wanted app gets dropped.

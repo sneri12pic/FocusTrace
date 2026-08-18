@@ -70,6 +70,25 @@ class UsageStatsTest {
         assertEquals(2, totals.getValue("app").launchCount)
     }
 
+    @Test
+    fun intervalsCloseOnAppSwitchAndAtQueryEnd() {
+        val intervals = UsageStats.aggregateIntervals(
+            events = listOf(
+                foreground("a", 0),
+                foreground("a", 10),
+                foreground("b", 1_000),
+            ),
+            toMs = 2_000,
+        )
+
+        assertEquals(2, intervals.size)
+        assertEquals("a", intervals[0].packageName)
+        assertEquals(0, intervals[0].startedAtMs)
+        assertEquals(1_000, intervals[0].endedAtMs)
+        assertEquals("b", intervals[1].packageName)
+        assertEquals(2_000, intervals[1].endedAtMs)
+    }
+
     private fun foreground(packageName: String, timeStampMs: Long) =
         UsageStats.EventRecord(
             packageName = packageName,

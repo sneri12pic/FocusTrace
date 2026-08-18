@@ -15,6 +15,14 @@ class HomeShell extends StatefulWidget {
 
 class _HomeShellState extends State<HomeShell> {
   int _index = 0;
+  final _visitedIndexes = <int>{0};
+
+  void _select(int index) {
+    setState(() {
+      _index = index;
+      _visitedIndexes.add(index);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -23,10 +31,14 @@ class _HomeShellState extends State<HomeShell> {
       // the last row (e.g. Settings > Send feedback) with no way to reach it.
       body: IndexedStack(
         index: _index,
-        children: const [
-          DashboardScreen(),
-          RestrictionsScreen(),
-          SettingsScreen(),
+        children: [
+          const DashboardScreen(),
+          _visitedIndexes.contains(1)
+              ? const RestrictionsScreen()
+              : const SizedBox.shrink(),
+          _visitedIndexes.contains(2)
+              ? const SettingsScreen()
+              : const SizedBox.shrink(),
         ],
       ),
       // Compact icon row on a semi-transparent dark strip.
@@ -42,21 +54,21 @@ class _HomeShellState extends State<HomeShell> {
                   icon: Icons.home,
                   tooltip: context.l10n.navHome,
                   selected: _index == 0,
-                  onTap: () => setState(() => _index = 0),
+                  onTap: () => _select(0),
                 ),
                 const SizedBox(width: 56),
                 _NavIcon(
                   icon: Icons.lock_outline,
                   tooltip: context.l10n.restrictionsTitle,
                   selected: _index == 1,
-                  onTap: () => setState(() => _index = 1),
+                  onTap: () => _select(1),
                 ),
                 const SizedBox(width: 56),
                 _NavIcon(
                   icon: Icons.settings,
                   tooltip: context.l10n.settingsTitle,
                   selected: _index == 2,
-                  onTap: () => setState(() => _index = 2),
+                  onTap: () => _select(2),
                 ),
               ],
             ),

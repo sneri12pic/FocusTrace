@@ -4,8 +4,10 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
+import '../../domain/models/app_usage_interval.dart';
 import '../../domain/models/app_usage_summary.dart';
 import '../../domain/models/daily_app_usage.dart';
+import '../../domain/models/restriction_event.dart';
 import '../../domain/models/usage_session.dart';
 
 abstract class FocusTraceLocalDataSource {
@@ -32,6 +34,20 @@ abstract class FocusTraceLocalDataSource {
     DateTime fromInclusive,
     DateTime toExclusive,
   );
+
+  Future<void> insertUsageIntervals(List<AppUsageInterval> intervals) async {}
+
+  Future<List<AppUsageInterval>> getUsageIntervals(
+    DateTime fromInclusive,
+    DateTime toExclusive,
+  ) async => const <AppUsageInterval>[];
+
+  Future<void> insertRestrictionEvent(RestrictionEvent event) async {}
+
+  Future<List<RestrictionEvent>> getRestrictionEvents(
+    DateTime fromInclusive,
+    DateTime toExclusive,
+  ) async => const <RestrictionEvent>[];
 
   Future<String?> readSetting(String key);
 
@@ -66,7 +82,7 @@ class SqfliteFocusTraceLocalDataSource implements FocusTraceLocalDataSource {
     final opened = await factory.openDatabase(
       path,
       options: OpenDatabaseOptions(
-        version: 3,
+        version: 4,
         onUpgrade: (db, oldVersion, newVersion) async {
           if (oldVersion < 2) {
             await _createDailyUsageTable(db);
@@ -75,6 +91,9 @@ class SqfliteFocusTraceLocalDataSource implements FocusTraceLocalDataSource {
 ALTER TABLE daily_app_usage
 ADD COLUMN launch_count INTEGER NOT NULL DEFAULT 0
 ''');
+          }
+          if (oldVersion < 4) {
+            await _createReportTables(db);
           }
         },
         onCreate: (db, version) async {
@@ -104,6 +123,7 @@ CREATE TABLE settings (
 )
 ''');
           await _createDailyUsageTable(db);
+          await _createReportTables(db);
         },
       ),
     );
@@ -130,6 +150,36 @@ CREATE TABLE daily_app_usage (
   launch_count INTEGER NOT NULL DEFAULT 0,
   PRIMARY KEY (day, app_key)
 )
+''');
+  }
+
+  Future<void> _createReportTables(Database db) async {
+    await db.execute('''
+CREATE TABLE usage_intervals (
+  id TEXT PRIMARY KEY,
+  app_key TEXT NOT NULL,
+  app_name TEXT NOT NULL,
+  started_at INTEGER NOT NULL,
+  ended_at INTEGER NOT NULL
+)
+''');
+    await db.execute('''
+CREATE INDEX idx_usage_intervals_started_at
+ON usage_intervals(started_at)
+''');
+    await db.execute('''
+CREATE TABLE restriction_events (
+  id TEXT PRIMARY KEY,
+  app_key TEXT NOT NULL,
+  app_name TEXT NOT NULL,
+  event_type TEXT NOT NULL,
+  reason TEXT,
+  occurred_at INTEGER NOT NULL
+)
+''');
+    await db.execute('''
+CREATE INDEX idx_restriction_events_occurred_at
+ON restriction_events(occurred_at)
 ''');
   }
 
@@ -310,6 +360,123 @@ ORDER BY duration_seconds DESC, app_name COLLATE NOCASE ASC
         .toList();
   }
 
+  @override
+  Future<void> insertUsageIntervals(List<AppUsageInterval> intervals) async {
+    if (intervals.isEmpty) {
+      return;
+    }
+    final db = await _db;
+    await db.transaction((txn) async {
+      for (final interval in intervals) {
+        await txn.insert('usage_intervals', {
+          'id': interval.id,
+          'app_key': interval.appKey,
+          'app_name': interval.appName,
+          'started_at': interval.startedAt.millisecondsSinceEpoch,
+          'ended_at': interval.endedAt.millisecondsSinceEpoch,
+        }, conflictAlgorithm: ConflictAlgorithm.replace);
+      }
+    });
+  }
+
+  @override
+  Future<List<AppUsageInterval>> getUsageIntervals(
+    DateTime fromInclusive,
+    DateTime toExclusive,
+  ) async {
+    final db = await _db;
+    final fromMs = fromInclusive.millisecondsSinceEpoch;
+    final toMs = toExclusive.millisecondsSinceEpoch;
+    final intervalRows = await db.query(
+      'usage_intervals',
+      where: 'started_at < ? AND ended_at > ?',
+      whereArgs: [toMs, fromMs],
+      orderBy: 'started_at ASC',
+    );
+    final sessionRows = await db.query(
+      'usage_sessions',
+      where: 'started_at < ? AND (ended_at IS NULL OR ended_at > ?)',
+      whereArgs: [toMs, fromMs],
+      orderBy: 'started_at ASC',
+    );
+    final intervals = <AppUsageInterval>[
+      for (final row in intervalRows)
+        AppUsageInterval(
+          id: row['id'] as String,
+          appKey: row['app_key'] as String,
+          appName: row['app_name'] as String,
+          startedAt: DateTime.fromMillisecondsSinceEpoch(
+            row['started_at'] as int,
+          ),
+          endedAt: DateTime.fromMillisecondsSinceEpoch(row['ended_at'] as int),
+        ),
+      for (final row in sessionRows)
+        AppUsageInterval(
+          id: 'session:${row['id'] as String}',
+          appKey:
+              row['package_name'] as String? ??
+              row['process_name'] as String? ??
+              row['app_name'] as String,
+          appName: row['app_name'] as String,
+          startedAt: DateTime.fromMillisecondsSinceEpoch(
+            row['started_at'] as int,
+          ),
+          endedAt: row['ended_at'] == null
+              ? DateTime.fromMillisecondsSinceEpoch(
+                  row['started_at'] as int,
+                ).add(Duration(seconds: row['duration_seconds'] as int))
+              : DateTime.fromMillisecondsSinceEpoch(row['ended_at'] as int),
+        ),
+    ]..sort((first, second) => first.startedAt.compareTo(second.startedAt));
+    return intervals;
+  }
+
+  @override
+  Future<void> insertRestrictionEvent(RestrictionEvent event) async {
+    final db = await _db;
+    await db.insert('restriction_events', {
+      'id': event.id,
+      'app_key': event.appKey,
+      'app_name': event.appName,
+      'event_type': event.type.wireName,
+      'reason': event.reason,
+      'occurred_at': event.occurredAt.millisecondsSinceEpoch,
+    }, conflictAlgorithm: ConflictAlgorithm.ignore);
+  }
+
+  @override
+  Future<List<RestrictionEvent>> getRestrictionEvents(
+    DateTime fromInclusive,
+    DateTime toExclusive,
+  ) async {
+    final db = await _db;
+    final rows = await db.query(
+      'restriction_events',
+      where: 'occurred_at >= ? AND occurred_at < ?',
+      whereArgs: [
+        fromInclusive.millisecondsSinceEpoch,
+        toExclusive.millisecondsSinceEpoch,
+      ],
+      orderBy: 'occurred_at DESC',
+    );
+    return rows
+        .map(
+          (row) => RestrictionEvent(
+            id: row['id'] as String,
+            appKey: row['app_key'] as String,
+            appName: row['app_name'] as String,
+            type: RestrictionEventType.fromWireName(
+              row['event_type'] as String?,
+            ),
+            reason: row['reason'] as String?,
+            occurredAt: DateTime.fromMillisecondsSinceEpoch(
+              row['occurred_at'] as int,
+            ),
+          ),
+        )
+        .toList();
+  }
+
   String _dayKey(DateTime day) =>
       '${day.year.toString().padLeft(4, '0')}-'
       '${day.month.toString().padLeft(2, '0')}-'
@@ -347,6 +514,8 @@ ORDER BY duration_seconds DESC, app_name COLLATE NOCASE ASC
       await txn.delete('usage_sessions');
       await txn.delete('settings');
       await txn.delete('daily_app_usage');
+      await txn.delete('usage_intervals');
+      await txn.delete('restriction_events');
     });
   }
 
