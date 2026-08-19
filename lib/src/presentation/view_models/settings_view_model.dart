@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../domain/repositories/data_transfer_repository.dart';
 import '../../domain/repositories/settings_repository.dart';
 import '../../domain/repositories/usage_repository.dart';
 
@@ -11,6 +12,7 @@ class SettingsState {
     this.excludedAppNames = const <String, String>{},
     this.isLoading = false,
     this.isSaving = false,
+    this.isTransferring = false,
     this.errorMessage,
   });
 
@@ -28,6 +30,7 @@ class SettingsState {
   final Map<String, String> excludedAppNames;
   final bool isLoading;
   final bool isSaving;
+  final bool isTransferring;
   final String? errorMessage;
 
   SettingsState copyWith({
@@ -37,6 +40,7 @@ class SettingsState {
     Map<String, String>? excludedAppNames,
     bool? isLoading,
     bool? isSaving,
+    bool? isTransferring,
     String? errorMessage,
     bool clearError = false,
   }) {
@@ -48,6 +52,7 @@ class SettingsState {
       excludedAppNames: excludedAppNames ?? this.excludedAppNames,
       isLoading: isLoading ?? this.isLoading,
       isSaving: isSaving ?? this.isSaving,
+      isTransferring: isTransferring ?? this.isTransferring,
       errorMessage: clearError ? null : errorMessage ?? this.errorMessage,
     );
   }
@@ -57,12 +62,15 @@ class SettingsViewModel extends StateNotifier<SettingsState> {
   SettingsViewModel({
     required SettingsRepository settingsRepository,
     required UsageRepository usageRepository,
+    required DataTransferRepository dataTransferRepository,
   }) : _settingsRepository = settingsRepository,
        _usageRepository = usageRepository,
+       _dataTransferRepository = dataTransferRepository,
        super(SettingsState.initial());
 
   final SettingsRepository _settingsRepository;
   final UsageRepository _usageRepository;
+  final DataTransferRepository _dataTransferRepository;
 
   Future<void> load() async {
     state = state.copyWith(isLoading: true, clearError: true);
@@ -140,6 +148,39 @@ class SettingsViewModel extends StateNotifier<SettingsState> {
       );
     } catch (error) {
       state = state.copyWith(isSaving: false, errorMessage: error.toString());
+    }
+  }
+
+  Future<bool> exportLocalData() async {
+    state = state.copyWith(isTransferring: true, clearError: true);
+    try {
+      final saved = await _dataTransferRepository.exportData();
+      state = state.copyWith(isTransferring: false);
+      return saved;
+    } catch (error) {
+      state = state.copyWith(
+        isTransferring: false,
+        errorMessage: error.toString(),
+      );
+      return false;
+    }
+  }
+
+  Future<DataImportResult?> importLocalData() async {
+    state = state.copyWith(isTransferring: true, clearError: true);
+    try {
+      final result = await _dataTransferRepository.importData();
+      state = state.copyWith(isTransferring: false);
+      if (result != null) {
+        await load();
+      }
+      return result;
+    } catch (error) {
+      state = state.copyWith(
+        isTransferring: false,
+        errorMessage: error.toString(),
+      );
+      return null;
     }
   }
 

@@ -56,7 +56,18 @@ abstract class FocusTraceLocalDataSource {
   Future<void> clearAllData();
 }
 
-class SqfliteFocusTraceLocalDataSource implements FocusTraceLocalDataSource {
+abstract class PortableFocusTraceDataSource {
+  /// Returns a portable snapshot of every durable local table.
+  Future<Map<String, List<Map<String, Object?>>>> exportPortableData();
+
+  /// Merges a validated portable snapshot in one transaction.
+  Future<int> importPortableData(
+    Map<String, List<Map<String, Object?>>> tables,
+  );
+}
+
+class SqfliteFocusTraceLocalDataSource
+    implements FocusTraceLocalDataSource, PortableFocusTraceDataSource {
   SqfliteFocusTraceLocalDataSource({
     this.databaseName = 'focus_trace.db',
     DatabaseFactory? databaseFactoryOverride,
@@ -508,6 +519,48 @@ ORDER BY duration_seconds DESC, app_name COLLATE NOCASE ASC
   }
 
   @override
+  Future<Map<String, List<Map<String, Object?>>>> exportPortableData() async {
+    final db = await _db;
+    return db.transaction((txn) async {
+      final result = <String, List<Map<String, Object?>>>{};
+      for (final table in _portableTableColumns.keys) {
+        result[table] = await txn.query(table);
+      }
+      return result;
+    });
+  }
+
+  @override
+  Future<int> importPortableData(
+    Map<String, List<Map<String, Object?>>> tables,
+  ) async {
+    final db = await _db;
+    return db.transaction((txn) async {
+      var importedRows = 0;
+      for (final entry in tables.entries) {
+        final allowedColumns = _portableTableColumns[entry.key];
+        if (allowedColumns == null) {
+          throw FormatException('Unsupported backup table: ${entry.key}');
+        }
+        for (final row in entry.value) {
+          if (row.keys.any((column) => !allowedColumns.contains(column))) {
+            throw FormatException(
+              'Backup contains unsupported columns for ${entry.key}.',
+            );
+          }
+          await txn.insert(
+            entry.key,
+            row,
+            conflictAlgorithm: ConflictAlgorithm.replace,
+          );
+          importedRows++;
+        }
+      }
+      return importedRows;
+    });
+  }
+
+  @override
   Future<void> clearAllData() async {
     final db = await _db;
     await db.transaction((txn) async {
@@ -552,4 +605,39 @@ ORDER BY duration_seconds DESC, app_name COLLATE NOCASE ASC
       createdAt: DateTime.fromMillisecondsSinceEpoch(row['created_at'] as int),
     );
   }
+
+  static const _portableTableColumns = <String, Set<String>>{
+    'usage_sessions': {
+      'id',
+      'platform',
+      'app_name',
+      'package_name',
+      'process_name',
+      'window_title',
+      'started_at',
+      'ended_at',
+      'duration_seconds',
+      'category',
+      'created_at',
+    },
+    'settings': {'key', 'value'},
+    'daily_app_usage': {
+      'day',
+      'app_key',
+      'app_name',
+      'package_name',
+      'process_name',
+      'duration_seconds',
+      'launch_count',
+    },
+    'usage_intervals': {'id', 'app_key', 'app_name', 'started_at', 'ended_at'},
+    'restriction_events': {
+      'id',
+      'app_key',
+      'app_name',
+      'event_type',
+      'reason',
+      'occurred_at',
+    },
+  };
 }

@@ -629,14 +629,49 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsTitle => 'Settings';
 
   @override
-  String get settingsPrivacyTitle => 'Privacy';
+  String get settingsGeneralSection => 'General';
+
+  @override
+  String get settingsActivityDataSection => 'Activity & data';
+
+  @override
+  String get settingsSupportSection => 'Support';
+
+  @override
+  String get settingsPrivacyTitle => 'Data and privacy';
 
   @override
   String get settingsPrivacyBody =>
-      'FocusTrace stores usage data locally on this device. It does not upload tracked app or window usage.';
+      'Your usage history and settings stay on this device unless you export a backup. FocusTrace never uploads them.';
 
   @override
-  String get settingsClearLocalData => 'Clear local data';
+  String get settingsClearLocalData => 'Delete local data';
+
+  @override
+  String get settingsDataTransferTitle => 'Backup and restore';
+
+  @override
+  String get settingsDataTransferBody =>
+      'Save a portable backup or restore data from another FocusTrace installation. Imports merge with data already on this device.';
+
+  @override
+  String get settingsExportData => 'Export data';
+
+  @override
+  String get settingsImportData => 'Import data';
+
+  @override
+  String get settingsExportSuccess => 'FocusTrace backup saved.';
+
+  @override
+  String get settingsImportSuccess => 'FocusTrace backup imported.';
+
+  @override
+  String get settingsImportDialogTitle => 'Import FocusTrace data?';
+
+  @override
+  String get settingsImportDialogBody =>
+      'The backup will be merged with existing local data. Matching records and settings will use the imported values.';
 
   @override
   String get settingsLanguageTitle => 'Language';
@@ -652,11 +687,11 @@ class AppLocalizationsEn extends AppLocalizations {
       'The language preference could not be applied. Please try again.';
 
   @override
-  String get settingsExcludedAppsTitle => 'Excluded apps';
+  String get settingsExcludedAppsTitle => 'Tracking exclusions';
 
   @override
   String get settingsExcludedAppsEmpty =>
-      'No excluded apps. Long-press an app on the dashboard to exclude it from tracking.';
+      'No apps are excluded from tracking. Long-press an app on the dashboard to add one here.';
 
   @override
   String get settingsStopExcluding => 'Stop excluding';
@@ -675,17 +710,17 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsWindowsIdleTimeout => 'Windows idle timeout';
 
   @override
-  String get settingsClearDataDialogTitle => 'Clear local data?';
+  String get settingsClearDataDialogTitle => 'Delete all local data?';
 
   @override
   String get settingsClearDataDialogBody =>
-      'This removes stored usage sessions and settings from this device. Your language choice is preserved.';
+      'This permanently deletes usage history and settings from this device. Your language choice is preserved. Export a backup first if you may need this data.';
 
   @override
   String get settingsCancel => 'Cancel';
 
   @override
-  String get settingsClear => 'Clear';
+  String get settingsClear => 'Delete';
 
   @override
   String get settingsSave => 'Save';

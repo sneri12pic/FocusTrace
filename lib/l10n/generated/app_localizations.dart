@@ -1167,23 +1167,89 @@ abstract class AppLocalizations {
   /// **'Settings'**
   String get settingsTitle;
 
+  /// No description provided for @settingsGeneralSection.
+  ///
+  /// In en, this message translates to:
+  /// **'General'**
+  String get settingsGeneralSection;
+
+  /// No description provided for @settingsActivityDataSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Activity & data'**
+  String get settingsActivityDataSection;
+
+  /// No description provided for @settingsSupportSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Support'**
+  String get settingsSupportSection;
+
   /// No description provided for @settingsPrivacyTitle.
   ///
   /// In en, this message translates to:
-  /// **'Privacy'**
+  /// **'Data and privacy'**
   String get settingsPrivacyTitle;
 
   /// No description provided for @settingsPrivacyBody.
   ///
   /// In en, this message translates to:
-  /// **'FocusTrace stores usage data locally on this device. It does not upload tracked app or window usage.'**
+  /// **'Your usage history and settings stay on this device unless you export a backup. FocusTrace never uploads them.'**
   String get settingsPrivacyBody;
 
   /// No description provided for @settingsClearLocalData.
   ///
   /// In en, this message translates to:
-  /// **'Clear local data'**
+  /// **'Delete local data'**
   String get settingsClearLocalData;
+
+  /// No description provided for @settingsDataTransferTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Backup and restore'**
+  String get settingsDataTransferTitle;
+
+  /// No description provided for @settingsDataTransferBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Save a portable backup or restore data from another FocusTrace installation. Imports merge with data already on this device.'**
+  String get settingsDataTransferBody;
+
+  /// No description provided for @settingsExportData.
+  ///
+  /// In en, this message translates to:
+  /// **'Export data'**
+  String get settingsExportData;
+
+  /// No description provided for @settingsImportData.
+  ///
+  /// In en, this message translates to:
+  /// **'Import data'**
+  String get settingsImportData;
+
+  /// No description provided for @settingsExportSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'FocusTrace backup saved.'**
+  String get settingsExportSuccess;
+
+  /// No description provided for @settingsImportSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'FocusTrace backup imported.'**
+  String get settingsImportSuccess;
+
+  /// No description provided for @settingsImportDialogTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Import FocusTrace data?'**
+  String get settingsImportDialogTitle;
+
+  /// No description provided for @settingsImportDialogBody.
+  ///
+  /// In en, this message translates to:
+  /// **'The backup will be merged with existing local data. Matching records and settings will use the imported values.'**
+  String get settingsImportDialogBody;
 
   /// No description provided for @settingsLanguageTitle.
   ///
@@ -1212,13 +1278,13 @@ abstract class AppLocalizations {
   /// No description provided for @settingsExcludedAppsTitle.
   ///
   /// In en, this message translates to:
-  /// **'Excluded apps'**
+  /// **'Tracking exclusions'**
   String get settingsExcludedAppsTitle;
 
   /// No description provided for @settingsExcludedAppsEmpty.
   ///
   /// In en, this message translates to:
-  /// **'No excluded apps. Long-press an app on the dashboard to exclude it from tracking.'**
+  /// **'No apps are excluded from tracking. Long-press an app on the dashboard to add one here.'**
   String get settingsExcludedAppsEmpty;
 
   /// No description provided for @settingsStopExcluding.
@@ -1254,13 +1320,13 @@ abstract class AppLocalizations {
   /// No description provided for @settingsClearDataDialogTitle.
   ///
   /// In en, this message translates to:
-  /// **'Clear local data?'**
+  /// **'Delete all local data?'**
   String get settingsClearDataDialogTitle;
 
   /// No description provided for @settingsClearDataDialogBody.
   ///
   /// In en, this message translates to:
-  /// **'This removes stored usage sessions and settings from this device. Your language choice is preserved.'**
+  /// **'This permanently deletes usage history and settings from this device. Your language choice is preserved. Export a backup first if you may need this data.'**
   String get settingsClearDataDialogBody;
 
   /// No description provided for @settingsCancel.
@@ -1272,7 +1338,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsClear.
   ///
   /// In en, this message translates to:
-  /// **'Clear'**
+  /// **'Delete'**
   String get settingsClear;
 
   /// No description provided for @settingsSave.

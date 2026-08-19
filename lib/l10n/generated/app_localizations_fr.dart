@@ -647,14 +647,49 @@ class AppLocalizationsFr extends AppLocalizations {
   String get settingsTitle => 'Paramètres';
 
   @override
-  String get settingsPrivacyTitle => 'Confidentialité';
+  String get settingsGeneralSection => 'Général';
+
+  @override
+  String get settingsActivityDataSection => 'Activité et données';
+
+  @override
+  String get settingsSupportSection => 'Assistance';
+
+  @override
+  String get settingsPrivacyTitle => 'Données et confidentialité';
 
   @override
   String get settingsPrivacyBody =>
-      'FocusTrace stocke les données d’utilisation localement sur cet appareil. L’application ne transfère aucune donnée enregistrée sur l’utilisation des applications ou des fenêtres.';
+      'Votre historique d’utilisation et vos paramètres restent sur cet appareil, sauf si vous exportez une sauvegarde. FocusTrace ne les transfère jamais.';
 
   @override
-  String get settingsClearLocalData => 'Effacer les données locales';
+  String get settingsClearLocalData => 'Supprimer les données locales';
+
+  @override
+  String get settingsDataTransferTitle => 'Sauvegarde et restauration';
+
+  @override
+  String get settingsDataTransferBody =>
+      'Enregistrez une sauvegarde portable ou restaurez les données d’une autre installation de FocusTrace. Les données importées sont fusionnées avec celles déjà présentes sur cet appareil.';
+
+  @override
+  String get settingsExportData => 'Exporter les données';
+
+  @override
+  String get settingsImportData => 'Importer les données';
+
+  @override
+  String get settingsExportSuccess => 'Sauvegarde FocusTrace enregistrée.';
+
+  @override
+  String get settingsImportSuccess => 'Sauvegarde FocusTrace importée.';
+
+  @override
+  String get settingsImportDialogTitle => 'Importer les données FocusTrace ?';
+
+  @override
+  String get settingsImportDialogBody =>
+      'La sauvegarde sera fusionnée avec les données locales existantes. Les enregistrements et réglages correspondants utiliseront les valeurs importées.';
 
   @override
   String get settingsLanguageTitle => 'Langue';
@@ -670,11 +705,11 @@ class AppLocalizationsFr extends AppLocalizations {
       'La préférence linguistique n’a pas pu être appliquée. Veuillez réessayer.';
 
   @override
-  String get settingsExcludedAppsTitle => 'Applications exclues';
+  String get settingsExcludedAppsTitle => 'Exclusions du suivi';
 
   @override
   String get settingsExcludedAppsEmpty =>
-      'Aucune application exclue. Appuyez longuement sur une application du tableau de bord pour l’exclure du suivi.';
+      'Aucune application n’est exclue du suivi. Appuyez longuement sur une application du tableau de bord pour l’ajouter ici.';
 
   @override
   String get settingsStopExcluding => 'Ne plus exclure';
@@ -693,17 +728,18 @@ class AppLocalizationsFr extends AppLocalizations {
   String get settingsWindowsIdleTimeout => 'Délai d’inactivité Windows';
 
   @override
-  String get settingsClearDataDialogTitle => 'Effacer les données locales ?';
+  String get settingsClearDataDialogTitle =>
+      'Supprimer toutes les données locales ?';
 
   @override
   String get settingsClearDataDialogBody =>
-      'Cette action supprime de cet appareil les sessions d’utilisation et les paramètres enregistrés. Votre choix de langue est conservé.';
+      'Cette action supprime définitivement de cet appareil l’historique d’utilisation et les paramètres. Votre choix de langue est conservé. Exportez d’abord une sauvegarde si vous pourriez avoir besoin de ces données.';
 
   @override
   String get settingsCancel => 'Annuler';
 
   @override
-  String get settingsClear => 'Effacer';
+  String get settingsClear => 'Supprimer';
 
   @override
   String get settingsSave => 'Enregistrer';

@@ -10,6 +10,7 @@ The MVP supports:
 - A dashboard for today's tracked usage, including a usage bubble chart where bigger bubbles mean more time spent
 - A settings screen to configure the Windows tracking interval and idle timeout, and to clear local data
 - In-app language switching with translated Flutter and Android blocker UI
+- Portable JSON export/import for local history, settings, and restrictions
 
 FocusTrace does not implement hidden monitoring, keylogging, screenshots, clipboard reading, browser history reading, or content monitoring.
 
@@ -82,11 +83,22 @@ flutter test
 
 All usage data is stored locally in SQLite on the device. FocusTrace does not send tracked data to a server and does not include sync in the MVP. **Clear Local Data** on the Settings screen removes stored usage sessions and settings from the local database.
 
+Portable backups can be created and restored from **Settings → Backup and
+restore**. The JSON file remains under the user's control and should be treated
+as private because it contains usage history and settings.
+
+## Play update recovery
+
+If Google Play reports that FocusTrace cannot be updated because an existing
+package conflicts or has a different signature, do not uninstall before saving
+the local data. Follow the verified diagnosis and recovery procedure in
+[docs/PLAY_SIGNING_RECOVERY.md](docs/PLAY_SIGNING_RECOVERY.md).
+
 ## Roadmap
 
 - macOS support using `NSWorkspace.frontmostApplication`
 - iOS support using Screen Time APIs where possible
 - App categories
 - Weekly and monthly reports
-- Local export to CSV
+- Optional CSV reporting export
 - Optional encrypted sync later

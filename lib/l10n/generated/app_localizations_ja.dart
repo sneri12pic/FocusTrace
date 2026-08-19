@@ -611,14 +611,49 @@ class AppLocalizationsJa extends AppLocalizations {
   String get settingsTitle => '設定';
 
   @override
-  String get settingsPrivacyTitle => 'プライバシー';
+  String get settingsGeneralSection => '一般';
+
+  @override
+  String get settingsActivityDataSection => 'アクティビティとデータ';
+
+  @override
+  String get settingsSupportSection => 'サポート';
+
+  @override
+  String get settingsPrivacyTitle => 'データとプライバシー';
 
   @override
   String get settingsPrivacyBody =>
-      'FocusTraceは使用状況データをこの端末内に保存します。追跡したアプリやウィンドウの使用状況をアップロードすることはありません。';
+      '使用履歴と設定は、バックアップを書き出さない限りこの端末内に保存されます。FocusTrace がそれらをアップロードすることはありません。';
 
   @override
   String get settingsClearLocalData => 'ローカルデータを削除';
+
+  @override
+  String get settingsDataTransferTitle => 'バックアップと復元';
+
+  @override
+  String get settingsDataTransferBody =>
+      '持ち運べるバックアップを保存するか、別の FocusTrace インストールからデータを復元できます。読み込んだデータは、この端末にあるデータと統合されます。';
+
+  @override
+  String get settingsExportData => 'データを書き出す';
+
+  @override
+  String get settingsImportData => 'データを読み込む';
+
+  @override
+  String get settingsExportSuccess => 'FocusTrace のバックアップを保存しました。';
+
+  @override
+  String get settingsImportSuccess => 'FocusTrace のバックアップを読み込みました。';
+
+  @override
+  String get settingsImportDialogTitle => 'FocusTrace のデータを読み込みますか？';
+
+  @override
+  String get settingsImportDialogBody =>
+      'バックアップは既存のローカルデータと統合されます。同じレコードと設定には、読み込んだ値が使用されます。';
 
   @override
   String get settingsLanguageTitle => '言語';
@@ -633,11 +668,11 @@ class AppLocalizationsJa extends AppLocalizations {
   String get settingsLanguageUpdateError => '言語設定を適用できませんでした。もう一度お試しください。';
 
   @override
-  String get settingsExcludedAppsTitle => '除外したアプリ';
+  String get settingsExcludedAppsTitle => '追跡から除外したアプリ';
 
   @override
   String get settingsExcludedAppsEmpty =>
-      '除外したアプリはありません。ダッシュボードでアプリを長押しすると、追跡から除外できます。';
+      '追跡から除外したアプリはありません。ダッシュボードでアプリを長押しすると、ここに追加できます。';
 
   @override
   String get settingsStopExcluding => '除外を解除';
@@ -655,11 +690,11 @@ class AppLocalizationsJa extends AppLocalizations {
   String get settingsWindowsIdleTimeout => 'Windowsのアイドルタイムアウト';
 
   @override
-  String get settingsClearDataDialogTitle => 'ローカルデータを削除しますか？';
+  String get settingsClearDataDialogTitle => 'すべてのローカルデータを削除しますか？';
 
   @override
   String get settingsClearDataDialogBody =>
-      '保存された使用セッションと設定をこの端末から削除します。言語の選択は保持されます。';
+      '使用履歴と設定がこの端末から完全に削除されます。言語の選択は保持されます。後でデータが必要になる可能性がある場合は、先にバックアップを書き出してください。';
 
   @override
   String get settingsCancel => 'キャンセル';

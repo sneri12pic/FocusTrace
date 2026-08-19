@@ -5,15 +5,18 @@ import '../application/services/usage_aggregation_service.dart';
 import '../application/services/report_generation_service.dart';
 import '../application/services/usage_trend_service.dart';
 import '../data/datasources/focus_trace_local_data_source.dart';
+import '../data/datasources/backup_document_data_source.dart';
 import '../data/datasources/platform_locale_data_source.dart';
 import '../data/datasources/platform_usage_data_source.dart';
 import '../data/repositories/app_language_repository_impl.dart';
+import '../data/repositories/data_transfer_repository_impl.dart';
 import '../data/repositories/report_repository_impl.dart';
 import '../data/repositories/settings_repository_impl.dart';
 import '../data/repositories/usage_repository_impl.dart';
 import '../domain/models/app_usage_summary.dart';
 import '../domain/models/usage_session.dart';
 import '../domain/repositories/app_language_repository.dart';
+import '../domain/repositories/data_transfer_repository.dart';
 import '../domain/repositories/report_repository.dart';
 import '../domain/repositories/settings_repository.dart';
 import '../domain/repositories/usage_repository.dart';
@@ -58,6 +61,36 @@ final reportGenerationServiceProvider = Provider<ReportGenerationService>(
 final localDataSourceProvider = Provider<FocusTraceLocalDataSource>(
   (ref) => SqfliteFocusTraceLocalDataSource(),
 );
+
+final portableLocalDataSourceProvider = Provider<PortableFocusTraceDataSource>((
+  ref,
+) {
+  final source = ref.watch(localDataSourceProvider);
+  if (source is PortableFocusTraceDataSource) {
+    return source as PortableFocusTraceDataSource;
+  }
+  throw StateError('The configured local data source cannot transfer data.');
+});
+
+final dataTransferSupportedProvider = Provider<bool>(
+  (ref) => ref.watch(usagePlatformProvider) == UsagePlatform.android,
+);
+
+final backupDocumentDataSourceProvider = Provider<BackupDocumentDataSource>((
+  ref,
+) {
+  if (ref.watch(dataTransferSupportedProvider)) {
+    return AndroidBackupDocumentDataSource();
+  }
+  return const UnsupportedBackupDocumentDataSource();
+});
+
+final dataTransferRepositoryProvider = Provider<DataTransferRepository>((ref) {
+  return DataTransferRepositoryImpl(
+    localDataSource: ref.watch(portableLocalDataSourceProvider),
+    documentDataSource: ref.watch(backupDocumentDataSourceProvider),
+  );
+});
 
 final appLanguageRepositoryProvider = Provider<AppLanguageRepository>(
   (ref) => AppLanguageRepositoryImpl(ref.watch(localDataSourceProvider)),
@@ -182,6 +215,7 @@ final settingsViewModelProvider =
       final viewModel = SettingsViewModel(
         settingsRepository: ref.watch(settingsRepositoryProvider),
         usageRepository: ref.watch(usageRepositoryProvider),
+        dataTransferRepository: ref.watch(dataTransferRepositoryProvider),
       );
       viewModel.load();
       return viewModel;

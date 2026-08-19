@@ -639,14 +639,49 @@ class AppLocalizationsUk extends AppLocalizations {
   String get settingsTitle => 'Налаштування';
 
   @override
-  String get settingsPrivacyTitle => 'Конфіденційність';
+  String get settingsGeneralSection => 'Загальні';
+
+  @override
+  String get settingsActivityDataSection => 'Активність і дані';
+
+  @override
+  String get settingsSupportSection => 'Підтримка';
+
+  @override
+  String get settingsPrivacyTitle => 'Дані та конфіденційність';
 
   @override
   String get settingsPrivacyBody =>
-      'FocusTrace зберігає дані про використання локально на цьому пристрої. Дані про відстежені застосунки чи вікна нікуди не надсилаються.';
+      'Історія використання та налаштування залишаються на цьому пристрої, якщо ви не експортуєте резервну копію. FocusTrace ніколи не надсилає їх.';
 
   @override
-  String get settingsClearLocalData => 'Очистити локальні дані';
+  String get settingsClearLocalData => 'Видалити локальні дані';
+
+  @override
+  String get settingsDataTransferTitle => 'Резервне копіювання та відновлення';
+
+  @override
+  String get settingsDataTransferBody =>
+      'Збережіть переносну резервну копію або відновіть дані з іншого встановлення FocusTrace. Імпортовані дані об’єднуються з тими, що вже є на цьому пристрої.';
+
+  @override
+  String get settingsExportData => 'Експортувати дані';
+
+  @override
+  String get settingsImportData => 'Імпортувати дані';
+
+  @override
+  String get settingsExportSuccess => 'Резервну копію FocusTrace збережено.';
+
+  @override
+  String get settingsImportSuccess => 'Резервну копію FocusTrace імпортовано.';
+
+  @override
+  String get settingsImportDialogTitle => 'Імпортувати дані FocusTrace?';
+
+  @override
+  String get settingsImportDialogBody =>
+      'Резервну копію буде об’єднано з наявними локальними даними. Для однакових записів і налаштувань використовуватимуться імпортовані значення.';
 
   @override
   String get settingsLanguageTitle => 'Мова';
@@ -662,11 +697,11 @@ class AppLocalizationsUk extends AppLocalizations {
       'Не вдалося застосувати мовне налаштування. Спробуйте ще раз.';
 
   @override
-  String get settingsExcludedAppsTitle => 'Виключені застосунки';
+  String get settingsExcludedAppsTitle => 'Виключення з відстеження';
 
   @override
   String get settingsExcludedAppsEmpty =>
-      'Немає виключених застосунків. Утримуйте застосунок на панелі, щоб виключити його з відстеження.';
+      'Немає застосунків, виключених із відстеження. Утримуйте застосунок на панелі, щоб додати його сюди.';
 
   @override
   String get settingsStopExcluding => 'Не виключати';
@@ -685,17 +720,17 @@ class AppLocalizationsUk extends AppLocalizations {
   String get settingsWindowsIdleTimeout => 'Тайм-аут бездіяльності Windows';
 
   @override
-  String get settingsClearDataDialogTitle => 'Очистити локальні дані?';
+  String get settingsClearDataDialogTitle => 'Видалити всі локальні дані?';
 
   @override
   String get settingsClearDataDialogBody =>
-      'Це видалить збережені сеанси використання та налаштування з цього пристрою. Ваш вибір мови буде збережено.';
+      'Це назавжди видалить історію використання та налаштування з цього пристрою. Ваш вибір мови буде збережено. Спочатку експортуйте резервну копію, якщо ці дані можуть вам знадобитися.';
 
   @override
   String get settingsCancel => 'Скасувати';
 
   @override
-  String get settingsClear => 'Очистити';
+  String get settingsClear => 'Видалити';
 
   @override
   String get settingsSave => 'Зберегти';

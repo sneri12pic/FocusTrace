@@ -18,9 +18,14 @@ import java.io.ByteArrayOutputStream
 import java.io.File
 
 class MainActivity : FlutterActivity() {
+    private val dataTransferDocumentBridge by lazy {
+        DataTransferDocumentBridge(this)
+    }
+
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
         UsageSnapshotScheduler.schedule(this)
+        dataTransferDocumentBridge.configure(flutterEngine.dartExecutor.binaryMessenger)
 
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL_NAME)
             .setMethodCallHandler { call, result ->
@@ -142,6 +147,14 @@ class MainActivity : FlutterActivity() {
                     else -> result.notImplemented()
                 }
             }
+    }
+
+    @Deprecated("Deprecated in Android; retained for the Storage Access Framework bridge.")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        if (dataTransferDocumentBridge.onActivityResult(requestCode, resultCode, data)) {
+            return
+        }
+        super.onActivityResult(requestCode, resultCode, data)
     }
 
     @Suppress("DEPRECATION")
