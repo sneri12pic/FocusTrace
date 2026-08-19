@@ -161,10 +161,7 @@ void main() {
     );
 
     await expectLater(repository.importData(), throwsFormatException);
-    expect(
-      (await source.exportPortableData()).values,
-      everyElement(isEmpty),
-    );
+    expect((await source.exportPortableData()).values, everyElement(isEmpty));
   });
 
   test(
