@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import '../../domain/models/block_routine.dart';
 import '../../domain/models/restriction_rule.dart';
+import '../../domain/models/usage_details_chart.dart';
 import '../../domain/repositories/settings_repository.dart';
 import '../datasources/focus_trace_local_data_source.dart';
 
@@ -15,8 +16,21 @@ class SettingsRepositoryImpl implements SettingsRepository {
   static const _restrictionRulesKey = 'restriction_rules';
   static const _blockRoutinesKey = 'block_routines';
   static const _onboardingCompletedKey = 'onboarding_completed';
+  static const _usageDetailsChartKey = 'usage_details_chart';
 
   final FocusTraceLocalDataSource _localDataSource;
+
+  @override
+  Future<UsageDetailsChart> usageDetailsChart() async {
+    return UsageDetailsChart.fromStorage(
+      await _localDataSource.readSetting(_usageDetailsChartKey),
+    );
+  }
+
+  @override
+  Future<void> setUsageDetailsChart(UsageDetailsChart chart) {
+    return _localDataSource.writeSetting(_usageDetailsChartKey, chart.name);
+  }
 
   @override
   Future<int> trackingIntervalSeconds() async {

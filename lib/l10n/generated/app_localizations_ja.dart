@@ -9,6 +9,15 @@ class AppLocalizationsJa extends AppLocalizations {
   AppLocalizationsJa([String locale = 'ja']) : super(locale);
 
   @override
+  String get usageDetailsBarChart => '棒グラフ';
+
+  @override
+  String get usageDetailsAreaChart => '使用時間の推移';
+
+  @override
+  String get usageDetailsChartSaveError => 'グラフの選択を保存できませんでした。もう一度お試しください。';
+
+  @override
   String get appTitle => 'FocusTrace';
 
   @override

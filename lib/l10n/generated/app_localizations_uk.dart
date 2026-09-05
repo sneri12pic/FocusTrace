@@ -9,6 +9,16 @@ class AppLocalizationsUk extends AppLocalizations {
   AppLocalizationsUk([String locale = 'uk']) : super(locale);
 
   @override
+  String get usageDetailsBarChart => 'Стовпчикова діаграма';
+
+  @override
+  String get usageDetailsAreaChart => 'Динаміка використання';
+
+  @override
+  String get usageDetailsChartSaveError =>
+      'Не вдалося зберегти вибір діаграми. Спробуйте ще раз.';
+
+  @override
   String get appTitle => 'FocusTrace';
 
   @override

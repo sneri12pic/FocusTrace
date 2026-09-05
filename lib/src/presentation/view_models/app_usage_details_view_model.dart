@@ -2,6 +2,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../domain/models/app_usage_summary.dart';
 import '../../domain/models/usage_session.dart';
+import '../../domain/models/usage_details_chart.dart';
+import '../../domain/repositories/settings_repository.dart';
 import '../../domain/repositories/usage_repository.dart';
 
 class AppUsageDetailsRequest {
@@ -86,6 +88,7 @@ class AppUsageDetailsState {
     this.points = const <DailyUsagePoint>[],
     this.sessions = const <UsageSession>[],
     this.period = UsageDetailsPeriod.sevenDays,
+    this.chart = UsageDetailsChart.bars,
     this.changeFromYesterdayPercent,
     this.isLoading = false,
     this.errorMessage,
@@ -94,6 +97,7 @@ class AppUsageDetailsState {
   final List<DailyUsagePoint> points;
   final List<UsageSession> sessions;
   final UsageDetailsPeriod period;
+  final UsageDetailsChart chart;
   final double? changeFromYesterdayPercent;
   final bool isLoading;
   final String? errorMessage;
@@ -102,18 +106,52 @@ class AppUsageDetailsState {
       points.fold(0, (total, point) => total + point.durationSeconds);
 
   Duration get totalDuration => Duration(seconds: totalDurationSeconds);
+
+  AppUsageDetailsState withChart(UsageDetailsChart chart) {
+    return AppUsageDetailsState(
+      points: points,
+      sessions: sessions,
+      period: period,
+      chart: chart,
+      changeFromYesterdayPercent: changeFromYesterdayPercent,
+      isLoading: isLoading,
+      errorMessage: errorMessage,
+    );
+  }
 }
 
 class AppUsageDetailsViewModel extends StateNotifier<AppUsageDetailsState> {
   AppUsageDetailsViewModel({
     required UsageRepository usageRepository,
+    required SettingsRepository settingsRepository,
     required AppUsageDetailsRequest request,
   }) : _usageRepository = usageRepository,
+       _settingsRepository = settingsRepository,
        _request = request,
        super(const AppUsageDetailsState(isLoading: true));
 
   final UsageRepository _usageRepository;
+  final SettingsRepository _settingsRepository;
   final AppUsageDetailsRequest _request;
+  bool _chartLoaded = false;
+  int _loadGeneration = 0;
+  Future<void> _pendingChartSave = Future<void>.value();
+
+  Future<bool> selectChart(UsageDetailsChart chart) async {
+    _chartLoaded = true;
+    state = state.withChart(chart);
+    // Preserve the final swipe even when storage writes finish at different speeds.
+    final save = _pendingChartSave.then(
+      (_) => _settingsRepository.setUsageDetailsChart(chart),
+    );
+    _pendingChartSave = save.catchError((Object _) {});
+    try {
+      await save;
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
 
   Future<void> selectPeriod(UsageDetailsPeriod period) {
     if (period == state.period) {
@@ -123,8 +161,13 @@ class AppUsageDetailsViewModel extends StateNotifier<AppUsageDetailsState> {
   }
 
   Future<void> load({UsageDetailsPeriod? period}) async {
+    final generation = ++_loadGeneration;
     final selectedPeriod = period ?? state.period;
-    state = AppUsageDetailsState(period: selectedPeriod, isLoading: true);
+    state = AppUsageDetailsState(
+      period: selectedPeriod,
+      chart: state.chart,
+      isLoading: true,
+    );
     final selectedDay = _day(_request.selectedDate);
     try {
       final historyFuture = _usageRepository.getUsageHistory(
@@ -135,8 +178,19 @@ class AppUsageDetailsViewModel extends StateNotifier<AppUsageDetailsState> {
         _request.summary.appKey,
         selectedDay,
       );
-      final history = await historyFuture;
-      final sessions = await sessionsFuture;
+      final preferenceFuture = _chartLoaded
+          ? Future<UsageDetailsChart>.value(state.chart)
+          : _settingsRepository.usageDetailsChart().catchError(
+              (Object _) => UsageDetailsChart.bars,
+            );
+      final (history, sessions, savedChart) = await (
+        historyFuture,
+        sessionsFuture,
+        preferenceFuture,
+      ).wait;
+      if (!mounted || generation != _loadGeneration) return;
+      final chart = _chartLoaded ? state.chart : savedChart;
+      _chartLoaded = true;
       final totalsByDay = <DateTime, int>{};
       for (final entry in history) {
         if (entry.summary.appKey != _request.summary.appKey) {
@@ -165,11 +219,14 @@ class AppUsageDetailsViewModel extends StateNotifier<AppUsageDetailsState> {
         points: points,
         sessions: sessions,
         period: selectedPeriod,
+        chart: chart,
         changeFromYesterdayPercent: _changePercent(current, previous),
       );
     } catch (error) {
+      if (!mounted || generation != _loadGeneration) return;
       state = AppUsageDetailsState(
         period: selectedPeriod,
+        chart: state.chart,
         errorMessage: error.toString(),
       );
     }

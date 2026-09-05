@@ -29,6 +29,7 @@ The dashboard result requires a saved same-day snapshot and starts at the Flutte
 - Local SQLite storage for usage sessions and settings
 - A dashboard for today's tracked usage, including a usage bubble chart where bigger bubbles mean more time spent
 - Cached Android dashboard content that stays visible during refresh, with independent icon loading and cached bubble animation layouts
+- [Swipeable app-detail charts](docs/usage-detail-charts.md) with smooth usage curves and a remembered chart choice
 - Android app blocking through immediate restrictions, schedules, and daily limits
 - App routines with optional shared daily allowances, per-app inclusion controls, usage progress, and limit warnings
 - A settings screen to configure the Windows tracking interval and idle timeout, and to clear local data

@@ -1,5 +1,8 @@
 {
   "@@locale": "ja",
+  "usageDetailsBarChart": "棒グラフ",
+  "usageDetailsAreaChart": "使用時間の推移",
+  "usageDetailsChartSaveError": "グラフの選択を保存できませんでした。もう一度お試しください。",
   "appTitle": "FocusTrace",
   "durationLessThanOneMinute": "1分未満",
   "durationMinutesShort": "{minutes}分",
