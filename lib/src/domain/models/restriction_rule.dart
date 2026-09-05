@@ -233,16 +233,13 @@ String encodeRestrictionConfiguration(
   List<RestrictionRule> rules,
   List<BlockRoutine> routines,
 ) {
-  final routineApps = <String, RoutineApp>{};
-  for (final routine in routines.where((routine) => routine.isEnabled)) {
-    for (final app in routine.apps) {
-      routineApps[app.appKey] = app;
-    }
-  }
   return jsonEncode({
-    'version': 2,
+    'version': 3,
     'rules': rules.map((rule) => rule.toJson()).toList(),
-    'routineBlocks': routineApps.values.map((app) => app.toJson()).toList(),
+    'routines': routines
+        .where((routine) => routine.isEnabled && routine.canEnforceLimit)
+        .map((routine) => routine.toJson())
+        .toList(),
   });
 }
 

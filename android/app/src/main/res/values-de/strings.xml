@@ -3,6 +3,7 @@
     <string name="app_name" translatable="false">FocusTrace</string>
     <string name="usage_access_denied">Die Berechtigung für den Zugriff auf Nutzungsdaten wurde nicht erteilt.</string>
     <string name="restriction_warning_title">%1$s hat das Limit fast erreicht</string>
+    <string name="restriction_routine_warning_title">Das Limit der Routine %1$s ist fast erreicht</string>
     <plurals name="restriction_warning_minutes">
         <item quantity="one">Die Sperre beginnt in etwa %1$d Minute.</item>
         <item quantity="other">Die Sperre beginnt in etwa %1$d Minuten.</item>
@@ -17,6 +18,7 @@
     <string name="restriction_reason_daily_limit">Tageslimit erreicht</string>
     <string name="restriction_reason_schedule">Nach Zeitplan gesperrt</string>
     <string name="restriction_reason_routine">Durch eine aktive Routine gesperrt</string>
+    <string name="restriction_reason_routine_limit">Tageslimit für %1$s erreicht</string>
     <string name="widget_title">Bildschirmzeit heute</string>
     <string name="widget_bubbles_label">Bildschirmzeit-Blasen</string>
     <string name="widget_no_access">Tippen, um Nutzungszugriff zu erteilen</string>

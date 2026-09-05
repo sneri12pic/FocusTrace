@@ -232,6 +232,8 @@ void main() {
     final routine = BlockRoutine(
       id: 'focus',
       name: 'Focus',
+      dailyLimitMinutes: 60,
+      isEnabled: true,
       apps: const [
         RoutineApp(appKey: 'social', appName: 'Social'),
         RoutineApp(appKey: 'video', appName: 'Video'),
@@ -241,7 +243,7 @@ void main() {
     await viewModel.saveRoutine(routine);
 
     expect(viewModel.state.routines, [routine]);
-    expect(dataSource.syncedPayloads.last, contains('"routineBlocks"'));
+    expect(dataSource.syncedPayloads.last, contains('"routines"'));
     expect(dataSource.syncedPayloads.last, contains('"social"'));
     expect(dataSource.syncedPayloads.last, contains('"video"'));
 

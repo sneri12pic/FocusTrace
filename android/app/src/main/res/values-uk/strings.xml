@@ -3,6 +3,7 @@
     <string name="app_name" translatable="false">FocusTrace</string>
     <string name="usage_access_denied">Дозвіл на доступ до даних про використання не надано.</string>
     <string name="restriction_warning_title">Ліміт для %1$s майже вичерпано</string>
+    <string name="restriction_routine_warning_title">Ліміт рутини %1$s майже вичерпано</string>
     <plurals name="restriction_warning_minutes">
         <item quantity="one">Блокування почнеться приблизно через %1$d хвилину.</item>
         <item quantity="few">Блокування почнеться приблизно через %1$d хвилини.</item>
@@ -19,6 +20,7 @@
     <string name="restriction_reason_daily_limit">Денний ліміт вичерпано</string>
     <string name="restriction_reason_schedule">Заблоковано за розкладом</string>
     <string name="restriction_reason_routine">Заблоковано активною рутиною</string>
+    <string name="restriction_reason_routine_limit">Денний ліміт для %1$s вичерпано</string>
     <string name="widget_title">Екранний час сьогодні</string>
     <string name="widget_bubbles_label">Бульбашки екранного часу</string>
     <string name="widget_no_access">Торкніться, щоб надати доступ до даних використання</string>

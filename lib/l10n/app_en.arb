@@ -83,6 +83,51 @@
   "routineEditorSearchApps": "Search apps",
   "routineEditorNoMatchingApps": "No matching apps",
   "routineEditorSave": "Save routine",
+  "routineDailyLimit": "Daily shared limit",
+  "routineNoDailyLimit": "No daily limit",
+  "routineCustomDuration": "Custom",
+  "routineChooseDuration": "Choose daily limit",
+  "routineNotFound": "This routine no longer exists.",
+  "routineRename": "Rename routine",
+  "routineAppsTitle": "Apps",
+  "routineAddApp": "Add app",
+  "routineAppUsage": "{duration} today · Included in limit",
+  "@routineAppUsage": {
+    "placeholders": {"duration": {"type": "String"}}
+  },
+  "routineAppUsageExcluded": "{duration} today · Excluded from limit",
+  "@routineAppUsageExcluded": {
+    "placeholders": {"duration": {"type": "String"}}
+  },
+  "routineRemoveApp": "Remove app",
+  "routineKeepOneApp": "A routine must keep at least one app.",
+  "routineDeleteConfirmation": "Delete {name}? This cannot be undone.",
+  "@routineDeleteConfirmation": {
+    "placeholders": {"name": {"type": "String"}}
+  },
+  "routineUsageToday": "Counted usage today",
+  "routineNoIncludedApps": "Include at least one app to enable the limit",
+  "routineLimitReached": "Limit reached · included apps are blocked until midnight",
+  "routineActive": "Active",
+  "routinePaused": "Paused",
+  "routineUsageOfLimit": "{used} of {limit}",
+  "@routineUsageOfLimit": {
+    "placeholders": {
+      "used": {"type": "String"},
+      "limit": {"type": "String"}
+    }
+  },
+  "routineRemaining": "{duration} remaining",
+  "@routineRemaining": {
+    "placeholders": {"duration": {"type": "String"}}
+  },
+  "routineSetLimit": "Set limit",
+  "routineEditLimit": "Edit limit",
+  "routineRemoveLimit": "Remove limit",
+  "routineUsageOnly": "{duration} today",
+  "@routineUsageOnly": {
+    "placeholders": {"duration": {"type": "String"}}
+  },
   "restrictionsPlatformStatusTitle": "Status only on this platform",
   "restrictionsPlatformStatusBody": "Rules are saved and shown here. Full-screen blocking currently runs only on Android.",
   "restrictionsEmptyTitle": "No app restrictions",

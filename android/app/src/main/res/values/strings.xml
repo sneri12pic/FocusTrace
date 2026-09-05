@@ -3,6 +3,7 @@
     <string name="app_name" translatable="false">FocusTrace</string>
     <string name="usage_access_denied">Usage access permission has not been granted.</string>
     <string name="restriction_warning_title">%1$s limit almost reached</string>
+    <string name="restriction_routine_warning_title">%1$s routine limit almost reached</string>
     <plurals name="restriction_warning_minutes">
         <item quantity="one">Blocking starts in about %1$d minute.</item>
         <item quantity="other">Blocking starts in about %1$d minutes.</item>
@@ -17,6 +18,7 @@
     <string name="restriction_reason_daily_limit">Daily limit reached</string>
     <string name="restriction_reason_schedule">Blocked by schedule</string>
     <string name="restriction_reason_routine">Blocked by an active routine</string>
+    <string name="restriction_reason_routine_limit">Daily limit reached for %1$s</string>
     <string name="widget_title">Screen time today</string>
     <string name="widget_bubbles_label">Screen time bubbles</string>
     <string name="widget_no_access">Tap to grant usage access</string>

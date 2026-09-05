@@ -94,27 +94,45 @@ class RestrictionRulesTest {
     }
 
     @Test
-    fun enabledRoutinePayloadCreatesAlwaysBlockingRules() {
+    fun routinePayloadPreservesGroupingAndExcludesOptedOutApps() {
         val json = """
             {
-              "version": 2,
+              "version": 3,
               "rules": [],
-              "routineBlocks": [
-                {"appKey":"com.example.social","appName":"Social"}
+              "routines": [
+                {
+                  "id":"focus",
+                  "name":"Focus",
+                  "isEnabled":true,
+                  "dailyLimitMinutes":60,
+                  "apps":[
+                    {"appKey":"social","appName":"Social","isIncludedInLimit":true},
+                    {"appKey":"music","appName":"Music","isIncludedInLimit":false}
+                  ]
+                }
               ]
             }
         """.trimIndent()
 
-        val rules = RestrictionRules.parseRules(json)
+        val configuration = RestrictionRules.parseConfiguration(json)
+        val routine = configuration.routines.single()
 
-        assertEquals(1, rules.size)
-        assertEquals(RestrictionRuleType.RoutineBlock, rules.single().type)
-        assertTrue(RestrictionRules.isBlocked(rules.single(), localMs(2026, 7, 4, 12, 0), 0))
-        assertEquals(null, RestrictionRules.blockedUntilMs(
-            rules.single(),
-            localMs(2026, 7, 4, 12, 0),
-            0,
-        ))
+        assertEquals(setOf("social"), configuration.appKeys)
+        assertFalse(routine.isReached(mapOf("social" to 3599L, "music" to 99999L)))
+        assertTrue(routine.isReached(mapOf("social" to 3600L)))
+        assertEquals(routine, configuration.blockingRoutine("social", mapOf("social" to 3600L)))
+        assertEquals(null, configuration.blockingRoutine("music", mapOf("social" to 3600L)))
+    }
+
+    @Test
+    fun legacyFlatRoutineBlocksAreIgnored() {
+        val json = """
+            {"version":2,"rules":[],"routineBlocks":[
+              {"appKey":"social","appName":"Social"}
+            ]}
+        """.trimIndent()
+
+        assertTrue(RestrictionRules.parseConfiguration(json).isEmpty)
     }
 
     private fun localMs(

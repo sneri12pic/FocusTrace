@@ -13,6 +13,7 @@ import '../view_models/app_usage_details_view_model.dart';
 import '../widgets/app_icon_avatar.dart';
 import 'restriction_editor_sheet.dart';
 import 'routine_editor_sheet.dart';
+import 'routine_details_screen.dart';
 import 'usage_details_screen.dart';
 
 class RestrictionsScreen extends ConsumerWidget {
@@ -29,6 +30,13 @@ class RestrictionsScreen extends ConsumerWidget {
         ref.watch(installedAppsProvider).valueOrNull ?? const [];
     final appCandidates = _mergeAppCandidates(summaries, installedApps);
     final appsByKey = {for (final app in appCandidates) app.appKey: app};
+    final routineAppsByKey = <String, AppUsageSummary>{
+      ...appsByKey,
+      for (final app in state.todayUsage) app.appKey: app,
+    };
+    final todayUsageByKey = {
+      for (final app in state.todayUsage) app.appKey: app.totalDurationSeconds,
+    };
 
     return Scaffold(
       appBar: AppBar(
@@ -135,12 +143,16 @@ class RestrictionsScreen extends ConsumerWidget {
                 for (final routine in state.routines)
                   _RoutineTile(
                     routine: routine,
+                    appsByKey: routineAppsByKey,
+                    usageSeconds: routine.usageSeconds(todayUsageByKey),
                     isSaving: state.isSaving,
                     onToggle: (enabled) =>
                         viewModel.setRoutineEnabled(routine, enabled),
-                    onTap: () =>
-                        _editRoutine(context, ref, appCandidates, routine),
-                    onDelete: () => viewModel.deleteRoutine(routine.id),
+                    onTap: () => _openRoutineDetails(
+                      context,
+                      routine: routine,
+                      apps: appCandidates,
+                    ),
                   ),
               const SizedBox(height: 14),
               if (state.rules.isNotEmpty)
@@ -246,21 +258,17 @@ class RestrictionsScreen extends ConsumerWidget {
     }
   }
 
-  Future<void> _editRoutine(
-    BuildContext context,
-    WidgetRef ref,
-    List<AppUsageSummary> apps,
-    BlockRoutine existing,
-  ) async {
-    final routine = await showRoutineEditor(
-      context,
-      apps: apps,
-      existing: existing,
+  Future<void> _openRoutineDetails(
+    BuildContext context, {
+    required List<AppUsageSummary> apps,
+    required BlockRoutine routine,
+  }) {
+    return Navigator.of(context).push<void>(
+      MaterialPageRoute(
+        builder: (context) =>
+            RoutineDetailsScreen(routineId: routine.id, appCandidates: apps),
+      ),
     );
-    if (routine == null || !context.mounted) {
-      return;
-    }
-    await ref.read(restrictionsViewModelProvider.notifier).saveRoutine(routine);
   }
 
   Future<void> _chooseAppAndCreateRule(
@@ -433,29 +441,38 @@ class _SectionTitle extends StatelessWidget {
 class _RoutineTile extends StatelessWidget {
   const _RoutineTile({
     required this.routine,
+    required this.appsByKey,
+    required this.usageSeconds,
     required this.isSaving,
     required this.onToggle,
     required this.onTap,
-    required this.onDelete,
   });
 
   final BlockRoutine routine;
+  final Map<String, AppUsageSummary> appsByKey;
+  final int usageSeconds;
   final bool isSaving;
   final ValueChanged<bool> onToggle;
   final VoidCallback onTap;
-  final VoidCallback onDelete;
 
   @override
   Widget build(BuildContext context) {
-    final appNames = routine.apps.map((app) => app.appName).join(', ');
+    final limit = routine.dailyLimitMinutes;
+    final usage = context.l10n.compactDuration(Duration(seconds: usageSeconds));
+    final status = limit == null
+        ? context.l10n.routineUsageOnly(usage)
+        : context.l10n.routineUsageOfLimit(
+            usage,
+            context.l10n.compactDuration(Duration(minutes: limit)),
+          );
     return Card(
       elevation: 0,
       margin: const EdgeInsets.only(bottom: 10),
       child: ListTile(
-        leading: const Icon(Icons.library_add_check_outlined),
+        leading: _RoutineIconStack(routine: routine, appsByKey: appsByKey),
         title: Text(routine.name, maxLines: 1, overflow: TextOverflow.ellipsis),
         subtitle: Text(
-          '${context.l10n.restrictionsRoutineAppCount(routine.apps.length)} · $appNames',
+          '${context.l10n.restrictionsRoutineAppCount(routine.apps.length)} · $status',
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
         ),
@@ -463,17 +480,45 @@ class _RoutineTile extends StatelessWidget {
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Switch(
-              value: routine.isEnabled,
-              onChanged: isSaving ? null : onToggle,
-            ),
-            IconButton(
-              tooltip: context.l10n.restrictionsDeleteRoutine,
-              onPressed: isSaving ? null : onDelete,
-              icon: const Icon(Icons.delete_outline),
-            ),
+            if (limit != null)
+              Switch(
+                value: routine.isEnabled,
+                onChanged: isSaving || !routine.canEnforceLimit
+                    ? null
+                    : onToggle,
+              ),
+            const Icon(Icons.chevron_right),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _RoutineIconStack extends StatelessWidget {
+  const _RoutineIconStack({required this.routine, required this.appsByKey});
+
+  final BlockRoutine routine;
+  final Map<String, AppUsageSummary> appsByKey;
+
+  @override
+  Widget build(BuildContext context) {
+    final apps = routine.apps.take(3).toList();
+    return SizedBox(
+      width: 40 + (apps.length - 1) * 12,
+      height: 40,
+      child: Stack(
+        children: [
+          for (var index = 0; index < apps.length; index++)
+            PositionedDirectional(
+              start: index * 12,
+              child: AppIconAvatar(
+                appName: apps[index].appName,
+                iconBytes: appsByKey[apps[index].appKey]?.iconBytes,
+                size: 40,
+              ),
+            ),
+        ],
       ),
     );
   }

@@ -190,6 +190,11 @@ class _BubbleContent extends StatelessWidget {
               cacheWidth: 132,
               fit: BoxFit.cover,
               gaplessPlayback: true,
+              errorBuilder: (context, error, stackTrace) => Icon(
+                _iconFor(item.name),
+                color: Colors.white,
+                size: iconSize,
+              ),
             ),
           )
         else

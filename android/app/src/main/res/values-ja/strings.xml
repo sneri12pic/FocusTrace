@@ -3,6 +3,7 @@
     <string name="app_name" translatable="false">FocusTrace</string>
     <string name="usage_access_denied">使用状況へのアクセス権限が付与されていません。</string>
     <string name="restriction_warning_title">%1$sの制限にまもなく達します</string>
+    <string name="restriction_routine_warning_title">ルーティン%1$sの上限にまもなく達します</string>
     <plurals name="restriction_warning_minutes">
         <item quantity="other">約%1$d分後にブロックを開始します。</item>
     </plurals>
@@ -16,6 +17,7 @@
     <string name="restriction_reason_daily_limit">1日の上限に達しました</string>
     <string name="restriction_reason_schedule">スケジュールによりブロック中</string>
     <string name="restriction_reason_routine">有効なルーティンによりブロック中</string>
+    <string name="restriction_reason_routine_limit">%1$sの1日上限に達しました</string>
     <string name="widget_title">今日のスクリーンタイム</string>
     <string name="widget_bubbles_label">スクリーンタイムバブル</string>
     <string name="widget_no_access">タップして使用状況へのアクセスを許可</string>

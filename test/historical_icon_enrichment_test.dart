@@ -66,6 +66,32 @@ void main() {
       expect(result.single.appName, 'Uninstalled');
     },
   );
+
+  test('cached today snapshot reads SQLite without metadata lookup', () async {
+    final localDataSource = _HistoricalLocalDataSource()
+      ..summaries = const [
+        AppUsageSummary(
+          appName: 'Cached name',
+          packageName: 'example.cached',
+          totalDurationSeconds: 300,
+          percentageOfTotal: 0,
+        ),
+      ];
+    final platformDataSource = _HistoricalPlatformDataSource();
+    final repository = UsageRepositoryImpl(
+      platform: UsagePlatform.android,
+      localDataSource: localDataSource,
+      platformDataSource: platformDataSource,
+    );
+
+    final result = await repository.getCachedTodaySummaries(
+      DateTime(2026, 8, 27),
+    );
+
+    expect(platformDataSource.requestedKeys, isEmpty);
+    expect(result.single.appName, 'Cached name');
+    expect(result.single.percentageOfTotal, 1);
+  });
 }
 
 class _HistoricalLocalDataSource implements FocusTraceLocalDataSource {

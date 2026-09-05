@@ -444,6 +444,150 @@ abstract class AppLocalizations {
   /// **'Save routine'**
   String get routineEditorSave;
 
+  /// No description provided for @routineDailyLimit.
+  ///
+  /// In en, this message translates to:
+  /// **'Daily shared limit'**
+  String get routineDailyLimit;
+
+  /// No description provided for @routineNoDailyLimit.
+  ///
+  /// In en, this message translates to:
+  /// **'No daily limit'**
+  String get routineNoDailyLimit;
+
+  /// No description provided for @routineCustomDuration.
+  ///
+  /// In en, this message translates to:
+  /// **'Custom'**
+  String get routineCustomDuration;
+
+  /// No description provided for @routineChooseDuration.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose daily limit'**
+  String get routineChooseDuration;
+
+  /// No description provided for @routineNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'This routine no longer exists.'**
+  String get routineNotFound;
+
+  /// No description provided for @routineRename.
+  ///
+  /// In en, this message translates to:
+  /// **'Rename routine'**
+  String get routineRename;
+
+  /// No description provided for @routineAppsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Apps'**
+  String get routineAppsTitle;
+
+  /// No description provided for @routineAddApp.
+  ///
+  /// In en, this message translates to:
+  /// **'Add app'**
+  String get routineAddApp;
+
+  /// No description provided for @routineAppUsage.
+  ///
+  /// In en, this message translates to:
+  /// **'{duration} today · Included in limit'**
+  String routineAppUsage(String duration);
+
+  /// No description provided for @routineAppUsageExcluded.
+  ///
+  /// In en, this message translates to:
+  /// **'{duration} today · Excluded from limit'**
+  String routineAppUsageExcluded(String duration);
+
+  /// No description provided for @routineRemoveApp.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove app'**
+  String get routineRemoveApp;
+
+  /// No description provided for @routineKeepOneApp.
+  ///
+  /// In en, this message translates to:
+  /// **'A routine must keep at least one app.'**
+  String get routineKeepOneApp;
+
+  /// No description provided for @routineDeleteConfirmation.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete {name}? This cannot be undone.'**
+  String routineDeleteConfirmation(String name);
+
+  /// No description provided for @routineUsageToday.
+  ///
+  /// In en, this message translates to:
+  /// **'Counted usage today'**
+  String get routineUsageToday;
+
+  /// No description provided for @routineNoIncludedApps.
+  ///
+  /// In en, this message translates to:
+  /// **'Include at least one app to enable the limit'**
+  String get routineNoIncludedApps;
+
+  /// No description provided for @routineLimitReached.
+  ///
+  /// In en, this message translates to:
+  /// **'Limit reached · included apps are blocked until midnight'**
+  String get routineLimitReached;
+
+  /// No description provided for @routineActive.
+  ///
+  /// In en, this message translates to:
+  /// **'Active'**
+  String get routineActive;
+
+  /// No description provided for @routinePaused.
+  ///
+  /// In en, this message translates to:
+  /// **'Paused'**
+  String get routinePaused;
+
+  /// No description provided for @routineUsageOfLimit.
+  ///
+  /// In en, this message translates to:
+  /// **'{used} of {limit}'**
+  String routineUsageOfLimit(String used, String limit);
+
+  /// No description provided for @routineRemaining.
+  ///
+  /// In en, this message translates to:
+  /// **'{duration} remaining'**
+  String routineRemaining(String duration);
+
+  /// No description provided for @routineSetLimit.
+  ///
+  /// In en, this message translates to:
+  /// **'Set limit'**
+  String get routineSetLimit;
+
+  /// No description provided for @routineEditLimit.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit limit'**
+  String get routineEditLimit;
+
+  /// No description provided for @routineRemoveLimit.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove limit'**
+  String get routineRemoveLimit;
+
+  /// No description provided for @routineUsageOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'{duration} today'**
+  String routineUsageOnly(String duration);
+
   /// No description provided for @restrictionsPlatformStatusTitle.
   ///
   /// In en, this message translates to:

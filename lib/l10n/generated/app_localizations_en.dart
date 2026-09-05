@@ -196,6 +196,92 @@ class AppLocalizationsEn extends AppLocalizations {
   String get routineEditorSave => 'Save routine';
 
   @override
+  String get routineDailyLimit => 'Daily shared limit';
+
+  @override
+  String get routineNoDailyLimit => 'No daily limit';
+
+  @override
+  String get routineCustomDuration => 'Custom';
+
+  @override
+  String get routineChooseDuration => 'Choose daily limit';
+
+  @override
+  String get routineNotFound => 'This routine no longer exists.';
+
+  @override
+  String get routineRename => 'Rename routine';
+
+  @override
+  String get routineAppsTitle => 'Apps';
+
+  @override
+  String get routineAddApp => 'Add app';
+
+  @override
+  String routineAppUsage(String duration) {
+    return '$duration today · Included in limit';
+  }
+
+  @override
+  String routineAppUsageExcluded(String duration) {
+    return '$duration today · Excluded from limit';
+  }
+
+  @override
+  String get routineRemoveApp => 'Remove app';
+
+  @override
+  String get routineKeepOneApp => 'A routine must keep at least one app.';
+
+  @override
+  String routineDeleteConfirmation(String name) {
+    return 'Delete $name? This cannot be undone.';
+  }
+
+  @override
+  String get routineUsageToday => 'Counted usage today';
+
+  @override
+  String get routineNoIncludedApps =>
+      'Include at least one app to enable the limit';
+
+  @override
+  String get routineLimitReached =>
+      'Limit reached · included apps are blocked until midnight';
+
+  @override
+  String get routineActive => 'Active';
+
+  @override
+  String get routinePaused => 'Paused';
+
+  @override
+  String routineUsageOfLimit(String used, String limit) {
+    return '$used of $limit';
+  }
+
+  @override
+  String routineRemaining(String duration) {
+    return '$duration remaining';
+  }
+
+  @override
+  String get routineSetLimit => 'Set limit';
+
+  @override
+  String get routineEditLimit => 'Edit limit';
+
+  @override
+  String get routineRemoveLimit => 'Remove limit';
+
+  @override
+  String routineUsageOnly(String duration) {
+    return '$duration today';
+  }
+
+  @override
   String get restrictionsPlatformStatusTitle => 'Status only on this platform';
 
   @override

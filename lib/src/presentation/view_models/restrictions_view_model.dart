@@ -1,18 +1,21 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/datasources/platform_usage_data_source.dart';
+import '../../domain/models/app_usage_summary.dart';
 import '../../domain/models/block_routine.dart';
 import '../../domain/models/restriction_rule.dart';
 import '../../domain/models/restriction_event.dart';
 import '../../domain/models/usage_session.dart';
 import '../../domain/repositories/report_repository.dart';
 import '../../domain/repositories/settings_repository.dart';
+import '../../domain/repositories/usage_repository.dart';
 
 class RestrictionsState {
   const RestrictionsState({
     required this.platform,
     this.rules = const <RestrictionRule>[],
     this.routines = const <BlockRoutine>[],
+    this.todayUsage = const <AppUsageSummary>[],
     this.hasOverlayPermission = true,
     this.hasNotificationsPermission = true,
     this.isLoading = false,
@@ -32,6 +35,7 @@ class RestrictionsState {
   final UsagePlatform platform;
   final List<RestrictionRule> rules;
   final List<BlockRoutine> routines;
+  final List<AppUsageSummary> todayUsage;
   final bool hasOverlayPermission;
   final bool hasNotificationsPermission;
   final bool isLoading;
@@ -41,6 +45,7 @@ class RestrictionsState {
   RestrictionsState copyWith({
     List<RestrictionRule>? rules,
     List<BlockRoutine>? routines,
+    List<AppUsageSummary>? todayUsage,
     bool? hasOverlayPermission,
     bool? hasNotificationsPermission,
     bool? isLoading,
@@ -52,6 +57,7 @@ class RestrictionsState {
       platform: platform,
       rules: rules ?? this.rules,
       routines: routines ?? this.routines,
+      todayUsage: todayUsage ?? this.todayUsage,
       hasOverlayPermission: hasOverlayPermission ?? this.hasOverlayPermission,
       hasNotificationsPermission:
           hasNotificationsPermission ?? this.hasNotificationsPermission,
@@ -66,23 +72,27 @@ class RestrictionsViewModel extends StateNotifier<RestrictionsState> {
   RestrictionsViewModel({
     required SettingsRepository settingsRepository,
     required PlatformUsageDataSource platformDataSource,
+    UsageRepository? usageRepository,
     required UsagePlatform platform,
     ReportRepository? reportRepository,
   }) : _settingsRepository = settingsRepository,
        _platformDataSource = platformDataSource,
+       _usageRepository = usageRepository,
        _reportRepository = reportRepository,
        super(RestrictionsState.initial(platform));
 
   final SettingsRepository _settingsRepository;
   final PlatformUsageDataSource _platformDataSource;
+  final UsageRepository? _usageRepository;
   final ReportRepository? _reportRepository;
 
   Future<void> load() async {
     state = state.copyWith(isLoading: true, clearError: true);
     try {
-      final (rules, routines) = await (
+      final (rules, routines, todayUsage) = await (
         _settingsRepository.restrictionRules(),
         _settingsRepository.blockRoutines(),
+        _loadTodayUsage(),
       ).wait;
       final (hasOverlayPermission, hasNotificationsPermission) = await (
         _platformDataSource.hasOverlayPermission(),
@@ -91,6 +101,7 @@ class RestrictionsViewModel extends StateNotifier<RestrictionsState> {
       state = state.copyWith(
         rules: rules,
         routines: routines,
+        todayUsage: todayUsage,
         hasOverlayPermission: hasOverlayPermission,
         hasNotificationsPermission: hasNotificationsPermission,
         isLoading: false,
@@ -198,6 +209,26 @@ class RestrictionsViewModel extends StateNotifier<RestrictionsState> {
       await _sync(state.rules, routines);
     } catch (error) {
       state = state.copyWith(isSaving: false, errorMessage: error.toString());
+    }
+  }
+
+  Future<void> refreshRoutineUsage() async {
+    try {
+      state = state.copyWith(todayUsage: await _loadTodayUsage());
+    } catch (error) {
+      state = state.copyWith(errorMessage: error.toString());
+    }
+  }
+
+  Future<List<AppUsageSummary>> _loadTodayUsage() async {
+    final usageRepository = _usageRepository;
+    if (usageRepository == null) {
+      return const <AppUsageSummary>[];
+    }
+    try {
+      return await usageRepository.getTodaySummaries();
+    } catch (_) {
+      return const <AppUsageSummary>[];
     }
   }
 

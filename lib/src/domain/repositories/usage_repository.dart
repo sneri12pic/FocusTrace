@@ -9,6 +9,9 @@ abstract class UsageRepository {
 
   Future<List<AppUsageSummary>> getTodaySummaries();
 
+  /// Today's most recently stored snapshot, without querying platform usage.
+  Future<List<AppUsageSummary>> getCachedTodaySummaries(DateTime day);
+
   /// Per-app totals stored for [day] (snapshotted whenever today's usage is
   /// fetched), longest first. Empty when nothing was recorded that day.
   Future<List<AppUsageSummary>> getDailySummaries(DateTime day);
@@ -32,4 +35,12 @@ abstract class UsageRepository {
   Future<void> insertSession(UsageSession session);
 
   Future<void> clearAllData();
+}
+
+/// Optional repository capability for enriching persisted usage-only rows with
+/// current platform app names and icons.
+abstract interface class AppMetadataRepository {
+  Future<List<AppUsageSummary>> hydrateAppMetadata(
+    List<AppUsageSummary> summaries,
+  );
 }

@@ -2,6 +2,7 @@ import 'package:flutter/services.dart';
 
 import '../../domain/models/app_usage_interval.dart';
 import '../../domain/models/app_usage_summary.dart';
+import '../../performance/dashboard_performance.dart';
 
 class ActiveWindowInfo {
   const ActiveWindowInfo({
@@ -114,11 +115,17 @@ class AndroidUsageDataSource
       );
     }
 
-    final rows = await _channel.invokeListMethod<Object?>('getTodayUsageStats');
+    DashboardPerformance.livePlatformCallStarted();
+    final rows = await _channel.invokeListMethod<Object?>(
+      'getTodayUsageStats',
+      {'benchmarkRunId': DashboardPerformance.currentPlatformFetchRunId},
+    );
     final summaries = (rows ?? const <Object?>[])
         .whereType<Map>()
         .map((row) => _summaryFromAndroidMap(Map<String, Object?>.from(row)))
         .toList();
+
+    DashboardPerformance.liveUsageAvailable();
 
     return summaries;
   }
@@ -129,10 +136,11 @@ class AndroidUsageDataSource
     if (requestedKeys.isEmpty) {
       return const <AppUsageSummary>[];
     }
-    final rows = await _channel.invokeListMethod<Object?>(
-      'getAppMetadata',
-      requestedKeys,
-    );
+    final rows = await _channel
+        .invokeListMethod<Object?>('getAppMetadata', <String, Object?>{
+          'packageNames': requestedKeys,
+          'benchmarkRunId': DashboardPerformance.currentPlatformFetchRunId,
+        });
     return (rows ?? const <Object?>[])
         .whereType<Map>()
         .map((row) => _summaryFromAndroidMap(Map<String, Object?>.from(row)))
@@ -190,7 +198,7 @@ class AndroidUsageDataSource
   // Each channel fetch delivers fresh byte arrays; Flutter's image cache is
   // keyed by object identity, so new bytes force a full PNG re-decode of every
   // icon. Icons rarely change — reuse the first-seen bytes per package.
-  final _iconBytesByPackage = <String, Uint8List>{};
+  final _iconBytesByPackage = <String, _CachedAndroidIcon>{};
 
   AppUsageSummary _summaryFromAndroidMap(Map<String, Object?> row) {
     final durationMs = (row['totalTimeInForegroundMs'] as num?)?.toInt() ?? 0;
@@ -201,10 +209,20 @@ class AndroidUsageDataSource
     var iconBytes = row['iconBytes'] as Uint8List?;
     final freshIconBytes = iconBytes;
     if (freshIconBytes != null && packageName != null) {
-      iconBytes = _iconBytesByPackage.putIfAbsent(
-        packageName,
-        () => freshIconBytes,
-      );
+      final metadataVersion = (row['metadataVersion'] as num?)?.toInt();
+      final cached = _iconBytesByPackage[packageName];
+      if (cached == null ||
+          (metadataVersion != null &&
+              cached.metadataVersion != metadataVersion)) {
+        final replacement = _CachedAndroidIcon(
+          bytes: freshIconBytes,
+          metadataVersion: metadataVersion,
+        );
+        _iconBytesByPackage[packageName] = replacement;
+        iconBytes = replacement.bytes;
+      } else {
+        iconBytes = cached.bytes;
+      }
     }
 
     return AppUsageSummary(
@@ -219,6 +237,13 @@ class AndroidUsageDataSource
       iconBytes: iconBytes,
     );
   }
+}
+
+class _CachedAndroidIcon {
+  const _CachedAndroidIcon({required this.bytes, this.metadataVersion});
+
+  final Uint8List bytes;
+  final int? metadataVersion;
 }
 
 class WindowsUsageDataSource implements PlatformUsageDataSource {

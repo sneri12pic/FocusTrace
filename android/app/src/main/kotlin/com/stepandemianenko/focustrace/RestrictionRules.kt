@@ -27,26 +27,80 @@ data class RestrictionRule(
     val endMinute: Int? = null,
 )
 
+data class RoutineMember(
+    val appKey: String,
+    val appName: String,
+    val isIncludedInLimit: Boolean,
+)
+
+data class RoutineLimit(
+    val id: String,
+    val name: String,
+    val limitMinutes: Int,
+    val apps: List<RoutineMember>,
+) {
+    val includedApps: List<RoutineMember>
+        get() = apps.filter { it.isIncludedInLimit }
+
+    fun usageSeconds(usageByAppKey: Map<String, Long>): Long =
+        includedApps.sumOf { usageByAppKey[it.appKey] ?: 0L }
+
+    fun isReached(usageByAppKey: Map<String, Long>): Boolean =
+        usageSeconds(usageByAppKey) >= limitMinutes * 60L
+}
+
+data class RestrictionConfiguration(
+    val rules: List<RestrictionRule> = emptyList(),
+    val routines: List<RoutineLimit> = emptyList(),
+) {
+    val isEmpty: Boolean
+        get() = rules.isEmpty() && routines.isEmpty()
+
+    val appKeys: Set<String>
+        get() = buildSet {
+            addAll(rules.map { it.appKey })
+            routines.forEach { routine ->
+                addAll(routine.includedApps.map { it.appKey })
+            }
+        }
+
+    fun blockingRoutine(
+        appKey: String,
+        usageByAppKey: Map<String, Long>,
+    ): RoutineLimit? = routines.firstOrNull { routine ->
+        routine.includedApps.any { it.appKey == appKey } &&
+            routine.isReached(usageByAppKey)
+    }
+}
+
 object RestrictionRules {
     const val PREFS_NAME = "focustrace_restrictions"
     const val PREFS_RULES_KEY = "rules_json"
 
     fun parseRules(json: String?): List<RestrictionRule> {
-        if (json.isNullOrBlank()) return emptyList()
+        return parseConfiguration(json).rules
+    }
+
+    fun parseConfiguration(json: String?): RestrictionConfiguration {
+        if (json.isNullOrBlank()) return RestrictionConfiguration()
         return try {
             val root = JSONObject(json)
             val rules = root.optJSONArray("rules") ?: JSONArray()
-            val routineBlocks = root.optJSONArray("routineBlocks") ?: JSONArray()
-            buildList {
-                for (index in 0 until rules.length()) {
-                    parseRule(rules.optJSONObject(index))?.let(::add)
-                }
-                for (index in 0 until routineBlocks.length()) {
-                    parseRoutineBlock(routineBlocks.optJSONObject(index))?.let(::add)
-                }
-            }
+            val routines = root.optJSONArray("routines") ?: JSONArray()
+            RestrictionConfiguration(
+                rules = buildList {
+                    for (index in 0 until rules.length()) {
+                        parseRule(rules.optJSONObject(index))?.let(::add)
+                    }
+                },
+                routines = buildList {
+                    for (index in 0 until routines.length()) {
+                        parseRoutine(routines.optJSONObject(index))?.let(::add)
+                    }
+                },
+            )
         } catch (_: Exception) {
-            emptyList()
+            RestrictionConfiguration()
         }
     }
 
@@ -79,7 +133,7 @@ object RestrictionRules {
         }
     }
 
-    fun hasRules(json: String?): Boolean = parseRules(json).isNotEmpty()
+    fun hasRules(json: String?): Boolean = !parseConfiguration(json).isEmpty
 
     private fun parseRule(row: JSONObject?): RestrictionRule? {
         if (row == null) return null
@@ -113,16 +167,38 @@ object RestrictionRules {
         )
     }
 
-    private fun parseRoutineBlock(row: JSONObject?): RestrictionRule? {
+    private fun parseRoutine(row: JSONObject?): RoutineLimit? {
         if (row == null) return null
-        val appKey = row.optString("appKey").takeIf { it.isNotBlank() } ?: return null
-        val appName = row.optString("appName").takeIf { it.isNotBlank() } ?: return null
-        return RestrictionRule(
-            appKey = appKey,
-            appName = appName,
-            type = RestrictionRuleType.RoutineBlock,
+        if (!row.optBoolean("isEnabled", true)) return null
+        val id = row.optString("id").takeIf { it.isNotBlank() } ?: return null
+        val name = row.optString("name").takeIf { it.isNotBlank() } ?: return null
+        val limitMinutes = optionalInt(row, "dailyLimitMinutes")
+            ?.takeIf { it > 0 } ?: return null
+        val rawApps = row.optJSONArray("apps") ?: return null
+        val apps = buildList {
+            for (index in 0 until rawApps.length()) {
+                val app = rawApps.optJSONObject(index) ?: continue
+                val appKey = app.optString("appKey").takeIf { it.isNotBlank() } ?: continue
+                val appName = app.optString("appName").takeIf { it.isNotBlank() } ?: continue
+                add(
+                    RoutineMember(
+                        appKey = appKey,
+                        appName = appName,
+                        isIncludedInLimit = app.optBoolean("isIncludedInLimit", true),
+                    )
+                )
+            }
+        }.distinctBy { it.appKey }
+        if (apps.none { it.isIncludedInLimit }) return null
+        return RoutineLimit(
+            id = id,
+            name = name,
+            limitMinutes = limitMinutes,
+            apps = apps,
         )
     }
+
+    fun startOfTomorrowMs(nowMs: Long): Long = startOfTomorrow(nowMs)
 
     private fun isScheduleActive(rule: RestrictionRule, nowMs: Long): Boolean {
         val start = rule.startMinute ?: return false

@@ -35,12 +35,13 @@ class BlockerService : Service() {
     }
 
     private lateinit var windowManager: WindowManager
-    private var rules: List<RestrictionRule> = emptyList()
+    private var configuration = RestrictionConfiguration()
     private var overlayView: View? = null
     private var overlayAppKey: String? = null
     private var lastBlockedAppKey: String? = null
     private var dayKey: String = ""
     private val warnedDailyLimitKeys = mutableSetOf<String>()
+    private val usageState = UsageStats.IncrementalState()
 
     override fun onCreate() {
         super.onCreate()
@@ -49,12 +50,12 @@ class BlockerService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        rules = loadRules()
-        if (rules.isEmpty()) {
+        configuration = loadConfiguration()
+        if (configuration.isEmpty) {
             stopSelf()
             return START_NOT_STICKY
         }
-        dayKey = currentDayKey()
+        dayKey = currentDayKey(System.currentTimeMillis())
         startForegroundCompat()
         handler.removeCallbacks(tickRunnable)
         handler.post(tickRunnable)
@@ -63,6 +64,7 @@ class BlockerService : Service() {
 
     override fun onDestroy() {
         handler.removeCallbacks(tickRunnable)
+        usageState.invalidate()
         removeOverlay()
         super.onDestroy()
     }
@@ -70,14 +72,29 @@ class BlockerService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     private fun tick() {
-        val latestRules = loadRules()
-        if (latestRules.isEmpty()) {
+        val performance = BlockerPerformance.startTick(this)
+        val queryMetrics = performance?.let { UsageStats.QueryMetrics() }
+        try {
+            tick(performance, queryMetrics)
+        } finally {
+            performance?.finish(queryMetrics)
+        }
+    }
+
+    private fun tick(
+        performance: BlockerPerformance.Tick?,
+        queryMetrics: UsageStats.QueryMetrics?,
+    ) {
+        val latestConfiguration = loadConfiguration()
+        if (latestConfiguration.isEmpty) {
+            usageState.invalidate()
             stopSelf()
             return
         }
-        rules = latestRules
+        configuration = latestConfiguration
 
-        val currentDay = currentDayKey()
+        val now = System.currentTimeMillis()
+        val currentDay = currentDayKey(now)
         if (currentDay != dayKey) {
             dayKey = currentDay
             warnedDailyLimitKeys.clear()
@@ -86,17 +103,32 @@ class BlockerService : Service() {
         if (!FocusTracePermissions.hasOverlayPermission(this) ||
             !FocusTracePermissions.hasUsageAccess(this)
         ) {
+            usageState.invalidate()
             lastBlockedAppKey = null
             removeOverlay()
             return
         }
 
-        val packageNames = rules.map { it.appKey }.toSet()
-        val now = System.currentTimeMillis()
-        val usageSeconds = todayUsageSeconds(packageNames, now)
+        val packageNames = configuration.appKeys
+        val snapshot = try {
+            UsageStats.incrementalBlockerSnapshot(
+                context = this,
+                dayStartMs = UsageStats.startOfDayMillis(now),
+                nowMs = now,
+                packageNames = packageNames,
+                state = usageState,
+                metrics = queryMetrics,
+            )
+        } catch (_: SecurityException) {
+            usageState.invalidate()
+            lastBlockedAppKey = null
+            removeOverlay()
+            return
+        }
+        val usageSeconds = snapshot.usageMs.mapValues { it.value / 1000L }
         maybeNotifyDailyLimitWarnings(usageSeconds, now)
 
-        val foregroundPackage = currentForegroundPackage(now)
+        val foregroundPackage = snapshot.currentForegroundPackage
 
         // Our own block screen (TikTok path) is foreground while active.
         if (foregroundPackage == null || foregroundPackage == packageName) {
@@ -105,82 +137,101 @@ class BlockerService : Service() {
             return
         }
 
-        val appRules = rules.filter { it.appKey == foregroundPackage }
-        val blockingRule = appRules.firstOrNull {
-            RestrictionRules.isBlocked(
-                it,
-                now,
-                usageSeconds[it.appKey] ?: 0L,
+        var blockingRule: RestrictionRule? = null
+        var blockingRoutine: RoutineLimit? = null
+        val decide = {
+            blockingRule = configuration.rules.firstOrNull {
+                it.appKey == foregroundPackage &&
+                    RestrictionRules.isBlocked(
+                        it,
+                        now,
+                        usageSeconds[it.appKey] ?: 0L,
+                    )
+            }
+            blockingRoutine = configuration.blockingRoutine(
+                foregroundPackage,
+                usageSeconds,
             )
         }
-        if (blockingRule == null) {
+        if (performance == null) {
+            decide()
+        } else {
+            performance.measureDecision(queryMetrics?.latestForegroundEventMs, decide)
+        }
+        if (blockingRule == null && blockingRoutine == null) {
             lastBlockedAppKey = null
             removeOverlay()
             return
         }
+
+        val routineMember = blockingRoutine?.includedApps
+            ?.firstOrNull { it.appKey == foregroundPackage }
+        val blockedAppName = blockingRule?.appName ?: routineMember?.appName ?: foregroundPackage
+        val eventReason = blockingRule?.type?.jsonName
+            ?: "routineLimit:${blockingRoutine?.id}"
+        val reason = blockingRule?.let(::reasonFor)
+            ?: FocusTraceLocale.getString(
+                this,
+                R.string.restriction_reason_routine_limit,
+                blockingRoutine?.name ?: "",
+            )
+        val untilMs = blockingRule?.let {
+            RestrictionRules.blockedUntilMs(
+                it,
+                now,
+                usageSeconds[it.appKey] ?: 0L,
+            )
+        } ?: RestrictionRules.startOfTomorrowMs(now)
 
         if (lastBlockedAppKey != foregroundPackage) {
             lastBlockedAppKey = foregroundPackage
             RestrictionEventStore.recordBlocked(
                 this,
                 appKey = foregroundPackage,
-                appName = blockingRule.appName,
-                reason = blockingRule.type.jsonName,
+                appName = blockedAppName,
+                reason = eventReason,
                 occurredAtMs = now,
             )
         }
 
-        val untilMs = RestrictionRules.blockedUntilMs(
-            blockingRule,
-            now,
-            usageSeconds[blockingRule.appKey] ?: 0L,
-        )
         if (foregroundPackage in TIKTOK_PACKAGES) {
             // TikTok autoplays video; only a real foreground activity pauses it.
             removeOverlay()
             BlockActivity.start(
                 this,
                 appKey = foregroundPackage,
-                appName = blockingRule.appName,
-                reason = reasonFor(blockingRule),
+                appName = blockedAppName,
+                reason = reason,
                 untilMs = untilMs,
+                performance = performance?.presentation(
+                    BlockerPerformance.Action.BlockActivity,
+                    queryMetrics?.latestForegroundEventMs,
+                ),
             )
         } else {
             showOverlay(
                 appKey = foregroundPackage,
-                appName = blockingRule.appName,
-                reason = reasonFor(blockingRule),
+                appName = blockedAppName,
+                reason = reason,
                 untilMs = untilMs,
+                performance = performance?.presentation(
+                    BlockerPerformance.Action.Overlay,
+                    queryMetrics?.latestForegroundEventMs,
+                ),
             )
         }
     }
 
-    private fun loadRules(): List<RestrictionRule> {
+    private fun loadConfiguration(): RestrictionConfiguration {
         val json = getSharedPreferences(RestrictionRules.PREFS_NAME, Context.MODE_PRIVATE)
             .getString(RestrictionRules.PREFS_RULES_KEY, null)
         val now = System.currentTimeMillis()
-        return RestrictionRules.parseRules(json).filter {
-            it.type != RestrictionRuleType.BlockNow ||
-                (it.untilMs != null && it.untilMs > now)
-        }
-    }
-
-    @Suppress("DEPRECATION")
-    private fun todayUsageSeconds(packageNames: Set<String>, now: Long): Map<String, Long> {
-        if (packageNames.isEmpty()) return emptyMap()
-        return UsageStats.foregroundTotals(
-            this,
-            UsageStats.startOfTodayMillis(),
-            now,
-            packageNames,
-        ).mapValues { it.value.totalMs / 1000L }
-    }
-
-    private fun currentForegroundPackage(now: Long): String? {
-        return UsageStats.currentForegroundPackage(
-            this,
-            UsageStats.startOfTodayMillis(),
-            now,
+        val parsed = RestrictionRules.parseConfiguration(json)
+        return parsed.copy(
+            rules = parsed.rules.filter {
+                it.type != RestrictionRuleType.BlockNow ||
+                    (it.untilMs != null && it.untilMs > now)
+            },
         )
     }
 
@@ -188,7 +239,7 @@ class BlockerService : Service() {
         usageSeconds: Map<String, Long>,
         now: Long,
     ) {
-        for (rule in rules) {
+        for (rule in configuration.rules) {
             if (rule.type != RestrictionRuleType.DailyLimit) continue
             val limitSeconds = (rule.limitMinutes ?: continue) * 60L
             val usedSeconds = usageSeconds[rule.appKey] ?: 0L
@@ -199,6 +250,17 @@ class BlockerService : Service() {
             ) {
                 warnedDailyLimitKeys.add(key)
                 showWarningNotification(rule, remainingSeconds, now)
+            }
+        }
+        for (routine in configuration.routines) {
+            val limitSeconds = routine.limitMinutes * 60L
+            val remainingSeconds = limitSeconds - routine.usageSeconds(usageSeconds)
+            val key = "${dayKey}:routine:${routine.id}:${routine.limitMinutes}"
+            if (remainingSeconds in 1..WARNING_LEAD_SECONDS &&
+                !warnedDailyLimitKeys.contains(key)
+            ) {
+                warnedDailyLimitKeys.add(key)
+                showRoutineWarningNotification(routine, remainingSeconds, now)
             }
         }
     }
@@ -238,11 +300,50 @@ class BlockerService : Service() {
         }
     }
 
+    private fun showRoutineWarningNotification(
+        routine: RoutineLimit,
+        remainingSeconds: Long,
+        now: Long,
+    ) {
+        val minutes = (remainingSeconds / 60L).coerceAtLeast(1L)
+        val notification = notificationBuilder(WARNING_CHANNEL_ID)
+            .setContentTitle(
+                FocusTraceLocale.getString(
+                    this,
+                    R.string.restriction_routine_warning_title,
+                    routine.name,
+                )
+            )
+            .setContentText(
+                FocusTraceLocale.getQuantityString(
+                    this,
+                    R.plurals.restriction_warning_minutes,
+                    minutes.toInt(),
+                    minutes,
+                )
+            )
+            .setSmallIcon(R.drawable.ic_launcher)
+            .setWhen(now)
+            .setAutoCancel(true)
+            .build()
+
+        try {
+            (getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager)
+                .notify(
+                    WARNING_NOTIFICATION_BASE_ID + routine.id.hashCode().absoluteValue,
+                    notification,
+                )
+        } catch (_: SecurityException) {
+            // Android 13+ may deny POST_NOTIFICATIONS; blocking still works.
+        }
+    }
+
     private fun showOverlay(
         appKey: String,
         appName: String,
         reason: String,
         untilMs: Long?,
+        performance: BlockerPerformance.Presentation?,
     ) {
         if (overlayView != null && overlayAppKey == appKey) return
         removeOverlay()
@@ -313,6 +414,7 @@ class BlockerService : Service() {
                 LinearLayout.LayoutParams.WRAP_CONTENT,
             ).apply { gravity = Gravity.CENTER_HORIZONTAL },
         )
+        BlockerPerformance.logFirstDraw(root, performance)
 
         val overlayType = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
@@ -446,8 +548,8 @@ class BlockerService : Service() {
         return SimpleDateFormat("HH:mm", Locale.getDefault()).format(ms)
     }
 
-    private fun currentDayKey(): String {
-        val calendar = Calendar.getInstance()
+    private fun currentDayKey(nowMs: Long): String {
+        val calendar = Calendar.getInstance().apply { timeInMillis = nowMs }
         return "${calendar.get(Calendar.YEAR)}-${calendar.get(Calendar.DAY_OF_YEAR)}"
     }
 

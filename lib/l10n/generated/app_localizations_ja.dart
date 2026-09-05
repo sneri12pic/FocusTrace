@@ -192,6 +192,90 @@ class AppLocalizationsJa extends AppLocalizations {
   String get routineEditorSave => 'ルーティンを保存';
 
   @override
+  String get routineDailyLimit => '共有の1日上限';
+
+  @override
+  String get routineNoDailyLimit => '1日上限なし';
+
+  @override
+  String get routineCustomDuration => 'カスタム';
+
+  @override
+  String get routineChooseDuration => '1日上限を選択';
+
+  @override
+  String get routineNotFound => 'このルーティンは存在しません。';
+
+  @override
+  String get routineRename => 'ルーティン名を変更';
+
+  @override
+  String get routineAppsTitle => 'アプリ';
+
+  @override
+  String get routineAddApp => 'アプリを追加';
+
+  @override
+  String routineAppUsage(String duration) {
+    return '今日 $duration · 上限に含む';
+  }
+
+  @override
+  String routineAppUsageExcluded(String duration) {
+    return '今日 $duration · 上限から除外';
+  }
+
+  @override
+  String get routineRemoveApp => 'アプリを削除';
+
+  @override
+  String get routineKeepOneApp => 'ルーティンには1つ以上のアプリが必要です。';
+
+  @override
+  String routineDeleteConfirmation(String name) {
+    return '$nameを削除しますか？この操作は元に戻せません。';
+  }
+
+  @override
+  String get routineUsageToday => '今日のカウント対象時間';
+
+  @override
+  String get routineNoIncludedApps => '上限を有効にするにはアプリを1つ以上含めてください';
+
+  @override
+  String get routineLimitReached => '上限に到達 · 対象アプリは午前0時までブロックされます';
+
+  @override
+  String get routineActive => '有効';
+
+  @override
+  String get routinePaused => '一時停止';
+
+  @override
+  String routineUsageOfLimit(String used, String limit) {
+    return '$limit中 $used';
+  }
+
+  @override
+  String routineRemaining(String duration) {
+    return '残り $duration';
+  }
+
+  @override
+  String get routineSetLimit => '上限を設定';
+
+  @override
+  String get routineEditLimit => '上限を編集';
+
+  @override
+  String get routineRemoveLimit => '上限を削除';
+
+  @override
+  String routineUsageOnly(String duration) {
+    return '今日 $duration';
+  }
+
+  @override
   String get restrictionsPlatformStatusTitle => 'このプラットフォームの状態のみ';
 
   @override

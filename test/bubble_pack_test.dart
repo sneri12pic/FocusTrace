@@ -1,6 +1,10 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:focustrace/src/domain/models/usage_item.dart';
 import 'package:focustrace/src/presentation/widgets/bubble_chart.dart';
+import 'package:focustrace/l10n/generated/app_localizations.dart';
 
 void main() {
   test(
@@ -40,5 +44,70 @@ void main() {
         reason: 'biggest bubble should sit closest to the center',
       );
     },
+  );
+
+  testWidgets('packing runs once per items or size change', (tester) async {
+    var layoutCount = 0;
+    var items = [_item('a', 600), _item('b', 300)];
+
+    Widget chart({UsageItem? selectedItem}) {
+      return MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Scaffold(
+          body: SizedBox(
+            width: 800,
+            child: BubbleChart(
+              items: items,
+              selectedItem: selectedItem,
+              blockedItemIds: const {},
+              nearLimitItemIds: const {},
+              onItemSelected: (_) {},
+              onSelectionDismissed: () {},
+              onLayoutComputed: () => layoutCount++,
+            ),
+          ),
+        ),
+      );
+    }
+
+    await tester.pumpWidget(chart());
+    expect(layoutCount, 1);
+
+    for (var frame = 0; frame < 10; frame++) {
+      await tester.pump(const Duration(milliseconds: 16));
+    }
+    expect(layoutCount, 1);
+
+    await tester.pumpWidget(chart(selectedItem: items.first));
+    expect(layoutCount, 1);
+
+    items = [
+      _item('a', 600, iconBytes: Uint8List.fromList(const [1, 2, 3])),
+      _item('b', 300),
+    ];
+    await tester.pumpWidget(chart());
+    expect(layoutCount, 1, reason: 'icon-only hydration must reuse the layout');
+
+    items = [_item('a', 700), _item('b', 300)];
+    await tester.pumpWidget(chart());
+    expect(layoutCount, 2);
+
+    for (var frame = 0; frame < 10; frame++) {
+      await tester.pump(const Duration(milliseconds: 16));
+    }
+    expect(layoutCount, 2);
+  });
+}
+
+UsageItem _item(String id, int seconds, {Uint8List? iconBytes}) {
+  return UsageItem(
+    id: id,
+    name: id,
+    totalDurationSeconds: seconds,
+    percentageOfTotal: 0.5,
+    category: UsageCategory.activity,
+    initials: id.toUpperCase(),
+    iconBytes: iconBytes,
   );
 }

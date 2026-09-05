@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../domain/models/usage_session.dart';
+import '../../performance/dashboard_performance.dart';
 import '../localization/app_localizations_x.dart';
 import '../providers.dart';
 import '../view_models/dashboard_view_model.dart';
@@ -10,11 +11,22 @@ import '../widgets/permission_card.dart';
 import '../widgets/tracking_status_banner.dart';
 import 'usage_bubble_screen.dart';
 
-class DashboardScreen extends ConsumerWidget {
+class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<DashboardScreen> createState() => _DashboardScreenState();
+}
+
+class _DashboardScreenState extends ConsumerState<DashboardScreen> {
+  @override
+  void initState() {
+    super.initState();
+    DashboardPerformance.dashboardOpened();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final dashboardState = ref.watch(dashboardViewModelProvider);
     final dashboardViewModel = ref.read(dashboardViewModelProvider.notifier);
     final trackingState = ref.watch(trackingViewModelProvider);
@@ -40,6 +52,10 @@ class DashboardScreen extends ConsumerWidget {
                 viewModel: dashboardViewModel,
               ),
             ),
+            if (dashboardState.isRefreshing)
+              const LinearProgressIndicator(minHeight: 2)
+            else
+              const SizedBox(height: 2),
             Expanded(
               child: RefreshIndicator(
                 onRefresh: dashboardViewModel.refresh,
@@ -59,9 +75,7 @@ class DashboardScreen extends ConsumerWidget {
                     primary: true,
                     padding: const EdgeInsets.all(16),
                     children: [
-                      if (dashboardState.errorMessage == null &&
-                          !dashboardState.isLoading &&
-                          dashboardState.summaries.isNotEmpty) ...[
+                      if (dashboardState.summaries.isNotEmpty) ...[
                         UsageBubbleScreen(
                           summaries: dashboardState.summaries,
                           trendsByAppKey: dashboardState.trendsByAppKey,
@@ -110,10 +124,18 @@ class DashboardScreen extends ConsumerWidget {
                           message: context.l10n.commonUnexpectedError,
                           onRetry: dashboardViewModel.refresh,
                         )
-                      else if (dashboardState.isLoading)
+                      else if (dashboardState.isLoading &&
+                          dashboardState.summaries.isEmpty)
                         const _LoadingPanel()
                       else if (dashboardState.summaries.isEmpty)
                         _EmptyPanel(isToday: dashboardState.isToday),
+                      if (dashboardState.refreshErrorMessage != null) ...[
+                        const SizedBox(height: 12),
+                        _ErrorPanel(
+                          message: context.l10n.commonUnexpectedError,
+                          onRetry: dashboardViewModel.refresh,
+                        ),
+                      ],
                     ],
                   ),
                 ),

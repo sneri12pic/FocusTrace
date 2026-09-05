@@ -1,13 +1,34 @@
 import 'dart:convert';
 
 class RoutineApp {
-  const RoutineApp({required this.appKey, required this.appName});
+  const RoutineApp({
+    required this.appKey,
+    required this.appName,
+    this.isIncludedInLimit = true,
+  });
 
   final String appKey;
   final String appName;
+  final bool isIncludedInLimit;
+
+  RoutineApp copyWith({
+    String? appKey,
+    String? appName,
+    bool? isIncludedInLimit,
+  }) {
+    return RoutineApp(
+      appKey: appKey ?? this.appKey,
+      appName: appName ?? this.appName,
+      isIncludedInLimit: isIncludedInLimit ?? this.isIncludedInLimit,
+    );
+  }
 
   Map<String, Object?> toJson() {
-    return {'appKey': appKey, 'appName': appName};
+    return {
+      'appKey': appKey,
+      'appName': appName,
+      'isIncludedInLimit': isIncludedInLimit,
+    };
   }
 
   static RoutineApp? fromJson(Object? value) {
@@ -22,7 +43,13 @@ class RoutineApp {
         appName.trim().isEmpty) {
       return null;
     }
-    return RoutineApp(appKey: appKey, appName: appName);
+    return RoutineApp(
+      appKey: appKey,
+      appName: appName,
+      isIncludedInLimit: value['isIncludedInLimit'] is bool
+          ? value['isIncludedInLimit'] as bool
+          : true,
+    );
   }
 }
 
@@ -31,25 +58,49 @@ class BlockRoutine {
     required this.id,
     required this.name,
     required this.apps,
-    this.isEnabled = true,
+    this.dailyLimitMinutes,
+    this.isEnabled = false,
   });
 
   final String id;
   final String name;
   final List<RoutineApp> apps;
+  final int? dailyLimitMinutes;
   final bool isEnabled;
+
+  bool get canEnforceLimit =>
+      dailyLimitMinutes != null &&
+      dailyLimitMinutes! > 0 &&
+      apps.any((app) => app.isIncludedInLimit);
+
+  int usageSeconds(Map<String, int> usageByAppKey) {
+    return apps
+        .where((app) => app.isIncludedInLimit)
+        .fold(0, (total, app) => total + (usageByAppKey[app.appKey] ?? 0));
+  }
 
   BlockRoutine copyWith({
     String? id,
     String? name,
     List<RoutineApp>? apps,
+    int? dailyLimitMinutes,
+    bool clearDailyLimit = false,
     bool? isEnabled,
   }) {
+    final nextApps = apps ?? this.apps;
+    final nextLimit = clearDailyLimit
+        ? null
+        : dailyLimitMinutes ?? this.dailyLimitMinutes;
+    final nextCanEnforce =
+        nextLimit != null &&
+        nextLimit > 0 &&
+        nextApps.any((app) => app.isIncludedInLimit);
     return BlockRoutine(
       id: id ?? this.id,
       name: name ?? this.name,
-      apps: apps ?? this.apps,
-      isEnabled: isEnabled ?? this.isEnabled,
+      apps: nextApps,
+      dailyLimitMinutes: nextLimit,
+      isEnabled: nextCanEnforce && (isEnabled ?? this.isEnabled),
     );
   }
 
@@ -58,6 +109,7 @@ class BlockRoutine {
       'id': id,
       'name': name,
       'isEnabled': isEnabled,
+      'dailyLimitMinutes': dailyLimitMinutes,
       'apps': apps.map((app) => app.toJson()).toList(),
     };
   }
@@ -86,20 +138,38 @@ class BlockRoutine {
     if (appsByKey.isEmpty) {
       return null;
     }
+    final dailyLimitMinutes = _positiveInt(value['dailyLimitMinutes']);
+    final canEnforce =
+        dailyLimitMinutes != null &&
+        appsByKey.values.any((app) => app.isIncludedInLimit);
     return BlockRoutine(
       id: id,
       name: name.trim(),
       apps: appsByKey.values.toList(),
-      isEnabled: value['isEnabled'] is bool ? value['isEnabled'] as bool : true,
+      dailyLimitMinutes: dailyLimitMinutes,
+      // Legacy routines had no limit and used `isEnabled` as an immediate
+      // block. They intentionally migrate to a disabled statistics group.
+      isEnabled: canEnforce && value['isEnabled'] is bool
+          ? value['isEnabled'] as bool
+          : false,
     );
   }
 }
 
 String encodeBlockRoutines(List<BlockRoutine> routines) {
   return jsonEncode({
-    'version': 1,
+    'version': 2,
     'routines': routines.map((routine) => routine.toJson()).toList(),
   });
+}
+
+int? _positiveInt(Object? value) {
+  final parsed = value is int
+      ? value
+      : value is num
+      ? value.toInt()
+      : int.tryParse(value?.toString() ?? '');
+  return parsed != null && parsed > 0 ? parsed : null;
 }
 
 List<BlockRoutine> decodeBlockRoutines(String? rawValue) {

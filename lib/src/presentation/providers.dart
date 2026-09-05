@@ -226,6 +226,7 @@ final restrictionsViewModelProvider =
       final viewModel = RestrictionsViewModel(
         settingsRepository: ref.watch(settingsRepositoryProvider),
         platformDataSource: ref.watch(platformDataSourceProvider),
+        usageRepository: ref.watch(usageRepositoryProvider),
         platform: ref.watch(usagePlatformProvider),
         reportRepository: ref.watch(reportRepositoryProvider),
       );

@@ -198,6 +198,93 @@ class AppLocalizationsUk extends AppLocalizations {
   String get routineEditorSave => 'Зберегти рутину';
 
   @override
+  String get routineDailyLimit => 'Спільний денний ліміт';
+
+  @override
+  String get routineNoDailyLimit => 'Без денного ліміту';
+
+  @override
+  String get routineCustomDuration => 'Власний';
+
+  @override
+  String get routineChooseDuration => 'Виберіть денний ліміт';
+
+  @override
+  String get routineNotFound => 'Цієї рутини більше не існує.';
+
+  @override
+  String get routineRename => 'Перейменувати рутину';
+
+  @override
+  String get routineAppsTitle => 'Застосунки';
+
+  @override
+  String get routineAddApp => 'Додати застосунок';
+
+  @override
+  String routineAppUsage(String duration) {
+    return 'Сьогодні $duration · Враховується в ліміті';
+  }
+
+  @override
+  String routineAppUsageExcluded(String duration) {
+    return 'Сьогодні $duration · Не враховується в ліміті';
+  }
+
+  @override
+  String get routineRemoveApp => 'Видалити застосунок';
+
+  @override
+  String get routineKeepOneApp =>
+      'У рутині має залишитися хоча б один застосунок.';
+
+  @override
+  String routineDeleteConfirmation(String name) {
+    return 'Видалити $name? Цю дію неможливо скасувати.';
+  }
+
+  @override
+  String get routineUsageToday => 'Враховане використання сьогодні';
+
+  @override
+  String get routineNoIncludedApps =>
+      'Додайте до ліміту хоча б один застосунок';
+
+  @override
+  String get routineLimitReached =>
+      'Ліміт вичерпано · враховані застосунки заблоковано до опівночі';
+
+  @override
+  String get routineActive => 'Активна';
+
+  @override
+  String get routinePaused => 'Призупинена';
+
+  @override
+  String routineUsageOfLimit(String used, String limit) {
+    return '$used з $limit';
+  }
+
+  @override
+  String routineRemaining(String duration) {
+    return 'Залишилося $duration';
+  }
+
+  @override
+  String get routineSetLimit => 'Установити ліміт';
+
+  @override
+  String get routineEditLimit => 'Змінити ліміт';
+
+  @override
+  String get routineRemoveLimit => 'Прибрати ліміт';
+
+  @override
+  String routineUsageOnly(String duration) {
+    return 'Сьогодні $duration';
+  }
+
+  @override
   String get restrictionsPlatformStatusTitle =>
       'На цій платформі — лише статус';
 

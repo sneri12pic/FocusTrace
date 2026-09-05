@@ -6,7 +6,7 @@ import '../../domain/repositories/usage_repository.dart';
 import '../datasources/focus_trace_local_data_source.dart';
 import '../datasources/platform_usage_data_source.dart';
 
-class UsageRepositoryImpl implements UsageRepository {
+class UsageRepositoryImpl implements UsageRepository, AppMetadataRepository {
   UsageRepositoryImpl({
     required UsagePlatform platform,
     required FocusTraceLocalDataSource localDataSource,
@@ -45,6 +45,19 @@ class UsageRepositoryImpl implements UsageRepository {
       // History is best-effort; never block the dashboard on a storage error.
     }
     return summaries;
+  }
+
+  @override
+  Future<List<AppUsageSummary>> getCachedTodaySummaries(DateTime day) async {
+    final stored = await _localDataSource.getDailySummaries(day);
+    return _aggregationService.withPercentages(stored);
+  }
+
+  @override
+  Future<List<AppUsageSummary>> hydrateAppMetadata(
+    List<AppUsageSummary> summaries,
+  ) {
+    return _withCurrentMetadata(summaries);
   }
 
   @override

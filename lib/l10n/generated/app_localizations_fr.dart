@@ -203,6 +203,93 @@ class AppLocalizationsFr extends AppLocalizations {
   String get routineEditorSave => 'Enregistrer la routine';
 
   @override
+  String get routineDailyLimit => 'Limite quotidienne partagée';
+
+  @override
+  String get routineNoDailyLimit => 'Aucune limite quotidienne';
+
+  @override
+  String get routineCustomDuration => 'Personnalisée';
+
+  @override
+  String get routineChooseDuration => 'Choisir la limite quotidienne';
+
+  @override
+  String get routineNotFound => 'Cette routine n’existe plus.';
+
+  @override
+  String get routineRename => 'Renommer la routine';
+
+  @override
+  String get routineAppsTitle => 'Applications';
+
+  @override
+  String get routineAddApp => 'Ajouter une application';
+
+  @override
+  String routineAppUsage(String duration) {
+    return '$duration aujourd’hui · Incluse dans la limite';
+  }
+
+  @override
+  String routineAppUsageExcluded(String duration) {
+    return '$duration aujourd’hui · Exclue de la limite';
+  }
+
+  @override
+  String get routineRemoveApp => 'Retirer l’application';
+
+  @override
+  String get routineKeepOneApp =>
+      'Une routine doit conserver au moins une application.';
+
+  @override
+  String routineDeleteConfirmation(String name) {
+    return 'Supprimer $name ? Cette action est irréversible.';
+  }
+
+  @override
+  String get routineUsageToday => 'Utilisation comptabilisée aujourd’hui';
+
+  @override
+  String get routineNoIncludedApps =>
+      'Incluez au moins une application pour activer la limite';
+
+  @override
+  String get routineLimitReached =>
+      'Limite atteinte · les applications incluses sont bloquées jusqu’à minuit';
+
+  @override
+  String get routineActive => 'Active';
+
+  @override
+  String get routinePaused => 'En pause';
+
+  @override
+  String routineUsageOfLimit(String used, String limit) {
+    return '$used sur $limit';
+  }
+
+  @override
+  String routineRemaining(String duration) {
+    return '$duration restantes';
+  }
+
+  @override
+  String get routineSetLimit => 'Définir la limite';
+
+  @override
+  String get routineEditLimit => 'Modifier la limite';
+
+  @override
+  String get routineRemoveLimit => 'Supprimer la limite';
+
+  @override
+  String routineUsageOnly(String duration) {
+    return '$duration aujourd’hui';
+  }
+
+  @override
   String get restrictionsPlatformStatusTitle =>
       'État disponible uniquement sur cette plateforme';
 

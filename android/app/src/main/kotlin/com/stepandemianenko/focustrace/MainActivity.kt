@@ -5,7 +5,9 @@ import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.content.pm.ApplicationInfo
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.net.Uri
 import android.os.Build
@@ -57,12 +59,15 @@ class MainActivity : FlutterActivity() {
                         result.success(null)
                     }
                     "getAppMetadata" -> {
-                        val packageNames = (call.arguments as? List<*>)
+                        val arguments = call.arguments as? Map<*, *>
+                        val packageNames = ((arguments?.get("packageNames") as? List<*>)
+                            ?: (call.arguments as? List<*>))
                             ?.filterIsInstance<String>()
                             .orEmpty()
+                        val benchmarkRunId = (arguments?.get("benchmarkRunId") as? Number)?.toLong()
                         Thread {
                             try {
-                                val apps = getAppMetadata(packageNames)
+                                val apps = measuredAppMetadata(packageNames, benchmarkRunId)
                                 runOnUiThread { result.success(apps) }
                             } catch (e: Exception) {
                                 Log.e(LOG_TAG, "getAppMetadata failed", e)
@@ -96,6 +101,9 @@ class MainActivity : FlutterActivity() {
                         }.start()
                     }
                     "getTodayUsageStats" -> {
+                        val arguments = call.arguments as? Map<*, *>
+                        val benchmarkRunId =
+                            (arguments?.get("benchmarkRunId") as? Number)?.toLong()
                         if (!hasUsageAccess()) {
                             result.error(
                                 "USAGE_ACCESS_DENIED",
@@ -107,7 +115,10 @@ class MainActivity : FlutterActivity() {
                             // keep it off the main thread.
                             Thread {
                                 try {
-                                    val stats = getTodayUsageStats()
+                                    val stats = measuredTodayUsageStats(
+                                        benchmarkRunId = benchmarkRunId,
+                                        includeIcons = includeUsageIconsForBenchmark(),
+                                    )
                                     runOnUiThread { result.success(stats) }
                                 } catch (e: Exception) {
                                     Log.e(LOG_TAG, "getTodayUsageStats failed", e)
@@ -271,6 +282,7 @@ class MainActivity : FlutterActivity() {
                     "packageName" to packageName,
                     "appName" to appLabelFor(packageName),
                     "iconBytes" to appIconFor(packageName),
+                    "metadataVersion" to appLastUpdateTimeFor(packageName),
                     "totalTimeInForegroundMs" to usage.totalMs,
                     "launchCount" to usage.launchCount,
                     "firstTimeStampMs" to startOfToday,
@@ -279,6 +291,74 @@ class MainActivity : FlutterActivity() {
                 )
             }
             .sortedByDescending { it["totalTimeInForegroundMs"] as Long }
+    }
+
+    private fun measuredTodayUsageStats(
+        benchmarkRunId: Long?,
+        includeIcons: Boolean,
+    ): List<Map<String, Any?>> {
+        val request = IconRequestMetrics()
+        val startedNs = System.nanoTime()
+        val startOfToday = UsageStats.startOfTodayMillis()
+        val queryStartedNs = System.nanoTime()
+        val totals = UsageStats.todayTotals(this)
+        val queryUs = (System.nanoTime() - queryStartedNs) / 1_000
+        val metadataStartedNs = System.nanoTime()
+        val rows = totals.map { (packageName, usage) ->
+            mapOf(
+                "packageName" to packageName,
+                "appName" to appLabelFor(packageName),
+                "iconBytes" to if (includeIcons) appIconFor(packageName, request) else null,
+                "metadataVersion" to appLastUpdateTimeFor(packageName),
+                "totalTimeInForegroundMs" to usage.totalMs,
+                "launchCount" to usage.launchCount,
+                "firstTimeStampMs" to startOfToday,
+                "lastTimeStampMs" to usage.lastUsedMs,
+                "lastTimeUsedMs" to usage.lastUsedMs
+            )
+        }.sortedByDescending { it["totalTimeInForegroundMs"] as Long }
+        val metadataUs = (System.nanoTime() - metadataStartedNs) / 1_000
+        logNativeMetrics(
+            event = "live_usage_payload",
+            benchmarkRunId = benchmarkRunId,
+            totalUs = (System.nanoTime() - startedNs) / 1_000,
+            queryUs = queryUs,
+            metadataUs = metadataUs,
+            request = request,
+            extra = "include_icons=$includeIcons",
+        )
+        return rows
+    }
+
+    private fun measuredAppMetadata(
+        packageNames: List<String>,
+        benchmarkRunId: Long?,
+    ): List<Map<String, Any?>> {
+        val request = IconRequestMetrics()
+        val startedNs = System.nanoTime()
+        val rows = packageNames.distinct().mapNotNull { pkg ->
+            try {
+                packageManager.getApplicationInfo(pkg, 0)
+                mapOf(
+                    "packageName" to pkg,
+                    "appName" to appLabelFor(pkg),
+                    "iconBytes" to appIconFor(pkg, request),
+                    "metadataVersion" to appLastUpdateTimeFor(pkg),
+                )
+            } catch (_: PackageManager.NameNotFoundException) {
+                request.missingPackages++
+                null
+            }
+        }
+        logNativeMetrics(
+            event = "metadata_payload",
+            benchmarkRunId = benchmarkRunId,
+            totalUs = (System.nanoTime() - startedNs) / 1_000,
+            queryUs = 0,
+            metadataUs = (System.nanoTime() - startedNs) / 1_000,
+            request = request,
+        )
+        return rows
     }
 
     private fun getUsageIntervals(
@@ -313,7 +393,8 @@ class MainActivity : FlutterActivity() {
                 mapOf(
                     "packageName" to pkg,
                     "appName" to appLabelFor(pkg),
-                    "iconBytes" to appIconFor(pkg)
+                    "iconBytes" to appIconFor(pkg),
+                    "metadataVersion" to appLastUpdateTimeFor(pkg),
                 )
             } catch (_: PackageManager.NameNotFoundException) {
                 null
@@ -347,7 +428,8 @@ class MainActivity : FlutterActivity() {
             mapOf(
                 "packageName" to pkg,
                 "appName" to appLabelFor(pkg),
-                "iconBytes" to appIconFor(pkg)
+                "iconBytes" to appIconFor(pkg),
+                "metadataVersion" to appLastUpdateTimeFor(pkg),
             )
         }
     }
@@ -357,14 +439,43 @@ class MainActivity : FlutterActivity() {
     // Called from worker threads (usage stats, installed apps), so the cache
     // access must be synchronized. Encoded icons are also persisted to
     // cacheDir: cold app starts read ~1ms files instead of re-drawing and
-    // PNG-encoding every icon (~1s for a day's worth of apps).
-    // ponytail: stale if an app updates its icon; Android clears cacheDir under storage pressure anyway.
-    private fun appIconFor(packageName: String): ByteArray? = synchronized(iconCache) {
-        return iconCache.getOrPut(packageName) {
-            val cacheFile = File(File(cacheDir, "app_icons"), "$packageName.png")
+    // PNG-encoding every icon (~1s for a day's worth of apps). The package
+    // update timestamp versions both memory and disk entries so app updates
+    // regenerate once without turning derived icons into permanent user data.
+    @Suppress("DEPRECATION")
+    private fun appIconFor(
+        packageName: String,
+        request: IconRequestMetrics? = null,
+    ): ByteArray? = synchronized(iconCache) {
+        val lastUpdateTime = try {
+            packageManager.getPackageInfo(packageName, 0).lastUpdateTime
+        } catch (_: PackageManager.NameNotFoundException) {
+            request?.missingPackages = request?.missingPackages?.plus(1) ?: 0
+            return null
+        }
+        val memoryKey = "$packageName@$lastUpdateTime"
+        if (iconCache.containsKey(memoryKey)) {
+            request?.memoryHits = request?.memoryHits?.plus(1) ?: 0
+            val bytes = iconCache[memoryKey]
+            request?.payloadBytes = request?.payloadBytes?.plus(bytes?.size ?: 0) ?: 0
+            return bytes
+        }
+        val value = run {
+            val cacheDirectory = File(cacheDir, "app_icons")
+            val cacheFile = File(cacheDirectory, "$packageName-$lastUpdateTime.png")
             try {
                 if (cacheFile.exists()) {
-                    return@getOrPut cacheFile.readBytes()
+                    val bytes = cacheFile.readBytes()
+                    if (isPng(bytes)) {
+                        request?.diskHits = request?.diskHits?.plus(1) ?: 0
+                        request?.payloadBytes = request?.payloadBytes?.plus(bytes.size) ?: 0
+                        return@run bytes
+                    }
+                    try {
+                        cacheFile.delete()
+                    } catch (_: Exception) {
+                        // Best-effort derived-cache repair.
+                    }
                 }
             } catch (_: Exception) {
                 // Unreadable cache entry: fall through and re-encode.
@@ -376,24 +487,138 @@ class MainActivity : FlutterActivity() {
                 drawable.setBounds(0, 0, size, size)
                 drawable.draw(Canvas(bitmap))
                 val out = ByteArrayOutputStream()
-                bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
+                val encoded = bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
                 bitmap.recycle()
+                if (!encoded) {
+                    request?.failures = request?.failures?.plus(1) ?: 0
+                    return@run null
+                }
                 val bytes = out.toByteArray()
+                request?.regenerated = request?.regenerated?.plus(1) ?: 0
+                request?.payloadBytes = request?.payloadBytes?.plus(bytes.size) ?: 0
                 try {
                     cacheFile.parentFile?.mkdirs()
                     cacheFile.writeBytes(bytes)
+                    cleanupObsoleteIconFiles(
+                        cacheDirectory = cacheDirectory,
+                        packageName = packageName,
+                        currentFile = cacheFile,
+                    )
                 } catch (_: Exception) {
                     // Cache write is best-effort.
                 }
                 bytes
             } catch (_: Exception) {
+                request?.failures = request?.failures?.plus(1) ?: 0
                 null
             }
         }
+        iconCache.keys.removeAll { key ->
+            key.startsWith("$packageName@") && key != memoryKey
+        }
+        if (value != null) {
+            iconCache[memoryKey] = value
+        }
+        value
     }
+
+    private fun isPng(bytes: ByteArray): Boolean {
+        val signature = byteArrayOf(
+            0x89.toByte(), 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A
+        )
+        if (bytes.size < signature.size ||
+            !signature.indices.all { index -> bytes[index] == signature[index] }
+        ) {
+            return false
+        }
+        return try {
+            val options = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+            BitmapFactory.decodeByteArray(bytes, 0, bytes.size, options)
+            options.outWidth > 0 && options.outHeight > 0
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    private fun cleanupObsoleteIconFiles(
+        cacheDirectory: File,
+        packageName: String,
+        currentFile: File,
+    ) {
+        try {
+            cacheDirectory.listFiles()?.forEach { candidate ->
+                val isLegacy = candidate.name == "$packageName.png"
+                val isOldVersion =
+                    candidate.name.startsWith("$packageName-") && candidate != currentFile
+                if (isLegacy || isOldVersion) {
+                    candidate.delete()
+                }
+            }
+        } catch (_: Exception) {
+            // Obsolete derived files can be cleaned on a later regeneration.
+        }
+    }
+
+    private fun logNativeMetrics(
+        event: String,
+        benchmarkRunId: Long?,
+        totalUs: Long,
+        queryUs: Long,
+        metadataUs: Long,
+        request: IconRequestMetrics,
+        extra: String? = null,
+    ) {
+        // Dart supplies a run id only for debug benchmark runs.
+        if (benchmarkRunId == null) return
+        Log.i(
+            DASHBOARD_NATIVE_PERF_TAG,
+            listOf(
+                event,
+                benchmarkRunId,
+                totalUs,
+                "query_us=$queryUs",
+                "metadata_us=$metadataUs",
+                "icon_bytes=${request.payloadBytes}",
+                "memory_hits=${request.memoryHits}",
+                "disk_hits=${request.diskHits}",
+                "regenerated=${request.regenerated}",
+                "failures=${request.failures}",
+                "missing_packages=${request.missingPackages}",
+            ).let { parts ->
+                if (extra == null) parts else parts + extra
+            }.joinToString(","),
+        )
+    }
+
+    private fun includeUsageIconsForBenchmark(): Boolean {
+        val isDebuggable =
+            applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE != 0
+        if (!isDebuggable || !intent.hasExtra(BENCHMARK_INCLUDE_USAGE_ICONS_EXTRA)) {
+            return true
+        }
+        return intent.getBooleanExtra(BENCHMARK_INCLUDE_USAGE_ICONS_EXTRA, true)
+    }
+
+    private data class IconRequestMetrics(
+        var memoryHits: Int = 0,
+        var diskHits: Int = 0,
+        var regenerated: Int = 0,
+        var failures: Int = 0,
+        var missingPackages: Int = 0,
+        var payloadBytes: Int = 0,
+    )
 
     private fun appLabelFor(packageName: String): String {
         return UsageStats.appLabelFor(this, packageName)
+    }
+
+    @Suppress("DEPRECATION")
+    private fun appLastUpdateTimeFor(packageName: String): Long? {
+        return try {
+            packageManager.getPackageInfo(packageName, 0).lastUpdateTime
+        } catch (_: PackageManager.NameNotFoundException) {
+            null
+        }
     }
 
     override fun onPause() {
@@ -405,6 +630,9 @@ class MainActivity : FlutterActivity() {
     private companion object {
         const val CHANNEL_NAME = "focustrace/usage"
         const val LOG_TAG = "FocusTrace"
+        const val DASHBOARD_NATIVE_PERF_TAG = "FTDashboardNativePerf"
+        const val BENCHMARK_INCLUDE_USAGE_ICONS_EXTRA =
+            "benchmarkIncludeUsageIcons"
         const val NOTIFICATION_PERMISSION_REQUEST_CODE = 7104
     }
 }

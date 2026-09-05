@@ -4,6 +4,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import '../../domain/models/usage_item.dart';
+import '../../performance/dashboard_performance.dart';
 import 'bubble_tooltip.dart';
 import 'usage_bubble.dart';
 
@@ -16,6 +17,7 @@ class BubbleChart extends StatefulWidget {
     required this.onItemSelected,
     this.onItemLongPressed,
     required this.onSelectionDismissed,
+    this.onLayoutComputed,
     super.key,
   });
 
@@ -26,6 +28,7 @@ class BubbleChart extends StatefulWidget {
   final ValueChanged<UsageItem> onItemSelected;
   final ValueChanged<UsageItem>? onItemLongPressed;
   final VoidCallback onSelectionDismissed;
+  final VoidCallback? onLayoutComputed;
 
   static const double _minRadius = 26;
   static const double _maxRadius = 72;
@@ -39,22 +42,28 @@ class _BubbleChartState extends State<BubbleChart>
   static const _tooltipLifetime = Duration(seconds: 4);
   static const _tooltipFadeDuration = Duration(milliseconds: 400);
 
-  late final AnimationController _entranceController;
+  late final AnimationController _layoutController;
   late final AnimationController _pulseController;
   Timer? _fadeTimer;
   Timer? _clearTimer;
   bool _tooltipVisible = false;
+  bool _firstFrameScheduled = false;
+  bool _entrancePending = true;
+  Size? _layoutSize;
+  List<String> _layoutSignature = const <String>[];
+  List<_BubbleGeometry> _fromGeometry = const <_BubbleGeometry>[];
+  List<_BubbleGeometry> _toGeometry = const <_BubbleGeometry>[];
 
   @override
   void initState() {
     super.initState();
-    // Plays the packing simulation forward on mount, so bubbles fly in from
-    // the edges. The chart section unmounts during manual/pull refresh, so
-    // every fresh open and user refresh replays this automatically.
-    _entranceController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1200),
-    )..forward();
+    _layoutController =
+        AnimationController(
+            vsync: this,
+            duration: const Duration(milliseconds: 1200),
+          )
+          ..addStatusListener(_handleLayoutStatus)
+          ..forward();
     _pulseController = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 3),
@@ -81,7 +90,7 @@ class _BubbleChartState extends State<BubbleChart>
   @override
   void dispose() {
     _cancelTimers();
-    _entranceController.dispose();
+    _layoutController.dispose();
     _pulseController.dispose();
     super.dispose();
   }
@@ -110,6 +119,18 @@ class _BubbleChartState extends State<BubbleChart>
     }
   }
 
+  void _handleLayoutStatus(AnimationStatus status) {
+    if (status != AnimationStatus.completed || !_entrancePending) {
+      return;
+    }
+    _entrancePending = false;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        DashboardPerformance.entranceAnimationComplete();
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return SizedBox(
@@ -117,8 +138,22 @@ class _BubbleChartState extends State<BubbleChart>
       child: LayoutBuilder(
         builder: (context, constraints) {
           final size = Size(constraints.maxWidth, constraints.maxHeight);
+          if (!_firstFrameScheduled) {
+            _firstFrameScheduled = true;
+          }
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) {
+              DashboardPerformance.bubbleFrame(
+                topKeys: widget.items.map((item) => item.id),
+                realIconKeys: widget.items
+                    .where((item) => item.iconBytes != null)
+                    .map((item) => item.id),
+              );
+            }
+          });
+          _ensureLayout(widget.items, size);
           return AnimatedBuilder(
-            animation: _entranceController,
+            animation: _layoutController,
             builder: (context, _) => _buildChart(size),
           );
         },
@@ -127,10 +162,7 @@ class _BubbleChartState extends State<BubbleChart>
   }
 
   Widget _buildChart(Size size) {
-    // Rendering a prefix of the deterministic packing simulation each frame
-    // replays the bubbles gravitating from the edges into their final spots.
-    final steps = (_entranceController.value * packSteps).ceil();
-    final layout = _layoutItems(widget.items, size, steps);
+    final layout = _interpolatedLayout(widget.items);
     final selectedLayout = layout.cast<_BubbleLayout?>().firstWhere(
       (bubble) => bubble?.item.id == widget.selectedItem?.id,
       orElse: () => null,
@@ -177,13 +209,95 @@ class _BubbleChartState extends State<BubbleChart>
     );
   }
 
-  List<_BubbleLayout> _layoutItems(
+  void _ensureLayout(List<UsageItem> items, Size size) {
+    final signature = [
+      for (final item in items) '${item.id}\u0000${item.totalDurationSeconds}',
+    ];
+    if (_layoutSize == size && _sameSignature(_layoutSignature, signature)) {
+      return;
+    }
+
+    final target = _calculateGeometry(items, size, steps: packSteps);
+    widget.onLayoutComputed?.call();
+    if (_layoutSize == null) {
+      _fromGeometry = _calculateGeometry(items, size, steps: 0);
+      _toGeometry = target;
+    } else {
+      final currentById = {
+        for (final geometry in _interpolatedGeometry()) geometry.id: geometry,
+      };
+      final entranceById = {
+        for (final geometry in _calculateGeometry(items, size, steps: 0))
+          geometry.id: geometry,
+      };
+      _fromGeometry = [
+        for (final geometry in target)
+          currentById[geometry.id] ?? entranceById[geometry.id]!,
+      ];
+      _toGeometry = target;
+
+      if (_entrancePending && _layoutController.isAnimating) {
+        final currentDuration = _layoutController.duration!;
+        final remainingUs = math.max(
+          1,
+          (currentDuration.inMicroseconds * (1 - _layoutController.value))
+              .round(),
+        );
+        _layoutController.duration = Duration(microseconds: remainingUs);
+      } else {
+        _layoutController.duration = const Duration(milliseconds: 300);
+      }
+      _layoutController.forward(from: 0);
+    }
+    _layoutSize = size;
+    _layoutSignature = signature;
+  }
+
+  List<_BubbleLayout> _interpolatedLayout(List<UsageItem> items) {
+    final itemsById = {for (final item in items) item.id: item};
+    return [
+      for (final geometry in _interpolatedGeometry())
+        if (itemsById[geometry.id] case final item?)
+          _BubbleLayout(
+            item: item,
+            radius: geometry.radius,
+            center: geometry.center,
+          ),
+    ];
+  }
+
+  List<_BubbleGeometry> _interpolatedGeometry() {
+    if (_toGeometry.isEmpty) {
+      return const <_BubbleGeometry>[];
+    }
+    final fromById = {
+      for (final geometry in _fromGeometry) geometry.id: geometry,
+    };
+    final progress = Curves.easeOutCubic.transform(_layoutController.value);
+    return [
+      for (final target in _toGeometry)
+        _BubbleGeometry(
+          id: target.id,
+          radius:
+              (fromById[target.id]?.radius ?? target.radius) +
+              (target.radius - (fromById[target.id]?.radius ?? target.radius)) *
+                  progress,
+          center: Offset.lerp(
+            fromById[target.id]?.center ?? target.center,
+            target.center,
+            progress,
+          )!,
+        ),
+    ];
+  }
+
+  List<_BubbleGeometry> _calculateGeometry(
     List<UsageItem> items,
-    Size size,
-    int steps,
-  ) {
+    Size size, {
+    required int steps,
+  }) {
     if (items.isEmpty) {
-      return const <_BubbleLayout>[];
+      return const <_BubbleGeometry>[];
     }
 
     final maxSeconds = items
@@ -199,12 +313,24 @@ class _BubbleChartState extends State<BubbleChart>
 
     return [
       for (var index = 0; index < items.length; index++)
-        _BubbleLayout(
-          item: items[index],
+        _BubbleGeometry(
+          id: items[index].id,
           radius: radii[index],
           center: centers[index],
         ),
     ];
+  }
+
+  bool _sameSignature(List<String> first, List<String> second) {
+    if (first.length != second.length) {
+      return false;
+    }
+    for (var index = 0; index < first.length; index++) {
+      if (first[index] != second[index]) {
+        return false;
+      }
+    }
+    return true;
   }
 
   double _radiusFor(UsageItem item, double maxSeconds, double maxRadius) {
@@ -233,6 +359,18 @@ class _BubbleLayout {
   });
 
   final UsageItem item;
+  final double radius;
+  final Offset center;
+}
+
+class _BubbleGeometry {
+  const _BubbleGeometry({
+    required this.id,
+    required this.radius,
+    required this.center,
+  });
+
+  final String id;
   final double radius;
   final Offset center;
 }
@@ -296,9 +434,9 @@ double _clamp(double value, double min, double max) {
 
 const double _goldenAngle = 2.399963;
 
-/// Total relaxation steps of the packing simulation. Running [packBubbles]
-/// with a smaller [steps] value yields an exact prefix of the full run, which
-/// is what the entrance animation plays back frame by frame.
+/// Total relaxation steps of the packing simulation. The chart computes the
+/// zero-step entrance positions and the fully packed positions once, then
+/// interpolates between those cached geometries during animation frames.
 const int packSteps = 150;
 
 /// Iterative circle packing: every bubble is pulled toward the center while

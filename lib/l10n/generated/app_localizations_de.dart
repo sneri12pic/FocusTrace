@@ -198,6 +198,93 @@ class AppLocalizationsDe extends AppLocalizations {
   String get routineEditorSave => 'Routine speichern';
 
   @override
+  String get routineDailyLimit => 'Gemeinsames Tageslimit';
+
+  @override
+  String get routineNoDailyLimit => 'Kein Tageslimit';
+
+  @override
+  String get routineCustomDuration => 'Benutzerdefiniert';
+
+  @override
+  String get routineChooseDuration => 'Tageslimit auswählen';
+
+  @override
+  String get routineNotFound => 'Diese Routine existiert nicht mehr.';
+
+  @override
+  String get routineRename => 'Routine umbenennen';
+
+  @override
+  String get routineAppsTitle => 'Apps';
+
+  @override
+  String get routineAddApp => 'App hinzufügen';
+
+  @override
+  String routineAppUsage(String duration) {
+    return 'Heute $duration · Im Limit enthalten';
+  }
+
+  @override
+  String routineAppUsageExcluded(String duration) {
+    return 'Heute $duration · Vom Limit ausgeschlossen';
+  }
+
+  @override
+  String get routineRemoveApp => 'App entfernen';
+
+  @override
+  String get routineKeepOneApp =>
+      'Eine Routine muss mindestens eine App enthalten.';
+
+  @override
+  String routineDeleteConfirmation(String name) {
+    return '$name löschen? Dies kann nicht rückgängig gemacht werden.';
+  }
+
+  @override
+  String get routineUsageToday => 'Heute angerechnete Nutzung';
+
+  @override
+  String get routineNoIncludedApps =>
+      'Mindestens eine App einbeziehen, um das Limit zu aktivieren';
+
+  @override
+  String get routineLimitReached =>
+      'Limit erreicht · einbezogene Apps sind bis Mitternacht gesperrt';
+
+  @override
+  String get routineActive => 'Aktiv';
+
+  @override
+  String get routinePaused => 'Pausiert';
+
+  @override
+  String routineUsageOfLimit(String used, String limit) {
+    return '$used von $limit';
+  }
+
+  @override
+  String routineRemaining(String duration) {
+    return '$duration verbleibend';
+  }
+
+  @override
+  String get routineSetLimit => 'Limit festlegen';
+
+  @override
+  String get routineEditLimit => 'Limit bearbeiten';
+
+  @override
+  String get routineRemoveLimit => 'Limit entfernen';
+
+  @override
+  String routineUsageOnly(String duration) {
+    return 'Heute $duration';
+  }
+
+  @override
   String get restrictionsPlatformStatusTitle =>
       'Status nur auf dieser Plattform';
 

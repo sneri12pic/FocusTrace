@@ -101,6 +101,20 @@ class BlockActivity : Activity() {
         )
 
         setContentView(root)
+        BlockerPerformance.logFirstDraw(root, performancePresentation())
+    }
+
+    private fun performancePresentation(): BlockerPerformance.Presentation? {
+        val tickId = intent.getLongExtra(EXTRA_PERFORMANCE_TICK_ID, -1L)
+        if (tickId < 0L) return null
+        return BlockerPerformance.Presentation(
+            tickId = tickId,
+            action = BlockerPerformance.Action.BlockActivity,
+            decisionAtNs = intent.getLongExtra(EXTRA_PERFORMANCE_DECISION_NS, -1L)
+                .takeIf { it >= 0L },
+            foregroundEventMs = intent.getLongExtra(EXTRA_PERFORMANCE_EVENT_MS, -1L)
+                .takeIf { it >= 0L },
+        )
     }
 
     private fun goHome() {
@@ -117,23 +131,31 @@ class BlockActivity : Activity() {
         private const val EXTRA_APP_NAME = "app_name"
         private const val EXTRA_REASON = "reason"
         private const val EXTRA_UNTIL_MS = "until_ms"
+        private const val EXTRA_PERFORMANCE_TICK_ID = "performance_tick_id"
+        private const val EXTRA_PERFORMANCE_DECISION_NS = "performance_decision_ns"
+        private const val EXTRA_PERFORMANCE_EVENT_MS = "performance_event_ms"
         private const val BACKGROUND_COLOR = 0xFF070A10.toInt()
 
-        fun start(
+        internal fun start(
             context: Context,
             appKey: String,
             appName: String,
             reason: String,
             untilMs: Long?,
+            performance: BlockerPerformance.Presentation?,
         ) {
-            context.startActivity(
-                Intent(context, BlockActivity::class.java)
-                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                    .putExtra(EXTRA_APP_KEY, appKey)
-                    .putExtra(EXTRA_APP_NAME, appName)
-                    .putExtra(EXTRA_REASON, reason)
-                    .putExtra(EXTRA_UNTIL_MS, untilMs ?: -1L)
-            )
+            val intent = Intent(context, BlockActivity::class.java)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                .putExtra(EXTRA_APP_KEY, appKey)
+                .putExtra(EXTRA_APP_NAME, appName)
+                .putExtra(EXTRA_REASON, reason)
+                .putExtra(EXTRA_UNTIL_MS, untilMs ?: -1L)
+            if (performance != null) {
+                intent.putExtra(EXTRA_PERFORMANCE_TICK_ID, performance.tickId)
+                    .putExtra(EXTRA_PERFORMANCE_DECISION_NS, performance.decisionAtNs ?: -1L)
+                    .putExtra(EXTRA_PERFORMANCE_EVENT_MS, performance.foregroundEventMs ?: -1L)
+            }
+            context.startActivity(intent)
         }
     }
 }

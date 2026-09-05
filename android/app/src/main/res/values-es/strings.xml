@@ -3,6 +3,7 @@
     <string name="app_name" translatable="false">FocusTrace</string>
     <string name="usage_access_denied">No se ha concedido el permiso de acceso a datos de uso.</string>
     <string name="restriction_warning_title">%1$s está a punto de alcanzar el límite</string>
+    <string name="restriction_routine_warning_title">La rutina %1$s está a punto de alcanzar el límite</string>
     <plurals name="restriction_warning_minutes">
         <item quantity="one">El bloqueo comenzará en aproximadamente %1$d minuto.</item>
         <item quantity="other">El bloqueo comenzará en aproximadamente %1$d minutos.</item>
@@ -17,6 +18,7 @@
     <string name="restriction_reason_daily_limit">Límite diario alcanzado</string>
     <string name="restriction_reason_schedule">Bloqueada según el horario</string>
     <string name="restriction_reason_routine">Bloqueada por una rutina activa</string>
+    <string name="restriction_reason_routine_limit">Límite diario alcanzado para %1$s</string>
     <string name="widget_title">Tiempo de pantalla hoy</string>
     <string name="widget_bubbles_label">Burbujas de tiempo de pantalla</string>
     <string name="widget_no_access">Toca para conceder acceso a datos de uso</string>
