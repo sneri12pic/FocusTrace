@@ -1,0 +1,29 @@
+{
+  "model": "SM-M135F",
+  "android": "14",
+  "api": "34",
+  "abi": "armeabi-v7a,armeabi",
+  "started_utc": "2026-09-07T13:50:43.6105827Z",
+  "battery_before": [
+    "USB powered: true",
+    "level: 100",
+    "temperature: 257"
+  ],
+  "package": "com.stepandemianenko.focustrace.dev",
+  "installed_version": [
+    "versionCode=7 minSdk=21 targetSdk=35",
+    "versionName=1.0.6-dev"
+  ],
+  "build_mode": "debug",
+  "pairs": 5,
+  "warmup_pairs_excluded": 1,
+  "finished_utc": "2026-09-07T13:57:23.346148+00:00",
+  "valid_samples": 10,
+  "warmup_file": "warmup-and-interrupted.csv",
+  "battery_after": [
+    "USB powered: true",
+    "level: 100",
+    "temperature: 268"
+  ],
+  "capture_script_sha256": "D7C1A6024A04D9884659AA9075CD813C430CC8FD64F639AC34AB6748760ED2ED"
+}

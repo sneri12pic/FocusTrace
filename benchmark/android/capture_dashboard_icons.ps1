@@ -30,9 +30,18 @@ function Capture-DashboardIconOpen {
     )
 
     & $adb logcat -c
-    $launchOutput = @(& $adb shell am start -W -n $activity)
-    $launchState = (($launchOutput | Select-String '^LaunchState:').Line -split ':', 2)[1].Trim()
-    $totalTimeMs = [int]((($launchOutput | Select-String '^TotalTime:').Line -split ':', 2)[1].Trim())
+    for ($attempt = 0; $attempt -lt 3; $attempt++) {
+        $launchOutput = @(& $adb shell am start -W -n $activity)
+        $stateLine = ($launchOutput | Select-String '^LaunchState:' | Select-Object -First 1).Line
+        $timeLine = ($launchOutput | Select-String '^TotalTime:' | Select-Object -First 1).Line
+        if ($stateLine -and $timeLine) { break }
+        Start-Sleep -Milliseconds 1000
+    }
+    if (-not $stateLine -or -not $timeLine) {
+        throw "ADB did not report launch timing: $($launchOutput -join ' ')"
+    }
+    $launchState = ($stateLine -split ':', 2)[1].Trim()
+    $totalTimeMs = [int](($timeLine -split ':', 2)[1].Trim())
 
     $deadline = [DateTime]::UtcNow.AddSeconds(15)
     $lines = @()
@@ -45,7 +54,11 @@ function Capture-DashboardIconOpen {
     } while ((-not $hasIconsFrame -or -not $hasLivePayload -or -not $hasLiveAvailable) -and [DateTime]::UtcNow -lt $deadline)
 
     $events = @{}
-    $eventDetails = @{}
+    $eventDetails = @{
+        initial_graph_icon_state = @{}
+        icon_hydration_start = @{}
+        icon_hydration_complete = @{}
+    }
     $runId = $null
     foreach ($line in $lines) {
         if ($line -notmatch 'FocusTraceDashboardPerf,') {
@@ -161,6 +174,6 @@ for ($pair = 1; $pair -le $Pairs; $pair++) {
     Capture-DashboardIconOpen -RequestedScenario 'process_cold' -PairIndex $pair
 
     & $adb shell input keyevent KEYCODE_BACK
-    Start-Sleep -Milliseconds 750
+    Start-Sleep -Milliseconds 2000
     Capture-DashboardIconOpen -RequestedScenario 'activity_warm' -PairIndex $pair
 }

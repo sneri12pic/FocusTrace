@@ -22,6 +22,23 @@ The dashboard result requires a saved same-day snapshot and starts at the Flutte
 
 **[Read the engineering case study, evidence, and CV-ready accomplishments →](docs/performance/README.md)**
 
+### Older-device baseline
+
+On 7 September 2026, a Samsung SM-M135F running Android 14 (32-bit ARM) completed
+five process-cold and five activity-warm dashboard captures using imported history:
+42 stored days, 926 daily records, and 5,214 usage intervals.
+
+| Measurement (median / p50) | Process cold | Activity warm |
+|---|---:|---:|
+| Dashboard open to first graph frame | 3,471.035 ms | 3,480.474 ms |
+| Icon placeholder duration | 1,181.067 ms | 888.940 ms |
+
+All ten captures completed with all six dashboard icons available. These are
+debug-build measurements of today's dashboard with imported history in storage;
+graph timing excludes activity/engine startup. They are a separate device baseline,
+not a controlled comparison with the August results or release-mode FPS.
+See the [full report, p95 timings, and raw captures](benchmark/android/results/2026-09-07-sm-m135f-imported/README.md).
+
 ## Features
 
 - Android usage summaries through Android Usage Access and `UsageStatsManager`
