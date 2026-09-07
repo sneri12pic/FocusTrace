@@ -7,6 +7,8 @@ FocusTrace is a transparent, local-first screen-time tracker for Android and Win
 ## Demo
 
 <img width="300" height="630" alt="FocusTraceMenu" src="https://github.com/user-attachments/assets/af9e9fa5-a115-49d5-a3af-076748f390d6" />
+<img width="450" height="800" alt="image" src="https://github.com/user-attachments/assets/c87a18dd-b81a-4aa3-972e-f54da01fbe06" />
+
 
 ## Features
 
