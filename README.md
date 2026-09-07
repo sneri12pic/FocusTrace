@@ -4,23 +4,9 @@
 
 FocusTrace is a transparent, local-first screen-time tracker for Android and Windows, built with Flutter, Riverpod, SQLite, and native Kotlin integration on Android.
 
-## Measured engineering improvements
+## Demo
 
-Performance work reduced repeated Android event processing and made the dashboard useful sooner. These are recorded **physical-device debug-build results**, with raw measurements and regression tests in this repository.
-
-| Measurement (median / p50) | Before | After | Reduction |
-|---|---:|---:|---:|
-| Android UsageStats query and iteration time per blocker tick | 35.026 ms | 3.626 ms | **89.6%** |
-| Total blocker tick time | 59.044 ms | 32.977 ms | **44.1%** |
-| UsageEvents processed per blocker tick | 3,432 | 4 | **99.9%** |
-| Dashboard open to first graph frame | 1,340.781 ms | 790.883 ms | **41.0%** |
-| Icon placeholder duration, process-cold launch | 1,027.124 ms | 576.696 ms | **43.9%** |
-
-Measured on one Samsung SM-A366B running Android 16, on 21 and 27 August 2026. The blocker comparison includes 90 baseline / 97 optimized ticks; the dashboard comparison includes 30 opens per version; the cold-icon comparison includes 15 per version. Each row compares its own experiment's baseline and follow-up.
-
-The dashboard result requires a saved same-day snapshot and starts at the Flutter dashboard screen, excluding earlier activity/engine startup. Fresh usage completion became slower in that experiment (683.059 → 1,220.135 ms median): cached content is shown first while live data refreshes. Battery life and release-build performance were not measured.
-
-**[Read the engineering case study, evidence, and CV-ready accomplishments →](docs/performance/README.md)**
+<img width="300" height="630" alt="FocusTraceMenu" src="https://github.com/user-attachments/assets/af9e9fa5-a115-49d5-a3af-076748f390d6" />
 
 ## Features
 
@@ -37,11 +23,6 @@ The dashboard result requires a saved same-day snapshot and starts at the Flutte
 - Portable JSON export/import for local history, settings, and restrictions
 
 FocusTrace does not implement hidden monitoring, keylogging, screenshots, clipboard reading, browser history reading, or content monitoring.
-
-## Demo
-
-<img width="300" height="630" alt="FocusTraceMenu" src="https://github.com/user-attachments/assets/af9e9fa5-a115-49d5-a3af-076748f390d6" />
-
 
 ## Platforms
 
@@ -121,6 +102,24 @@ All usage data is stored locally in SQLite on the device. FocusTrace does not se
 Portable backups can be created and restored from **Settings → Backup and
 restore**. The JSON file remains under the user's control and should be treated
 as private because it contains usage history and settings.
+
+## Measured engineering improvements
+
+Performance work reduced repeated Android event processing and made the dashboard useful sooner. These are recorded **physical-device debug-build results**, with raw measurements and regression tests in this repository.
+
+| Measurement (median / p50) | Before | After | Reduction |
+|---|---:|---:|---:|
+| Android UsageStats query and iteration time per blocker tick | 35.026 ms | 3.626 ms | **89.6%** |
+| Total blocker tick time | 59.044 ms | 32.977 ms | **44.1%** |
+| UsageEvents processed per blocker tick | 3,432 | 4 | **99.9%** |
+| Dashboard open to first graph frame | 1,340.781 ms | 790.883 ms | **41.0%** |
+| Icon placeholder duration, process-cold launch | 1,027.124 ms | 576.696 ms | **43.9%** |
+
+Measured on one Samsung SM-A366B running Android 16, on 21 and 27 August 2026. The blocker comparison includes 90 baseline / 97 optimized ticks; the dashboard comparison includes 30 opens per version; the cold-icon comparison includes 15 per version. Each row compares its own experiment's baseline and follow-up.
+
+The dashboard result requires a saved same-day snapshot and starts at the Flutter dashboard screen, excluding earlier activity/engine startup. Fresh usage completion became slower in that experiment (683.059 → 1,220.135 ms median): cached content is shown first while live data refreshes. Battery life and release-build performance were not measured.
+
+**[Read the engineering case study, evidence, and CV-ready accomplishments →](docs/performance/README.md)**
 
 ## Play update recovery
 
