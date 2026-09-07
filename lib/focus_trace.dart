@@ -20,6 +20,7 @@ export 'src/domain/models/restriction_rule.dart';
 export 'src/domain/models/restriction_event.dart';
 export 'src/domain/models/tracking_status.dart';
 export 'src/domain/models/usage_item.dart';
+export 'src/domain/models/usage_details_chart.dart';
 export 'src/domain/models/usage_session.dart';
 export 'src/domain/models/usage_report.dart';
 export 'src/domain/repositories/app_language_repository.dart';

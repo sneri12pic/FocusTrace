@@ -1,5 +1,8 @@
 {
   "@@locale": "uk",
+  "usageDetailsBarChart": "Стовпчикова діаграма",
+  "usageDetailsAreaChart": "Динаміка використання",
+  "usageDetailsChartSaveError": "Не вдалося зберегти вибір діаграми. Спробуйте ще раз.",
   "appTitle": "FocusTrace",
   "durationLessThanOneMinute": "<1 хв",
   "durationMinutesShort": "{minutes} хв",

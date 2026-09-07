@@ -148,6 +148,36 @@ void main() {
     expect(find.byKey(const ValueKey('usage-trend-line')), findsOneWidget);
     expect(find.text('#1 most used'), findsOneWidget);
     expect(find.text('50% more than yesterday'), findsOneWidget);
+
+    // Chart selection travels through the real screen/ViewModel/provider flow
+    // and is restored when a new details route is opened.
+    await tester.ensureVisible(find.byKey(const ValueKey('usage-chart-pages')));
+    await tester.pump();
+    await tester.drag(
+      find.byKey(const ValueKey('usage-chart-pages')),
+      const Offset(-600, 0),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+    // The desktop-width page fling needs to finish before hit testing resumes.
+    await tester.pump(const Duration(seconds: 1));
+    expect(
+      find.byKey(const ValueKey('usage-area-chart')).hitTestable(),
+      findsOneWidget,
+    );
+    Navigator.of(tester.element(find.byType(UsageDetailsScreen))).pop();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+    await tester.ensureVisible(find.text('Editor'));
+    await tester.tap(find.text('Editor'));
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+    await tester.ensureVisible(find.byKey(const ValueKey('usage-chart-pages')));
+    await tester.pump();
+    expect(
+      find.byKey(const ValueKey('usage-area-chart')).hitTestable(),
+      findsOneWidget,
+    );
   });
 
   testWidgets('language picker applies and persists locale immediately', (
@@ -433,6 +463,16 @@ class _FakePlatformDataSource implements PlatformUsageDataSource {
 }
 
 class _FakeSettingsRepository implements SettingsRepository {
+  UsageDetailsChart chart = UsageDetailsChart.bars;
+
+  @override
+  Future<UsageDetailsChart> usageDetailsChart() async => chart;
+
+  @override
+  Future<void> setUsageDetailsChart(UsageDetailsChart value) async {
+    chart = value;
+  }
+
   int _trackingIntervalSeconds = 5;
   int _idleTimeoutSeconds = 60;
   final List<String> _excludedApps = [];

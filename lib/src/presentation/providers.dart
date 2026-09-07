@@ -192,6 +192,7 @@ final appUsageDetailsViewModelProvider = StateNotifierProvider.autoDispose
     >((ref, request) {
       final viewModel = AppUsageDetailsViewModel(
         usageRepository: ref.watch(usageRepositoryProvider),
+        settingsRepository: ref.watch(settingsRepositoryProvider),
         request: request,
       );
       viewModel.load();

@@ -1,5 +1,8 @@
 {
   "@@locale": "pt",
+  "usageDetailsBarChart": "Gráfico de barras",
+  "usageDetailsAreaChart": "Tendência de uso",
+  "usageDetailsChartSaveError": "Não foi possível salvar sua escolha de gráfico. Tente novamente.",
   "appTitle": "FocusTrace",
   "durationLessThanOneMinute": "<1 min",
   "durationMinutesShort": "{minutes} min",

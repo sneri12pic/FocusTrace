@@ -1,5 +1,8 @@
 {
   "@@locale": "de",
+  "usageDetailsBarChart": "Säulendiagramm",
+  "usageDetailsAreaChart": "Nutzungsverlauf",
+  "usageDetailsChartSaveError": "Die Diagrammauswahl konnte nicht gespeichert werden. Bitte versuche es erneut.",
   "appTitle": "FocusTrace",
   "durationLessThanOneMinute": "<1 Min.",
   "durationMinutesShort": "{minutes} Min.",

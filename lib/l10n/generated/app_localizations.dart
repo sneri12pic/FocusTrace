@@ -108,6 +108,24 @@ abstract class AppLocalizations {
     Locale('uk'),
   ];
 
+  /// No description provided for @usageDetailsBarChart.
+  ///
+  /// In en, this message translates to:
+  /// **'Bar chart'**
+  String get usageDetailsBarChart;
+
+  /// No description provided for @usageDetailsAreaChart.
+  ///
+  /// In en, this message translates to:
+  /// **'Usage trend'**
+  String get usageDetailsAreaChart;
+
+  /// No description provided for @usageDetailsChartSaveError.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t save your chart choice. Please try again.'**
+  String get usageDetailsChartSaveError;
+
   /// No description provided for @appTitle.
   ///
   /// In en, this message translates to:

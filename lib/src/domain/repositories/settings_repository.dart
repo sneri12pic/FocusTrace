@@ -1,7 +1,13 @@
 import '../models/block_routine.dart';
 import '../models/restriction_rule.dart';
+import '../models/usage_details_chart.dart';
 
 abstract class SettingsRepository {
+  /// Last chart selected across app detail screens, persisted between launches.
+  Future<UsageDetailsChart> usageDetailsChart();
+
+  Future<void> setUsageDetailsChart(UsageDetailsChart chart);
+
   Future<int> trackingIntervalSeconds();
 
   Future<void> setTrackingIntervalSeconds(int seconds);

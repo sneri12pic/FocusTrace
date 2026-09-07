@@ -9,6 +9,16 @@ class AppLocalizationsEs extends AppLocalizations {
   AppLocalizationsEs([String locale = 'es']) : super(locale);
 
   @override
+  String get usageDetailsBarChart => 'Gráfico de barras';
+
+  @override
+  String get usageDetailsAreaChart => 'Tendencia de uso';
+
+  @override
+  String get usageDetailsChartSaveError =>
+      'No se pudo guardar tu elección de gráfico. Inténtalo de nuevo.';
+
+  @override
   String get appTitle => 'FocusTrace';
 
   @override

@@ -1,15 +1,15 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
+import '../../domain/models/usage_details_chart.dart';
 import '../../domain/models/usage_session.dart';
 import '../localization/app_localizations_x.dart';
 import '../providers.dart';
 import '../view_models/app_usage_details_view_model.dart';
 import '../widgets/app_icon_avatar.dart';
 import '../widgets/trend_color.dart';
+import '../widgets/usage_details_charts.dart';
 
 class UsageDetailsScreen extends ConsumerWidget {
   const UsageDetailsScreen({required this.request, super.key});
@@ -55,7 +55,13 @@ class UsageDetailsScreen extends ConsumerWidget {
                         .selectPeriod(period),
                   ),
                   const SizedBox(height: 10),
-                  _UsageBarChart(points: state.points, period: state.period),
+                  UsageDetailsCharts(
+                    points: state.points,
+                    period: state.period,
+                    chart: state.chart,
+                    onChartChanged: (chart) =>
+                        _selectChart(context, ref, chart),
+                  ),
                   if (request.platform == UsagePlatform.windows) ...[
                     const SizedBox(height: 20),
                     Text(
@@ -79,6 +85,21 @@ class UsageDetailsScreen extends ConsumerWidget {
               ),
       ),
     );
+  }
+
+  Future<void> _selectChart(
+    BuildContext context,
+    WidgetRef ref,
+    UsageDetailsChart chart,
+  ) async {
+    final saved = await ref
+        .read(appUsageDetailsViewModelProvider(request).notifier)
+        .selectChart(chart);
+    if (!saved && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.l10n.usageDetailsChartSaveError)),
+      );
+    }
   }
 
   String _sessionLabel(BuildContext context, UsageSession session) {
@@ -320,203 +341,6 @@ class _ComparisonBadge extends StatelessWidget {
         ),
       ),
     );
-  }
-}
-
-class _UsageBarChart extends StatelessWidget {
-  const _UsageBarChart({required this.points, required this.period});
-
-  static const _maxBarHeight = 120.0;
-
-  final List<DailyUsagePoint> points;
-  final UsageDetailsPeriod period;
-
-  @override
-  Widget build(BuildContext context) {
-    final maxSeconds = points.fold<int>(
-      0,
-      (maximum, point) => math.max(maximum, point.durationSeconds),
-    );
-    final locale = Localizations.localeOf(context).toString();
-    return Card(
-      elevation: 0,
-      child: SizedBox(
-        height: 210,
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final chartWidth = math.max(
-              constraints.maxWidth,
-              points.length * 44.0 + 24,
-            );
-            return SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: SizedBox(
-                width: chartWidth,
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(12, 16, 12, 12),
-                  child: CustomPaint(
-                    key: const ValueKey('usage-trend-line'),
-                    foregroundPainter: _UsageTrendLinePainter(
-                      points: points,
-                      maxSeconds: maxSeconds,
-                      increaseColor: trendColor(
-                        Theme.of(context),
-                        isFlat: false,
-                        isIncrease: true,
-                      ),
-                      decreaseColor: trendColor(
-                        Theme.of(context),
-                        isFlat: false,
-                        isIncrease: false,
-                      ),
-                      flatColor: trendColor(
-                        Theme.of(context),
-                        isFlat: true,
-                        isIncrease: false,
-                      ),
-                    ),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        for (final point in points)
-                          Expanded(
-                            child: Semantics(
-                              label: context.l10n.usageDetailsDayValue(
-                                DateFormat.MMMd(locale).format(point.day),
-                                context.l10n.compactDuration(point.duration),
-                              ),
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.end,
-                                children: [
-                                  if (point.durationSeconds > 0)
-                                    FittedBox(
-                                      child: Text(
-                                        context.l10n.compactDuration(
-                                          point.duration,
-                                        ),
-                                        style: Theme.of(
-                                          context,
-                                        ).textTheme.labelSmall,
-                                      ),
-                                    ),
-                                  const SizedBox(height: 4),
-                                  AnimatedContainer(
-                                    duration: const Duration(milliseconds: 300),
-                                    curve: Curves.easeOutCubic,
-                                    width: 20,
-                                    height: _barHeight(
-                                      point.durationSeconds,
-                                      maxSeconds,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: Theme.of(
-                                        context,
-                                      ).colorScheme.primary,
-                                      borderRadius: const BorderRadius.vertical(
-                                        top: Radius.circular(6),
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 7),
-                                  Text(
-                                    period == UsageDetailsPeriod.year
-                                        ? DateFormat.MMM(
-                                            locale,
-                                          ).format(point.day)
-                                        : DateFormat.E(
-                                            locale,
-                                          ).format(point.day),
-                                    style: Theme.of(
-                                      context,
-                                    ).textTheme.labelSmall,
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            );
-          },
-        ),
-      ),
-    );
-  }
-
-  static double _barHeight(int seconds, int maxSeconds) {
-    if (maxSeconds == 0) {
-      return 4;
-    }
-    return (seconds / maxSeconds * _maxBarHeight)
-        .clamp(4, _maxBarHeight)
-        .toDouble();
-  }
-}
-
-class _UsageTrendLinePainter extends CustomPainter {
-  const _UsageTrendLinePainter({
-    required this.points,
-    required this.maxSeconds,
-    required this.increaseColor,
-    required this.decreaseColor,
-    required this.flatColor,
-  });
-
-  static const _chartBaselineOffset = 21.0;
-
-  final List<DailyUsagePoint> points;
-  final int maxSeconds;
-  final Color increaseColor;
-  final Color decreaseColor;
-  final Color flatColor;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    if (points.length < 2) {
-      return;
-    }
-
-    final columnWidth = size.width / points.length;
-    for (var index = 0; index < points.length - 1; index++) {
-      final current = points[index].durationSeconds;
-      final next = points[index + 1].durationSeconds;
-      final paint = Paint()
-        ..color = next == current
-            ? flatColor
-            : next > current
-            ? increaseColor
-            : decreaseColor
-        ..strokeWidth = 3
-        ..strokeCap = StrokeCap.round
-        ..style = PaintingStyle.stroke;
-      canvas.drawLine(
-        Offset(
-          columnWidth * (index + 0.5),
-          size.height -
-              _chartBaselineOffset -
-              _UsageBarChart._barHeight(current, maxSeconds),
-        ),
-        Offset(
-          columnWidth * (index + 1.5),
-          size.height -
-              _chartBaselineOffset -
-              _UsageBarChart._barHeight(next, maxSeconds),
-        ),
-        paint,
-      );
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _UsageTrendLinePainter oldDelegate) {
-    return oldDelegate.points != points ||
-        oldDelegate.maxSeconds != maxSeconds ||
-        oldDelegate.increaseColor != increaseColor ||
-        oldDelegate.decreaseColor != decreaseColor ||
-        oldDelegate.flatColor != flatColor;
   }
 }
 

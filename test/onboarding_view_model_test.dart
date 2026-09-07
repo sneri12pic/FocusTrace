@@ -2,6 +2,16 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:focustrace/focus_trace.dart';
 
 class _FakeSettingsRepository implements SettingsRepository {
+  UsageDetailsChart chart = UsageDetailsChart.bars;
+
+  @override
+  Future<UsageDetailsChart> usageDetailsChart() async => chart;
+
+  @override
+  Future<void> setUsageDetailsChart(UsageDetailsChart value) async {
+    chart = value;
+  }
+
   bool completed = false;
   final List<RestrictionRule> rules = <RestrictionRule>[];
 
