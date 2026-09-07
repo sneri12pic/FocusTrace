@@ -1,4 +1,4 @@
-# FocusTrace
+<img width="1086" height="1448" alt="image" src="https://github.com/user-attachments/assets/034de3a5-a175-4314-9c0e-79567a4223a7" /># FocusTrace
 
 [![CI](https://github.com/sneri12pic/FocusTrace/actions/workflows/ci.yml/badge.svg)](https://github.com/sneri12pic/FocusTrace/actions/workflows/ci.yml)
 
@@ -6,8 +6,12 @@ FocusTrace is a transparent, local-first screen-time tracker for Android and Win
 
 ## Demo
 
-<img width="300" height="640" alt="FocusTraceMenu" src="https://github.com/user-attachments/assets/4f305b1f-f3a0-4925-94c2-af5425039a1e" />
-<img width="300" height="640" alt="FocusTraceDetailedView" src="https://github.com/user-attachments/assets/52b280bb-8f61-4aa2-b720-0c06137c77c3" />
+
+
+<img width="300" height="640" alt="FocusTraceMenu" src="https://github.com/user-attachments/assets/331e961c-7703-444a-9d49-21ceea47c21b" />
+<img width="300" height="640" alt="FocusTraceDetailedView" src="https://github.com/user-attachments/assets/c91d7e55-ed7d-4be7-8ba3-051f55e7ed07" />
+
+
 
 
 ## Features
