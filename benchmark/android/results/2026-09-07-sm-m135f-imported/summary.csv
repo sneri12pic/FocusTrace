@@ -1,0 +1,11 @@
+scenario,metric,samples,p50_ms,p95_ms,max_ms
+process_cold,Android activity launch,5,8415.0,8506.0,8506.0
+process_cold,First dashboard graph,5,3471.035,3643.767,3643.767
+process_cold,Icon placeholder duration,5,1181.067,1302.593,1302.593
+process_cold,Fresh usage available,5,4790.695,5064.759,5064.759
+process_cold,Native usage query,5,145.84,156.744,156.744
+activity_warm,Android activity launch,5,8153.0,8322.0,8322.0
+activity_warm,First dashboard graph,5,3480.474,3552.032,3552.032
+activity_warm,Icon placeholder duration,5,888.94,1122.146,1122.146
+activity_warm,Fresh usage available,5,4529.949,4833.198,4833.198
+activity_warm,Native usage query,5,112.181,115.731,115.731

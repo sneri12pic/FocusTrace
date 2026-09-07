@@ -10,6 +10,7 @@ The [engineering case study](../docs/performance/README.md) summarizes the resul
 | Android dashboard | [Device report](../docs/performance/android-dashboard.md) | [Before](android/results/2026-08-27-dashboard-baseline.csv), [after](android/results/2026-08-27-dashboard-swr.csv) |
 | Icon availability | [Icon experiment](../docs/performance/android-dashboard.md#cached-icon-hydration) | [Before](android/results/2026-08-27-dashboard-icons-baseline.csv), [after](android/results/2026-08-27-dashboard-icons-after.csv) |
 | Live icon payload | [A/B audit](../docs/performance/android-dashboard.md#live-icon-payload-audit) | [Paired samples](android/results/2026-08-27-dashboard-live-icon-payload-audit.csv) |
+| Older-device imported-history dashboard | [Samsung SM-M135F report](android/results/2026-09-07-sm-m135f-imported/README.md) | [Ten measured launches](android/results/2026-09-07-sm-m135f-imported/dashboard-icons.csv) |
 | Pure Kotlin aggregation | [JVM methodology](usage_stats/README.md) | [120 baseline timing samples](usage_stats/results/2026-08-21-windows-debug-jvm.csv) |
 
 For the Android CSVs, select `included=true` rows. Compute percentiles by sorting numerically and selecting rank `ceil(p * n)` (one-based). Blocker durations ending in `_ns` are nanoseconds. Dashboard milestone values ending in `_us` are microseconds: subtract `dashboard_open_us` for the baseline/SWR experiment. The icon CSV already stores screen-relative milestones and `placeholder_duration_us`.
