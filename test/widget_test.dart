@@ -4,6 +4,58 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:focustrace/focus_trace.dart';
 
 void main() {
+  for (final historical in [false, true]) {
+    testWidgets(
+      'returning to Android dashboard refreshes ${historical ? 'historical' : 'today'} usage without reopening',
+      (tester) async {
+        final usage = _FakeUsageRepository()..serveHistory = historical;
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              usagePlatformProvider.overrideWithValue(UsagePlatform.android),
+              usageRepositoryProvider.overrideWithValue(usage),
+              reportRepositoryProvider.overrideWithValue(
+                _FakeReportRepository(),
+              ),
+              platformDataSourceProvider.overrideWithValue(
+                _FakePlatformDataSource(),
+              ),
+              settingsRepositoryProvider.overrideWithValue(
+                _FakeSettingsRepository(),
+              ),
+              appLanguageRepositoryProvider.overrideWithValue(
+                _FakeAppLanguageRepository(),
+              ),
+            ],
+            child: const FocusTraceApp(),
+          ),
+        );
+        for (var frame = 0; frame < 4; frame++) {
+          await tester.pump(const Duration(seconds: 1));
+        }
+        if (historical) {
+          final container = ProviderScope.containerOf(
+            tester.element(find.byType(DashboardScreen)),
+          );
+          await container
+              .read(dashboardViewModelProvider.notifier)
+              .previousDay();
+          await tester.pump();
+        }
+        expect(find.text('1h 15m'), findsWidgets);
+        tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+        usage.todayDurationSeconds = 9000;
+        tester.binding.handleAppLifecycleStateChanged(
+          AppLifecycleState.resumed,
+        );
+        await tester.pump();
+        await tester.pump(const Duration(seconds: 1));
+        expect(find.text('2h 30m'), findsWidgets);
+        expect(find.text('1h 15m'), findsNothing);
+      },
+    );
+  }
+
   testWidgets('dashboard renders usage summaries', (tester) async {
     await tester.pumpWidget(
       ProviderScope(
@@ -290,6 +342,8 @@ class _FakeUsageRepository implements UsageRepository {
   _FakeUsageRepository({this.hasUsageAccessValue = true});
 
   final bool hasUsageAccessValue;
+  int todayDurationSeconds = 4500;
+  bool serveHistory = false;
 
   @override
   Future<void> clearAllData() async {}
@@ -297,10 +351,10 @@ class _FakeUsageRepository implements UsageRepository {
   @override
   Future<List<AppUsageSummary>> getTodaySummaries() async {
     return [
-      const AppUsageSummary(
+      AppUsageSummary(
         appName: 'Editor',
         processName: 'editor.exe',
-        totalDurationSeconds: 4500,
+        totalDurationSeconds: todayDurationSeconds,
         percentageOfTotal: 1,
         launchCount: 3,
       ),
@@ -313,7 +367,7 @@ class _FakeUsageRepository implements UsageRepository {
 
   @override
   Future<List<AppUsageSummary>> getDailySummaries(DateTime day) async =>
-      const <AppUsageSummary>[];
+      serveHistory ? await getTodaySummaries() : const <AppUsageSummary>[];
 
   @override
   Future<List<AppUsageSummary>> getAllTimeSummaries() async => const [

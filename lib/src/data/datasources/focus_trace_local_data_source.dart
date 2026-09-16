@@ -9,6 +9,7 @@ import '../../domain/models/app_usage_summary.dart';
 import '../../domain/models/daily_app_usage.dart';
 import '../../domain/models/restriction_event.dart';
 import '../../domain/models/usage_session.dart';
+import '../../domain/repositories/report_repository.dart';
 
 abstract class FocusTraceLocalDataSource {
   Future<void> insertSession(UsageSession session);
@@ -66,8 +67,25 @@ abstract class PortableFocusTraceDataSource {
   );
 }
 
+abstract interface class UsageReportSnapshotDataSource {
+  Future<UsageReportSourceData> readReportSnapshot(
+    DateTime from,
+    DateTime to,
+    DateTime intervalFrom,
+  );
+}
+
+abstract interface class UsageRecoveryDatabase {
+  /// Ensure Flutter-owned migrations finish before the native writer opens it.
+  Future<void> prepareUsageRecovery();
+}
+
 class SqfliteFocusTraceLocalDataSource
-    implements FocusTraceLocalDataSource, PortableFocusTraceDataSource {
+    implements
+        FocusTraceLocalDataSource,
+        PortableFocusTraceDataSource,
+        UsageRecoveryDatabase,
+        UsageReportSnapshotDataSource {
   SqfliteFocusTraceLocalDataSource({
     this.databaseName = 'focus_trace.db',
     DatabaseFactory? databaseFactoryOverride,
@@ -81,6 +99,11 @@ class SqfliteFocusTraceLocalDataSource
   final Future<Directory> Function()? _applicationSupportDirectoryProvider;
   Database? _database;
 
+  @override
+  Future<void> prepareUsageRecovery() async {
+    await _db;
+  }
+
   Future<Database> get _db async {
     final existing = _database;
     if (existing != null) {
@@ -93,7 +116,12 @@ class SqfliteFocusTraceLocalDataSource
     final opened = await factory.openDatabase(
       path,
       options: OpenDatabaseOptions(
-        version: 4,
+        version: 5,
+        onDowngrade: (db, oldVersion, newVersion) async {
+          throw StateError(
+            'Database v$oldVersion cannot be opened by schema v$newVersion.',
+          );
+        },
         onUpgrade: (db, oldVersion, newVersion) async {
           if (oldVersion < 2) {
             await _createDailyUsageTable(db);
@@ -105,6 +133,12 @@ ADD COLUMN launch_count INTEGER NOT NULL DEFAULT 0
           }
           if (oldVersion < 4) {
             await _createReportTables(db);
+          }
+          if (oldVersion < 5) {
+            await _createUsageSnapshotTable(db);
+            // Older binaries can lower user_version without removing v5 tables.
+            // Their writes invalidate any coverage evidence left behind.
+            await db.delete('usage_snapshot_days');
           }
         },
         onCreate: (db, version) async {
@@ -135,6 +169,7 @@ CREATE TABLE settings (
 ''');
           await _createDailyUsageTable(db);
           await _createReportTables(db);
+          await _createUsageSnapshotTable(db);
         },
       ),
     );
@@ -193,6 +228,20 @@ CREATE INDEX idx_restriction_events_occurred_at
 ON restriction_events(occurred_at)
 ''');
   }
+
+  // Device-local query evidence is deliberately not portable. Imported/legacy
+  // days have no metadata and must be reconciled before being considered final.
+  Future<void> _createUsageSnapshotTable(Database db) => db.execute('''
+CREATE TABLE IF NOT EXISTS usage_snapshot_days (
+  day TEXT PRIMARY KEY,
+  start_ms INTEGER NOT NULL,
+  end_ms INTEGER NOT NULL,
+  timezone_id TEXT NOT NULL,
+  queried_at_ms INTEGER NOT NULL,
+  covered_until_ms INTEGER NOT NULL,
+  status TEXT NOT NULL CHECK(status IN ('partial', 'unavailable', 'reconciled'))
+)
+''');
 
   Future<DatabaseFactory> get _databaseFactory async {
     final override = _databaseFactoryOverride;
@@ -271,6 +320,15 @@ ON restriction_events(occurred_at)
     final db = await _db;
     final dayKey = _dayKey(day);
     await db.transaction((txn) async {
+      // Android owns paired totals/interval snapshots. Never let a delayed
+      // legacy Dart save overwrite a day already managed by the native writer.
+      final managed = await txn.query(
+        'usage_snapshot_days',
+        columns: ['day'],
+        where: 'day = ?',
+        whereArgs: [dayKey],
+      );
+      if (managed.isNotEmpty) return;
       await txn.delete(
         'daily_app_usage',
         where: 'day = ?',
@@ -346,8 +404,13 @@ ORDER BY duration_seconds DESC, app_name COLLATE NOCASE ASC
   Future<List<DailyAppUsage>> getUsageHistory(
     DateTime fromInclusive,
     DateTime toExclusive,
+  ) async => _getUsageHistory(await _db, fromInclusive, toExclusive);
+
+  Future<List<DailyAppUsage>> _getUsageHistory(
+    DatabaseExecutor db,
+    DateTime fromInclusive,
+    DateTime toExclusive,
   ) async {
-    final db = await _db;
     final rows = await db.query(
       'daily_app_usage',
       where: 'day >= ? AND day < ?',
@@ -379,6 +442,17 @@ ORDER BY duration_seconds DESC, app_name COLLATE NOCASE ASC
     final db = await _db;
     await db.transaction((txn) async {
       for (final interval in intervals) {
+        final managed = await txn.rawQuery(
+          '''
+SELECT day FROM usage_snapshot_days
+WHERE start_ms < ? AND end_ms > ? LIMIT 1
+''',
+          [
+            interval.endedAt.millisecondsSinceEpoch,
+            interval.startedAt.millisecondsSinceEpoch,
+          ],
+        );
+        if (managed.isNotEmpty) continue;
         await txn.insert('usage_intervals', {
           'id': interval.id,
           'app_key': interval.appKey,
@@ -394,8 +468,13 @@ ORDER BY duration_seconds DESC, app_name COLLATE NOCASE ASC
   Future<List<AppUsageInterval>> getUsageIntervals(
     DateTime fromInclusive,
     DateTime toExclusive,
+  ) async => _getUsageIntervals(await _db, fromInclusive, toExclusive);
+
+  Future<List<AppUsageInterval>> _getUsageIntervals(
+    DatabaseExecutor db,
+    DateTime fromInclusive,
+    DateTime toExclusive,
   ) async {
-    final db = await _db;
     final fromMs = fromInclusive.millisecondsSinceEpoch;
     final toMs = toExclusive.millisecondsSinceEpoch;
     final intervalRows = await db.query(
@@ -459,8 +538,13 @@ ORDER BY duration_seconds DESC, app_name COLLATE NOCASE ASC
   Future<List<RestrictionEvent>> getRestrictionEvents(
     DateTime fromInclusive,
     DateTime toExclusive,
+  ) async => _getRestrictionEvents(await _db, fromInclusive, toExclusive);
+
+  Future<List<RestrictionEvent>> _getRestrictionEvents(
+    DatabaseExecutor db,
+    DateTime fromInclusive,
+    DateTime toExclusive,
   ) async {
-    final db = await _db;
     final rows = await db.query(
       'restriction_events',
       where: 'occurred_at >= ? AND occurred_at < ?',
@@ -486,6 +570,24 @@ ORDER BY duration_seconds DESC, app_name COLLATE NOCASE ASC
           ),
         )
         .toList();
+  }
+
+  @override
+  Future<UsageReportSourceData> readReportSnapshot(
+    DateTime from,
+    DateTime to,
+    DateTime intervalFrom,
+  ) async {
+    final db = await _db;
+    // Read all report inputs from one SQLite snapshot while native writers may
+    // reconcile a day. Never combine old daily totals with newly saved intervals.
+    return db.transaction(
+      (txn) async => UsageReportSourceData(
+        dailyUsage: await _getUsageHistory(txn, from, to),
+        intervals: await _getUsageIntervals(txn, intervalFrom, to),
+        restrictionEvents: await _getRestrictionEvents(txn, from, to),
+      ),
+    );
   }
 
   String _dayKey(DateTime day) =>
@@ -524,7 +626,11 @@ ORDER BY duration_seconds DESC, app_name COLLATE NOCASE ASC
     return db.transaction((txn) async {
       final result = <String, List<Map<String, Object?>>>{};
       for (final table in _portableTableColumns.keys) {
-        result[table] = await txn.query(table);
+        result[table] = await txn.query(
+          table,
+          where: table == 'settings' ? 'key != ?' : null,
+          whereArgs: table == 'settings' ? ['usage_recovery_generation'] : null,
+        );
       }
       return result;
     });
@@ -556,6 +662,7 @@ ORDER BY duration_seconds DESC, app_name COLLATE NOCASE ASC
           importedRows++;
         }
       }
+      await _invalidateUsageRecovery(txn);
       return importedRows;
     });
   }
@@ -569,7 +676,18 @@ ORDER BY duration_seconds DESC, app_name COLLATE NOCASE ASC
       await txn.delete('daily_app_usage');
       await txn.delete('usage_intervals');
       await txn.delete('restriction_events');
+      await _invalidateUsageRecovery(txn);
     });
+  }
+
+  Future<void> _invalidateUsageRecovery(DatabaseExecutor txn) async {
+    // Backups contain data, not OS coverage evidence. Rotating a device-local
+    // token also rejects native queries started before this import or clear.
+    await txn.delete('usage_snapshot_days');
+    await txn.execute('''
+INSERT OR REPLACE INTO settings (key, value)
+VALUES ('usage_recovery_generation', lower(hex(randomblob(16))))
+''');
   }
 
   Map<String, Object?> _sessionToRow(UsageSession session) {

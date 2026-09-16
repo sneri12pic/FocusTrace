@@ -19,6 +19,8 @@ object UsageStats {
     internal enum class EventKind {
         Foreground,
         Background,
+        EndForeground,
+        DiscardForeground,
         Other,
     }
 
@@ -26,6 +28,7 @@ object UsageStats {
         val packageName: String,
         val timeStampMs: Long,
         val kind: EventKind,
+        val isContinuation: Boolean = false,
     )
 
     internal class QueryMetrics {
@@ -62,6 +65,8 @@ object UsageStats {
         private var foregroundStartedAtMs: Long? = null
         private var latestForegroundEventMs: Long? = null
         private val committedUsageMs = HashMap<String, Long>()
+
+        val needsBootstrap: Boolean get() = cursorMs == null
 
         fun nextQuery(
             dayStartMs: Long,
@@ -104,6 +109,12 @@ object UsageStats {
                             closeForeground(event.timeStampMs)
                         }
                     }
+                    EventKind.EndForeground -> closeForeground(event.timeStampMs)
+                    EventKind.DiscardForeground -> {
+                        foregroundPackage = null
+                        foregroundStartedAtMs = null
+                        latestForegroundEventMs = null
+                    }
                     EventKind.Other -> Unit
                 }
             }
@@ -131,6 +142,15 @@ object UsageStats {
                 latestForegroundEventMs = latestForegroundEventMs,
                 usageMs = usageMs.filterValues { it > 0L },
             )
+        }
+
+        fun retainAcceptedUsage(totals: Map<String, AppUsage>, nowMs: Long) {
+            val observed = snapshot(nowMs).usageMs
+            for ((app, usage) in totals) {
+                if (app !in restrictedPackages) continue
+                val missing = usage.totalMs - (observed[app] ?: 0L)
+                if (missing > 0) committedUsageMs[app] = (committedUsageMs[app] ?: 0L) + missing
+            }
         }
 
         fun invalidate() {
@@ -197,7 +217,7 @@ object UsageStats {
 
     fun todayTotals(context: Context): Map<String, AppUsage> {
         val now = System.currentTimeMillis()
-        return foregroundTotals(context, startOfTodayMillis(), now)
+        return foregroundTotals(context, startOfDayMillis(now), now)
             .filter { it.value.totalMs > 0L && isUserFacingApp(context, it.key) }
     }
 
@@ -219,9 +239,30 @@ object UsageStats {
         metrics: QueryMetrics?,
     ): BlockerSnapshot {
         val window = state.nextQuery(dayStartMs, nowMs, packageNames)
-        val records = eventRecords(context, window.fromMs, window.toMs, metrics)
+        val bootstrap = state.needsBootstrap
+        val records = if (bootstrap) {
+            windowEvents(context, window.fromMs, window.toMs, metrics)
+        } else {
+            eventRecords(context, window.fromMs, window.toMs, metrics)
+        }
         val startedAtNs = metrics?.let { SystemClock.elapsedRealtimeNanos() }
-        val snapshot = state.apply(window, records)
+        state.apply(window, records)
+        if (bootstrap) {
+            val store = UsageSnapshotStore(context)
+            val day = UsageDayWindow.recent(nowMs, java.util.TimeZone.getDefault()).last()
+            if (day.startMs == dayStartMs) {
+                val accepted = try {
+                    store.acceptedSnapshot(day, store.generation())
+                } catch (_: android.database.sqlite.SQLiteException) {
+                    null // A transient DB lock must not kill foreground enforcement.
+                }
+                if (accepted != null) {
+                    val tail = aggregateEvents(eventsInWindow(records, accepted.coveredUntilMs, nowMs), nowMs, packageNames)
+                    state.retainAcceptedUsage(UsageHistoryRecovery.continueTotals(accepted.totals, tail), nowMs)
+                }
+            }
+        }
+        val snapshot = state.snapshot(nowMs)
         if (startedAtNs != null) {
             metrics.aggregationNs += SystemClock.elapsedRealtimeNanos() - startedAtNs
             metrics.latestForegroundEventMs = snapshot.latestForegroundEventMs
@@ -236,7 +277,7 @@ object UsageStats {
         packageNames: Set<String>?,
         metrics: QueryMetrics?,
     ): Map<String, AppUsage> {
-        val records = eventRecords(context, fromMs, toMs, metrics)
+        val records = windowEvents(context, fromMs, toMs, metrics)
         val startedAtNs = metrics?.let { SystemClock.elapsedRealtimeNanos() }
         val totals = aggregateEvents(records, toMs, packageNames)
         if (startedAtNs != null) {
@@ -250,7 +291,7 @@ object UsageStats {
         fromMs: Long,
         toMs: Long,
     ): List<ForegroundInterval> {
-        return aggregateIntervals(eventRecords(context, fromMs, toMs), toMs)
+        return aggregateIntervals(windowEvents(context, fromMs, toMs), toMs)
             .filter {
                 it.endedAtMs > it.startedAtMs &&
                     it.packageName != context.packageName &&
@@ -296,6 +337,8 @@ object UsageStats {
                         closeForeground(event.timeStampMs)
                     }
                 }
+                EventKind.EndForeground -> closeForeground(event.timeStampMs)
+                EventKind.DiscardForeground -> foregroundPackage = null
                 EventKind.Other -> Unit
             }
         }
@@ -326,17 +369,16 @@ object UsageStats {
                             event.timeStampMs - it >= MIN_RELAUNCH_GAP_MS
                         } == true
                     val isLaunch =
-                        !isAlreadyForeground &&
+                        !event.isContinuation && !isAlreadyForeground &&
                             (
                                 lastForegroundPackage != packageName ||
                                     returnedAfterGap
                                 )
                     lastForegroundPackage = packageName
 
-                    // Only one app is foreground at a time. Newer Android often
-                    // omits the background event for the outgoing app, so close
-                    // any other open session here or its time overlaps this one
-                    // and totals stack past wall-clock.
+                    // FocusTrace uses exclusive last-resumed attribution, even
+                    // when Android multi-window keeps several activities resumed.
+                    // Close the outgoing app if its pause event is missing.
                     val stale = foregroundSince.keys.filter { it != packageName }
                     for (other in stale) {
                         val start = foregroundSince.remove(other) ?: continue
@@ -349,9 +391,8 @@ object UsageStats {
                     }
                     if (!isRequested) continue
 
-                    // Some Android versions emit both the legacy MOVE event and
-                    // ACTIVITY_RESUMED. Keep the first timestamp and count the
-                    // pair as one launch.
+                    // Legacy MOVE and ACTIVITY lifecycle names alias the same
+                    // event constants. Duplicate resumes keep the first start.
                     if (!foregroundSince.containsKey(packageName)) {
                         foregroundSince[packageName] = event.timeStampMs
                     }
@@ -369,6 +410,23 @@ object UsageStats {
                             (totals[packageName] ?: 0L) + (event.timeStampMs - start)
                     }
                     lastUsed[packageName] = event.timeStampMs
+                }
+                EventKind.EndForeground -> {
+                    for ((activePackage, start) in foregroundSince) {
+                        if (event.timeStampMs > start) {
+                            totals[activePackage] =
+                                (totals[activePackage] ?: 0L) + (event.timeStampMs - start)
+                        }
+                        lastBackground[activePackage] = event.timeStampMs
+                        lastUsed[activePackage] = event.timeStampMs
+                    }
+                    foregroundSince.clear()
+                    lastForegroundPackage = null
+                }
+                EventKind.DiscardForeground -> {
+                    // A restart without a closing event has no known end time.
+                    foregroundSince.clear()
+                    lastForegroundPackage = null
                 }
                 EventKind.Other -> Unit
             }
@@ -408,12 +466,20 @@ object UsageStats {
         val startedAtNs = metrics?.startQuery(fromMs, toMs)
         try {
             val events = usageStatsManager.queryEvents(fromMs, toMs)
+                ?: throw SecurityException("Usage events are unavailable before user unlock")
             val event = UsageEvents.Event()
             var current: String? = null
             var currentSinceMs: Long? = null
             while (events.hasNextEvent()) {
                 events.getNextEvent(event)
                 metrics?.let { it.eventsIterated += 1 }
+                if (isEndForegroundEvent(event.eventType) ||
+                    event.eventType == UsageEvents.Event.DEVICE_STARTUP
+                ) {
+                    current = null
+                    currentSinceMs = null
+                    continue
+                }
                 val packageName = event.packageName ?: continue
                 if (isForegroundEvent(event.eventType)) {
                     current = packageName
@@ -432,7 +498,7 @@ object UsageStats {
         }
     }
 
-    private fun eventRecords(
+    internal fun eventRecords(
         context: Context,
         fromMs: Long,
         toMs: Long,
@@ -444,20 +510,21 @@ object UsageStats {
         try {
             return buildList {
                 val events = usageStatsManager.queryEvents(fromMs, toMs)
+                    ?: throw SecurityException("Usage events are unavailable before user unlock")
                 val event = UsageEvents.Event()
                 while (events.hasNextEvent()) {
                     events.getNextEvent(event)
                     metrics?.let { it.eventsIterated += 1 }
-                    val packageName = event.packageName ?: continue
+                    val kind = eventKind(event.eventType)
+                    val packageName = event.packageName
+                        ?: if (kind == EventKind.EndForeground ||
+                            kind == EventKind.DiscardForeground
+                        ) "" else continue
                     add(
                         EventRecord(
                             packageName = packageName,
                             timeStampMs = event.timeStamp,
-                            kind = when {
-                                isForegroundEvent(event.eventType) -> EventKind.Foreground
-                                isBackgroundEvent(event.eventType) -> EventKind.Background
-                                else -> EventKind.Other
-                            },
+                            kind = kind,
                         )
                     )
                 }
@@ -475,6 +542,58 @@ object UsageStats {
         queryToMs = queryToMs?.let { maxOf(it, toMs) } ?: toMs
         return SystemClock.elapsedRealtimeNanos()
     }
+
+    private fun windowEvents(
+        context: Context,
+        fromMs: Long,
+        toMs: Long,
+        metrics: QueryMetrics? = null,
+    ): List<EventRecord> {
+        // Seed a session already open at midnight (including after service restart).
+        // Android retains events for only a few days; do not invent older state.
+        val lookbackMs = (fromMs - 24L * 60 * 60 * 1_000).coerceAtLeast(0)
+        return eventsInWindow(eventRecords(context, lookbackMs, toMs, metrics), fromMs, toMs)
+    }
+
+    internal fun eventsInWindow(
+        events: Iterable<EventRecord>,
+        fromMs: Long,
+        toMs: Long,
+    ): List<EventRecord> {
+        var active: String? = null
+        val result = mutableListOf<EventRecord>()
+        for (event in events) {
+            if (event.timeStampMs >= toMs) break
+            if (event.timeStampMs >= fromMs) {
+                result.add(event)
+                continue
+            }
+            when (event.kind) {
+                EventKind.Foreground -> active = event.packageName
+                EventKind.Background -> if (active == event.packageName) active = null
+                EventKind.EndForeground -> active = null
+                EventKind.DiscardForeground -> active = null
+                EventKind.Other -> Unit
+            }
+        }
+        active?.let {
+            result.add(0, EventRecord(it, fromMs, EventKind.Foreground, isContinuation = true))
+        }
+        return result
+    }
+
+    internal fun eventKind(eventType: Int): EventKind = when {
+        isForegroundEvent(eventType) -> EventKind.Foreground
+        isBackgroundEvent(eventType) -> EventKind.Background
+        isEndForegroundEvent(eventType) -> EventKind.EndForeground
+        eventType == UsageEvents.Event.DEVICE_STARTUP -> EventKind.DiscardForeground
+        else -> EventKind.Other
+    }
+
+    private fun isEndForegroundEvent(eventType: Int): Boolean =
+        eventType == UsageEvents.Event.SCREEN_NON_INTERACTIVE ||
+            eventType == UsageEvents.Event.KEYGUARD_SHOWN ||
+            eventType == UsageEvents.Event.DEVICE_SHUTDOWN
 
     // ponytail: launchable-in-app-drawer is the system-app filter; whitelist packages here if a wanted app gets dropped.
     fun isUserFacingApp(context: Context, packageName: String): Boolean {

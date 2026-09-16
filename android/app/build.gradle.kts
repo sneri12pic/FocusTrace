@@ -29,6 +29,10 @@ android {
         jvmTarget = JavaVersion.VERSION_11.toString()
     }
 
+    testOptions {
+        unitTests.isIncludeAndroidResources = true
+    }
+
     defaultConfig {
         applicationId = "com.stepandemianenko.focustrace"
         // You can update the following values to match your application needs.
@@ -87,4 +91,5 @@ dependencies {
     implementation("androidx.work:work-runtime-ktx:2.10.5")
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.json:json:20240303")
+    testImplementation("org.robolectric:robolectric:4.15.1")
 }

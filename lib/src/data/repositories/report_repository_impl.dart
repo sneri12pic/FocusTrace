@@ -3,6 +3,7 @@ import '../../domain/repositories/report_repository.dart';
 import '../../domain/repositories/usage_repository.dart';
 import '../datasources/focus_trace_local_data_source.dart';
 import '../datasources/platform_usage_data_source.dart';
+import 'usage_history_recovery.dart';
 
 class ReportRepositoryImpl implements ReportRepository {
   ReportRepositoryImpl({
@@ -24,6 +25,7 @@ class ReportRepositoryImpl implements ReportRepository {
   ) async {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
+    final intervalFrom = fromInclusive.subtract(const Duration(days: 1));
     if (!today.isBefore(fromInclusive) && today.isBefore(toExclusive)) {
       try {
         await _usageRepository.getTodaySummaries();
@@ -32,10 +34,18 @@ class ReportRepositoryImpl implements ReportRepository {
       }
     }
 
+    await recoverUsageHistory(
+      _localDataSource,
+      _platformDataSource,
+      intervalFrom,
+      toExclusive,
+    );
+
     final intervalSource = _platformDataSource is UsageIntervalDataSource
         ? _platformDataSource as UsageIntervalDataSource
         : null;
-    if (intervalSource != null) {
+    if (intervalSource != null &&
+        _platformDataSource is! UsageHistoryRecoveryDataSource) {
       try {
         final freshIntervals = await intervalSource.getUsageIntervals(
           fromInclusive.subtract(const Duration(days: 1)),
@@ -47,7 +57,10 @@ class ReportRepositoryImpl implements ReportRepository {
       }
     }
 
-    final intervalFrom = fromInclusive.subtract(const Duration(days: 1));
+    if (_localDataSource is UsageReportSnapshotDataSource) {
+      return (_localDataSource as UsageReportSnapshotDataSource)
+          .readReportSnapshot(fromInclusive, toExclusive, intervalFrom);
+    }
     final results = await (
       _localDataSource.getUsageHistory(fromInclusive, toExclusive),
       _localDataSource.getUsageIntervals(intervalFrom, toExclusive),

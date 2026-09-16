@@ -5,6 +5,7 @@ import '../../domain/models/usage_session.dart';
 import '../../domain/repositories/usage_repository.dart';
 import '../datasources/focus_trace_local_data_source.dart';
 import '../datasources/platform_usage_data_source.dart';
+import 'usage_history_recovery.dart';
 
 class UsageRepositoryImpl implements UsageRepository, AppMetadataRepository {
   UsageRepositoryImpl({
@@ -35,12 +36,23 @@ class UsageRepositoryImpl implements UsageRepository, AppMetadataRepository {
 
   @override
   Future<List<AppUsageSummary>> getTodaySummaries() async {
+    if (_platformDataSource is UsageHistoryRecoveryDataSource &&
+        _localDataSource is UsageRecoveryDatabase) {
+      try {
+        await (_localDataSource as UsageRecoveryDatabase)
+            .prepareUsageRecovery();
+      } catch (_) {
+        // A storage failure must not prevent reading live OS usage.
+      }
+    }
     final summaries = _aggregationService.withPercentages(
       await _fetchTodaySummaries(),
     );
     try {
       // Snapshot today's totals so history stays queryable for statistics.
-      await _localDataSource.saveDailySummaries(DateTime.now(), summaries);
+      if (_platformDataSource is! UsageHistoryRecoveryDataSource) {
+        await _localDataSource.saveDailySummaries(DateTime.now(), summaries);
+      }
     } catch (_) {
       // History is best-effort; never block the dashboard on a storage error.
     }
@@ -62,12 +74,24 @@ class UsageRepositoryImpl implements UsageRepository, AppMetadataRepository {
 
   @override
   Future<List<AppUsageSummary>> getDailySummaries(DateTime day) async {
+    await recoverUsageHistory(
+      _localDataSource,
+      _platformDataSource,
+      DateTime(day.year, day.month, day.day),
+      DateTime(day.year, day.month, day.day + 1),
+    );
     final stored = await _localDataSource.getDailySummaries(day);
     return _withCurrentMetadata(stored);
   }
 
   @override
   Future<List<AppUsageSummary>> getAllTimeSummaries() async {
+    await recoverUsageHistory(
+      _localDataSource,
+      _platformDataSource,
+      DateTime(1970),
+      DateTime.now(),
+    );
     final stored = await _localDataSource.getAllTimeSummaries();
     return _withCurrentMetadata(stored);
   }
@@ -76,7 +100,13 @@ class UsageRepositoryImpl implements UsageRepository, AppMetadataRepository {
   Future<List<DailyAppUsage>> getUsageHistory(
     DateTime fromInclusive,
     DateTime toExclusive,
-  ) {
+  ) async {
+    await recoverUsageHistory(
+      _localDataSource,
+      _platformDataSource,
+      fromInclusive,
+      toExclusive,
+    );
     return _localDataSource.getUsageHistory(fromInclusive, toExclusive);
   }
 

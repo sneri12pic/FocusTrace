@@ -129,6 +129,26 @@ class MainActivity : FlutterActivity() {
                             }.start()
                         }
                     }
+                    "recoverUsageHistory" -> {
+                        val arguments = call.arguments as? Map<*, *>
+                        val fromMs = (arguments?.get("fromMs") as? Number)?.toLong()
+                        val toMs = (arguments?.get("toMs") as? Number)?.toLong()
+                        if (fromMs == null || toMs == null || fromMs >= toMs) {
+                            result.error("INVALID_RANGE", "A valid usage range is required.", null)
+                        } else {
+                            Thread {
+                                try {
+                                    if (!hasUsageAccess()) throw SecurityException("Usage Access required")
+                                    UsageHistoryRecovery(applicationContext).snapshotAndRecover(
+                                        fromMs = fromMs, toMs = toMs, includeToday = false,
+                                    )
+                                    runOnUiThread { result.success(null) }
+                                } catch (e: Exception) {
+                                    runOnUiThread { result.error("USAGE_RECOVERY_FAILED", e.message, null) }
+                                }
+                            }.start()
+                        }
+                    }
                     "getUsageIntervals" -> {
                         val arguments = call.arguments as? Map<*, *>
                         val fromMs = (arguments?.get("fromMs") as? Number)?.toLong()
@@ -274,34 +294,23 @@ class MainActivity : FlutterActivity() {
         }
     }
 
-    private fun getTodayUsageStats(): List<Map<String, Any?>> {
-        val startOfToday = UsageStats.startOfTodayMillis()
-        return UsageStats.todayTotals(this)
-            .map { (packageName, usage) ->
-                mapOf(
-                    "packageName" to packageName,
-                    "appName" to appLabelFor(packageName),
-                    "iconBytes" to appIconFor(packageName),
-                    "metadataVersion" to appLastUpdateTimeFor(packageName),
-                    "totalTimeInForegroundMs" to usage.totalMs,
-                    "launchCount" to usage.launchCount,
-                    "firstTimeStampMs" to startOfToday,
-                    "lastTimeStampMs" to usage.lastUsedMs,
-                    "lastTimeUsedMs" to usage.lastUsedMs
-                )
-            }
-            .sortedByDescending { it["totalTimeInForegroundMs"] as Long }
-    }
-
     private fun measuredTodayUsageStats(
         benchmarkRunId: Long?,
         includeIcons: Boolean,
     ): List<Map<String, Any?>> {
         val request = IconRequestMetrics()
         val startedNs = System.nanoTime()
-        val startOfToday = UsageStats.startOfTodayMillis()
+        val now = System.currentTimeMillis()
+        val zone = java.util.TimeZone.getDefault()
+        val startOfToday = UsageDayWindow.recent(now, zone).last().startMs
         val queryStartedNs = System.nanoTime()
-        val totals = UsageStats.todayTotals(this)
+        val totals = try {
+            UsageHistoryRecovery(applicationContext).snapshotAndRecover(now, zone)
+        } catch (_: android.database.sqlite.SQLiteException) {
+            // Storage is best-effort for the live dashboard; the worker retries.
+            UsageStats.foregroundTotals(this, startOfToday, now)
+                .filter { UsageStats.isUserFacingApp(this, it.key) }
+        }
         val queryUs = (System.nanoTime() - queryStartedNs) / 1_000
         val metadataStartedNs = System.nanoTime()
         val rows = totals.map { (packageName, usage) ->
