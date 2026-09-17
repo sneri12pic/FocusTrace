@@ -1,0 +1,20 @@
+spring:
+  application:
+    name: focustrace-sync
+
+  # No credentials are committed. Supply them via the environment; the defaults
+  # only fit a throwaway local database.
+  datasource:
+    url: ${FOCUSTRACE_DB_URL:jdbc:postgresql://localhost:5432/focustrace}
+    username: ${FOCUSTRACE_DB_USER:focustrace}
+    password: ${FOCUSTRACE_DB_PASSWORD:}
+
+  flyway:
+    enabled: true
+
+  jpa:
+    open-in-view: false
+    hibernate:
+      # Flyway owns the schema. Entity drift must fail startup, never mutate the
+      # database. This stays 'validate' in every profile, tests included.
+      ddl-auto: validate

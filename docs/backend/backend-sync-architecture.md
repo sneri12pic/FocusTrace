@@ -501,12 +501,20 @@ forwards to a repository.
 It must be possible to build the app without a JDK-for-server toolchain and vice
 versa.
 
-**Gradle over Maven**, Kotlin DSL, matching `android/`. One build tool in the
-repository is worth more than matching the Spring tutorial convention.
+**Gradle over Maven**, Kotlin DSL, same build tool as `android/`. One build tool in
+the repository is worth more than matching the Spring tutorial convention.
 
-**Java 21 (LTS) + the current Spring Boot 3.5.x patch release.** Pin the exact
-version from start.spring.io at bootstrap time rather than trusting a version
-written into a design document.
+**Selected and pinned at bootstrap (2026-09-17): Java 21 (LTS) + Spring Boot 4.1.0
++ Gradle 9.5.1.** These are pins, not a claim about what is current today - re-check
+before any upgrade. They supersede the "Spring Boot 3.5.x" written here during
+design, per that paragraph's own instruction to pin the actual version at bootstrap
+rather than trusting a version in a design document. Boot 4.1.0 requires Gradle
+8.14+ or 9.x, so `server/` runs Gradle 9.5.1 while `android/` stays on 8.12 - the
+two are separate builds, which is exactly why that is allowed.
+
+Boot 4 renamed several starters. Use `spring-boot-starter-webmvc` (not `-web`) and
+`spring-boot-starter-flyway`. Testcontainers 2.x likewise moved
+`PostgreSQLContainer` to `org.testcontainers.postgresql` and made it non-generic.
 
 Libraries: Spring Web, Spring Data JPA, Spring Security, Bean Validation, Flyway,
 PostgreSQL driver, a maintained JWT library. Nothing else without a concrete need.

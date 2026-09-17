@@ -5,6 +5,90 @@ session reads to continue safely.
 
 ---
 
+## 2026-09-17 — Phase 1 Step 1
+
+Date: 2026-09-17
+Agent: Claude Code
+Goal: Plan Phase 1 Step 1 - bootstrap `server/` as a standalone Gradle Kotlin DSL
+Spring Boot build with the Flyway baseline. Stop before Step 2.
+
+Completed:
+- `server/` bootstrapped as a standalone Gradle build, not wired into
+  `android/settings.gradle.kts`.
+- Gradle wrapper copied from `android/` and repointed to Gradle 9.5.1.
+- Spring Boot application entry point and `application.yml` with `ddl-auto=validate`.
+- `V1__baseline.sql` implementing architecture section 6 verbatim: `users`,
+  `devices`, `usage_days`, `usage_day_apps`, `refresh_tokens`, plus their
+  constraints and indexes.
+- `FlywayBaselineIT` - Testcontainers PostgreSQL 16, asserts the migration applies
+  and that the idempotency-carrying primary keys exist.
+
+Files materially changed:
+- `server/settings.gradle.kts`, `server/build.gradle.kts`, `server/.gitignore` (new)
+- `server/gradlew`, `server/gradlew.bat`, `server/gradle/wrapper/*` (new, copied)
+- `server/src/main/java/com/stepandemianenko/focustrace/sync/FocusTraceSyncApplication.java` (new)
+- `server/src/main/resources/application.yml` (new)
+- `server/src/main/resources/db/migration/V1__baseline.sql` (new)
+- `server/src/test/java/com/stepandemianenko/focustrace/sync/FlywayBaselineIT.java` (new)
+- `docs/backend/backend-sync-architecture.md` - section 10 version pin updated
+
+Verification:
+- `./gradlew build -x test` - **PASS**. Compiles, `bootJar` produced.
+- `./gradlew compileTestJava` - **PASS**, zero warnings with `-Xlint:deprecation`.
+- `gradlew.bat test` - **PASS** (run 2026-09-17T21:17:24Z once Docker was started).
+  Evidence read back from `build/test-results/test/TEST-...FlywayBaselineIT.xml`:
+  - `tests="5" skipped="0" failures="0" errors="0"`, suite time 32.9s;
+  - container: `Creating container for image: postgres:16-alpine`,
+    `started in PT2.7856428S`, `PostgreSQL 16.15`;
+  - Flyway: `Migrating schema "public" to version "1 - baseline"` ->
+    `Successfully applied 1 migration to schema "public", now at version v1
+    (execution time 00:00.198s)`;
+  - all five assertions passed: `baselineCreatesEveryTable`,
+    `usageDayIdentityIsDeviceAndLocalDate`, `usageDayAppIdentityIncludesAppKey`,
+    `appRowsCannotOutliveTheirDay`, `migrationIsRecordedAsApplied`.
+- **`V1__baseline.sql` has now executed against real PostgreSQL 16.15**, and the
+  Spring context started with `ddl-auto=validate`. Plan acceptance criterion 1 is
+  met.
+
+Decisions made:
+- **Spring Boot 4.1.0, not 3.5.x.** The design document told this step to pin the
+  actual current version at bootstrap. 4.1.0 is what the local Maven cache holds
+  and is current. Architecture section 10 updated to match.
+- **Gradle 9.5.1 for `server/`** while `android/` stays on 8.12. Boot 4.1.0
+  refuses Gradle below 8.14. Separate builds, so no conflict.
+- Boot 4 starter renames adopted: `spring-boot-starter-webmvc`,
+  `spring-boot-starter-flyway`.
+- Testcontainers 2.0.5 pinned via its own BOM; the Boot BOM does not manage it.
+  Artifacts are `testcontainers-junit-jupiter` / `testcontainers-postgresql`, and
+  `PostgreSQLContainer` now lives in `org.testcontainers.postgresql` and is
+  non-generic.
+- **Spring Security deferred to Step 2.** It is in the fixed stage stack but Step 1
+  has no endpoints to protect; adding the starter now would only produce an
+  unconfigured lockdown and a generated password on every boot. Step 2 owns auth.
+- No credentials committed. `application.yml` uses `${FOCUSTRACE_DB_URL}`,
+  `${FOCUSTRACE_DB_USER}`, `${FOCUSTRACE_DB_PASSWORD}` with local-only defaults and
+  an empty default password.
+
+Remaining:
+- Next exact plan step: **Phase 1 Step 2** - `users` table plus registration and
+  login, Argon2id hashing, JWT access token, rotating hashed refresh token,
+  stateless `SecurityFilterChain`. Adds Spring Security.
+
+Risks / unresolved questions:
+1. Boot 4.1.0 is a newer major than the design assumed. Step 2 will meet further
+   Boot 4 API differences, particularly in Spring Security configuration.
+2. `postgres:16-alpine` in the test is not pinned to a digest, and no PostgreSQL
+   version is fixed for production yet.
+3. Running the suite requires a live Docker daemon. There is no fallback and
+   deliberately no H2 substitute; without Docker the suite is blocked, not failing.
+
+Relevant commit:
+- The `feat(server): bootstrap Spring backend and baseline schema` commit that
+  carries this entry. A commit cannot contain its own hash; `git log` on
+  `server/` resolves it. Previous checkpoint: `5bc75c5`.
+
+---
+
 ## 2026-09-17
 
 Date: 2026-09-17
