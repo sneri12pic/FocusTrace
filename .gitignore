@@ -51,3 +51,6 @@ key.properties
 
 # Local feedback files
 /docs/Feedback/
+
+# Local engineering workspace (raw audits, investigations, superseded drafts)
+.local/

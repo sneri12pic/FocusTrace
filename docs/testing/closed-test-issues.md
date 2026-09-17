@@ -16,5 +16,5 @@ The September 15 bounded gate is complete: **READY WITH DOCUMENTED NON-BLOCKING 
 
 Existing issues checked for overlap: #24 shared routines, #29 Android sessions,
 #30 excess usage, #33 warnings/contextual mascot; closed #10, #21, #23 and #31.
-See [audit evidence](closed-test-audit.md) for the distinction between implemented
+See the detailed audit evidence (retained locally in `.local/audits/closed-test-audit.md`, not tracked in Git) for the distinction between implemented
 features, local fixes, unverified device scenarios, and accepted non-blocking limitations.
