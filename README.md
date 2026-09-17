@@ -145,7 +145,7 @@ See the [full report, p95 timings, and raw captures](benchmark/android/results/2
 If Google Play reports that FocusTrace cannot be updated because an existing
 package conflicts or has a different signature, do not uninstall before saving
 the local data. Follow the verified diagnosis and recovery procedure in
-[docs/PLAY_SIGNING_RECOVERY.md](docs/PLAY_SIGNING_RECOVERY.md).
+[docs/releases/PLAY_SIGNING_RECOVERY.md](docs/releases/PLAY_SIGNING_RECOVERY.md).
 
 ## Roadmap
 
