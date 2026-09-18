@@ -1107,6 +1107,24 @@ abstract class AppLocalizations {
   /// **'{period}: usage unchanged'**
   String usageTrendUnchanged(String period);
 
+  /// No description provided for @usageTrendNew.
+  ///
+  /// In en, this message translates to:
+  /// **'New'**
+  String get usageTrendNew;
+
+  /// No description provided for @usageTrendNewLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'{period}: new usage, nothing earlier to compare'**
+  String usageTrendNewLabel(String period);
+
+  /// No description provided for @usageTrendIncreaseAboveCap.
+  ///
+  /// In en, this message translates to:
+  /// **'{period}: usage increased by more than {percentage}%'**
+  String usageTrendIncreaseAboveCap(String period, int percentage);
+
   /// No description provided for @usageDetailsLastSevenDays.
   ///
   /// In en, this message translates to:

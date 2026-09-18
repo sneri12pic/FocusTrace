@@ -293,6 +293,20 @@
       "period": {"type": "String"}
     }
   },
+  "usageTrendNew": "新規",
+  "usageTrendNewLabel": "{period}: 新しい使用、比較できる以前のデータなし",
+  "@usageTrendNewLabel": {
+    "placeholders": {
+      "period": {"type": "String"}
+    }
+  },
+  "usageTrendIncreaseAboveCap": "{period}: 使用時間が{percentage}%以上増加",
+  "@usageTrendIncreaseAboveCap": {
+    "placeholders": {
+      "period": {"type": "String"},
+      "percentage": {"type": "int"}
+    }
+  },
   "usageDetailsLastSevenDays": "過去7日間",
   "usageDetailsTimeTracked": "追跡時間",
   "usageDetailsPeriodSevenDays": "7日間",

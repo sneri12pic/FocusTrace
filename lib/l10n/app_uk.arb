@@ -293,6 +293,20 @@
       "period": {"type": "String"}
     }
   },
+  "usageTrendNew": "Нове",
+  "usageTrendNewLabel": "{period}: нове використання, немає попередніх даних для порівняння",
+  "@usageTrendNewLabel": {
+    "placeholders": {
+      "period": {"type": "String"}
+    }
+  },
+  "usageTrendIncreaseAboveCap": "{period}: використання зросло більш ніж на {percentage}%",
+  "@usageTrendIncreaseAboveCap": {
+    "placeholders": {
+      "period": {"type": "String"},
+      "percentage": {"type": "int"}
+    }
+  },
   "usageDetailsLastSevenDays": "Останні 7 днів",
   "usageDetailsTimeTracked": "Відстежений час",
   "usageDetailsPeriodSevenDays": "7 днів",

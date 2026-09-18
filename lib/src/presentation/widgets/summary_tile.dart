@@ -261,47 +261,57 @@ class _UsageTrendBadges extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final values = <({String period, double? value})>[
-      (period: context.l10n.usageTrendDayShort, value: trend.dayChangePercent),
-      (
-        period: context.l10n.usageTrendWeekShort,
-        value: trend.weekChangePercent,
-      ),
-      (
-        period: context.l10n.usageTrendMonthShort,
-        value: trend.monthChangePercent,
-      ),
+    final values = <({String period, UsageTrendChange change})>[
+      (period: context.l10n.usageTrendDayShort, change: trend.day),
+      (period: context.l10n.usageTrendWeekShort, change: trend.week),
+      (period: context.l10n.usageTrendMonthShort, change: trend.month),
     ];
     return Wrap(
       spacing: 6,
       runSpacing: 6,
       children: [
         for (final entry in values)
-          if (entry.value != null)
-            _UsageTrendBadge(period: entry.period, value: entry.value!),
+          if (entry.change.state != UsageTrendState.unavailable)
+            _UsageTrendBadge(period: entry.period, change: entry.change),
       ],
     );
   }
 }
 
 class _UsageTrendBadge extends StatelessWidget {
-  const _UsageTrendBadge({required this.period, required this.value});
+  const _UsageTrendBadge({required this.period, required this.change});
 
   final String period;
-  final double value;
+  final UsageTrendChange change;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isFlat = value.abs() < 0.5;
-    final isIncrease = value > 0;
-    final color = trendColor(theme, isFlat: isFlat, isIncrease: isIncrease);
-    final rounded = value.abs().round();
-    final semanticLabel = isFlat
-        ? context.l10n.usageTrendUnchanged(period)
-        : isIncrease
-        ? context.l10n.usageTrendIncrease(period, rounded)
-        : context.l10n.usageTrendDecrease(period, rounded);
+    final l10n = context.l10n;
+    final magnitude = change.displayMagnitude;
+    final isNew = change.state == UsageTrendState.newUsage;
+    final isFlat =
+        change.state == UsageTrendState.unchanged ||
+        (change.state == UsageTrendState.change && magnitude == 0);
+    final isIncrease = !isFlat && (isNew || change.percent! > 0);
+    // "New" has no baseline to be worse than, so it stays neutral.
+    final color = trendColor(
+      theme,
+      isFlat: isFlat || isNew,
+      isIncrease: isIncrease,
+    );
+    final (String label, String semanticLabel) = isNew
+        ? ('$period ${l10n.usageTrendNew}', l10n.usageTrendNewLabel(period))
+        : isFlat
+        ? ('$period 0%', l10n.usageTrendUnchanged(period))
+        : !isIncrease
+        ? ('$period -$magnitude%', l10n.usageTrendDecrease(period, magnitude))
+        : change.exceedsDisplayCap
+        ? (
+            '$period +$magnitude%+',
+            l10n.usageTrendIncreaseAboveCap(period, magnitude),
+          )
+        : ('$period +$magnitude%', l10n.usageTrendIncrease(period, magnitude));
 
     return Semantics(
       label: semanticLabel,
@@ -318,7 +328,7 @@ class _UsageTrendBadge extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(
-                isFlat
+                isFlat || isNew
                     ? Icons.remove
                     : isIncrease
                     ? Icons.trending_up
@@ -328,12 +338,7 @@ class _UsageTrendBadge extends StatelessWidget {
               ),
               const SizedBox(width: 3),
               Text(
-                '$period ${isIncrease && !isFlat
-                    ? '+'
-                    : isFlat
-                    ? ''
-                    : '-'}'
-                '$rounded%',
+                label,
                 style: theme.textTheme.labelSmall?.copyWith(
                   color: color,
                   fontWeight: FontWeight.w800,

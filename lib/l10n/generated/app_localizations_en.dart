@@ -598,6 +598,19 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get usageTrendNew => 'New';
+
+  @override
+  String usageTrendNewLabel(String period) {
+    return '$period: new usage, nothing earlier to compare';
+  }
+
+  @override
+  String usageTrendIncreaseAboveCap(String period, int percentage) {
+    return '$period: usage increased by more than $percentage%';
+  }
+
+  @override
   String get usageDetailsLastSevenDays => 'Last 7 days';
 
   @override

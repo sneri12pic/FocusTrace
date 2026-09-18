@@ -308,6 +308,20 @@
       "period": {"type": "String"}
     }
   },
+  "usageTrendNew": "New",
+  "usageTrendNewLabel": "{period}: new usage, nothing earlier to compare",
+  "@usageTrendNewLabel": {
+    "placeholders": {
+      "period": {"type": "String"}
+    }
+  },
+  "usageTrendIncreaseAboveCap": "{period}: usage increased by more than {percentage}%",
+  "@usageTrendIncreaseAboveCap": {
+    "placeholders": {
+      "period": {"type": "String"},
+      "percentage": {"type": "int"}
+    }
+  },
   "usageDetailsLastSevenDays": "Last 7 days",
   "usageDetailsTimeTracked": "Time tracked",
   "usageDetailsPeriodSevenDays": "7 days",

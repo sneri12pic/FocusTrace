@@ -610,6 +610,19 @@ class AppLocalizationsUk extends AppLocalizations {
   }
 
   @override
+  String get usageTrendNew => 'Нове';
+
+  @override
+  String usageTrendNewLabel(String period) {
+    return '$period: нове використання, немає попередніх даних для порівняння';
+  }
+
+  @override
+  String usageTrendIncreaseAboveCap(String period, int percentage) {
+    return '$period: використання зросло більш ніж на $percentage%';
+  }
+
+  @override
   String get usageDetailsLastSevenDays => 'Останні 7 днів';
 
   @override
