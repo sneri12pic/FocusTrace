@@ -47,6 +47,7 @@ Before any backend-sync work, read:
 docs/backend/backend-sync-v1-plan.md          scope, sequence, acceptance criteria
 docs/backend/backend-sync-architecture.md     decisions, schema, API contract, sync semantics
 docs/backend/backend-sync-v1-progress.md      current state
+docs/security/backend-security-baseline.md    security requirements and open decisions
 ```
 
 Then inspect the actual implementation — documentation may have gone stale.

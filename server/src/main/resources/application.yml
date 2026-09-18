@@ -3,7 +3,7 @@ spring:
     name: focustrace-sync
 
   # No credentials are committed. Supply them via the environment; the defaults
-  # only fit a throwaway local database.
+  # only fit a throwaway local database. The prod profile has no defaults (D14).
   datasource:
     url: ${FOCUSTRACE_DB_URL:jdbc:postgresql://localhost:5432/focustrace}
     username: ${FOCUSTRACE_DB_USER:focustrace}
@@ -18,3 +18,52 @@ spring:
       # Flyway owns the schema. Entity drift must fail startup, never mutate the
       # database. This stays 'validate' in every profile, tests included.
       ddl-auto: validate
+
+  jackson:
+    deserialization:
+      # Request DTOs bind exactly their record components; anything else in the
+      # body is a 400 rather than silently ignored (baseline section 9).
+      fail-on-unknown-properties: true
+
+server:
+  # D15: the client source is the socket peer. Forwarded / X-Forwarded-For are
+  # untrusted until a reverse proxy exists; trusted-proxy handling ships in the
+  # same change that introduces it.
+  forward-headers-strategy: none
+  # Baseline section 13: explicit, not inherited defaults.
+  error:
+    include-stacktrace: never
+    include-message: never
+    include-binding-errors: never
+    include-exception: false
+
+focustrace:
+  auth:
+    jwt:
+      # D09: no default in any profile. Base64 of at least 32 CSPRNG bytes:
+      #   openssl rand -base64 32
+      secret: ${FOCUSTRACE_JWT_SECRET}
+      issuer: focustrace-sync
+      audience: focustrace-app
+      access-token-ttl: PT15M
+    session:
+      absolute-lifetime: PT2160H   # D05: 90 days
+      inactivity-lifetime: PT720H  # D06: 30 days
+      reuse-grace: PT10S           # D08: 0 = strict rotation
+    rate-limit:
+      # D15: initial operational defaults, not architecture.
+      max-entries-per-limiter: 10000
+      register-per-source: { capacity: 5, period: PT1H }
+      login-per-source: { capacity: 10, period: PT15M }
+      login-per-account: { capacity: 5, period: PT15M }
+      refresh-per-source: { capacity: 60, period: PT1H }
+
+logging:
+  level:
+    # Hibernate logs every SQL error, including the expected duplicate-email one,
+    # with the offending email in it. Unexpected ones still propagate and are logged,
+    # with a correlation id, by ApiExceptionHandler.
+    org.hibernate.orm.jdbc.error: OFF
+  pattern:
+    # Server-generated request id (RequestIdFilter) on every line.
+    correlation: "[%X{requestId:-}] "

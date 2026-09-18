@@ -1,6 +1,7 @@
 # FocusTrace Backend Sync v1 - Architecture
 
-Status: design, not implemented.
+Status: Phase 1 Steps 1-2 implemented (bootstrap, authentication). Devices, sync and
+history are designed, not implemented.
 Branch: `feature/backend-sync-v1`.
 Stack decision (final): Java + Spring Boot + PostgreSQL.
 
@@ -152,25 +153,612 @@ Not now.
 
 Email + password registration, then bearer tokens.
 
-- **Password hashing:** Spring Security `PasswordEncoder`, Argon2id (delegating
-  encoder so the hash format is upgradeable). Plaintext is never stored or logged.
-- **Access token:** stateless JWT (HS256), TTL 15 minutes, claims `sub` (user id),
-  `iat`, `exp`, `jti`. Validated by a `OncePerRequestFilter` in front of the
-  stateless `SecurityFilterChain`.
-- **Refresh token:** opaque 256-bit random value, returned once, stored only as a
-  SHA-256 hash in `refresh_tokens`. Rotated on every use; the consumed row is
-  marked revoked. Reuse of a revoked token revokes the whole chain for that user.
-  TTL 60 days.
-- **Signing secret:** injected via environment variable
-  (`FOCUSTRACE_JWT_SECRET`). Never committed. The app fails to start if it is
-  absent or shorter than 32 bytes - no insecure default.
-
 Short-lived access tokens plus a revocable refresh token is the reason there is a
 token table at all: a 30-day non-revocable JWT would be simpler and is the wrong
 trade for data this sensitive.
 
 No custom cryptography anywhere: `SecureRandom`, Spring Security's encoders, and a
 maintained JWT library.
+
+The decisions below were resolved on 2026-09-17, before Phase 1 Step 2, so the
+implementation does not invent security behaviour while writing code. They are
+**implemented in Phase 1 Step 2** (2026-09-18); `backend-sync-v1-progress.md` records what
+actually exists. Requirements and OWASP rationale live in
+`docs/security/backend-security-baseline.md`, which references these decisions by
+identifier rather than restating them.
+
+Throughout: a value marked **configuration** may be tuned per deployment without
+review; a value marked **policy** is fixed in code and changing it is a reviewed
+change.
+
+#### D01 Password hashing
+
+Argon2id via Spring Security's `Argon2PasswordEncoder`, wrapped in a
+`DelegatingPasswordEncoder` whose default prefix is `{argon2}`. Parameters:
+memory 19456 KiB, iterations 2, parallelism 1, salt 16 bytes, hash 32 bytes.
+
+These are OWASP's current baseline Argon2id parameters. At 19 MiB per in-flight
+hash, and with login rate-limited per D15, peak transient memory stays trivial
+for a single small instance. **Policy, not configuration:** a work factor exposed
+as an environment variable is a work factor that can be silently weakened.
+
+Consequence: Step 2 adds Bouncy Castle, which `Argon2PasswordEncoder` requires.
+That is the only new dependency the decision forces.
+
+Verification: database assertion that the stored hash begins `{argon2}` and
+encodes `m=19456,t=2,p=1`; round-trip test through the configured encoder.
+
+#### D02 Password bounds
+
+**Minimum 15 characters, maximum 128**, counted in Unicode **code points**,
+enforced by Bean Validation on the registration DTO. Over-length input is
+rejected with a 400 that states the limit. No composition rules, no forced
+rotation.
+
+15, not 12: FocusTrace authenticates with a password and nothing else. There is
+no MFA, no email verification, no second factor of any kind, so the password is
+the entire barrier in front of a user's complete behavioural history. Where a
+second factor absorbs the weak-password case, 12 is defensible; here nothing
+absorbs it, so the one knob available is turned up. D01's cost per guess and D15's
+cap on guess rate are the other two, and all three are needed.
+
+**Unicode processing: NFC, and nothing else.** The password is normalised to
+Unicode NFC and then hashed as UTF-8. It is **not** trimmed, **not** case-folded,
+**not** NFKC-folded, **not** truncated, and no character is dropped. Leading and
+trailing spaces are part of the password.
+
+NFC is applied because FocusTrace accepts Unicode passwords and Android keyboards
+do not agree on composition: the same visible password typed on two keyboards can
+arrive as precomposed `U+00E9` or as `e` + `U+0301`, and without normalisation the
+second one silently fails to log in. SP 800-63B-4 recommends normalising for
+exactly this reason. NFC rather than NFKC because NFKC also folds compatibility
+characters, which changes what the user typed rather than how it was encoded.
+
+**Registration and verification must apply byte-identical processing.** One
+method produces the value handed to the encoder, and both paths call it. A hash
+written with normalisation and checked without it fails to verify, and the
+failure looks like a wrong password.
+
+This is the opposite of D03's treatment of the email address only in degree, not
+in kind: an identifier is canonicalised so that two spellings mean one account; a
+secret is normalised only so that one typed password has one encoding, and is
+otherwise left alone, because any further folding discards entropy the user
+intended to supply.
+
+**Length is validated after normalisation**, in code points, so the number
+checked is the number hashed - NFC can compose two code points into one. Code
+points rather than `String.length()` so the rule means what it says: a
+16-code-unit `@Size` counts one astral character as two and would reject a
+password the user believes is within the limit. SP 800-63B-4 likewise counts each
+code point as one character. 128 code points is at most 512 UTF-8 bytes, which is
+what the request-size bound sees.
+
+**Policy.** Length carries the strength here; Argon2id has no bcrypt-style
+72-byte truncation point, so the maximum exists only to bound work.
+
+Verification: 14 rejected, 15 accepted, 129 rejected with the limit stated, 128
+accepted; a password of 15 astral code points is accepted; a password with
+leading and trailing spaces authenticates only when those spaces are supplied
+again; the same password submitted in decomposed and precomposed form
+authenticates the same account; length is measured after normalisation.
+
+#### D17 Compromised-password blocklist
+
+**Resolved: a local, versioned blocklist, in Step 2. No outbound network access.**
+
+A length minimum does not stop a user choosing a 15-character password that
+appears in every breach corpus, so D02 narrows this gap without closing it.
+
+The earlier framing here - that closing it meant adding the first outbound HTTP
+call in the service - was wrong. A k-anonymity range query against an external
+service is *one* way to do this, not the only way; a bundled list checked in
+memory is an equally recognised option, and SP 800-63B-4 notes that an
+excessively large list adds little once authentication attempts are rate-limited,
+which D15 ensures they are. So the reason to defer evaporated.
+
+Design:
+
+- **Provenance.** A published, freely redistributable list of the most common
+  passwords, plus a short FocusTrace-specific set (`focustrace` and obvious
+  variants, and any password equal to the local part of the account's email
+  address). The specific source is selected at implementation from candidates
+  whose licence permits redistribution in this repository; **the licence and its
+  terms are checked before the file is added**, and the source URL, version and
+  retrieval date are recorded in a header comment alongside the resource.
+- **Size.** On the order of 10,000 entries - large enough to cover what attackers
+  actually try first, small enough to hold in a `Set<String>` loaded once at
+  startup (a few hundred KB). Not the full multi-hundred-million corpus, which
+  would buy little here and could not be bundled.
+- **Update strategy.** The list is a tracked resource file, versioned with the
+  application and updated by a deliberate commit. There is no runtime fetch, no
+  scheduled refresh, and no network access - which is exactly what keeps API7
+  "not exposed" in the security baseline.
+- **Comparison.** Against the NFC-normalised password from D02 and against its
+  lower-cased form, so `Password123456` is caught by `password123456`. Rejection
+  is a 400 telling the user the password is too common, with no hint about which
+  entry matched.
+- **Enforcement scope (decided 2026-09-18).** The blocklist is an **admission
+  control for prospective passwords**, not an authentication-time check. It is
+  applied whenever a new password is established: registration, and any future
+  password-change or password-reset/recovery flow. Only the prospective new
+  password is checked; a current password supplied to authenticate, or to authorize
+  a password change, is verified against its stored Argon2id hash and is never
+  rejected for appearing in the blocklist. Ordinary login **must not** consult the
+  blocklist.
+- **No retroactive effect.** Updating the bundled list does not invalidate stored
+  credentials: an existing password that appears in a newer version does not, by
+  that fact alone, prevent authentication or revoke sessions. Actual evidence that an
+  account's authenticator is compromised is a separate security event, handled by a
+  remediation flow (forced replacement, session revocation) if one is built - never
+  by turning the login path into a blocklist check.
+
+Verification: a known blocklisted 15-character password is rejected at
+registration; a password equal to the email local part is rejected; a strong
+15-character password is accepted; a unit test asserts the resource loads and its
+entry count matches the recorded version; an unknown-account login with a
+blocklisted value follows the generic 401 / dummy-Argon2id path; an existing
+account whose stored password later joins the list still authenticates. When a
+password-change or reset endpoint is added, it must carry a test that a blocklisted
+prospective password is rejected.
+
+#### D03 Account identity (resolves C5)
+
+The account identifier is the email address. The canonicalisation algorithm is
+defined once, precisely, and both layers implement **that** algorithm rather than
+each approximating it.
+
+**Canonicalisation, in order:**
+
+1. Remove leading and trailing **`U+0020` SPACE only**. Not `String.trim()`,
+   which removes every character at or below `U+0020`, and not `String.strip()`,
+   which removes Unicode whitespace. Exactly one code point is stripped.
+2. Reject the result unless every character is printable ASCII,
+   `U+0021`-`U+007E`, and it satisfies the email-shape validation. Any remaining
+   whitespace, any control character and any non-ASCII character makes the
+   address invalid input, returning 400 - it is never silently removed.
+3. Lower-case with `Locale.ROOT`. The default-locale overload maps `I` to a
+   dotless `i` under a Turkish locale and would split one identity into two.
+
+So a canonical address **contains no whitespace at all and is lower-case**, which
+is the invariant PostgreSQL can state exactly:
+
+```sql
+ALTER TABLE users
+    ADD CONSTRAINT users_email_canonical
+    CHECK (email = lower(email) AND email ~ '^[!-~]+$');
+```
+
+`users_email_key UNIQUE (email)` from `V1` is **kept unchanged**. Together the
+two make the database the final authority: the `CHECK` admits only canonical
+addresses, so uniqueness over the stored value is uniqueness over identities.
+
+**Why this is equivalent and not merely similar.** Step 2 confines the stored
+value to `U+0021`-`U+007E`, and over that range PostgreSQL `lower()` and Java
+`toLowerCase(Locale.ROOT)` agree exactly - ASCII case mapping is identical in
+every collation and locale. "Trimmed" needs no SQL equivalent because a canonical
+address cannot contain a space anywhere, which `[!-~]` already excludes. There is
+no input a direct `INSERT` can smuggle past the `CHECK` that the application
+would have canonicalised differently.
+
+This replaces two earlier formulations, both wrong:
+
+- `UNIQUE INDEX (lower(email))` enforced the case half and ignored trimming, so
+  `" user@example.com "` was a separate identity.
+- `CHECK (email = lower(btrim(email)))` was claimed to "fail closed" on
+  Java/SQL divergence. **It does not.** Bare `btrim` strips `U+0020` only, so a
+  direct insert of `E'\tuser@example.com'` satisfies that predicate while
+  remaining a distinct value under `UNIQUE (email)` - exactly the divergence the
+  constraint was supposed to prevent. Excluding the characters outright, rather
+  than trying to reproduce Java's trimming rule in SQL, removes the whole class
+  of argument.
+
+**Accepted limitation:** internationalised addresses (RFC 6531 UTF-8 local parts,
+IDN domains) are rejected. That is a deliberate trade for an identity rule whose
+two enforcement points are provably the same rule. If EAI ever matters, the
+upgrade path is a separate stored canonical column with its own normalisation,
+not a loosened `CHECK`.
+
+The repository lookup takes an **already-canonical** parameter from the same
+canonicalisation method the registration path uses, and reads
+`WHERE email = :canonicalEmail` against the existing unique index. One method,
+one spelling; a lookup that canonicalises differently from the writer is the bug
+this decision exists to make impossible.
+
+Consequence: a migration is required, smaller than previously planned. See 6.1.
+
+Verification: `"user@example.com"`, `"User@Example.com"` and
+`" user@example.com "` all resolve to one account, the second and third
+registrations are rejected as duplicates, and login with any of the three
+spellings authenticates the same account; `"\tuser@example.com"` is rejected as
+invalid input rather than canonicalised; a direct insert of any value containing
+whitespace, a control character or an upper-case letter violates
+`users_email_canonical`.
+
+#### D04 Access token lifetime
+
+15 minutes (**configuration**, default `PT15M`). Confirms the original design
+value. Clock skew tolerance is **zero** (**policy**): one process issues and
+verifies these tokens, so there is no clock to disagree with.
+
+Verification: a token whose `exp` has passed is rejected with 401.
+
+#### D05/D06 Session lifetime
+
+A login session has an **absolute expiry of 90 days** and an **inactivity expiry
+of 30 days**. Both are **configuration** (`PT2160H`, `PT720H`). The refresh token
+current at any moment expires at the earlier of `issued_at + 30 days` and the
+session's absolute expiry; rotation therefore slides the inactivity window
+forward but can never extend the session past 90 days.
+
+This supersedes the flat "TTL 60 days" written here during design. A single flat
+window answers neither question it was standing in for: it let an abandoned
+installation hold a live credential for two months, and it let an active one hold
+one indefinitely. Two bounds, two `TIMESTAMPTZ` comparisons, no extra machinery.
+
+Verification: a refresh presented after the inactivity window fails; a session
+older than the absolute window fails even with continuous use.
+
+#### D07 JWT claims (resolves C1)
+
+Algorithm **HS256**; issuer `focustrace-sync`; audience `focustrace-app`; claims
+exactly `iss`, `aud`, `sub` (user UUID), `iat`, `exp`, `jti`. Nothing else: no
+email, no device list, no roles.
+
+Issuer and audience are **configuration** with those defaults, and both are
+**validated on every request**. They cost one string comparison each and they are
+what stops a token minted by some other service that happens to share the secret
+from validating here. Retrofitting them after clients are in the field is not
+free, so they go in now.
+
+HS256 rather than an asymmetric algorithm because exactly one service both issues
+and verifies; a public key with no third-party verifier buys nothing and adds key
+distribution.
+
+**The verifier accepts only the configured algorithm.** The `alg` header of an
+incoming token is attacker-controlled input and must never select the
+verification path.
+
+Verification: wrong `iss`, wrong `aud`, `alg: none`, an unexpected algorithm, a
+foreign signing key, and a tampered payload each yield 401.
+
+#### D08 Sessions and refresh tokens (resolves C2)
+
+"Revokes the whole chain" was not enforceable: `refresh_tokens` has only
+`user_id`, so the only available reading of "chain" was "every token the user
+has", which would log a user out of every installation because one was replayed.
+A session table fixes that, and it is two columns of real work.
+
+```text
+users 1---* auth_sessions 1---* refresh_tokens
+```
+
+- **`auth_sessions`** is one login on one installation. It owns
+  `absolute_expires_at`, `revoked_at` and `revoked_reason`
+  (`logout` | `password_change` | `token_reuse`).
+- **`refresh_tokens`** gains `session_id`. Each row is one issued token, stored
+  as the SHA-256 of the 256-bit random value (see the security baseline for why
+  SHA-256 and not Argon2id here).
+- A token is **current** iff `revoked_at IS NULL`, `expires_at > now()`, and its
+  session is neither revoked nor past its absolute expiry.
+- **At most one current token per session**, enforced by a partial unique index,
+  so "rotation invalidated the predecessor" is a database invariant rather than
+  an application intention.
+- The session is deliberately **not** linked to `devices`: a session exists
+  before any device is registered, and coupling them would make login depend on a
+  later phase.
+
+**Consumption and rotation are one transaction, and consumption is a single
+atomic conditional state transition.** The whole refresh runs inside one
+`@Transactional` unit, and the token is claimed by:
+
+```sql
+UPDATE refresh_tokens
+   SET revoked_at = now()
+ WHERE token_hash  = :hash
+   AND revoked_at IS NULL
+   AND expires_at  > now()
+```
+
+Exactly one caller can see one updated row. Under PostgreSQL's default
+`READ COMMITTED`, the loser of a race blocks on the row lock, re-evaluates the
+predicate against the committed version once the winner commits, finds
+`revoked_at` no longer null, and updates zero rows. `SELECT ... FOR UPDATE`
+followed by a check and an update is equivalent and acceptable; the conditional
+`UPDATE` is preferred because it cannot be written with the check accidentally
+outside the lock.
+
+**The row count is the decision.** Zero rows updated means the token was not
+current, and the request is refused - it is never retried, never resolved by
+catching an exception later. Specifically: relying on the partial unique index
+on `(session_id) WHERE revoked_at IS NULL` to raise a constraint violation when
+two successors are inserted is **not** the concurrency mechanism. That index is a
+last-line invariant proving the design holds; a `DataIntegrityViolationException`
+arriving at the controller is a bug, not a control.
+
+Only after a successful claim does the transaction insert the successor row and
+return the new token value. A failure anywhere rolls both back, leaving the
+presented token still current and the client free to retry.
+
+**Reuse-detection grace window.** RFC 9700's basic rotation model treats any
+presentation of an invalidated token as replay and revokes the active token,
+because the server cannot tell which party is legitimate. FocusTrace keeps that
+rule with one narrow exception: a token consumed within a **reuse-detection
+grace window** (configuration, default 10 seconds) whose successor has not itself
+been used yet receives a generic 401 and **does not revoke anything**. Outside the
+window, or once the successor has been used, D08's replay rule applies in full and
+the session dies.
+
+**What this does and does not buy.** It exists so two requests racing from one
+client - two parallel API calls both deciding to refresh - cost one 401 instead of
+a logout. It is **not** recovery for a lost refresh response, and must not be
+described as such: if the server rotated the token and the response never
+arrived, the client no longer holds any usable refresh token, and a 401 on the
+retry leaves it exactly as stranded as a revocation would. **That client must
+sign in again.** Accepted for v1.
+
+Making a lost response genuinely recoverable would mean caching the response or
+retaining the successor's plaintext so it could be handed out twice - storing a
+live bearer credential in recoverable form, which section 7 of the security
+baseline forbids, in exchange for a rare failure that costs one login. Not built.
+
+The existence of the window is policy; its length is configuration. Setting it to
+zero yields strict RFC 9700 rotation and is a supported configuration.
+
+Replay semantics:
+
+| Presented | Server response | State change |
+| --- | --- | --- |
+| Current token | new access + refresh token | predecessor revoked |
+| Hash not found | 401 generic | none - it cannot be attributed to a session |
+| Revoked within the grace window, successor unused | 401 generic | none - duplicate delivery, not theft |
+| Revoked token, session still live | 401 generic | **session revoked, reason `token_reuse`, every remaining token in it revoked** |
+| Token or session expired, or session already revoked | 401 generic | none |
+
+Only the session that was replayed dies. Other installations keep working, which
+is what makes the policy safe to enforce automatically.
+
+Verification: rotation returns a different token; the predecessor stops working;
+replaying the predecessor after the grace window kills that session and only that
+session; no `refresh_tokens` row ever equals a plaintext token. Plus the
+concurrency test required below.
+
+**Required concurrency test.** Issue one refresh token, then submit two refresh
+requests with it concurrently, and assert:
+
+- exactly one succeeds - two successful rotations is a failure;
+- the other returns a generic 401, and **no 5xx is produced**;
+- exactly one successor token exists for the session, and the presented token is
+  revoked;
+- **the within-grace loser does not invalidate the successor**: the token the
+  winner received still refreshes successfully afterwards, and the session is
+  neither revoked nor marked `token_reuse`;
+- with the grace window set to zero, the same race instead revokes the session
+  per the strict rule, and that is the documented behaviour rather than a
+  regression.
+
+This is a real integration test against PostgreSQL with two threads, not a
+single-threaded approximation. A single-threaded test cannot distinguish a
+correct conditional update from a check-then-act that happens to work.
+
+#### D09 Signing key (resolves C6)
+
+One HS256 secret from `FOCUSTRACE_JWT_SECRET`, no default, validated at context
+startup.
+
+Requirements on the material itself:
+
+- **Generated by a cryptographically secure RNG**, for example
+  `openssl rand -base64 32`. Not typed, not chosen, not derived from a
+  passphrase, a hostname, a project name or a date.
+- **At least 256 bits of entropy - 32 decoded bytes** - matching HS256's
+  output size. Below that the MAC key, not the algorithm, is the weak point.
+- Supplied **base64-encoded**, and the length measured **after decoding**.
+  Checking that the environment variable's *string* length is at least 32 is a
+  different and weaker check; the earlier "shorter than 32 bytes" wording here
+  was ambiguous on exactly that point.
+
+Startup fails if the variable is absent, is not valid base64, or decodes to fewer
+than 32 bytes. This holds in **every** profile, not only `prod` - there is no
+development fallback secret, because a development fallback is exactly the thing
+that reaches production by accident.
+
+**What the startup check does and does not establish.** It validates *encoding
+and length*. It cannot establish entropy: a memorable phrase that happens to use
+only base64 characters and runs to 44 of them decodes to 32 bytes and passes,
+while carrying a small fraction of 256 bits. No startup check can tell those
+apart, because the difference is in how the value was produced, not in the value.
+
+The CSPRNG requirement is therefore an **operational requirement on whoever
+provisions the deployment**, verified by process - a documented generation
+command and a deployment review - not by code. Stating it as though the format
+check enforced it would be a false assurance, which is worse than no check.
+
+Rotation in v1 is: set the new value, restart. No `kid` header, no overlapping
+key window, no JWKS. This is acceptable because of how the two token types
+differ: access tokens become invalid for at most one request, and refresh tokens
+are opaque database rows that a signing key change does not touch, so every
+client repairs itself through the normal refresh flow without the user noticing.
+
+`kid` plus a two-key verification window is the documented upgrade path if
+zero-failed-request rotation ever matters. It does not today.
+
+Verification: the context fails to start with the variable absent, with a value
+that is not valid base64, and with a value that decodes to 31 bytes; it starts
+with one that decodes to 32.
+
+#### D10 Revocation semantics
+
+- **Logout** (`POST /api/v1/auth/logout`, carrying the refresh token) revokes
+  **that session only**, reason `logout`. It returns 204 whether or not the token
+  was valid, so it is idempotent and is not an oracle.
+- **Password change** revokes **every session** for that user, reason
+  `password_change`. No password change or reset endpoint exists in Step 2; this
+  is the behaviour the endpoint must have whenever it is added. The new password
+  passes D02 bounds and the D17 blocklist; the current one is only verified.
+- Outstanding **access tokens survive any revocation** until they expire, for at
+  most the D04 window. That is the accepted cost of statelessness, and it is
+  bounded: an access token cannot renew itself, so the session is dead within 15
+  minutes regardless.
+
+Verification: after logout the refresh token fails while a second session
+continues to work.
+
+#### D11 Registration and login responses
+
+**Registration discloses.** A duplicate registration returns `409` with a clear
+message. A uniform `201` would require an email verification flow FocusTrace does
+not have, and would leave a user who forgot they had an account waiting for a
+mail that never arrives. The identifier is an address the requester already
+possesses, and D15 limits registration hardest precisely because this is the
+disclosing endpoint.
+
+**Login does not disclose.** Unknown account, wrong password and malformed
+credentials all return the same 401 and the same body. When no user row is found
+the service still performs an Argon2id verification against a fixed dummy hash,
+so the trivial "no row, instant reply" timing oracle does not exist. This still
+matters despite registration disclosing: it stops the login endpoint from
+becoming a second, more heavily used enumeration channel.
+
+The duplicate-registration path is driven by the unique index violation (D03),
+caught and translated to 409. A pre-insert existence check may improve the
+message but is never the authority, because it loses races.
+
+Verification: unknown-account and wrong-password responses are identical; a
+duplicate registration returns 409 and creates no second row.
+
+#### D15 Rate limiting (resolves C4)
+
+**Implemented in Step 2, not deferred.** Registration, login and refresh are the
+only anonymous flows in the system; leaving them unthrottled while shipping them
+is what turns "acceptable for a private deployment" into a habit.
+
+In-process **token buckets** in a bounded map. No Redis, no Bucket4j, no new
+dependency: there is one instance, and auth traffic is a handful of requests per
+user per day.
+
+A token bucket rather than a fixed window, because a fixed window lets an
+attacker spend a full allowance at the end of one window and another immediately
+at the start of the next - double the intended rate, at exactly the moment a
+limiter is supposed to hold. A bucket is a capacity plus a refill rate and one
+`long` of state per key; it smooths that boundary away and gives `Retry-After`
+directly from the time to the next token. A sliding-window counter would be
+equally acceptable; a plain fixed-window map is not.
+
+The map is **bounded and self-expiring**: entries idle for longer than their full
+refill period are evicted, and the map has a hard maximum size with
+least-recently-used eviction above it. Both matter. An unbounded IP-keyed map is
+itself a memory-exhaustion vector, which would make the anti-abuse control an
+abuse vector. Volumetric abuse is the reverse proxy's job; this layer exists to
+stop credential stuffing.
+
+Two dimensions counted **independently**, whichever trips first:
+
+| Flow | Per source | Per account identifier |
+| --- | --- | --- |
+| `POST /auth/register` | 5 / hour | - |
+| `POST /auth/login` | 10 / 15 min | 5 / 15 min |
+| `POST /auth/refresh` | 60 / hour | - |
+
+A combined `IP + username` bucket is explicitly rejected: it stops neither one
+source trying many accounts nor many sources trying one account.
+
+All six values are **configuration** and are **initial operational defaults, not
+architecture** - expect to tune them against real traffic. The dimensions, the
+independence of the counters, and the fact that the limits exist are **policy**.
+
+**Source identity comes from the transport connection, not from a header.**
+`Forwarded` and `X-Forwarded-For` are attacker-controlled strings until something
+trustworthy overwrites them; honouring them unconditionally both bypasses the
+per-source limit outright and lets an attacker mint unlimited bucket keys to
+evict everyone else's.
+
+So the default is `server.forward-headers-strategy: none`, and the client source
+is the socket peer address. This corrects the `framework` value written here
+earlier, which assumed a proxy that does not exist yet.
+
+**When a reverse proxy is introduced** - it will be, since it terminates TLS -
+trusted-proxy handling must be configured explicitly **in the same change** that
+puts the proxy in front of the service: the proxy set to overwrite rather than
+append the forwarded header, and the application configured to accept it only
+from that proxy's address. Deploying behind a proxy without that step silently
+turns every rate limit into a per-attacker-chosen-string limit, and every log
+entry's client address into a fiction.
+
+Exceeding a limit returns `429` with `Retry-After` and the standard problem body,
+revealing neither which dimension tripped nor whether the account exists.
+
+Verification: with limits configured low, the request after the limit returns
+429; exhausting one account's login budget does not lock out a different account
+from the same source.
+
+#### D14 Configuration and fail-fast
+
+The `prod` profile supplies **no fallback** for `FOCUSTRACE_DB_URL`,
+`FOCUSTRACE_DB_USER`, `FOCUSTRACE_DB_PASSWORD` or `FOCUSTRACE_JWT_SECRET`. A
+missing or blank value fails context startup, not the first request that needs
+it. The default profile keeps today's localhost development values, which is why
+they must never be the production path.
+
+Enforced by a `@Validated @ConfigurationProperties` record
+(`@NotBlank`, `@Size(min = 32)` on the signing secret), so the failure is a
+startup binding failure with a clear message and no secret in it.
+
+Also asserted for `prod`: `ddl-auto` is `validate`, `server.error.include-*` are
+all off, no Actuator on the classpath, CORS disabled, CSRF disabled because the
+transport is the `Authorization` header.
+
+Verification: a configuration test starting the context under `prod` with each
+required variable missing in turn, expecting startup failure each time.
+
+#### Implementation notes (Phase 1 Step 2)
+
+Recorded where the implementation had to choose within, or discovered a limit of, a
+decision above. None changes a decision's behaviour.
+
+- **D17 source.** The SecLists `10k-most-common` list holds exactly one entry of 15+
+  characters, so under D02 it would block nothing. The resource
+  (`server/src/main/resources/auth/common-passwords.txt`, version 1, 10,912 entries)
+  is the SecLists `xato-net-10-million-passwords-1000000` list (MIT) filtered to
+  15-128 printable-ASCII characters, lower-cased and de-duplicated, plus 14
+  FocusTrace-specific entries. Commit, upstream checksum, transform and licence text
+  are in its header.
+- **D07 serialisation.** A single `aud` serialises as a JSON string, not an array
+  (RFC 7519 allows either). The header carries `alg` only: the encoder is built so
+  that no `kid` (which would be a thumbprint of the HMAC secret) is written, per D09.
+  D07's six-claim set defines **issued** tokens. Acceptance is defined by D07's
+  verification list and baseline section 6, neither of which requires `iat` or
+  `jti`. `jti` is required on acceptance anyway, because baseline section 6 reserves
+  it for a future denylist; `iat` is not, so an otherwise valid token without `iat`
+  is accepted. (Verified at runtime, `AccessTokenIT`: Spring synthesises the missing
+  `iat` as `exp - 1 s` before validation.)
+- **D10 logout** takes two credentials with separate jobs. The **refresh token** in
+  the body identifies the session (hashed, then looked up in `refresh_tokens`); the
+  access JWT cannot, since it carries no session claim and no `jti`-to-session record
+  exists. The **bearer access token** is required because baseline section 13 makes
+  exactly register, login and refresh public; its `sub` is the ownership predicate in
+  the lookup (`... WHERE token_hash = :hash AND user_id = :sub`). A token that is
+  unknown, already revoked or another user's matches nothing: silent 204, per D10.
+  Consequence: a client whose access token has expired refreshes before logging out.
+- **D14 mechanism.** Not a validated `@ConfigurationProperties` record for the
+  datasource: Boot binds an unresolvable `${FOCUSTRACE_DB_URL}` as its literal text,
+  and a blank password would reach the DataSource. A `prod`-only bean-factory
+  post-processor rejects missing or blank `FOCUSTRACE_*` values before any bean is
+  created. The signing secret is checked in every profile when the key is built.
+- **Malformed UTF-16.** A JSON escape can deliver an unpaired surrogate, which the
+  Argon2 encoder cannot convert to UTF-8. Registration rejects it (400); login treats
+  it as a wrong password after a dummy verification (401). Found by the Step 2
+  security review.
+
+#### Deferred, and why it is safe to defer
+
+- **D13/C3** (total app rows per upload request) belongs to the sync endpoint,
+  which Step 2 does not build.
+- **D16** (`403` versus non-revealing `404` for a foreign object) belongs to the
+  device and usage APIs. Section 5.2 already fixes the answer for uploads; the
+  general rule must be settled before Step 3 exposes the first object addressed
+  by a client-supplied identifier. Authentication has no foreign objects.
+- **C7** (broadening the BOLA criterion to all four verbs) is already recorded in
+  the plan.
 
 ### 5.2 Authorization
 
@@ -263,6 +851,73 @@ Notes on the constraints that are doing real work:
   than a day of usage per app. It has caught this class of bug before.
 - `source_status` gains `imported` beyond the local vocabulary - see 7.2.
   `unavailable` days are never uploaded, so the server does not model them.
+
+### 6.1 `V2` - authentication schema (`V2__auth_sessions.sql`)
+
+Required by D03 and D08. **Implemented as `V2__auth_sessions.sql`**, verbatim below;
+`V1__baseline.sql` has been applied to real PostgreSQL and is not edited.
+
+```sql
+-- D03: the database, not the service layer, is the final authority on identity.
+-- users_email_key UNIQUE (email) from V1 is kept; this CHECK is what makes the
+-- value it indexes always canonical, so uniqueness over it is uniqueness over
+-- identities.
+--   lower(email) = email  : stored lower-case. Over U+0021-U+007E this is
+--                           exactly Java toLowerCase(Locale.ROOT).
+--   ~ '^[!-~]+$'          : printable ASCII only. Excludes whitespace and
+--                           control characters outright, which is why no SQL
+--                           equivalent of Java's trimming rule is needed.
+ALTER TABLE users
+    ADD CONSTRAINT users_email_canonical
+    CHECK (email = lower(email) AND email ~ '^[!-~]+$');
+
+-- D08: a login session is the revocation unit. A replayed token kills its own
+-- session, not every session the user has.
+CREATE TABLE auth_sessions (
+    id                  UUID PRIMARY KEY,
+    user_id             UUID        NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+    created_at          TIMESTAMPTZ NOT NULL DEFAULT now(),
+    absolute_expires_at TIMESTAMPTZ NOT NULL,
+    revoked_at          TIMESTAMPTZ,
+    revoked_reason      TEXT CHECK (revoked_reason IN ('logout', 'password_change', 'token_reuse')),
+    CONSTRAINT auth_sessions_revocation_consistent
+        CHECK ((revoked_at IS NULL) = (revoked_reason IS NULL)),
+    CONSTRAINT auth_sessions_id_user_key UNIQUE (id, user_id)
+);
+CREATE INDEX auth_sessions_user_id_idx ON auth_sessions (user_id);
+
+ALTER TABLE refresh_tokens
+    ADD COLUMN session_id UUID NOT NULL,
+    ADD CONSTRAINT refresh_tokens_session_fk
+        FOREIGN KEY (session_id, user_id)
+        REFERENCES auth_sessions (id, user_id) ON DELETE CASCADE;
+
+-- At most one live token per session: rotation invalidating its predecessor is a
+-- database invariant, not an application intention.
+CREATE UNIQUE INDEX refresh_tokens_one_current_per_session
+    ON refresh_tokens (session_id) WHERE revoked_at IS NULL;
+```
+
+Three constraints here are load-bearing rather than tidy:
+
+- `users_email_canonical` is what makes `users_email_key` a uniqueness constraint
+  over *identities* rather than over byte strings. Without it, `" user@example.com "`
+  and `"user@example.com"` are two accounts.
+- The **composite** foreign key `(session_id, user_id)` makes it impossible to
+  attach a refresh token to a session belonging to a different user. The
+  redundant `refresh_tokens.user_id` from `V1` is kept for exactly this reason.
+- The **partial unique index** is a last-line invariant behind D08's rotation
+  guarantee. It is not the concurrency mechanism - the conditional `UPDATE` in
+  D08 is - but without it, a bug that forgets to revoke the predecessor would
+  leave two usable tokens and no test would necessarily notice.
+
+`ALTER TABLE ... ADD COLUMN session_id UUID NOT NULL` requires the table to be
+empty, which it is: no authentication code has ever run. If that stops being
+true, the column arrives nullable and is backfilled.
+
+Whether this ships as `V2` or is folded into `V1` while nothing is deployed is the
+developer's call. `V2` is the default answer, because `V1` has been applied to a
+real database.
 
 ---
 
@@ -380,6 +1035,8 @@ All endpoints under `/api/v1`. JSON in, JSON out. Errors use RFC 9457
 POST /api/v1/auth/register        {email, password}                -> 201 {userId}
 POST /api/v1/auth/login           {email, password}                -> 200 {accessToken, expiresIn, refreshToken}
 POST /api/v1/auth/refresh         {refreshToken}                   -> 200 {accessToken, expiresIn, refreshToken}
+POST /api/v1/auth/logout          {refreshToken}                   -> 204 (idempotent, see D10;
+                                  requires a bearer access token - baseline section 13)
 
 POST /api/v1/devices              {deviceId, displayName, platform} -> 200/201 {device}
 GET  /api/v1/devices                                                -> 200 [{device}]
@@ -558,7 +1215,7 @@ and `DATE` semantics, and H2 would test a dialect the application never runs on.
 
 | Area | Test |
 | --- | --- |
-| Auth | register, login, wrong password rejected, unauthenticated request to a protected route is 401, expired access token is 401, refresh rotation, reused refresh token revokes the chain |
+| Auth | register, login, wrong password rejected, unauthenticated request to a protected route is 401, expired access token is 401, refresh rotation, reused refresh token revokes its own session. Per-decision expectations are listed with each decision in 5.1 and enumerated in the security baseline, section 18. |
 | Authorization | User A reading User B's usage gets an empty result; User A uploading to User B's device gets 404 |
 | Device | registration succeeds; re-registering the same installation UUID updates rather than duplicates; a UUID owned by another user is 409 |
 | Validation | negative duration, duration above 86400, duplicate `appKey` in a day, unknown `timezoneId`, empty `days` all rejected with 400 and no rows written |
@@ -611,9 +1268,10 @@ models. The SQLite layer stays authoritative.
    scoping, no secret defaults, and TLS terminated in front of the service. The
    service refuses to start without a configured JWT secret.
 
-6. **Rate limiting and email verification are absent in v1.** `POST /auth/login`
-   and `/auth/register` are unauthenticated and currently unthrottled. Acceptable
-   for a private deployment; **must** be addressed before any public one.
+6. **Email verification is absent in v1.** An address is never proven to belong
+   to the account holder, which is also why duplicate registration discloses
+   (D11). Rate limiting is no longer deferred: D15 puts per-source and
+   per-account throttling on registration, login and refresh in Step 2.
 
 7. **Assumption: one day per device is small.** Roughly 50-200 app rows. If some
    device produces thousands, the 2000-app cap rejects it rather than degrading

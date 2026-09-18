@@ -1,0 +1,8 @@
+# D14: production has no fallback for any secret or connection setting. A missing
+# variable fails placeholder resolution; a blank one fails ProductionConfiguration.
+# FOCUSTRACE_JWT_SECRET has no default in any profile (application.yml).
+spring:
+  datasource:
+    url: ${FOCUSTRACE_DB_URL}
+    username: ${FOCUSTRACE_DB_USER}
+    password: ${FOCUSTRACE_DB_PASSWORD}

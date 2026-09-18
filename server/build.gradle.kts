@@ -26,6 +26,13 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
     implementation("org.springframework.boot:spring-boot-starter-validation")
     implementation("org.springframework.boot:spring-boot-starter-flyway")
+    implementation("org.springframework.boot:spring-boot-starter-security")
+    // Bearer JWT support (Nimbus JOSE) without Boot's resource-server auto-configuration:
+    // the decoder is built explicitly in SecurityConfig.
+    implementation("org.springframework.security:spring-security-oauth2-resource-server")
+    implementation("org.springframework.security:spring-security-oauth2-jose")
+    // Required by Argon2PasswordEncoder (D01). Not managed by the Boot BOM, so pinned here.
+    runtimeOnly("org.bouncycastle:bcprov-jdk18on:1.86")
     runtimeOnly("org.flywaydb:flyway-database-postgresql")
     runtimeOnly("org.postgresql:postgresql")
 

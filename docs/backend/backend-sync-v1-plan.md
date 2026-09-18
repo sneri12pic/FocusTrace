@@ -56,6 +56,18 @@ Each step ends with the previous steps still passing.
 2. `users` + registration/login. Argon2id hashing, JWT access token, rotating
    hashed refresh token. `SecurityFilterChain` stateless; protected routes 401
    without a valid token.
+   Read `docs/security/backend-security-baseline.md` first. Step 2 must satisfy
+   its sections 5 to 7 and 13 and carry the Step 2 tests in its section 18.
+   The security decisions it depends on are resolved in
+   `backend-sync-architecture.md` section 5.1 (D01-D11, D14, D15) - implement
+   those decisions, do not re-decide them.
+   Step 2 also covers, per those decisions: the `V2` migration sketched in
+   architecture 6.1 (`auth_sessions`, `refresh_tokens.session_id`, the
+   `users_email_canonical` check), `POST /api/v1/auth/logout`, per-source /
+   per-account rate limiting on register, login and refresh, and the local
+   common-password blocklist resource (D17). Bouncy Castle is the one new
+   dependency, required by `Argon2PasswordEncoder`; the blocklist is a tracked
+   resource file, not a dependency, and involves no runtime network access.
 3. `devices`. `POST /api/v1/devices` idempotent on installation UUID,
    `GET /api/v1/devices` scoped to the caller.
 4. `usage_days` + `usage_day_apps`. `PUT /api/v1/sync/usage-days` with Bean
@@ -98,7 +110,17 @@ PostgreSQL via Testcontainers:
 | 10 | Uploading version 1 after version 2 leaves version 2 intact, outcome `STALE`. |
 | 11 | Devices A and B on the same user, same date, remain two independent rows, each labelled with its source device in the history response. |
 | 12 | A batch whose last day violates a constraint leaves zero rows from that batch. |
-| 13 | User A cannot read User B's usage and cannot upload to User B's device. |
+| 13 | User A cannot read, rename, delete, or upload usage for User B's device, and cannot read User B's usage. Every verb is rejected with no side effect. |
+| 14 | A tampered, expired, unsigned or unexpectedly-signed access token is rejected; an arbitrary identity claim grants nothing. |
+| 15 | The stored password is not the plaintext and verifies through the configured Argon2id encoder; no response or log contains a password or hash. |
+| 16 | No `refresh_tokens` row holds a plaintext token; rotation invalidates the consumed token; replaying it revokes that session and leaves the user's other session working. |
+| 16a | Logout revokes only the presented session and is idempotent. |
+| 16b | Registration, login and refresh return 429 once their configured limit is exceeded, and one account's exhausted budget does not lock out another from the same source. |
+| 16c | `"user@example.com"`, `"User@Example.com"` and `" user@example.com "` cannot create separate identities, and all three log in to the same account; `"\tuser@example.com"` is rejected as invalid input rather than canonicalised. |
+| 16d | Two concurrent refresh requests carrying the same valid token produce exactly one successful rotation, no 5xx, one successor, and the within-grace loser does not invalidate that successor. |
+| 16e | A blocklisted common password is rejected at registration, and the same password in decomposed and precomposed Unicode form authenticates the same account. |
+| 17 | The context fails to start with a missing or too-short JWT signing secret. |
+| 18 | Malformed requests and forced internal failures return the common error model with no stack trace or internal detail. |
 
 Phase 2 is done when Device B reads Device A's history through the real API, the
 Flutter client re-runs sync, and criterion 8 still holds end to end.
@@ -124,11 +146,10 @@ integration suite is **blocked**, not passing - report it as such.
 
 ## 5. Remaining work
 
-Everything. As of the last progress entry, no `server/` code exists; only the
-architecture design is complete. See `backend-sync-v1-progress.md` for current
-state.
-
----
+Phase 1 Steps 1 and 2 are done: bootstrap, and authentication (criteria 2-4, 14-18,
+16a-16e proven by `server/` tests against PostgreSQL). Next is Step 3 (devices),
+which must first settle D16. Steps 4-6 and Phase 2 follow. Criteria 5-13 are open.
+See `backend-sync-v1-progress.md` for current state.
 
 ## 6. Release blockers outside the backend
 
@@ -138,5 +159,7 @@ These are not backend tasks but must be resolved before sync ships to users:
   sends tracked data to a server. Both become inaccurate the moment sync ships.
 - Account deletion must be reachable from the UI. `ON DELETE CASCADE` from
   `users` already makes the server-side deletion correct.
-- `POST /auth/login` and `POST /auth/register` are unauthenticated and
-  unthrottled. Acceptable for a private deployment, not for a public one.
+- Email addresses are never verified. Registration therefore discloses that an
+  account exists (architecture 5.1, D11). Revisit if verification is added.
+- Rate limiting is no longer a release blocker: it lands with the endpoints in
+  Step 2 (architecture 5.1, D15).

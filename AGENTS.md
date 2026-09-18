@@ -39,6 +39,16 @@ touching it, then design the modification.
 
 ---
 
+## Security-sensitive backend work
+
+Read `docs/security/backend-security-baseline.md` before modifying backend
+authentication, authorization, REST API boundaries, persistence, secrets or
+configuration, or sync security. It defines the requirements such code is
+reviewed against, and records the security decisions that must be resolved
+before implementation rather than invented inside it.
+
+---
+
 ## Preserve work you did not write
 
 The working tree may contain changes from another agent or from the developer.
