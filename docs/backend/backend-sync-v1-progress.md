@@ -99,7 +99,7 @@ Pre-commit verification pass (same date), four concerns:
 - `./gradlew test --rerun`: 146 tests, 0 failures, 0 skipped.
 
 Relevant commit:
-- None. Nothing committed.
+- `ed7f182` — `feat(server): implement secure authentication and sessions`
 
 ---
 
