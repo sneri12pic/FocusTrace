@@ -976,12 +976,12 @@ describe the pre-Step-2 state and are not updated entry by entry.
 | D13 | Total app rows per upload request | **Open** - sync phase | this document, section 9 |
 | D14 | Development versus production configuration | Resolved | architecture 5.1, D14 |
 | D15 | Authentication rate limits | Resolved | architecture 5.1, D15 |
-| D16 | `403` versus non-revealing `404` for a foreign object | **Open** - before Step 3 | this document, section 4 |
+| D16 | `403` versus non-revealing `404` for a foreign object | Resolved (2026-09-18) | architecture 5.1, D16 |
 | D17 | Compromised-password blocklist | Resolved | architecture 5.1, D17 |
 
-D13 and D16 remain open, and neither is reachable from authentication: the sync
-endpoint does not exist yet, and authentication has no foreign objects to
-address. Both must be settled before the API that exposes them is built.
+D16 was resolved before Step 3 (devices), which implements D12 and scopes every
+device query by owner. D13 remains open: the sync endpoint does not exist yet, and
+it must be settled before that endpoint is built.
 
 D17 was briefly held open on the mistaken premise that closing it required an
 outbound password-checking API. It does not - a local versioned blocklist is an

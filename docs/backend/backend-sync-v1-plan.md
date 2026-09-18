@@ -146,9 +146,11 @@ integration suite is **blocked**, not passing - report it as such.
 
 ## 5. Remaining work
 
-Phase 1 Steps 1 and 2 are done: bootstrap, and authentication (criteria 2-4, 14-18,
-16a-16e proven by `server/` tests against PostgreSQL). Next is Step 3 (devices),
-which must first settle D16. Steps 4-6 and Phase 2 follow. Criteria 5-13 are open.
+Phase 1 Steps 1-3 are done: bootstrap, authentication (criteria 2-4, 14-18,
+16a-16e) and devices (criterion 5; D16 resolved), proven by `server/` tests against
+PostgreSQL. Criterion 13 is proven for the device surface only; its upload and
+usage-read halves arrive with Steps 4 and 5. Next is Step 4
+(`PUT /api/v1/sync/usage-days`), which must first settle D13. Criteria 6-12 are open.
 See `backend-sync-v1-progress.md` for current state.
 
 ## 6. Release blockers outside the backend

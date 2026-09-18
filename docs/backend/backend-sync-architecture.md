@@ -1,6 +1,6 @@
 # FocusTrace Backend Sync v1 - Architecture
 
-Status: Phase 1 Steps 1-2 implemented (bootstrap, authentication). Devices, sync and
+Status: Phase 1 Steps 1-3 implemented (bootstrap, authentication, devices). Sync and
 history are designed, not implemented.
 Branch: `feature/backend-sync-v1`.
 Stack decision (final): Java + Spring Boot + PostgreSQL.
@@ -753,12 +753,49 @@ decision above. None changes a decision's behaviour.
 
 - **D13/C3** (total app rows per upload request) belongs to the sync endpoint,
   which Step 2 does not build.
-- **D16** (`403` versus non-revealing `404` for a foreign object) belongs to the
-  device and usage APIs. Section 5.2 already fixes the answer for uploads; the
-  general rule must be settled before Step 3 exposes the first object addressed
-  by a client-supplied identifier. Authentication has no foreign objects.
 - **C7** (broadening the BOLA criterion to all four verbs) is already recorded in
   the plan.
+
+#### D16 Foreign-object authorization response
+
+**Resolved 2026-09-18, before Step 3.** Applies to every **private, user-owned
+object** reached through a client-supplied identifier: devices, usage days, and
+anything added later that belongs to one account.
+
+- **Ownership is a query predicate.** Every statement that reads or writes such an
+  object carries the authenticated `user_id` (directly, or through a join to
+  `devices.user_id`). No endpoint loads an object by its global identifier and
+  compares its owner afterwards.
+- **Foreign resolves as nonexistent.** An object owned by another account is
+  indistinguishable from one that does not exist: **`404`** with the same generic
+  problem body, never `403`, never a different message, header or timing path
+  that depends on whether the identifier exists.
+- **No side effect.** A request that resolves to a foreign object writes nothing:
+  no row created, updated, touched (`last_seen_at` included) or deleted.
+- **Collections filter, they do not fail.** A listing or history read returns the
+  caller's objects only; a foreign `deviceId` filter yields an empty result or `404`
+  exactly as an unknown one would.
+- **`403`** stays reserved for an authenticated caller refused for a reason
+  unrelated to object ownership. There is no such case today.
+
+**Scope limit.** D16 does not override an endpoint whose contract deliberately
+discloses existence. The one such endpoint is `POST /api/v1/devices` (D12, section
+9): a client-generated UUID that another account already owns returns `409`, so the
+installation can regenerate its UUID. That response still reveals nothing about the
+owner, changes nothing, and confirms only a 122-bit random value the caller already
+holds.
+
+Rationale: a `403` for "exists but not yours" turns every identifier endpoint into
+an existence oracle; returning the same `404` costs nothing, and putting ownership
+in the query means a forgotten check returns nothing instead of another user's row.
+
+Verification, for every endpoint that addresses a private object: User B, fully
+authenticated, targets User A's object with every supported verb; the response is
+the same status and body as for a random unknown identifier; User A's rows are
+byte-for-byte unchanged; User A still reaches the object. Step 3 exposes no route
+that addresses a single device by id (`POST` is D12's exception and `GET` is a
+scoped collection), so D16's `404` path is first exercised by the Step 4 upload and
+Step 5 history endpoints.
 
 ### 5.2 Authorization
 
@@ -772,7 +809,7 @@ Separate concern, enforced below the controller.
   is a predicate in the query, so "forgot the check" cannot return another user's
   row; it returns nothing.
 - Writing to a `deviceId` the caller does not own returns `404`, not `403`, so the
-  API does not confirm that someone else's device id exists.
+  API does not confirm that someone else's device id exists (D16).
 
 ---
 
@@ -1046,10 +1083,21 @@ PUT  /api/v1/sync/usage-days      {deviceId, days:[...]}            -> 200 {resu
 GET  /api/v1/usage?from=&to=[&deviceId=]                            -> 200 {days:[...]}
 ```
 
-`POST /devices` is idempotent on `deviceId`: re-registering an installation the
-caller already owns updates `display_name` / `last_seen_at` and returns 200.
-Registering a `deviceId` owned by someone else returns 409 without disclosing the
-owner.
+`POST /devices` is idempotent on `deviceId`: a new UUID is created under the caller
+(201); re-registering an installation the caller already owns updates `display_name`
+/ `last_seen_at` and returns 200. Registering a `deviceId` owned by someone else
+returns 409 without disclosing the owner and without writing anything (D12, D16
+scope limit). Ownership never moves: no statement assigns `user_id` to an existing
+row.
+
+Device contract details (Step 3): `deviceId` must be a version-4 (random) UUID;
+`platform` is `android` or `windows` and is fixed at first registration, so a
+re-registration does not rewrite it; `displayName` is 1-100 UTF-16 units, not blank,
+with no control characters and no unpaired surrogate. The response is
+`{deviceId, displayName, platform, registeredAt, lastSeenAt}` with no owner field;
+`GET` returns the caller's devices ordered by `registeredAt`. The endpoint reads and
+writes through `JdbcClient` SQL (as `AuthSessions` does), so there is no `Device` JPA
+entity to expose.
 
 ### 9.1 Upload request
 

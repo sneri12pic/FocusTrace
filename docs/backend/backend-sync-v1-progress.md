@@ -5,6 +5,87 @@ session reads to continue safely.
 
 ---
 
+## 2026-09-18 — D16 resolved; Phase 1 Step 3: devices implemented
+
+Date: 2026-09-18
+Agent: Claude Code
+Goal: Settle D16, then implement `POST /api/v1/devices` and `GET /api/v1/devices`
+per architecture sections 3 and 9 and D12. No usage upload.
+
+Completed:
+- D16 recorded in architecture 5.1: private user-owned objects are resolved with the
+  owner in the query; foreign = nonexistent = generic `404`, no side effect, never
+  `403`. Scope limit: D12's `409` on `POST /devices` stays, as the one documented
+  existence-disclosing contract. Baseline register updated.
+- `device/Devices` (JdbcClient SQL) + `device/DeviceController` (record DTOs).
+  Registration is two statements deciding by returned row:
+  `INSERT ... ON CONFLICT (id) DO NOTHING RETURNING` (201), else
+  `UPDATE ... WHERE id = :id AND user_id = :userId RETURNING` (200), else `409` with a
+  generic body and a `device_id_conflict` security log line. No statement assigns
+  `user_id` to an existing row. Listing is `WHERE user_id = :userId`.
+- Contract details (architecture 9): v4 UUID required; `platform` fixed at first
+  registration; `displayName` 1-100, no control chars, no lone surrogate; response
+  has no owner field. No schema change: `V1` `devices` already had
+  `user_id NOT NULL REFERENCES users ON DELETE CASCADE`.
+
+Files materially changed:
+- `server/src/main/java/.../sync/device/{Devices,DeviceController}.java` (new)
+- `server/src/test/java/.../sync/device/DeviceIT.java` (new, 14 tests)
+- `docs/backend/backend-sync-architecture.md` (status, D16, 5.2, section 9 device
+  contract), `backend-sync-v1-plan.md` section 5,
+  `docs/security/backend-security-baseline.md` section 19.
+
+Verification:
+- `cd server && ./gradlew test --rerun`: 160 tests, 0 failures, 0 skipped, 16 suites
+  (Testcontainers PostgreSQL 16.15, Docker 25.0.3). `./gradlew build`: exit 0.
+- `DeviceIT` covers: 201 create under caller; 401 unauthenticated / bad token with no
+  row; same-user re-registration 200, one row, `user_id` and `registered_at`
+  unchanged; listing isolation (A, B, fresh account); B's UUID from A is 409, body
+  free of B's name/id/device id, row byte-identical, A's list empty, B still works;
+  repeated takeover attempts; two-thread races (two users: exactly one 201 + one 409,
+  one row, winner owns it, 5 rounds; same user: 201 + 200, one row); `userId`,
+  `user_id`, `ownerId`, `registeredAt`, `lastSeenAt` in the body are 400 with no row;
+  non-v4 / nil / malformed UUID, blank/overlong name, bad platform, control chars,
+  lone surrogate, malformed JSON all 400 with no row and no stack trace; GET/PUT/
+  PATCH/DELETE on `/devices/{B's id}` are 404/405 with B's row unchanged; schema
+  refuses NULL and dangling `user_id` on insert and update; deleting a user cascades
+  only their devices.
+- Mutation checks: dropping `AND user_id = :userId` from the update fails 3 tests;
+  dropping the `displayName` pattern fails the lone-surrogate case. Both restored
+  byte-identical.
+
+Security review (device surface): authentication, BOLA, ownership transfer,
+cross-user mutation, mass assignment, query scoping, DTO binding and error leakage
+checked against the code and the tests above. One confirmed defect, fixed: a JSON
+`\ud800` in `displayName` was accepted (201) and stored as `?` by the driver; now
+400. NUL and other controls were already 400 (Jackson) and are now also rejected
+by the DTO constraint.
+
+Decisions made:
+- D16 (above). No other decision changed. Deviation from the section 10 layout
+  sketch: no `Device` JPA entity or separate service; `Devices` owns the SQL, as
+  `AuthSessions` does.
+
+Remaining:
+- Step 4 `PUT /api/v1/sync/usage-days`: settle D13 (total rows per request) first;
+  it is the first route to exercise D16's `404` (upload to a foreign `deviceId`).
+- `TestEndpoints` stays; its `/boom` route backs the generic-500 test.
+
+Risks / unresolved questions:
+1. No cap on devices per account, and no rate limit on authenticated endpoints: an
+   account can create device rows at request rate (API4). Not in any decision yet;
+   candidate for a small per-account cap alongside D13.
+2. The 409 confirms that a given UUID is registered somewhere (D12, accepted): only
+   meaningful to someone who already holds that 122-bit value.
+3. `displayName` may contain Unicode format characters (for example bidi controls);
+   it is only ever returned to its owner.
+
+Relevant commit:
+- The `feat(server): add authenticated device management` commit that carries this
+  entry. Previous checkpoint: `ca25d2f` (Flutter trend fix), `2a971d1` (backend).
+
+---
+
 ## 2026-09-18 — Phase 1 Step 2: authentication implemented
 
 Date: 2026-09-18
