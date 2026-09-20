@@ -8,14 +8,15 @@ Companion documents: `docs/backend/backend-sync-architecture.md` (decisions),
 `docs/backend/backend-sync-v1-plan.md` (scope and acceptance criteria),
 `docs/backend/backend-sync-v1-progress.md` (state).
 
-**Status clarification (2026-09-19):** Phase 1 Steps 1–3 are implemented.
-Authentication, PostgreSQL-backed sessions, auth throttling and owner-scoped
-device registration/listing exist. Sections 2–3 and the pre-Step-2 status language
-in sections 12 and 17 are historical inventories, not the current implementation
-status. Security requirements remain applicable; use the progress document for
-verification evidence. Step 4 (usage upload, JSON document cap) is implemented;
-the history read is not. Auth throttling does not establish authenticated
-endpoint limits.
+**Status clarification (2026-09-20):** Phase 1 is implemented end to end.
+Authentication, PostgreSQL-backed sessions, auth throttling, owner-scoped device
+registration/listing, the usage upload (with its JSON document cap) and the
+400-day-bounded history read all exist. Sections 2–3 and the pre-Step-2 status
+language in sections 12 and 17 are historical inventories, not the current
+implementation status. Security requirements remain applicable; use the progress
+document for verification evidence. Auth throttling does not establish
+authenticated endpoint limits: the per-user budgets required in section 11 for
+`PUT /sync/usage-days` and `GET /usage` are still outstanding release work.
 
 This document states FocusTrace requirements. It does not reproduce OWASP
 material and it does not claim FocusTrace is "OWASP compliant". References used

@@ -1274,6 +1274,22 @@ all their devices; `deviceId` narrows it. `from` inclusive, `to` exclusive, mirr
 Source device identity is always present, which is what makes the Phase 2 proof
 observable.
 
+**Implemented in Step 5** (`usage/UsageHistoryController`, `UsageDays.history`).
+`from` and `to` are required ISO dates; a missing or malformed parameter, and a
+malformed `deviceId`, are the framework's generic `400`.
+
+| Rule | Behaviour |
+| --- | --- |
+| range | `to - from` must be 1 to 400 days. `to <= from` is `400`, not an empty result: `to` is exclusive, so such a request asks for nothing and is a client bug worth reporting. |
+| ordering | Days ascending by `localDate`, then by `deviceId`; apps ascending by `appKey`. An unchanged stored day therefore always reads back identically. |
+| `deviceId` | A predicate in the query, never a lookup. A device the caller does not own and a device that does not exist both yield `{"days": []}` - D16's "collections filter, they do not fail". Nothing runs before the query, so there is no side effect and no existence oracle. |
+| apps | One `LEFT JOIN`, so a day whose snapshot has no app rows is returned with `"apps": []` instead of disappearing, and no day costs a second query. |
+
+The 400-day cap bounds one response along the date axis only. It is not a
+per-account storage bound: an account with many devices still gets one entry per
+device per date. The storage bound and the authenticated per-user rate limits
+remain release work; see the plan.
+
 ### 9.4 Future incremental sync
 
 The shape `GET /api/v1/sync/changes?since=<cursor>` is left room for by
@@ -1292,16 +1308,22 @@ server/
 └── src/
     ├── main/
     │   ├── java/com/stepandemianenko/focustrace/sync/
-    │   │   ├── auth/       AuthController, AuthService, JwtService, SecurityConfig, User, RefreshToken
-    │   │   ├── device/     DeviceController, DeviceService, Device
-    │   │   ├── usage/      UsageController, UsageQueryService, UsageDay, UsageDayApp
-    │   │   ├── sync/       SyncController, UsageSyncService, DTOs
-    │   │   └── common/     ProblemDetail handlers, CurrentUser resolver
+    │   │   ├── auth/       AuthController, AuthService, AuthSessions, AccessTokens, SecurityConfig, User, ...
+    │   │   ├── device/     DeviceController, Devices
+    │   │   ├── usage/      UsageUploadController, UsageHistoryController, UsageDays
+    │   │   └── common/     ApiException, ApiExceptionHandler, RequestIdFilter, ProductionConfiguration
     │   └── resources/
     │       ├── application.yml
-    │       └── db/migration/V1__baseline.sql
+    │       └── db/migration/V1__baseline.sql, V2__auth_sessions.sql, V3__usage_duration_dst.sql
     └── test/
 ```
+
+The tree above is the layout as built, corrected from the design sketch. Two
+deviations are deliberate. There is no `sync/` package: `PUT /sync/usage-days` is
+usage code and lives in `usage/` with the history read. And there are no entity or
+`*Service` classes: one component per aggregate (`AuthSessions`, `Devices`,
+`UsageDays`) owns that aggregate's SQL through `JdbcClient`, which is why no JPA
+entity exists to leak through a controller.
 
 Controllers -> services -> repositories -> entities. DTOs are records in the
 package that owns the endpoint. **JPA entities are never returned from a

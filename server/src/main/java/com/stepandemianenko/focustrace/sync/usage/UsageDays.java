@@ -8,10 +8,14 @@ import java.time.Clock;
 import java.time.DateTimeException;
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.time.ZoneOffset;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -23,9 +27,10 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Usage snapshot upload (architecture sections 7 and 9.1-9.2). One request is one
- * transaction; each {@code (device_id, local_date)} is replaced wholesale when the
- * incoming {@code snapshot_version} is higher, and otherwise left untouched.
+ * Usage snapshot storage: upload (architecture sections 7 and 9.1-9.2) and the
+ * history read (9.3). One upload request is one transaction; each
+ * {@code (device_id, local_date)} is replaced wholesale when the incoming
+ * {@code snapshot_version} is higher, and otherwise left untouched.
  *
  * <p>Relies on PostgreSQL READ COMMITTED (not overridden anywhere): the guarded
  * upsert locks the conflicting row even when its {@code WHERE} is false, and the
@@ -39,6 +44,8 @@ class UsageDays {
     static final int MAX_APP_ROWS = 1000;
     /** No FocusTrace data predates 2026 (first commit 2026-06-30); bounds per-device storage. */
     static final LocalDate MIN_DATE = LocalDate.of(2026, 1, 1);
+    /** Architecture 9.3. Bounds one response; it is not a per-account storage quota (see the plan). */
+    static final int MAX_HISTORY_DAYS = 400;
 
     enum Outcome { APPLIED, DUPLICATE, STALE, CONFLICT }
 
@@ -46,7 +53,23 @@ class UsageDays {
     record DayResult(LocalDate localDate, Outcome outcome, long storedVersion) {
     }
 
+    /**
+     * Architecture 9.3. Devices are never merged, so the source device travels with
+     * the day: {@code deviceName} is what makes the Phase 2 proof observable.
+     */
+    record HistoryDay(
+            UUID deviceId,
+            String deviceName,
+            LocalDate localDate,
+            String timezoneId,
+            long snapshotVersion,
+            List<App> apps) {
+    }
+
     private record StoredDay(long version, String timezoneId, String sourceStatus) {
+    }
+
+    private record DayKey(UUID deviceId, LocalDate localDate) {
     }
 
     private final JdbcClient jdbc;
@@ -84,6 +107,53 @@ class UsageDays {
                 .sorted(Comparator.comparing(Day::localDate))
                 .forEach(day -> results.put(day.localDate(), write(userId, deviceId, day)));
         return request.days().stream().map(day -> results.get(day.localDate())).toList();
+    }
+
+    /**
+     * Architecture 9.3: {@code from} inclusive, {@code to} exclusive. One statement,
+     * so a day's app rows cost no extra round trip; ownership is the join predicate,
+     * so an unowned or unknown {@code deviceId} filters to nothing instead of being
+     * resolved and then rejected (D16). {@code deviceId} may be null (no filter).
+     */
+    List<HistoryDay> history(UUID userId, LocalDate from, LocalDate to, UUID deviceId) {
+        return jdbc.sql("""
+                        SELECT d.device_id, dev.display_name, d.local_date, d.timezone_id, d.snapshot_version,
+                               a.app_key, a.app_name, a.duration_seconds, a.launch_count
+                          FROM usage_days d
+                          JOIN devices dev ON dev.id = d.device_id
+                          LEFT JOIN usage_day_apps a
+                                 ON a.device_id = d.device_id AND a.local_date = d.local_date
+                         WHERE dev.user_id = :userId
+                           AND d.local_date >= :from
+                           AND d.local_date < :to
+                           AND (CAST(:deviceId AS uuid) IS NULL OR d.device_id = CAST(:deviceId AS uuid))
+                         ORDER BY d.local_date, d.device_id, a.app_key""")
+                .param("userId", userId)
+                .param("from", from)
+                .param("to", to)
+                .param("deviceId", deviceId)
+                .query(UsageDays::toHistory);
+    }
+
+    /** The ORDER BY groups a day's app rows together; the map keeps that order. */
+    private static List<HistoryDay> toHistory(ResultSet rs) throws SQLException {
+        Map<DayKey, HistoryDay> days = new LinkedHashMap<>();
+        while (rs.next()) {
+            DayKey key = new DayKey(rs.getObject("device_id", UUID.class), rs.getObject("local_date", LocalDate.class));
+            HistoryDay day = days.get(key);
+            if (day == null) {
+                day = new HistoryDay(key.deviceId(), rs.getString("display_name"), key.localDate(),
+                        rs.getString("timezone_id"), rs.getLong("snapshot_version"), new ArrayList<>());
+                days.put(key, day);
+            }
+            // LEFT JOIN: a day with no apps still yields one row, with a null app_key.
+            String appKey = rs.getString("app_key");
+            if (appKey != null) {
+                day.apps().add(new App(appKey, rs.getString("app_name"),
+                        rs.getInt("duration_seconds"), rs.getInt("launch_count")));
+            }
+        }
+        return List.copyOf(days.values());
     }
 
     /** Request-wide invariants, all checked before the first write. */

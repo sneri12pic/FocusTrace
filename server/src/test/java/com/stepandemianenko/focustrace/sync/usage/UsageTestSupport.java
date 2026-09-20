@@ -46,9 +46,14 @@ abstract class UsageTestSupport extends IntegrationTest {
     }
 
     UUID newDevice(Account account) {
+        return newDevice(account, "Phone");
+    }
+
+    /** History responses carry the device name, so isolation tests need distinguishable ones. */
+    UUID newDevice(Account account, String displayName) {
         UUID deviceId = UUID.randomUUID();
         Response response = post("/api/v1/devices",
-                Map.of("deviceId", deviceId.toString(), "displayName", "Phone", "platform", "android"),
+                Map.of("deviceId", deviceId.toString(), "displayName", displayName, "platform", "android"),
                 account.token());
         assertThat(response.status()).as(response.body()).isEqualTo(201);
         return deviceId;

@@ -146,12 +146,12 @@ integration suite is **blocked**, not passing - report it as such.
 
 ## 5. Remaining work
 
-Phase 1 Steps 1-4 are done: bootstrap, authentication (criteria 2-4, 14-18,
-16a-16e), devices (criterion 5; D16 resolved) and usage upload (criteria 6-10 and
-12; D13 resolved), proven by `server/` tests against PostgreSQL. Criterion 11 is
-proven for storage; its history-response half arrives with Step 5. Criterion 13 is
-proven for devices and upload; its usage-read half arrives with Step 5. Next is
-Step 5 (`GET /api/v1/usage`). See `backend-sync-v1-progress.md` for current state.
+Phase 1 is complete. Bootstrap, authentication (criteria 2-4, 14-18, 16a-16e),
+devices (criterion 5; D16 resolved), usage upload (criteria 6-10 and 12; D13
+resolved) and the history read (criteria 11 and 13 now closed on both halves),
+every one proven by `server/` tests executed against PostgreSQL via Testcontainers.
+Next is Phase 2, the Flutter sync client. See `backend-sync-v1-progress.md` for
+current state.
 
 Before the Flutter sync client ships (Phase 2):
 

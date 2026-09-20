@@ -5,6 +5,83 @@ session reads to continue safely.
 
 ---
 
+## 2026-09-20 — Phase 1 Step 5: usage history read; Phase 1 complete
+
+Date: 2026-09-20
+Agent: Claude Code
+Goal: Commit the pending Step 4 work, implement `GET /api/v1/usage` per
+architecture 9.3, and close plan criteria 11 and 13. No Flutter work.
+
+Completed:
+- **Step 4 committed unchanged** after re-running the full gate on the working
+  tree. The `timezoneId <= 64` bound is ratified and settled; no document now
+  describes it as open.
+- **Step 5** (`usage/UsageHistoryController` + `UsageDays.history`):
+  `GET /api/v1/usage?from=&to=[&deviceId=]`, authenticated, `from` inclusive,
+  `to` exclusive, range 1-400 days. Response per architecture 9.3, carrying
+  `deviceId` and `deviceName` so source identity survives the read.
+- One SQL statement per request: `usage_days JOIN devices` (ownership is the
+  predicate, D16) `LEFT JOIN usage_day_apps`. No N+1, and a day whose snapshot
+  holds no apps is returned with `"apps": []` rather than disappearing.
+- Architecture section 10's layout sketch corrected to the tree as built.
+
+Files materially changed:
+- `server/src/main/java/.../sync/usage/UsageHistoryController.java` (new)
+- `server/src/main/java/.../sync/usage/UsageDays.java`: `MAX_HISTORY_DAYS`,
+  `HistoryDay`, `history(...)`, `toHistory(...)`
+- `server/src/test/java/.../sync/usage/UsageHistoryIT.java` (new, 16 tests),
+  `UsageTestSupport.java` (`newDevice(account, displayName)` overload)
+- architecture 9.3 and 10, plan 3 and 5, baseline status clarification, this document
+
+Verification (Docker 25.0.3, Testcontainers PostgreSQL 16.15):
+- Before committing Step 4: `cd server && ./gradlew clean build` -> exit 0;
+  189 tests, 0 failures, 0 errors, 0 skipped, 18 suites. Committed as `93f6da4`.
+- `./gradlew test --tests '*UsageHistoryIT'` -> 16 tests, 0 failures.
+- `cd server && ./gradlew test --rerun` -> exit 0.
+- `cd server && ./gradlew clean build` -> exit 0; **205 tests, 0 failures, 0
+  errors, 0 skipped, 19 suites**.
+- Mutation checks on the history SQL, each restored byte-identical afterwards:
+  dropping `dev.user_id = :userId`, making `to` inclusive, and ignoring the
+  `deviceId` predicate each fail `UsageHistoryIT`.
+
+Decisions made (architecture 9.3):
+- `to <= from` is `400`, not an empty result. `to` is exclusive, so such a range
+  asks for nothing and is a client bug worth reporting.
+- Ordering is contract: days by `localDate` then `deviceId`, apps by `appKey`.
+  An unchanged stored day always reads back identically.
+- A `deviceId` the caller does not own and one that does not exist both return
+  `{"days":[]}`, from the same query, with no preceding lookup. That is D16's
+  "collections filter, they do not fail" - `404` would have needed an extra
+  statement to say the same thing.
+- The history read reuses the upload's `App` record. Same contract, same shape;
+  a second identical model would have no boundary reason.
+- Response DTOs, not entities; there is no JPA entity to expose.
+
+Acceptance criteria: Phase 1 criteria 1-18 (including 16a-16e) are all PROVEN by
+tests executed against PostgreSQL. Criterion 11's history half and criterion 13's
+usage-read half were the last two open, and `UsageHistoryIT` closes both.
+
+Remaining:
+- Phase 2 (Flutter sync client). Before upload code exists: the client version
+  policy for imported, legacy and Dart-written days (architecture 9.2) and client
+  pre-validation/sanitization (9.1). Note that `usage_recovery_generation`
+  rotation (portable import and clear-all) mutates historical days without
+  advancing any `queried_at_ms`, so a watermark alone would miss them.
+- Before public release: device lifecycle and an active-device quota, a
+  persistent-storage bound per account, and authenticated per-user limits for
+  `PUT /sync/usage-days` and `GET /usage` (baseline section 11).
+
+Risks / unresolved questions:
+- The 400-day cap bounds one response along the date axis only. An account with
+  many devices still gets one entry per device per date, so the response is
+  bounded by what that account itself uploaded, not by the request. Baseline
+  section 9 already reserves a page bound for the point where that matters.
+
+Relevant commit: see the follow-up documentation commit for the Step 4 and Step 5
+hashes.
+
+---
+
 ## 2026-09-20 — Step 4 contract-conformance review
 
 Date: 2026-09-20 (session spanned midnight; the Step 4 entry below is dated 2026-09-19)
