@@ -77,8 +77,8 @@ Risks / unresolved questions:
   bounded by what that account itself uploaded, not by the request. Baseline
   section 9 already reserves a page bound for the point where that matters.
 
-Relevant commit: see the follow-up documentation commit for the Step 4 and Step 5
-hashes.
+Relevant commits: `93f6da4` (Step 4, usage upload) and `1d27ab2` (Step 5, history
+read). Both were verified before committing; neither includes unrelated files.
 
 ---
 
