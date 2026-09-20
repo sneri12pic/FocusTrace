@@ -126,7 +126,7 @@ Risks / unresolved questions:
 - A full re-upload after an import loads every selected day into memory at once.
   Acceptable at this data scale; risk 4 already records the trade-off.
 
-Relevant commit: see the follow-up documentation commit for the hash.
+Relevant commit: `97236e3`.
 
 ---
 
