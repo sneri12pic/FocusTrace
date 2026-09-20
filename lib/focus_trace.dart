@@ -6,6 +6,7 @@ export 'src/data/datasources/focus_trace_local_data_source.dart';
 export 'src/data/datasources/backup_document_data_source.dart';
 export 'src/data/datasources/platform_locale_data_source.dart';
 export 'src/data/datasources/focus_trace_sync_api.dart';
+export 'src/data/datasources/secure_sync_credential_store.dart';
 export 'src/data/datasources/platform_usage_data_source.dart';
 export 'src/data/repositories/app_language_repository_impl.dart';
 export 'src/data/repositories/data_transfer_repository_impl.dart';

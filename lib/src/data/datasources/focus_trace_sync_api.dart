@@ -38,32 +38,6 @@ abstract interface class SyncCredentialStore {
   Future<void> clear();
 }
 
-/// The session lasts as long as the process and is never written anywhere.
-///
-/// Every Android mechanism that could hold this credential at rest -
-/// `EncryptedSharedPreferences`, a Keystore AES key, and therefore
-/// `flutter_secure_storage` - requires API 23, and FocusTrace supports API 21
-/// (see the WorkManager pin in `android/app/build.gradle.kts`). Storing it
-/// anywhere reachable below that means storing it in the clear, which the
-/// baseline forbids, so this stage stores it nowhere: signing in again after a
-/// restart is the cost, and nothing leaks.
-///
-/// Raising `minSdk` to 23 is the decision that unlocks a persistent store. It
-/// drops Android 5.x devices, so it is a product call, not a sync one; it is
-/// tracked in the plan. This interface is the seam that change slots into.
-class InMemorySyncCredentialStore implements SyncCredentialStore {
-  String? _refreshToken;
-
-  @override
-  Future<String?> readRefreshToken() async => _refreshToken;
-
-  @override
-  Future<void> writeRefreshToken(String token) async => _refreshToken = token;
-
-  @override
-  Future<void> clear() async => _refreshToken = null;
-}
-
 /// The one place FocusTrace speaks HTTP.
 ///
 /// Owns the Sync v1 endpoints, JSON encoding, status mapping and the access

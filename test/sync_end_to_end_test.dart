@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:focustrace/focus_trace.dart';
 import 'package:path/path.dart' as p;
@@ -36,18 +37,44 @@ void main() {
     return;
   }
 
+  // Needed for the mock credential channel below. It also installs an
+  // HttpOverrides that answers every request with 400, and this suite talks to
+  // a real backend, so the override goes straight back out.
+  TestWidgetsFlutterBinding.ensureInitialized();
+  HttpOverrides.global = null;
+
   late _Installation deviceA;
   late _Installation deviceB;
   late _Installation otherAccount;
+  late Map<String, String> nativeKeystore;
 
   setUp(() async {
     sqfliteFfiInit();
+    nativeKeystore = <String, String>{};
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(const MethodChannel('focustrace/usage'), (
+          call,
+        ) async {
+          switch (call.method) {
+            case 'readSyncCredential':
+              return nativeKeystore['refresh_token'];
+            case 'writeSyncCredential':
+              nativeKeystore['refresh_token'] = call.arguments as String;
+              return null;
+            case 'clearSyncCredential':
+              nativeKeystore.remove('refresh_token');
+              return null;
+          }
+          return null;
+        });
     deviceA = await _Installation.create('e2e-a', 'E2E Device A');
     deviceB = await _Installation.create('e2e-b', 'E2E Device B');
     otherAccount = await _Installation.create('e2e-c', 'E2E Device C');
   });
 
   tearDown(() async {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(const MethodChannel('focustrace/usage'), null);
     await deviceA.dispose();
     await deviceB.dispose();
     await otherAccount.dispose();
@@ -164,6 +191,59 @@ void main() {
       isEmpty,
       reason: 'a foreign deviceId filters to nothing (D16)',
     );
+  }, timeout: const Timeout(Duration(minutes: 3)));
+
+  test('a restart restores the session from secure storage', () async {
+    final stamp = DateTime.now().microsecondsSinceEpoch;
+    final email = 'e2e-restart-$stamp@example.com';
+    final date = _dayKey(
+      DateTime.now().toUtc().subtract(const Duration(days: 4)),
+    );
+
+    // Every Dart object below is rebuilt from nothing but `deviceA.local` and
+    // whatever the keystore kept, which is what a cold start actually has.
+    SyncRepositoryImpl launch() => SyncRepositoryImpl(
+      api: FocusTraceSyncApi(
+        baseUrl: Uri.parse(baseUrl),
+        credentials: const SecureSyncCredentialStore(),
+      ),
+      localDataSource: deviceA.local,
+      usageDataSource: deviceA.local,
+      deviceName: 'E2E Device A',
+    );
+
+    await launch().createAccount(email: email, password: password);
+    await deviceA.seed(
+      date,
+      queriedAtMs: 1700000000004,
+      appKey: 'com.restart',
+      appName: 'Restart',
+      durationSeconds: 333,
+    );
+    expect(nativeKeystore['refresh_token'], isNotNull);
+    expect(nativeKeystore.values, isNot(contains(contains(password))));
+
+    // The process dies here.
+    final afterRestart = launch();
+
+    expect(await afterRestart.isSignedIn, isTrue);
+    // Uploading proves the restored token bought a real access token from the
+    // real backend, through its real rotation and replay detection.
+    final run = await afterRestart.syncNow();
+    expect(run.failure, isNull);
+    expect(run.countOf(SyncDayOutcome.applied), 1);
+    expect(
+      (await afterRestart.readRemoteHistory(
+        from: DateTime.utc(2026, 1, 1),
+        to: DateTime.now().toUtc().add(const Duration(days: 1)),
+      )).map((day) => day.localDate),
+      contains(date),
+    );
+
+    // Signing out empties the keystore, and the next launch is anonymous.
+    await afterRestart.signOut();
+    expect(nativeKeystore, isEmpty);
+    expect(await launch().isSignedIn, isFalse);
   }, timeout: const Timeout(Duration(minutes: 3)));
 }
 

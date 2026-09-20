@@ -37,11 +37,18 @@ android {
         applicationId = "com.stepandemianenko.focustrace"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
-        minSdk = flutter.minSdkVersion
+        // 23, not Flutter's 21: the sync refresh token is sealed with an
+        // AndroidKeyStore AES key, and KeyGenParameterSpec is API 23. Below it
+        // the credential could only be stored in the clear, which the security
+        // baseline forbids. Drops Android 5.0/5.1.
+        minSdk = 23
         // Pinned: Play requires API 35 for new apps (2026); Flutter's default may lag.
         targetSdk = 35
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        // Only for connectedAndroidTest: the keystore work in
+        // SecureCredentialStore cannot be exercised off-device.
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     signingConfigs {
@@ -87,9 +94,12 @@ flutter {
 }
 
 dependencies {
-    // 2.10.x is the newest WorkManager line that still supports minSdk 21.
+    // 2.10.x was pinned because it was the newest line supporting minSdk 21.
+    // That constraint is gone, but nothing here needs a newer line.
     implementation("androidx.work:work-runtime-ktx:2.10.5")
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.json:json:20240303")
     testImplementation("org.robolectric:robolectric:4.15.1")
+    androidTestImplementation("androidx.test:runner:1.6.2")
+    androidTestImplementation("androidx.test.ext:junit:1.2.1")
 }

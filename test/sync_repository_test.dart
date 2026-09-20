@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:focustrace/focus_trace.dart';
 import 'package:path/path.dart' as p;
@@ -15,6 +16,12 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 /// enforces is the one in backend architecture 7.3 and 9.1-9.3. The end-to-end
 /// proof against the actual backend lives in `sync_end_to_end_test.dart`.
 void main() {
+  // Needed for the mock method channel below. It also installs an
+  // HttpOverrides that answers every request with 400, and this suite talks
+  // to a real socket, so the override goes straight back out.
+  TestWidgetsFlutterBinding.ensureInitialized();
+  HttpOverrides.global = null;
+
   late Directory directory;
   late SqfliteFocusTraceLocalDataSource local;
   late Database db;
@@ -412,6 +419,129 @@ void main() {
       expect(history.single.deviceId, await repository.installationId());
       expect(history.single.localDate, '2026-09-17');
       expect(history.single.apps.single.appKey, 'com.example');
+    });
+  });
+
+  /// The Android store against a stand-in for `SecureCredentialStore.kt`.
+  ///
+  /// [nativeStore] is the only thing that survives between the repositories
+  /// below, exactly as the encrypted SharedPreferences entry is the only thing
+  /// that survives a process death. Rebuilding the store, the API and the
+  /// repository from it is a restart: every Dart object is new.
+  group('credential persistence', () {
+    const channel = MethodChannel('focustrace/usage');
+    late Map<String, String> nativeStore;
+    late bool keystoreUnavailable;
+
+    setUp(() {
+      nativeStore = <String, String>{};
+      keystoreUnavailable = false;
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(channel, (call) async {
+            if (keystoreUnavailable) {
+              throw PlatformException(code: 'KEYSTORE_UNAVAILABLE');
+            }
+            switch (call.method) {
+              case 'readSyncCredential':
+                return nativeStore['refresh_token'];
+              case 'writeSyncCredential':
+                nativeStore['refresh_token'] = call.arguments as String;
+                return null;
+              case 'clearSyncCredential':
+                nativeStore.remove('refresh_token');
+                return null;
+            }
+            return null;
+          });
+    });
+
+    tearDown(() {
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(channel, null);
+    });
+
+    SyncRepositoryImpl restarted() =>
+        repositoryFor(const SecureSyncCredentialStore());
+
+    test('a token outlives the objects that wrote it', () async {
+      await restarted().createAccount(email: 'a@example.com', password: 'pw');
+
+      expect(nativeStore['refresh_token'], isNotNull);
+      // A different store instance, reading what the process left behind.
+      expect(
+        await const SecureSyncCredentialStore().readRefreshToken(),
+        nativeStore['refresh_token'],
+      );
+    });
+
+    test('a restart is authenticated without signing in again', () async {
+      await restarted().createAccount(email: 'a@example.com', password: 'pw');
+      await seedDay('2026-09-17', queriedAtMs: 1000);
+
+      final afterRestart = restarted();
+
+      expect(await afterRestart.isSignedIn, isTrue);
+      // Succeeding proves the restored token still buys an access token: the
+      // restart re-authenticated for real, it did not just find a string.
+      expect((await afterRestart.syncNow()).succeeded, isTrue);
+      expect(backend.storedDays, hasLength(1));
+    });
+
+    test('the password is never persisted', () async {
+      await restarted().createAccount(
+        email: 'a@example.com',
+        password: 'correct horse battery staple',
+      );
+
+      expect(nativeStore.values, isNot(contains(contains('horse'))));
+      expect(nativeStore.keys, ['refresh_token']);
+    });
+
+    test('signing out deletes the persisted credential', () async {
+      final repository = restarted();
+      await repository.createAccount(email: 'a@example.com', password: 'pw');
+
+      await repository.signOut();
+
+      expect(nativeStore, isEmpty);
+      expect(await restarted().isSignedIn, isFalse);
+    });
+
+    test('a revoked persisted credential fails closed', () async {
+      await restarted().createAccount(email: 'a@example.com', password: 'pw');
+      await seedDay('2026-09-17', queriedAtMs: 1000);
+      // Rotated away, expired, or killed by the server's replay detection.
+      nativeStore['refresh_token'] = 'revoked-token';
+
+      final repository = restarted();
+      final result = await repository.syncNow();
+
+      expect(result.succeeded, isFalse);
+      expect(backend.storedDays, isEmpty);
+      // Dead, so it is gone rather than presented again on every run.
+      expect(nativeStore, isEmpty);
+      expect(await repository.isSignedIn, isFalse);
+      expect(await restarted().isSignedIn, isFalse);
+    });
+
+    test('an unreadable keystore leaves the app unauthenticated', () async {
+      await restarted().createAccount(email: 'a@example.com', password: 'pw');
+      await seedDay('2026-09-17', queriedAtMs: 1000);
+      keystoreUnavailable = true;
+
+      final repository = restarted();
+
+      expect(await repository.isSignedIn, isFalse);
+      expect((await repository.syncNow()).succeeded, isFalse);
+    });
+
+    test('an unwritable keystore does not fail the sign-in', () async {
+      keystoreUnavailable = true;
+
+      // The session degrades to the process lifetime; it does not throw.
+      await restarted().createAccount(email: 'a@example.com', password: 'pw');
+
+      expect(nativeStore, isEmpty);
     });
   });
 }

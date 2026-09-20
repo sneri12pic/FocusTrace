@@ -166,12 +166,10 @@ Remaining for Sync v1 correctness, none of it blocking the slice:
 - `display_name` is the fixed string `'Android device'`. Architecture section 3
   wants `Build.MODEL`, which needs a platform call this stage did not add, and a
   way for the user to edit it.
-- **Decision needed: `minSdk` 21 or 23.** The refresh token is memory-only, so
-  the user signs in again after every app restart. Persisting it needs OS-backed
-  storage, which on Android means API 23 (`EncryptedSharedPreferences`, a
-  Keystore AES key, `flutter_secure_storage`). FocusTrace targets API 21 on
-  purpose. Raising `minSdk` to 23 drops Android 5.x devices and is a product
-  call; `SyncCredentialStore` is already the seam it slots into.
+- ~~**Decision needed: `minSdk` 21 or 23.**~~ Resolved: `minSdk` is 23. The
+  refresh token is persisted in `AndroidKeyStore`-sealed storage through
+  `SyncCredentialStore`, so a restart no longer forces a new sign-in. Android
+  5.0/5.1 are dropped; nothing else in FocusTrace required API 21.
 - There is no UI and no scheduler. `syncRepositoryProvider` exists and
   `syncNow()` works, but nothing in the app calls it yet: sign-in, an opt-in
   switch and a background trigger are the next client stage.

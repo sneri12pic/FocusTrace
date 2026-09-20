@@ -58,6 +58,17 @@ class MainActivity : FlutterActivity() {
                         syncRestrictions(call.arguments as? String ?: "")
                         result.success(null)
                     }
+                    "readSyncCredential" -> result.success(
+                        SecureCredentialStore.read(this)
+                    )
+                    "writeSyncCredential" -> {
+                        SecureCredentialStore.write(this, call.arguments as String)
+                        result.success(null)
+                    }
+                    "clearSyncCredential" -> {
+                        SecureCredentialStore.clear(this)
+                        result.success(null)
+                    }
                     "getAppMetadata" -> {
                         val arguments = call.arguments as? Map<*, *>
                         val packageNames = ((arguments?.get("packageNames") as? List<*>)

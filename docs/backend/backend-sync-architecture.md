@@ -1197,18 +1197,30 @@ data/datasources/focus_trace_local_data_source.dart
 - Sync is opt-in at build time through
   `--dart-define=FOCUSTRACE_SYNC_BASE_URL=...`. Without it
   `syncRepositoryProvider` is `null` and no sync object is constructed.
-- **Credentials: nothing is persisted, and Phase 2 adds no dependency.** Both
-  tokens are memory-only, so the session lasts as long as the process. Security
-  baseline section 8 requires OS-backed storage for a long-lived credential, and
-  every Android mechanism that provides it - `EncryptedSharedPreferences`, a
-  Keystore AES key, and therefore `flutter_secure_storage` - requires API 23.
-  FocusTrace supports API 21, deliberately (the WorkManager 2.10.x pin in
-  `android/app/build.gradle.kts` exists for that reason). Below API 23 the only
-  options are the clear, which the baseline forbids, or hand-rolled Keystore RSA
-  wrapping, which is not a place to save a dependency either. Storing nothing is
-  strictly stronger than both. `SyncCredentialStore` is the seam a Keystore
-  store drops into the day `minSdk` moves to 23; that is a product decision
-  about dropping Android 5.x, tracked in the plan, not a sync decision.
+- **Credentials: the refresh token is persisted in OS-backed storage, and no
+  dependency was added for it.** The access token stays a field on
+  `FocusTraceSyncApi` for its short life and is never written. The refresh token
+  goes through `SyncCredentialStore`, whose Android implementation
+  (`SecureSyncCredentialStore` -> `SecureCredentialStore.kt`) seals it with
+  AES-GCM under an `AndroidKeyStore` key that never leaves the keystore, and
+  keeps the ciphertext in a private `SharedPreferences` file excluded from both
+  cloud backup and device-to-device transfer. `flutter_secure_storage` and
+  `androidx.security:security-crypto` were both rejected: the platform already
+  provides the primitive, and the latter is deprecated. This is what set
+  `minSdk` to 23 - `KeyGenParameterSpec` is API 23 - which drops Android 5.x.
+- **The credential is written synchronously.** `SecureCredentialStore` uses
+  `commit()`, not `apply()`. `_adoptSession` stores the rotated token before
+  returning, and that guarantee is only real if the value is on disk by then:
+  the token the rotation replaced has already been consumed server-side, so a
+  file still holding it would present a consumed token on the next launch and
+  trip the replay detection in D10, revoking the session chain.
+- **Every credential failure fails closed.** An absent, undecryptable or
+  rejected refresh token all resolve to "not signed in": the native store
+  deletes a value it cannot decrypt, a `401` on refresh clears the store, and a
+  platform error on read is indistinguishable from no credential. Nothing
+  retries a dead token, and no path leaves the app believing it is
+  authenticated when it is not. A write that fails degrades to a session that
+  ends with the process; it never fails the sign-in.
 - **One refresh at a time.** Requests that see a `401` await a single in-flight
   rotation. Racing it would present the same refresh token twice, and the
   server's replay detection would revoke the whole session chain.

@@ -5,6 +5,132 @@ session reads to continue safely.
 
 ---
 
+## 2026-09-20 — Phase 3: secure credential persistence
+
+Date: 2026-09-20
+Agent: Claude Code
+Goal: Persist the sync refresh token in OS-backed storage so a restart no longer
+forces a new sign-in, using the existing `SyncCredentialStore` seam. No UI, no
+scheduler, no background sync, no change to the backend API contract.
+
+Completed:
+- **`minSdk` 21 -> 23, and the open decision from Phase 2 is closed.**
+  `KeyGenParameterSpec` and AES in `AndroidKeyStore` are API 23; below it the
+  credential could only be stored in the clear, which baseline section 8
+  forbids. Android 5.0/5.1 are dropped. Nothing else in FocusTrace needed API
+  21: tracking, restrictions, blocking, schedules, the widgets and the WorkManager
+  2.10.x pin all work unchanged at 23.
+- **`SecureCredentialStore.kt`**: AES-GCM under an `AndroidKeyStore` key that
+  never leaves the keystore, ciphertext (12-byte nonce prefixed) base64 in a
+  private `SharedPreferences` file. Every failure path deletes the value and
+  reports "no credential".
+- **`SecureSyncCredentialStore`** implements `SyncCredentialStore` over the
+  existing `focustrace/usage` channel; `syncRepositoryProvider` now builds it.
+  `InMemorySyncCredentialStore` was deleted with its last caller. The access
+  token is unchanged: a field on `FocusTraceSyncApi`, never written.
+- **Backup exclusion**, which was a real gap: the manifest sets no
+  `android:allowBackup`, so Auto Backup would have uploaded the credential file.
+  `@xml/backup_rules` (API 23-30) and `@xml/data_extraction_rules` (API 31+)
+  exclude it from cloud backup and device-to-device transfer, and nothing else
+  changes. Portable export/import already stripped every `sync` key
+  (`SyncSettingKeys.isDeviceLocal`) and the token was never in SQLite.
+- **No dependency added.** `flutter_secure_storage` and
+  `androidx.security:security-crypto` were both rejected: the platform provides
+  the primitive directly, and the latter is deprecated. `pubspec.yaml` and
+  `pubspec.lock` are unchanged; the only Gradle additions are
+  `androidx.test:runner` and `androidx.test.ext:junit`, both
+  `androidTestImplementation`, for the instrumented tests below.
+- **Instrumented coverage on a real device, which found a real defect.**
+  `write` used `SharedPreferences.apply()`, which returns before the value
+  reaches disk. On a rotation that window does not cost a sign-in: the file
+  still holds the refresh token the server has just consumed, and presenting a
+  consumed token trips replay detection and revokes the session chain
+  (architecture D10). Now `commit()`, in `write` and in `clear`, with a test
+  that fails if the value is not on disk when the call returns.
+
+Files materially changed:
+- new: `android/app/src/main/kotlin/.../SecureCredentialStore.kt`,
+  `android/app/src/main/res/xml/backup_rules.xml`,
+  `android/app/src/main/res/xml/data_extraction_rules.xml`,
+  `lib/src/data/datasources/secure_sync_credential_store.dart`,
+  `android/app/src/test/kotlin/.../SecureCredentialStoreTest.kt`
+- `android/app/build.gradle.kts` (`minSdk = 23`),
+  `android/app/src/main/AndroidManifest.xml`, `.../MainActivity.kt` (three
+  channel methods), `lib/src/data/datasources/focus_trace_sync_api.dart`
+  (`InMemorySyncCredentialStore` removed), `lib/src/presentation/providers.dart`,
+  `lib/focus_trace.dart`
+- tests: `test/sync_repository_test.dart` (+7), `test/data_transfer_test.dart`
+  (+1), `test/sync_end_to_end_test.dart` (+1)
+
+Verification:
+- `flutter analyze` -> No issues found.
+- `flutter test` -> 159 passed, 1 skipped (the end-to-end proof, skipped without
+  a backend URL).
+- `cd android && ./gradlew :app:testDebugUnitTest` -> BUILD SUCCESSFUL, 92 tests,
+  0 failures, 1 ignored.
+- `flutter build apk --debug` -> built. Merged manifest: `minSdkVersion="23"`,
+  `targetSdkVersion="35"`, both backup-rule attributes present.
+- `cd android && ./gradlew :app:connectedDebugAndroidTest` on a Samsung
+  SM-A366B (Android 16, API 36, arm64-v8a) -> **14 tests, 0 failures**. Covers
+  the real AndroidKeyStore: round trip, rotation, clear, nothing readable at
+  rest with a fresh nonce per write, a corrupted blob and a blob whose key was
+  deleted both failing closed and being removed, the backup and
+  device-transfer exclusions, and the file being unreachable outside the app
+  uid. Installed as `minSdk=23 targetSdk=35` with `ALLOW_BACKUP` set, which is
+  what makes the exclusion load-bearing.
+- **Persistence across a real process death**, not across two Kotlin objects:
+  `am instrument` run three times with `am force-stop` between, writing in pid
+  17315 and reading the value back in pid 17367.
+- **Key security level actually observed on that device** (reported, never
+  asserted): `securityLevel=1` (`SECURITY_LEVEL_TRUSTED_ENVIRONMENT`),
+  `origin=1` (`ORIGIN_GENERATED`), AES-128, with
+  `android.hardware.hardware_keystore=300` and no StrongBox feature present.
+  This is one device's property, not a guarantee the code can make.
+- **End-to-end against the real backend**: `server` under `bootRun` on port
+  18080 against PostgreSQL 16.15 in Docker, then
+  `flutter test test/sync_end_to_end_test.dart --dart-define=FOCUSTRACE_SYNC_BASE_URL=http://localhost:18080`
+  -> 2 passed. The new case signs in, discards every Dart object, rebuilds from
+  the keystore value alone, uploads and reads back through real rotation, then
+  signs out and finds the next launch anonymous.
+
+Decisions made:
+- **The crypto path is covered by instrumented tests, not JVM ones.** There is
+  no `AndroidKeyStore` provider off-device, so Robolectric cannot exercise
+  encrypt/decrypt, and adding a seam to production code so a test could inject a
+  JCE key would be a test defining the implementation. `SecureCredentialStoreTest`
+  covers what that environment does reproduce exactly - a value that cannot be
+  decrypted - and `SecureCredentialStoreInstrumentedTest` covers the rest on a
+  device.
+- **`commit()` over `apply()`** costs a small synchronous write on the channel's
+  thread, on sign-in and rotation only. Correctness on a credential is worth
+  more than that.
+- **`targetSdk` stays 35.** It was 35 before this work, not 36; raising it is an
+  Android 16 behaviour change across overlay, foreground service and
+  edge-to-edge, which is a product decision about blocking and tracking, not a
+  credential one.
+- A write failure degrades to a process-lifetime session rather than failing the
+  sign-in, matching `syncNow`'s rule that sync never surfaces as an app failure.
+
+Remaining:
+- `display_name` is still the fixed string `'Android device'`.
+- Still no UI, no scheduler and no background sync; nothing calls `syncNow()`.
+- **`targetSdk` 35 -> 36 is a required follow-up with its own verification.**
+  The product requirement is Android 16 / API 36; the repository targets 35 and
+  did so before this work. It was deliberately not changed here: Android 16
+  changes overlay, foreground-service and lifecycle behaviour, so it needs a
+  blocker/overlay/lifecycle regression pass of its own rather than riding along
+  with a credential change. The test device already runs API 36, so the app runs
+  there today in compatibility mode.
+
+Risks / unresolved questions:
+- A user who restores a backup onto a new device, or whose keystore is wiped,
+  is silently signed out. That is the intended fail-closed behaviour, but with
+  no UI there is nothing to tell them yet.
+
+Relevant commit: (uncommitted)
+
+---
+
 ## 2026-09-20 — Phase 2: Flutter sync client and the end-to-end proof
 
 Date: 2026-09-20
