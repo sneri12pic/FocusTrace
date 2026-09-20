@@ -116,11 +116,18 @@ public abstract class IntegrationTest {
         return send(request.build());
     }
 
+    protected Response putJson(String path, String json, String bearer) {
+        return send(request(path, bearer, Map.of())
+                .header("Content-Type", "application/json")
+                .PUT(HttpRequest.BodyPublishers.ofString(json))
+                .build());
+    }
+
     protected Response get(String path, String bearer) {
         return send(request(path, bearer, Map.of()).GET().build());
     }
 
-    private HttpRequest.Builder request(String path, String bearer, Map<String, String> headers) {
+    protected HttpRequest.Builder request(String path, String bearer, Map<String, String> headers) {
         HttpRequest.Builder request = HttpRequest.newBuilder(URI.create("http://localhost:" + port + path));
         if (bearer != null) {
             request.header("Authorization", "Bearer " + bearer);
@@ -129,7 +136,7 @@ public abstract class IntegrationTest {
         return request;
     }
 
-    private static Response send(HttpRequest request) {
+    protected static Response send(HttpRequest request) {
         try {
             HttpResponse<String> response = HTTP.send(request, HttpResponse.BodyHandlers.ofString());
             return new Response(response.statusCode(), response.body(), response.headers());

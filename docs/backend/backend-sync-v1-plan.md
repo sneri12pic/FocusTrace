@@ -104,7 +104,7 @@ PostgreSQL via Testcontainers:
 | 4 | A refresh token rotates on use; a reused refresh token revokes the chain. |
 | 5 | A device registers; re-registering the same installation UUID updates rather than duplicates; a UUID owned by another user is 409. |
 | 6 | A valid day snapshot is accepted and persisted. |
-| 7 | Invalid data is rejected with 400 and writes nothing: negative duration, duration above 86400, duplicate `appKey` within a day, unresolvable `timezoneId`, empty `days`. |
+| 7 | Invalid data is rejected with 400 and writes nothing: negative duration, duration above 90000, duplicate `appKey` within a day, unresolvable `timezoneId`, empty `days`, and every other architecture 9.1 bound. |
 | 8 | Uploading the same snapshot twice leaves server state identical to uploading it once; the second response outcome is `DUPLICATE`. |
 | 9 | Uploading version 2 after version 1 replaces the day wholesale: only version 2's app rows exist, no accumulation, outcome `APPLIED`. |
 | 10 | Uploading version 1 after version 2 leaves version 2 intact, outcome `STALE`. |
@@ -146,12 +146,28 @@ integration suite is **blocked**, not passing - report it as such.
 
 ## 5. Remaining work
 
-Phase 1 Steps 1-3 are done: bootstrap, authentication (criteria 2-4, 14-18,
-16a-16e) and devices (criterion 5; D16 resolved), proven by `server/` tests against
-PostgreSQL. Criterion 13 is proven for the device surface only; its upload and
-usage-read halves arrive with Steps 4 and 5. Next is Step 4
-(`PUT /api/v1/sync/usage-days`), which must first settle D13. Criteria 6-12 are open.
-See `backend-sync-v1-progress.md` for current state.
+Phase 1 Steps 1-4 are done: bootstrap, authentication (criteria 2-4, 14-18,
+16a-16e), devices (criterion 5; D16 resolved) and usage upload (criteria 6-10 and
+12; D13 resolved), proven by `server/` tests against PostgreSQL. Criterion 11 is
+proven for storage; its history-response half arrives with Step 5. Criterion 13 is
+proven for devices and upload; its usage-read half arrives with Step 5. Next is
+Step 5 (`GET /api/v1/usage`). See `backend-sync-v1-progress.md` for current state.
+
+Before the Flutter sync client ships (Phase 2):
+
+- A client version policy for imported, legacy and Dart-written days that cannot
+  regress below an uploaded version or reuse a version for changed content
+  (architecture 9.2).
+- Client pre-validation and deterministic sanitization against the published
+  limits (architecture 9.1, client obligations).
+
+Before public release (backend):
+
+- Device lifecycle: decide active/retired semantics and an active-device quota.
+  A hard delete cascades the device's synced history. No device deletion exists yet.
+- A simple persistent-storage bound per account or device. Request limits bound
+  one request, not what an account accumulates.
+- Authenticated per-user limits for upload and history (baseline section 11).
 
 ## 6. Release blockers outside the backend
 
@@ -163,5 +179,8 @@ These are not backend tasks but must be resolved before sync ships to users:
   `users` already makes the server-side deletion correct.
 - Email addresses are never verified. Registration therefore discloses that an
   account exists (architecture 5.1, D11). Revisit if verification is added.
-- Rate limiting is no longer a release blocker: it lands with the endpoints in
-  Step 2 (architecture 5.1, D15).
+- Authentication rate limiting landed in Step 2 (architecture 5.1, D15).
+  This does not establish abuse protection for device registration/listing or
+  future sync/history routes. Body limits, authenticated budgets and deployment
+  controls still require verification before public release; see the dated
+  `backend-sync-v1-review-brief.md` for the 2026-09-19 assessment.

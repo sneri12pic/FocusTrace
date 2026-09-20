@@ -106,7 +106,7 @@ class AuthSchemaIT extends IntegrationTest {
      */
     @Test
     void v2AppliesOnEmptyTablesAndRefusesExistingRefreshTokens() {
-        Flyway empty = flywayFor("mig_empty_" + UUID.randomUUID().toString().replace("-", ""));
+        Flyway empty = flywayFor("mig_empty_" + UUID.randomUUID().toString().replace("-", ""), "2");
         empty.migrate();
         assertThat(empty.info().current().getVersion().getVersion()).isEqualTo("2");
 

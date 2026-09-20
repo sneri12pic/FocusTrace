@@ -58,12 +58,24 @@ class FlywayBaselineIT extends IntegrationTest {
     }
 
     @Test
+    void durationCheckAllowsA25HourDayAndNoMore() {
+        // V3: the database bound matches the DTO bound; the API never reaches it.
+        assertThat(checkClause("usage_day_apps_duration_seconds_check"))
+                .contains("duration_seconds >= 0").contains("duration_seconds <= 90000");
+    }
+
+    private String checkClause(String constraint) {
+        return jdbc.queryForObject("SELECT pg_get_constraintdef(oid) FROM pg_constraint WHERE conname = ?",
+                String.class, constraint);
+    }
+
+    @Test
     void migrationsAreRecordedAsAppliedInOrder() {
         List<String> versions = jdbc.queryForList(
                 "SELECT version FROM flyway_schema_history WHERE success = true ORDER BY installed_rank",
                 String.class);
 
-        assertThat(versions).containsExactly("1", "2");
+        assertThat(versions).containsExactly("1", "2", "3");
     }
 
     private List<String> primaryKeyColumnsOf(String table) {

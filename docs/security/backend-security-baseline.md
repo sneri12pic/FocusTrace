@@ -8,6 +8,15 @@ Companion documents: `docs/backend/backend-sync-architecture.md` (decisions),
 `docs/backend/backend-sync-v1-plan.md` (scope and acceptance criteria),
 `docs/backend/backend-sync-v1-progress.md` (state).
 
+**Status clarification (2026-09-19):** Phase 1 Steps 1–3 are implemented.
+Authentication, PostgreSQL-backed sessions, auth throttling and owner-scoped
+device registration/listing exist. Sections 2–3 and the pre-Step-2 status language
+in sections 12 and 17 are historical inventories, not the current implementation
+status. Security requirements remain applicable; use the progress document for
+verification evidence. Step 4 (usage upload, JSON document cap) is implemented;
+the history read is not. Auth throttling does not establish authenticated
+endpoint limits.
+
 This document states FocusTrace requirements. It does not reproduce OWASP
 material and it does not claim FocusTrace is "OWASP compliant". References used
 for derivation: OWASP Top 10:2025, OWASP API Security Top 10:2023, OWASP ASVS
@@ -46,9 +55,9 @@ Spring Boot service                       boundary 2: authentication
 PostgreSQL                                boundary 4: persistence
 ```
 
-- **Externally reachable API boundary.** Everything under `/api/v1`. Today this
-  set is empty: no controller exists in `server/src/main/java`. From Step 2 it
-  becomes `/api/v1/auth/**` (public) and everything else (authenticated).
+- **Externally reachable API boundary.** Implemented routes under `/api/v1`
+  cover authentication and device registration/listing. Only POST register,
+  login and refresh are public; logout and device routes require authentication.
 - **Authenticated user boundary.** Established solely by a validated access JWT.
   Crossing it proves *who*, never *what may be accessed*.
 - **Device ownership boundary.** `devices.user_id`. A `deviceId` in a request
@@ -72,7 +81,7 @@ and none of them would let the server trust a client-supplied field.
 
 ---
 
-## 2. Current state
+## 2. Historical state before Step 2
 
 Determined by inspecting `server/build.gradle.kts`,
 `server/src/main/resources/application.yml`,
@@ -451,29 +460,34 @@ Web Service).
 - Malformed JSON, unsupported enum values and unresolvable identifiers produce a
   400 through the common error model — never a 500, never a stack trace.
 - Request body size is capped. Note that Spring Boot's
-  `max-http-form-post-size` does not apply to JSON bodies, so this cap is either
-  a servlet-level filter or a reverse-proxy limit, and must be deliberately
-  configured rather than assumed.
+  `max-http-form-post-size` does not apply to JSON bodies. Since Step 4 the cap is
+  Jackson's document-length constraint,
+  `spring.jackson.factory.constraints.read.max-document-length: 2097152`, which
+  applies to every JSON body, including chunked ones. It is a parser bound
+  enforced at buffer granularity, not an exact byte cap; a reverse-proxy limit
+  remains a deployment decision.
 
-### Existing sync limits are preserved
+### Sync limits
 
-These come from the architecture (section 9.1) and remain binding:
+Implemented in Step 4; architecture section 9.1 is authoritative and has the full
+field table:
 
 | Bound | Value |
 | --- | --- |
-| Days per upload request | at most 400, non-empty |
-| Apps per day | at most 2000, `appKey` unique within the day |
-| `durationSeconds` | `[0, 86400]` — also a database `CHECK` |
+| JSON document | 2,097,152 input units (Jackson constraint) |
+| Days per upload request | 1-31, `localDate` unique |
+| Apps per day | at most 500, `appKey` unique within the day |
+| App rows per request | at most 1,000 (D13) |
+| `durationSeconds` | `[0, 90000]` — also a database `CHECK` (`V3`) |
 | `launchCount` | non-negative — also a database `CHECK` |
 | `snapshotVersion` | positive — also a database `CHECK` |
-| `localDate` | valid ISO date, not later than the server's day plus one |
-| `timezoneId` | resolvable by `ZoneId.of` |
-| `appKey`, `appName` | non-blank, length-bounded |
-| History read range | at most 400 days |
+| `localDate` | `2026-01-01` to UTC today plus one |
+| `timezoneId` | at most 64 UTF-16 units, resolvable by `ZoneId.of` |
+| `appKey`, `appName` | non-blank, at most 255 / 200 UTF-16 units, no NUL or lone surrogates |
+| History read range | at most 400 days (Step 5) |
 
-**Gap:** 400 days times 2000 apps is 800,000 app rows in a single transaction.
-The per-dimension bounds are individually reasonable and jointly are not. A
-total-rows-per-request cap is required — decision D13.
+D13 closed the earlier gap, where 400 days times 2,000 apps allowed 800,000 app
+rows in one transaction.
 
 No unbounded, client-controlled bulk endpoint is added. The history read is
 bounded by its 400-day range; if per-device fan-out makes a bounded range produce
@@ -829,7 +843,7 @@ surfaces this system does not have.
 | API1 Broken Object Level Authorization | **Primary risk.** Device and usage objects are addressed by client-supplied identifiers. |
 | API2 Broken Authentication | **High from Step 2.** Registration, login, JWT, refresh rotation. |
 | API3 Broken Object Property Level Authorization | **High from Step 2.** Mass assignment into ownership fields; leaking `password_hash` or `token_hash` through a response. |
-| API4 Unrestricted Resource Consumption | **High, currently unaddressed.** No throttling; plus the 400x2000 bound product (D13). |
+| API4 Unrestricted Resource Consumption | **High, partly addressed.** Upload size is bounded (JSON document, 31 days, 1,000 rows; D13). Authenticated routes are not throttled, and devices per account are not capped. |
 | API5 Broken Function Level Authorization | Moderate. One role today, so it reduces to deny-by-default. Becomes real if any administrative function appears. |
 | API6 Unrestricted Access to Sensitive Business Flows | **Relevant to registration and login.** Anonymous account creation and credential stuffing. |
 | API7 Server Side Request Forgery | **Not exposed.** The service makes no outbound request from client-controlled input and has no URL-valued field. Revisit only if a webhook, avatar fetch or import-by-URL feature is ever proposed. |
@@ -973,15 +987,15 @@ describe the pre-Step-2 state and are not updated entry by entry.
 | D10 | Logout and password-change revocation | Resolved | architecture 5.1, D10 |
 | D11 | Registration and login enumeration behaviour | Resolved | architecture 5.1, D11 |
 | D12 | Foreign device UUID on registration | Resolved earlier | architecture 9 |
-| D13 | Total app rows per upload request | **Open** - sync phase | this document, section 9 |
+| D13 | Total app rows per upload request | Resolved (Step 4): 1,000 | architecture 9.1 |
 | D14 | Development versus production configuration | Resolved | architecture 5.1, D14 |
 | D15 | Authentication rate limits | Resolved | architecture 5.1, D15 |
 | D16 | `403` versus non-revealing `404` for a foreign object | Resolved (2026-09-18) | architecture 5.1, D16 |
 | D17 | Compromised-password blocklist | Resolved | architecture 5.1, D17 |
 
 D16 was resolved before Step 3 (devices), which implements D12 and scopes every
-device query by owner. D13 remains open: the sync endpoint does not exist yet, and
-it must be settled before that endpoint is built.
+device query by owner. D13 was settled with Step 4 (the upload endpoint): at most
+1,000 app rows and 31 days per request.
 
 D17 was briefly held open on the mistaken premise that closing it required an
 outbound password-checking API. It does not - a local versioned blocklist is an
@@ -997,7 +1011,7 @@ so API7 stays "not exposed" in section 17.
 | --- | --- | --- |
 | C1 | JWT claim set had no `iss` or `aud`, so a token minted by another service sharing the secret would verify | **Resolved.** Both claims added and validated - architecture 5.1, D07 |
 | C2 | "Revokes the whole chain" was not enforceable: `refresh_tokens` had only `user_id`, so the only available reading was "every token the user has" | **Resolved.** `auth_sessions` is the revocation unit - architecture 5.1 D08 and schema 6.1 |
-| C3 | Architecture 9.1 caps 400 days and 2000 apps per day independently, permitting 800,000 rows in one transaction | **Open.** Sync phase, with D13 |
+| C3 | Architecture 9.1 caps 400 days and 2000 apps per day independently, permitting 800,000 rows in one transaction | **Resolved.** 31 days, 500 apps per day, 1,000 rows per request - D13 |
 | C4 | Rate limiting deferred to "before a public deployment" with no gate that would stop it shipping | **Resolved.** Throttling moves into Step 2 - architecture 5.1, D15 |
 | C5 | Email normalization was application-side while `users_email_key` was case-sensitive | **Resolved.** `users_email_key` kept, plus `CHECK (email = lower(email) AND email ~ '^[!-~]+$')` so the indexed value is always canonical - architecture 5.1 D03, schema 6.1 |
 | C6 | Signing key rotation undefined | **Resolved.** Single-key, rotate-by-restart, self-healing through refresh - architecture 5.1, D09 |

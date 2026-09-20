@@ -25,6 +25,11 @@ public final class ApiException extends RuntimeException {
         return new ApiException(HttpStatus.UNAUTHORIZED, "Authentication failed.", null, 0);
     }
 
+    /** D16: foreign and unknown objects share this one body. */
+    public static ApiException notFound() {
+        return new ApiException(HttpStatus.NOT_FOUND, "Resource not found.", null, 0);
+    }
+
     public static ApiException conflict(String detail) {
         return new ApiException(HttpStatus.CONFLICT, detail, null, 0);
     }

@@ -55,6 +55,33 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
 
+  backend-build:
+    name: Backend build and tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: server
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      # No gradle-version: the server build runs its own wrapper (Gradle 9.5.1).
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v6
+
+      # Integration tests start PostgreSQL through Testcontainers on the runner's
+      # Docker; no service container. gradlew is tracked without the executable bit.
+      - name: Build and test
+        run: bash ./gradlew build --no-daemon --stacktrace
+
   android-build:
     name: Android tests, lint, and debug APK
     runs-on: ubuntu-latest

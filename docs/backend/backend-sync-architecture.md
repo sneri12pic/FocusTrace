@@ -1,7 +1,7 @@
 # FocusTrace Backend Sync v1 - Architecture
 
-Status: Phase 1 Steps 1-3 implemented (bootstrap, authentication, devices). Sync and
-history are designed, not implemented.
+Status: Phase 1 Steps 1-4 implemented (bootstrap, authentication, devices, usage
+upload). History read (Step 5) is designed, not implemented.
 Branch: `feature/backend-sync-v1`.
 Stack decision (final): Java + Spring Boot + PostgreSQL.
 
@@ -751,8 +751,8 @@ decision above. None changes a decision's behaviour.
 
 #### Deferred, and why it is safe to defer
 
-- **D13/C3** (total app rows per upload request) belongs to the sync endpoint,
-  which Step 2 does not build.
+- **D13/C3** (total app rows per upload request) belonged to the sync endpoint.
+  Resolved in Step 4: at most 1,000 app rows per request (section 9.1).
 - **C7** (broadening the BOLA criterion to all four verbs) is already recorded in
   the plan.
 
@@ -884,8 +884,8 @@ Notes on the constraints that are doing real work:
   app row impossible to duplicate.
 - The composite FK from `usage_day_apps` to `usage_days` plus `ON DELETE CASCADE`
   means a day can never hold orphan app rows.
-- `duration_seconds <= 86400` is a cheap sanity bound; a day cannot contain more
-  than a day of usage per app. It has caught this class of bug before.
+- `duration_seconds <= 86400` was a cheap sanity bound, and too tight: see 6.2.
+  `V3` makes it `<= 90000`.
 - `source_status` gains `imported` beyond the local vocabulary - see 7.2.
   `unavailable` days are never uploaded, so the server does not model them.
 
@@ -956,6 +956,25 @@ Whether this ships as `V2` or is folded into `V1` while nothing is deployed is t
 developer's call. `V2` is the default answer, because `V1` has been applied to a
 real database.
 
+### 6.2 `V3` - DST-safe duration bound (`V3__usage_duration_dst.sql`)
+
+Implemented in Step 4. A local day is 25 hours on a DST fall-back date, and the
+client attributes foreground time exclusively within the local-midnight window
+(`UsageDayWindow`, `aggregateEvents`), so one app's total can legitimately reach
+90,000 s. Under the V1 bound that day, and with it the whole batch, would be
+rejected on every retry.
+
+```sql
+ALTER TABLE usage_day_apps
+    DROP CONSTRAINT usage_day_apps_duration_seconds_check,
+    ADD CONSTRAINT usage_day_apps_duration_seconds_check
+        CHECK (duration_seconds >= 0 AND duration_seconds <= 90000);
+```
+
+A fixed bound, not one derived per `localDate` and `timezoneId`: the extra precision
+is not worth the complexity. Relaxing a CHECK cannot invalidate existing rows.
+`V1` and `V2` are not edited. The DTO bound (`@Max(90000)`) matches it.
+
 ---
 
 ## 7. Idempotency and versioning
@@ -985,31 +1004,66 @@ millisecond value, a genuine later snapshot always supersedes an imported one.
 
 ### 7.3 Write path
 
-Per day, inside one transaction:
+**Implemented in Step 4** (`usage/UsageDays`). The whole request is one
+`@Transactional` unit, in this order:
+
+1. Resolve the device under the caller:
+   `SELECT 1 FROM devices WHERE id = :deviceId AND user_id = :userId FOR KEY SHARE`.
+   No row -> `404` (D16), nothing written. `KEY SHARE` stops the device being
+   deleted under the transaction without blocking other uploads to it.
+2. Request-wide validation (section 9.1). Any failure -> `400`, nothing written.
+3. Sort the days by ascending `localDate`, then per day:
 
 ```sql
 INSERT INTO usage_days (device_id, local_date, snapshot_version, timezone_id, source_status)
-VALUES (:deviceId, :localDate, :version, :tz, :status)
+SELECT id, :localDate, :version, :tz, :status
+  FROM devices WHERE id = :deviceId AND user_id = :userId
 ON CONFLICT (device_id, local_date) DO UPDATE
     SET snapshot_version = EXCLUDED.snapshot_version,
         timezone_id      = EXCLUDED.timezone_id,
         source_status    = EXCLUDED.source_status,
         received_at      = now()
-WHERE usage_days.snapshot_version < EXCLUDED.snapshot_version;
+WHERE usage_days.snapshot_version < EXCLUDED.snapshot_version
+RETURNING snapshot_version;
 ```
 
-- 1 row affected -> the day is new or superseded. Delete its `usage_day_apps` and
-  insert the new set. Result `APPLIED`.
-- 0 rows affected -> `snapshot_version` is equal or lower. Touch nothing. Result
-  `DUPLICATE` (equal) or `STALE` (lower).
+| Stored version | Result | Writes |
+| --- | --- | --- |
+| none | `APPLIED` | parent inserted; app rows inserted |
+| lower than incoming | `APPLIED` | parent updated; all app rows deleted, new set batch-inserted |
+| higher than incoming | `STALE` | none |
+| equal, same content | `DUPLICATE` | none |
+| equal, different content | `CONFLICT` | none |
+
+"Same content" compares the persisted representation: `timezone_id`,
+`source_status`, and the app rows as a set keyed by `app_key` with `app_name`,
+`duration_seconds` and `launch_count`. Incoming array order is irrelevant. There is
+no payload hash and no Unicode normalization: strings compare exactly. An equal
+version with different content is reported, never hidden as `DUPLICATE` and never
+applied.
 
 Whole-day replace, never accumulate. `duration_seconds` is a total, not a delta, so
 adding would inflate usage on every retry - the exact failure this design must not
-have.
+have. A newer snapshot with `apps: []` replaces an older non-empty one.
 
-The whole request is one `@Transactional` unit. A validation or constraint failure
-on day 7 of 30 rolls back days 1-6 as well; the client retries the whole batch,
-which is safe by construction.
+Every statement carries the caller's `user_id` (D16): the upsert inserts only via
+the owner-filtered `SELECT`, and the delete and equal-version reads join `devices`.
+
+**Concurrency.** Relies on PostgreSQL READ COMMITTED, which is not overridden.
+`ON CONFLICT DO UPDATE` locks the conflicting row even when its `WHERE` is false,
+and holds the lock to commit. A concurrent insert of the same key waits for the
+first transaction, then takes the conflict path against the committed row. So two
+equal versions cannot both apply; the loser's equal-version read sees the committed,
+locked row and its app rows, which only the lock holder can change. Newer and older
+racing cannot pair one version's metadata with another's app rows. Sorting the
+days gives every request the same lock order, so overlapping batches cannot
+deadlock. No `SELECT ... FOR UPDATE`, application lock or retry loop.
+
+**Transactionality.** `STALE`, `DUPLICATE` and `CONFLICT` are outcomes, not errors:
+they do not roll back other days. An actual failure on any day (a constraint, the
+database) rolls back the whole request, including a day whose app rows were already
+deleted. Deterministically invalid input never gets that far: step 2 rejects it
+first.
 
 No `Idempotency-Key` header is needed. The natural key plus the version guard makes
 `PUT /sync/usage-days` idempotent by definition, which is why it is a `PUT`.
@@ -1118,13 +1172,55 @@ entity to expose.
 }
 ```
 
-Bean Validation on the DTOs: `deviceId` a UUID; `days` non-empty, at most 400
-entries; `localDate` a valid ISO date not in the future relative to the server's
-day plus one (a device can legitimately be a day ahead); `timezoneId` resolvable by
-`ZoneId.of`; `snapshotVersion` positive; `apps` at most 2000 entries per day with
-unique `appKey`; `appKey` and `appName` non-blank, length-bounded;
-`durationSeconds` in `[0, 86400]`; `launchCount` non-negative. Request body size
-capped server-side.
+**Limits (Step 4, resolves D13/C3).** Every violation is `400` with the common
+error model and zero writes. Unknown properties are `400`.
+
+| Field / bound | Rule |
+| --- | --- |
+| request document | Jackson `spring.jackson.factory.constraints.read.max-document-length: 2097152` |
+| `deviceId` | UUID of a device the caller owns; otherwise `404` (D16) |
+| `days` | 1-31 entries, `localDate` unique within the request |
+| total app rows | at most 1,000 across all days |
+| `localDate` | ISO date, `2026-01-01` <= date <= UTC today + 1 (a device can be a day ahead; UTC+14 is exactly that) |
+| `timezoneId` | non-blank, at most 64 UTF-16 units, resolvable by `ZoneId.of` |
+| `snapshotVersion` | positive `int64` |
+| `sourceStatus` | `partial`, `reconciled` or `imported`; `unavailable` is never uploaded |
+| `apps` | required, 0-500 entries, `appKey` unique within the day |
+| `appKey` | non-blank, at most 255 UTF-16 units |
+| `appName` | non-blank, at most 200 UTF-16 units |
+| `durationSeconds` | `[0, 90000]` (6.2) |
+| `launchCount` | non-negative `int32` |
+
+`appKey` and `appName` reject only what cannot be stored faithfully: NUL, which
+PostgreSQL text cannot hold, and an unpaired UTF-16 surrogate, which the driver
+would persist as `?`, so a retry would compare unequal. Other control characters
+(tab, newline, ...) are stored verbatim. `displayName`'s broader rule is a device
+contract and does not extend here. No Unicode normalization.
+
+The document limit is a Jackson parser constraint counted in input units (bytes
+for a servlet body) and checked at buffer granularity, not an exact HTTP byte cap.
+It applies equally without `Content-Length`. The largest valid request is about
+1.4 MiB (31 days, 1,000 rows, every string at its limit in 3-byte UTF-8). An
+oversized document is the framework's generic `400`, like malformed JSON. The
+`timezoneId` bound (added in Step 4; the column is unbounded `TEXT`) is an API and
+storage limit with ample room for real zone IDs. Validity is decided by `ZoneId.of`,
+not by the length.
+
+The `2026-01-01` floor exists because no FocusTrace data predates 2026. It also
+bounds how many dates a device can hold. It is not a storage quota; see the plan.
+
+**Client obligations.** One invalid day fails the whole request, and a
+deterministic failure repeats on every retry. A sync client must therefore:
+
+- leave out days outside the date range (a clock that was wrong at boot can
+  produce them) rather than send them;
+- keep `appKey` within the bounds and deterministically sanitize `appName`
+  (remove NUL, truncate to 200 UTF-16 units without splitting a surrogate pair),
+  so a retry of the same day sends the same content;
+- not retry an unchanged request after a `400`.
+
+Filtering or sanitizing applies to the upload only. It never deletes or rewrites
+the local record, which stays authoritative.
 
 ### 9.2 Upload response
 
@@ -1133,14 +1229,24 @@ capped server-side.
   "results": [
     { "localDate": "2026-09-17", "outcome": "APPLIED",   "storedVersion": 1758124800123 },
     { "localDate": "2026-09-16", "outcome": "DUPLICATE", "storedVersion": 1758038400000 },
-    { "localDate": "2026-09-15", "outcome": "STALE",     "storedVersion": 1758000000000 }
+    { "localDate": "2026-09-15", "outcome": "STALE",     "storedVersion": 1758000000000 },
+    { "localDate": "2026-09-14", "outcome": "CONFLICT",  "storedVersion": 1757900000000 }
   ]
 }
 ```
 
 Per-day outcomes rather than a single status: the client learns exactly what
 happened without a follow-up read, and the integration tests assert on this
-directly.
+directly. Exactly one result per submitted day, in request order. `storedVersion`
+is the version the server holds after the request. `CONFLICT` was added in Step 4
+(7.3).
+
+**Version policy before a client ships.** The server trusts `snapshotVersion` as
+the device's own ordering and makes divergence visible (`STALE`, `CONFLICT`) rather
+than compensating with server-side versioning. Imported, legacy and Dart-written
+days (7.2) need a client version policy that can neither regress below a version
+already uploaded nor reuse the same version for changed content. That is a
+prerequisite for the Flutter sync client, not a backend change.
 
 ### 9.3 History read
 
@@ -1266,12 +1372,13 @@ and `DATE` semantics, and H2 would test a dialect the application never runs on.
 | Auth | register, login, wrong password rejected, unauthenticated request to a protected route is 401, expired access token is 401, refresh rotation, reused refresh token revokes its own session. Per-decision expectations are listed with each decision in 5.1 and enumerated in the security baseline, section 18. |
 | Authorization | User A reading User B's usage gets an empty result; User A uploading to User B's device gets 404 |
 | Device | registration succeeds; re-registering the same installation UUID updates rather than duplicates; a UUID owned by another user is 409 |
-| Validation | negative duration, duration above 86400, duplicate `appKey` in a day, unknown `timezoneId`, empty `days` all rejected with 400 and no rows written |
+| Validation | every section 9.1 bound at its accepted edge and one past it (negative duration, duration above 90000, 32 days, 501 apps, 1,001 rows, dates outside the range, duplicate `localDate` or `appKey`, unknown `timezoneId`, `unavailable` status, over-long and control-character strings, empty `days`) rejected with 400 and no rows written |
 | Idempotency | upload a snapshot twice; assert row counts and totals identical to a single upload, and the second response is `DUPLICATE` |
 | Supersede | upload version 1, then version 2 with different apps; assert only version 2's rows exist, app row count matches version 2, no accumulation, outcome `APPLIED` |
 | Stale | upload version 2, then version 1; assert version 2 survives and outcome is `STALE` |
 | Device isolation | Devices A and B, same user, same date; assert two independent `usage_days` rows and that the history response labels each one |
-| Transaction safety | a batch whose last day violates a constraint leaves zero rows from that batch |
+| Transaction safety | a database failure on the last day leaves zero rows from that batch; a failure after a day's app rows were deleted restores that day |
+| Concurrency | real parallel requests: newer vs older, equal identical (`APPLIED` + `DUPLICATE`), equal differing (`APPLIED` + `CONFLICT`), overlapping batches in opposite order (no deadlock, no mixed app sets) |
 | Flyway | context loads with `ddl-auto=validate`, proving entities match the migration |
 
 ---
@@ -1322,7 +1429,7 @@ models. The SQLite layer stays authoritative.
    per-account throttling on registration, login and refresh in Step 2.
 
 7. **Assumption: one day per device is small.** Roughly 50-200 app rows. If some
-   device produces thousands, the 2000-app cap rejects it rather than degrading
+   device produces more, the 500-app cap rejects it rather than degrading
    quietly.
 
 8. **Assumption: Windows devices participate.** `platform` allows `windows`, but

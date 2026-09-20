@@ -5,6 +5,198 @@ session reads to continue safely.
 
 ---
 
+## 2026-09-20 — Step 4 contract-conformance review
+
+Date: 2026-09-20 (session spanned midnight; the Step 4 entry below is dated 2026-09-19)
+Agent: Claude Code
+Goal: Check three suspected contract-conformance issues in the uncommitted Step 4
+work: the `timezoneId` bound, the control-character rule, and response ordering.
+No redesign, no scope expansion.
+
+Completed:
+- **`timezoneId <= 64`: kept, justification corrected.** No bound existed before
+  Step 4 anywhere - `V1__baseline.sql:39` and the client's `timezone_id` are both
+  unbounded `TEXT`, and the architecture said only "resolvable by `ZoneId.of`". The
+  docs justified 64 with "the longest resolvable region ID is 32", which is an
+  observation about the current JDK tzdb, not a durable contract. Now documented as
+  a bounded API/storage limit with ample room, validity still decided by `ZoneId.of`.
+- **Control characters: narrowed (contract expansion, reverted).** Step 4 rejected
+  all of `\p{Cc}` in `appKey`/`appName`, copied from the `displayName` rule
+  (`DeviceController.java:41`), which is a device contract for a user-typed string.
+  Nothing in the schema, the client or the architecture required it for app keys or
+  labels, and an OS label containing a newline would have failed that day's upload
+  on every retry. Now `[^\x{0}\p{Cs}]*`: only NUL (PostgreSQL text cannot hold it)
+  and unpaired surrogates (the driver would store `?`, breaking retry equality).
+  Other control characters are stored verbatim.
+- **Response ordering: already correct, proof strengthened.** `UsageDays.upload`
+  processes a sorted copy (line 84) and builds the response by walking the original
+  `request.days()` list (line 86); dates are unique per request, so the lookup is
+  exact. Internal ascending-date lock ordering unchanged.
+
+Files materially changed:
+- `server/src/main/java/.../sync/usage/UsageUploadController.java` (`PRINTABLE` ->
+  `STORABLE`, narrowed pattern)
+- `server/src/test/java/.../sync/usage/UsageUploadIT.java`: dropped the "tab is
+  rejected" case; added `storesOtherControlCharactersExactlyAndRetriesAsDuplicate`;
+  replaced the ordering test with `unsortedRequestIsAnsweredInRequestOrder`
+- `backend-sync-architecture.md` 9.1 (string rule, `timezoneId` justification,
+  client sanitization obligation), `backend-security-baseline.md` section 9 table,
+  this document
+
+Verification:
+- `./gradlew test --tests '*UsageUploadIT'`: 24 tests, 0 failures.
+- `cd server && ./gradlew clean build`: exit 0; 189 tests, 0 failures, 0 errors,
+  0 skipped, 18 suites; Testcontainers PostgreSQL 16.15, Docker 25.0.3.
+- `unsortedRequestIsAnsweredInRequestOrder` submits 09-10, 09-08, 09-09 against a
+  stored 09-08 v5 and asserts results in that request order (`APPLIED`, `STALE`,
+  `APPLIED`) plus the persisted rows per day. Mutation: answering in sorted order
+  fails it; code restored byte-identical.
+- Control-character test asserts tab, newline, CR, ESC, DEL and paired surrogates
+  persist byte-for-byte and re-upload as `DUPLICATE`.
+
+Decisions made:
+- `appKey`/`appName` reject only NUL and unpaired surrogates. No Unicode
+  normalization, no broader sanitization.
+- Response order is request order; processing order is ascending `localDate`. The
+  two are independent and both are now contract.
+
+Remaining:
+- Nothing. The `timezoneId <= 64` bound was ratified on 2026-09-20 and is now
+  settled contract: a bounded API/storage limit, with validity still decided by
+  `ZoneId.of`.
+
+Risks / unresolved questions: none from this review.
+
+Relevant commit: none; still uncommitted with the Step 4 work.
+
+---
+
+## 2026-09-19 — Phase 1 Step 4: usage upload implemented
+
+Date: 2026-09-19
+Agent: Claude Code
+Goal: Implement `PUT /api/v1/sync/usage-days` per architecture 7.3 and 9.1-9.2,
+settling D13. No history read, no Flutter work.
+
+Completed:
+- `usage/UsageUploadController` (record DTOs, Bean Validation) and `usage/UsageDays`
+  (JdbcClient SQL, one `@Transactional` unit): owner gate `FOR KEY SHARE` (404 per
+  D16), request-wide validation before any write, days sorted by `localDate`,
+  owner-scoped guarded upsert, whole-day app replacement, equal-version content
+  comparison. Outcomes `APPLIED`/`DUPLICATE`/`STALE`/`CONFLICT`, one per day, in
+  request order. `CONFLICT` is new to the section 9.2 response.
+- Limits (D13 resolved): Jackson document length 2,097,152; 1-31 days; 500 apps/day;
+  1,000 rows/request; duration 0-90,000; date `2026-01-01` to UTC today + 1;
+  `timezoneId` at most 64 units and resolvable; string bounds 255/200 with no
+  NUL or lone surrogates (other control characters are stored verbatim).
+- `V3__usage_duration_dst.sql`: duration CHECK `<= 86400` -> `<= 90000` (25-hour DST day).
+- `ApiException.notFound()`; UTC `Clock` bean (tests pin it); backend CI job.
+
+Files materially changed:
+- `server/src/main/java/.../sync/usage/{UsageUploadController,UsageDays}.java` (new),
+  `common/ApiException.java`, `FocusTraceSyncApplication.java`,
+  `resources/application.yml`, `resources/db/migration/V3__usage_duration_dst.sql` (new)
+- `server/src/test/java/.../sync/usage/{UsageTestSupport,UsageUploadIT,UsageConcurrencyIT}.java`
+  (new), `IntegrationTest.java` (PUT helper), `FlywayBaselineIT.java` (V3),
+  `auth/AuthSchemaIT.java` (V2 test now targets V2 explicitly instead of latest)
+- `.github/workflows/ci.yml` (backend job)
+- architecture 6.2/7.3/9.1/9.2/12/14, plan 3 and 5, baseline status note and sections 9, 17, 19, 20
+
+Verification:
+- Baseline before changes: `./gradlew test --rerun`: 160 tests, 0 failures, 0 skipped.
+- Final `cd server && ./gradlew clean build`: exit 0; 189 tests, 0 failures, 0 errors,
+  0 skipped, 18 suites; Testcontainers PostgreSQL 16.15, Docker 25.0.3.
+- `UsageUploadIT` (24): contract; unsorted request answered in request order;
+  supersede; empty replaces non-empty; stale; duplicate with reordered apps;
+  conflict on each content field; mixed outcomes in one request; every limit at its
+  accepted edge and one past it, with zero writes; NUL and lone surrogates (raw
+  JSON escapes) rejected, tab/newline stored verbatim; 401;
+  foreign device = unknown device (same 404 body), A's rows byte-identical; same
+  date across devices and accounts; DB failure on a later day rolls back earlier
+  days; failure after the app delete restores the day; max contract request (about
+  1.44 MB, 3-byte strings) is 200; 3 MiB body is 400 with and without Content-Length.
+- `UsageConcurrencyIT` (4, 8 rounds each, real parallel HTTP): newer vs older;
+  equal identical = `APPLIED` + `DUPLICATE`; equal differing = `APPLIED` +
+  `CONFLICT` with the winner's rows; four overlapping 10-day batches in opposite
+  JSON order: no 5xx, highest version and its complete app set on every day.
+- Mutation checks, all restored byte-identical: removing the date sort ->
+  PostgreSQL `deadlock detected`, test fails; guard `<` -> `<=` fails 5 tests;
+  owner gate `AND` -> `OR` fails the foreign-device test; document limit raised
+  to 20 MiB -> the oversized test fails (proves the configured limit rejects it).
+- CI job not executed here (no push); it runs `bash ./gradlew build` because
+  `server/gradlew` is tracked as 100644.
+
+Decisions made:
+- D13: 1,000 app rows and 31 days per request (architecture 9.1).
+- `timezoneId` length bound 64: new in Step 4 (no bound existed; column is `TEXT`).
+  A generous API/storage limit; validity is `ZoneId.of`. Ratified 2026-09-20 -
+  see the conformance-review entry above.
+- Oversized document stays the framework's generic 400; no 413 mapping.
+- Upload does not touch `devices.last_seen_at` (not in the contract).
+- Layout: `usage/` package; `UsageDays` owns the SQL as `Devices` does. No JPA entity
+  and no separate service (section 10 sketch named `sync/SyncController`).
+
+Remaining:
+- Step 5 `GET /api/v1/usage`; criterion 11's history half; criterion 13's read half.
+- Before Flutter sync: client version policy for imported/legacy/Dart-written days;
+  client pre-validation and sanitization (architecture 9.1, 9.2).
+- Before public release: device lifecycle and active-device quota, a persistent
+  storage bound, authenticated per-user limits for upload/history (plan 5).
+
+Risks / unresolved questions:
+- Baseline section 11 asks for an authenticated per-user limit on upload; not in
+  Step 4 scope, recorded as a release item.
+
+Relevant commit: none yet; changes are uncommitted.
+
+---
+
+## 2026-09-19 — Readiness review briefing
+
+Date: 2026-09-19
+Agent: Codex
+Goal: Inspect current backend docs and implementation; prepare context for an
+external ChatGPT review and next-step recommendation.
+
+Completed:
+- Added `backend-sync-v1-review-brief.md`, a dated assessment at `d2b7271`, not a
+  replacement architecture. Steps 1–3 exist; upload/history/client remain open.
+- Distinguished confirmed resource-control gaps, accepted auth trade-offs,
+  planned-sync questions, historical test results and unverified deployment state.
+- Corrected documentation framing: PostgreSQL owns session state; only limiter
+  state is in-process. Auth throttling does not cover device/sync/read traffic.
+
+Files materially changed:
+- `docs/backend/backend-sync-v1-review-brief.md` (new), this progress document,
+  `backend-sync-v1-plan.md`, `docs/security/backend-security-baseline.md`.
+
+Verification:
+- Inspected Git status/diffs/history, backend sources/config/migrations/test
+  sources, CI, and local snapshot/import code.
+- BLOCKED: `cd server; .\gradlew.bat test --rerun-tasks` exited 1 while downloading
+  Gradle 9.5.1 (`SocketException: Permission denied: connect`). No compilation or
+  tests ran; Docker availability was not established. Prior 160-test PASS remains
+  historical evidence only. Build not run because bootstrap was blocked.
+- `git diff --check`: PASS. No runtime files modified.
+
+Decisions made:
+- No architecture or security policy changed; briefing recommendations are proposals.
+
+Remaining:
+- Resolve D13 and upload semantics, implement Steps 4–5, complete Phase 1 tests,
+  then Phase 2. Re-run server verification in a network-enabled Java 21/Docker
+  environment. Add backend CI; current CI covers Flutter/Android only.
+
+Risks / unresolved questions:
+- Device growth/list bounds, JSON body cap, future upload/read budgets, limiter
+  saturation/proxy handling, token retention and deployment readiness.
+- Imported-day version 1 cannot propagate later edits by merely resetting a
+  watermark; future portable backups must not copy installation identity/state.
+
+Relevant commit: inspected `d2b7271`; this documentation review is uncommitted.
+
+---
+
 ## 2026-09-18 — D16 resolved; Phase 1 Step 3: devices implemented
 
 Date: 2026-09-18
@@ -157,7 +349,8 @@ Risks / unresolved questions:
    by design; grace 0 closes it).
 3. Container-level errors (firewall rejections, direct `/error`) render Boot's
    plain JSON error body rather than problem+json; nothing internal leaks.
-4. Rate-limit and session state are in-process: single instance only (D15).
+4. Rate-limit state is in-process: single-instance limiter assumption (D15).
+   Session and refresh-token state are persisted in PostgreSQL (clarified 2026-09-19).
 5. D17 enforcement scope - **resolved 2026-09-18 by the developer**, recorded in
    architecture D17: admission control for every newly established password
    (registration; future change/reset), never at login, no retroactive effect on

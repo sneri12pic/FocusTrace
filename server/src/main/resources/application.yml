@@ -24,6 +24,14 @@ spring:
       # Request DTOs bind exactly their record components; anything else in the
       # body is a 400 rather than silently ignored (baseline section 9).
       fail-on-unknown-properties: true
+    factory:
+      constraints:
+        read:
+          # Jackson parser document-length constraint, in input units (bytes for a
+          # servlet body), enforced at buffer granularity: not an exact HTTP byte
+          # cap. The largest valid usage upload is about 1.4 MiB (architecture 9.1).
+          # Chunked bodies without Content-Length hit the same limit.
+          max-document-length: 2097152
 
 server:
   # D15: the client source is the socket peer. Forwarded / X-Forwarded-For are
