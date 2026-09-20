@@ -4,6 +4,7 @@ import org.junit.Assert.assertNull
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 import org.robolectric.RuntimeEnvironment
 
 /**
@@ -18,7 +19,12 @@ import org.robolectric.RuntimeEnvironment
  * path is tested here, where getting it wrong would strand the user signed in
  * with a credential that can never work.
  */
+// Pinned to 35: Robolectric 4.15.1 refuses an SDK above its max, and the app
+// targets 36. Nothing here is version-sensitive - there is no keystore provider
+// at any SDK off-device - and the real API 36 coverage is the instrumented test.
+// Drop the pin when Robolectric is next upgraded.
 @RunWith(RobolectricTestRunner::class)
+@Config(sdk = [35])
 class SecureCredentialStoreTest {
     private val context: android.content.Context = RuntimeEnvironment.getApplication()
 

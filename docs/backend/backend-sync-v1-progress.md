@@ -5,6 +5,73 @@ session reads to continue safely.
 
 ---
 
+## 2026-09-20 — Android 16 / API 36 targeting
+
+Not sync work. Recorded here because it closes the follow-up the Phase 3 entry
+below left open, and there is no separate Android stage document.
+
+Date: 2026-09-20
+Agent: Claude Code
+Goal: Move targetSdk 35 -> 36 and compileSdk 35 -> 36 without regressing usage
+tracking, blocking, overlays, restrictions, lifecycle or WorkManager.
+
+Completed:
+- `compileSdk = 36`, `targetSdk = 36`, `minSdk = 23` unchanged. Both were
+  sourced from Flutter's defaults (35) and are now pinned explicitly.
+- **AGP 8.7.3 -> 8.9.1**, required: 8.9.1 is the minimum that supports
+  compileSdk 36. Gradle 8.12 and JDK 21 already met its requirements, so the
+  wrapper and toolchain are untouched.
+- **Back handling in `BlockActivity`, required.** For targetSdk 36 the platform
+  stops calling `onBackPressed` and stops dispatching `KEYCODE_BACK`, so the
+  override guarding "back must not drop the user into the blocked app" would
+  have gone dead and the system's own predictive back would have run instead.
+  It now registers an `OnBackInvokedCallback` on API 33+, with `onBackPressed`
+  kept for 23-32.
+- `SecureCredentialStoreTest` pinned to `@Config(sdk = [35])`: Robolectric
+  4.15.1 refuses an SDK above its maximum, and the package now targets 36. The
+  existing `UsageHistoryRecoveryTest` already pinned its SDK the same way. The
+  real API 36 coverage for that class is the instrumented suite.
+
+Deliberately not changed, having checked the code rather than assuming:
+- Edge-to-edge: no `windowOptOutEdgeToEdgeEnforcement` anywhere, and targetSdk
+  35 already enforced it. Verified visually on device - no bar overlap.
+- Adaptive layouts: no `screenOrientation`, `resizableActivity` or aspect-ratio
+  attributes are declared, so there is nothing for API 36 to ignore.
+- `android:pageSizeCompat`: unnecessary. The APK passes `zipalign -c -P 16` and
+  the test device reports `PAGE_SIZE=4096`.
+- Ordered-broadcast priority, `scheduleAtFixedRate`, intent-redirection
+  hardening, health/Bluetooth/MediaStore/local-network changes: none of the
+  APIs involved appear in this repository.
+- JobScheduler quota tightening applies to every app on Android 16 regardless of
+  targetSdk, so it already applied before this change.
+
+Verification (Samsung SM-A366B, Android 16, API 36):
+- `flutter analyze` -> No issues found. `flutter test` -> 159 passed, 1 skipped.
+- `:app:testDebugUnitTest` -> 92 tests, 0 failures, 1 ignored.
+- `:app:connectedDebugAndroidTest` -> 14 tests, 0 failures.
+- `flutter build apk --debug` -> built; merged manifest `minSdkVersion="23"`
+  `targetSdkVersion="36"`, APK badging `compileSdkVersion='36'`.
+- Exercised on the device against the real app: launch; usage tracking (the
+  dashboard read real UsageStats, and launches rose 8 -> 10 across the session);
+  a "block now" rule on Calculator producing the `TYPE_APPLICATION_OVERLAY`
+  block screen, with back going to the launcher rather than back into the app;
+  a rule on TikTok producing `BlockActivity`, where logcat shows the
+  `ACTION_MAIN`/`CATEGORY_HOME` intent started from our own uid on back - proof
+  the new callback ran rather than a system default; `BlockerService` running as
+  a foreground service with `types=0x40000000` (specialUse) under
+  `targetSdkVersion:36`; background/foreground transitions; process death and
+  relaunch leaving the database intact and the restriction still applied;
+  `#UsageSnapshotWorker#` registered with JobScheduler and RUNNABLE.
+- Not exercised as a user flow: sign-out, because sync still has no UI. Its
+  credential clearing is covered by the connected tests and the Dart suite.
+
+Remaining:
+- `docs/` has no Android platform stage; if this area grows, it needs one.
+
+Relevant commit: (uncommitted at time of writing)
+
+---
+
 ## 2026-09-20 — Phase 3: secure credential persistence
 
 Date: 2026-09-20

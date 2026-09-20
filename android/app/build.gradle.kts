@@ -17,7 +17,8 @@ val keystoreProperties = Properties().apply {
 
 android {
     namespace = "com.stepandemianenko.focustrace"
-    compileSdk = flutter.compileSdkVersion
+    // 36, not Flutter's 35: FocusTrace targets Android 16.
+    compileSdk = 36
     ndkVersion = "27.0.12077973"
 
     compileOptions {
@@ -42,8 +43,8 @@ android {
         // the credential could only be stored in the clear, which the security
         // baseline forbids. Drops Android 5.0/5.1.
         minSdk = 23
-        // Pinned: Play requires API 35 for new apps (2026); Flutter's default may lag.
-        targetSdk = 35
+        // Pinned: FocusTrace targets Android 16; Flutter's default lags at 35.
+        targetSdk = 36
         versionCode = flutter.versionCode
         versionName = flutter.versionName
         // Only for connectedAndroidTest: the keystore work in
