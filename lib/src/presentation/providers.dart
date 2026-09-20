@@ -7,11 +7,13 @@ import '../application/services/usage_trend_service.dart';
 import '../data/datasources/focus_trace_local_data_source.dart';
 import '../data/datasources/backup_document_data_source.dart';
 import '../data/datasources/platform_locale_data_source.dart';
+import '../data/datasources/focus_trace_sync_api.dart';
 import '../data/datasources/platform_usage_data_source.dart';
 import '../data/repositories/app_language_repository_impl.dart';
 import '../data/repositories/data_transfer_repository_impl.dart';
 import '../data/repositories/report_repository_impl.dart';
 import '../data/repositories/settings_repository_impl.dart';
+import '../data/repositories/sync_repository_impl.dart';
 import '../data/repositories/usage_repository_impl.dart';
 import '../domain/models/app_usage_summary.dart';
 import '../domain/models/usage_session.dart';
@@ -19,6 +21,7 @@ import '../domain/repositories/app_language_repository.dart';
 import '../domain/repositories/data_transfer_repository.dart';
 import '../domain/repositories/report_repository.dart';
 import '../domain/repositories/settings_repository.dart';
+import '../domain/repositories/sync_repository.dart';
 import '../domain/repositories/usage_repository.dart';
 import 'view_models/app_language_view_model.dart';
 import 'view_models/app_usage_details_view_model.dart';
@@ -160,6 +163,44 @@ final reportRepositoryProvider = Provider<ReportRepository>((ref) {
 
 final settingsRepositoryProvider = Provider<SettingsRepository>((ref) {
   return SettingsRepositoryImpl(ref.watch(localDataSourceProvider));
+});
+
+/// Empty unless the build supplies
+/// `--dart-define=FOCUSTRACE_SYNC_BASE_URL=https://...`.
+///
+/// Sync is opt-in and off the critical path: with no base URL there is no sync
+/// object at all, and tracking, restrictions, blocking, schedules, local
+/// history and the UI are exactly what they were before.
+const syncBaseUrl = String.fromEnvironment('FOCUSTRACE_SYNC_BASE_URL');
+
+final syncSupportedProvider = Provider<bool>(
+  (ref) =>
+      syncBaseUrl.isNotEmpty &&
+      ref.watch(usagePlatformProvider) == UsagePlatform.android,
+);
+
+/// `null` when sync is not configured for this build. Widgets, screens and view
+/// models may hold this; none of them may hold [FocusTraceSyncApi].
+final syncRepositoryProvider = Provider<SyncRepository?>((ref) {
+  if (!ref.watch(syncSupportedProvider)) {
+    return null;
+  }
+  final source = ref.watch(localDataSourceProvider);
+  if (source is! UsageSyncDataSource) {
+    throw StateError('The configured local data source cannot sync usage.');
+  }
+  return SyncRepositoryImpl(
+    api: FocusTraceSyncApi(
+      baseUrl: Uri.parse(syncBaseUrl),
+      credentials: InMemorySyncCredentialStore(),
+    ),
+    localDataSource: source,
+    // Promotion does not survive the interface split, as in portableLocalDataSourceProvider.
+    usageDataSource: source as UsageSyncDataSource,
+    // Architecture section 3 wants Build.MODEL here, which needs a platform
+    // call this stage does not add. Tracked in the plan.
+    deviceName: 'Android device',
+  );
 });
 
 final onboardingViewModelProvider =

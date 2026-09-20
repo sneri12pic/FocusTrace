@@ -8,6 +8,7 @@ import '../../domain/models/app_usage_interval.dart';
 import '../../domain/models/app_usage_summary.dart';
 import '../../domain/models/daily_app_usage.dart';
 import '../../domain/models/restriction_event.dart';
+import '../../domain/models/sync_usage.dart';
 import '../../domain/models/usage_session.dart';
 import '../../domain/repositories/report_repository.dart';
 
@@ -75,6 +76,39 @@ abstract interface class UsageReportSnapshotDataSource {
   );
 }
 
+/// Settings keys owned by optional cloud sync.
+///
+/// Device-local, exactly like `usage_recovery_generation`: never exported to a
+/// portable backup and never accepted from one, because restoring one
+/// installation's backup onto another would otherwise clone its installation
+/// UUID and make two installations upload as one device.
+abstract final class SyncSettingKeys {
+  static const installationId = 'sync_installation_id';
+  static const usageWatermarkMs = 'sync_usage_watermark_ms';
+  static const importedVersionMs = 'sync_imported_version_ms';
+
+  static const prefix = 'sync';
+
+  static bool isDeviceLocal(String key) =>
+      key == 'usage_recovery_generation' || key.startsWith(prefix);
+}
+
+/// Read-only selection of local days for upload (backend architecture 8.2).
+///
+/// Sync never writes through this interface. The SQLite record stays
+/// authoritative and is never deleted or rewritten to suit the remote contract.
+abstract interface class UsageSyncDataSource {
+  /// Days whose content has changed since [watermarkMs].
+  ///
+  /// A day with a `usage_snapshot_days` row is versioned by its
+  /// `queried_at_ms`; one without is versioned by [importedVersionMs]
+  /// (architecture 7.2). `unavailable` days are never offered.
+  Future<List<SyncUsageDay>> readSyncUsageDays({
+    required int watermarkMs,
+    required int importedVersionMs,
+  });
+}
+
 abstract interface class UsageRecoveryDatabase {
   /// Ensure Flutter-owned migrations finish before the native writer opens it.
   Future<void> prepareUsageRecovery();
@@ -85,7 +119,8 @@ class SqfliteFocusTraceLocalDataSource
         FocusTraceLocalDataSource,
         PortableFocusTraceDataSource,
         UsageRecoveryDatabase,
-        UsageReportSnapshotDataSource {
+        UsageReportSnapshotDataSource,
+        UsageSyncDataSource {
   SqfliteFocusTraceLocalDataSource({
     this.databaseName = 'focus_trace.db',
     DatabaseFactory? databaseFactoryOverride,
@@ -435,6 +470,74 @@ ORDER BY duration_seconds DESC, app_name COLLATE NOCASE ASC
   }
 
   @override
+  Future<List<SyncUsageDay>> readSyncUsageDays({
+    required int watermarkMs,
+    required int importedVersionMs,
+  }) async {
+    final db = await _db;
+    // Driven by usage_snapshot_days so a measured day with no foreground usage
+    // is still offered, and by daily_app_usage for the versionless days that
+    // have no snapshot row at all (architecture 7.2).
+    final days = await db.rawQuery(
+      '''
+SELECT s.day AS day, s.timezone_id AS timezone_id,
+       s.queried_at_ms AS version, s.status AS status
+FROM usage_snapshot_days s
+WHERE s.status <> 'unavailable' AND s.queried_at_ms > ?
+UNION ALL
+SELECT DISTINCT u.day, NULL, ?, 'imported'
+FROM daily_app_usage u
+LEFT JOIN usage_snapshot_days s ON s.day = u.day
+WHERE s.day IS NULL AND ? > ?
+ORDER BY day
+''',
+      [watermarkMs, importedVersionMs, importedVersionMs, watermarkMs],
+    );
+    if (days.isEmpty) {
+      return const <SyncUsageDay>[];
+    }
+
+    // One range query rather than one per day, and no IN list to outgrow
+    // SQLite's variable limit. Days outside the selection are dropped below.
+    final selected = {for (final day in days) day['day'] as String};
+    final apps = await db.query(
+      'daily_app_usage',
+      columns: ['day', 'app_key', 'app_name', 'duration_seconds', 'launch_count'],
+      where: 'day >= ? AND day <= ?',
+      whereArgs: [days.first['day'], days.last['day']],
+      orderBy: 'day ASC, app_key ASC',
+    );
+    final byDay = <String, List<SyncUsageApp>>{};
+    for (final row in apps) {
+      final day = row['day'] as String;
+      if (!selected.contains(day)) {
+        continue;
+      }
+      byDay.putIfAbsent(day, () => <SyncUsageApp>[]).add(
+        SyncUsageApp(
+          appKey: row['app_key'] as String,
+          appName: row['app_name'] as String,
+          durationSeconds: row['duration_seconds'] as int,
+          launchCount: row['launch_count'] as int? ?? 0,
+        ),
+      );
+    }
+
+    return [
+      for (final day in days)
+        SyncUsageDay(
+          localDate: day['day'] as String,
+          // A versionless day has no recorded zone: usage_snapshot_days is not
+          // portable, so an imported or pre-v5 day genuinely does not know it.
+          timezoneId: day['timezone_id'] as String? ?? 'UTC',
+          snapshotVersion: day['version'] as int,
+          sourceStatus: day['status'] as String,
+          apps: byDay[day['day'] as String] ?? const <SyncUsageApp>[],
+        ),
+    ];
+  }
+
+  @override
   Future<void> insertUsageIntervals(List<AppUsageInterval> intervals) async {
     if (intervals.isEmpty) {
       return;
@@ -626,11 +729,15 @@ WHERE start_ms < ? AND end_ms > ? LIMIT 1
     return db.transaction((txn) async {
       final result = <String, List<Map<String, Object?>>>{};
       for (final table in _portableTableColumns.keys) {
-        result[table] = await txn.query(
-          table,
-          where: table == 'settings' ? 'key != ?' : null,
-          whereArgs: table == 'settings' ? ['usage_recovery_generation'] : null,
-        );
+        final rows = await txn.query(table);
+        result[table] = table == 'settings'
+            ? rows
+                  .where(
+                    (row) =>
+                        !SyncSettingKeys.isDeviceLocal(row['key'] as String),
+                  )
+                  .toList()
+            : rows;
       }
       return result;
     });
@@ -653,6 +760,13 @@ WHERE start_ms < ? AND end_ms > ? LIMIT 1
             throw FormatException(
               'Backup contains unsupported columns for ${entry.key}.',
             );
+          }
+          // A backup made by this app never carries these, but one hand-made or
+          // copied from another installation could. Importing a foreign
+          // sync_installation_id would make two installations one device.
+          if (entry.key == 'settings' &&
+              SyncSettingKeys.isDeviceLocal(row['key'] as String)) {
+            continue;
           }
           await txn.insert(
             entry.key,
@@ -688,6 +802,21 @@ WHERE start_ms < ? AND end_ms > ? LIMIT 1
 INSERT OR REPLACE INTO settings (key, value)
 VALUES ('usage_recovery_generation', lower(hex(randomblob(16))))
 ''');
+    // The days this just rewrote now carry no queried_at_ms, so the sync
+    // watermark would never offer them again, and they would all upload under
+    // whatever stamp the previous import left. Advancing the stamp and
+    // resetting the watermark in the same transaction is what makes an import
+    // supersede the server copy instead of colliding with it
+    // (architecture 7.2 and 8.2).
+    final establishedAtMs = DateTime.now().millisecondsSinceEpoch;
+    await txn.insert('settings', {
+      'key': SyncSettingKeys.importedVersionMs,
+      'value': '$establishedAtMs',
+    }, conflictAlgorithm: ConflictAlgorithm.replace);
+    await txn.insert('settings', {
+      'key': SyncSettingKeys.usageWatermarkMs,
+      'value': '0',
+    }, conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
   Map<String, Object?> _sessionToRow(UsageSession session) {

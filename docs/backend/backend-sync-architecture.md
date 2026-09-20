@@ -997,10 +997,48 @@ unchanged version, which the server recognises as a duplicate.
 
 ### 7.2 Days without a snapshot row
 
-Windows days, legacy pre-v5 days, and days restored from a portable backup have no
-`usage_snapshot_days` row. They upload with `snapshot_version = 1` and
-`source_status = 'imported'`. Since any real `queried_at_ms` is an epoch
-millisecond value, a genuine later snapshot always supersedes an imported one.
+Legacy pre-v5 days, days restored from a portable backup, and Windows days have no
+`usage_snapshot_days` row, so they have no `queried_at_ms` to use as a version.
+They upload with `source_status = 'imported'`.
+
+**Version policy. Resolved 2026-09-20, before the Phase 2 client** (the
+prerequisite named in 9.2). Such a day uploads with
+`snapshotVersion = sync_imported_version_ms`: one value in `settings` holding the
+local wall clock at the moment that versionless content was last established. It
+is written by `_invalidateUsageRecovery`, the single transaction through which
+both `importPortableData` and `clearAllData` rewrite that content and rotate
+`usage_recovery_generation`, and is initialised to "now" the first time a sync run
+needs it.
+
+This replaces the earlier `snapshot_version = 1`, which failed both halves of the
+9.2 requirement. Once a real snapshot for a day had been uploaded, re-importing
+that day would carry version 1, be answered `STALE`, and leave the server holding
+the superseded content permanently. And two different imports would both carry
+version 1 with different content, which is a permanent `CONFLICT`.
+
+Why one epoch-millisecond scalar is enough:
+
+- **It cannot regress.** The stamp comes from the same wall clock that produced
+  every `queried_at_ms` already uploaded, read at a later instant, so it exceeds
+  them. An import can supersede a real snapshot instead of being rejected.
+- **It cannot repeat across changed content.** Versionless content changes only
+  inside `_invalidateUsageRecovery`, which advances the stamp in that same
+  transaction.
+- **It is stable when nothing changed.** A re-run sends the same version with the
+  same content, which is `DUPLICATE`, exactly like a real snapshot.
+- **Per install, not per day.** Every versionless day shares the stamp, which is
+  correct: `snapshot_version` orders one `(device, local_date)`, never two dates.
+- Wall-clock regression has the consequence already described in section 14,
+  risk 1: a `STALE` day that the next advance repairs. Local data is untouched.
+
+**Deliberately not covered: open Dart-written days.** On Windows every day is
+written by `saveDailySummaries` with no snapshot row, and the current day changes
+through the day without passing through `_invalidateUsageRecovery`; the stamp
+would then repeat for changed content, which is `CONFLICT`. The Sync v1 client
+therefore uploads from Android only, where the current day always has a
+`usage_snapshot_days` row. The Windows shell is on a parked branch (section 14,
+risk 8); when it returns it needs its own version for the open day, not this
+stamp.
 
 ### 7.3 Write path
 
@@ -1101,6 +1139,23 @@ watermark on success. Because the server side is idempotent, an over-broad or
 repeated upload is harmless; the watermark is an optimisation, not a correctness
 mechanism.
 
+**Import and clear reset the watermark.** This settles risk 3 in section 14.
+`importPortableData` replaces `daily_app_usage` rows in place and advances no
+`queried_at_ms`, so a watermark alone would never re-offer the mutated days.
+`_invalidateUsageRecovery` therefore sets `sync_usage_watermark_ms` to `0` in the
+same transaction that deletes the snapshot rows, rotates
+`usage_recovery_generation` and advances `sync_imported_version_ms` (7.2). The
+next run re-offers everything: unchanged days answer `DUPLICATE`, mutated ones
+carry the new stamp and are `APPLIED`.
+
+**`sync_` settings are device-local and not portable.** `exportPortableData`
+already excludes `usage_recovery_generation` on the grounds that a backup carries
+data, not device-local evidence. Every `sync_` key is excluded for the same
+reason, and `importPortableData` drops them from an incoming backup as well.
+Otherwise restoring one installation's backup onto another would clone
+`sync_installation_id`, and two installations would upload as one device - each
+overwriting the other's days under a single `(device_id, local_date)` key.
+
 ### 8.3 Offline and retry behaviour
 
 1. Usage is recorded locally by the existing pipeline. Nothing changes.
@@ -1114,6 +1169,62 @@ mechanism.
 7. Repeating any request is safe (section 7).
 8. **Local history is never deleted after upload.** The server is a copy, not a
    destination.
+
+### 8.4 Client sync layering
+
+**Implemented in Phase 2.** Section 13's constraint, made concrete:
+
+```text
+domain/repositories/sync_repository.dart        the interface the app sees
+data/repositories/sync_repository_impl.dart     selection, sanitization, watermark
+data/datasources/focus_trace_sync_api.dart      the only HTTP in FocusTrace
+data/datasources/focus_trace_local_data_source.dart
+                                                UsageSyncDataSource, read-only
+```
+
+- `FocusTraceSyncApi` is the one place the app speaks HTTP. It owns the Sync v1
+  endpoints, JSON, status mapping and the access-token lifecycle. No widget,
+  screen or view model can reach it: `syncRepositoryProvider` exposes only the
+  domain interface.
+- Transport is `dart:io`'s `HttpClient` with `dart:convert`. **No HTTP
+  dependency was added.** Four endpoints do not need a package, and the tests
+  drive a real local `HttpServer` instead of a mock, which is closer to the real
+  thing anyway.
+- `syncNow` never throws. Every failure becomes a `SyncRunResult`, the same way
+  `recoverUsageHistory` swallows its own, so an unreachable, misconfigured or
+  disabled backend cannot touch tracking, restrictions, blocking, schedules,
+  local history or the UI.
+- Sync is opt-in at build time through
+  `--dart-define=FOCUSTRACE_SYNC_BASE_URL=...`. Without it
+  `syncRepositoryProvider` is `null` and no sync object is constructed.
+- **Credentials: nothing is persisted, and Phase 2 adds no dependency.** Both
+  tokens are memory-only, so the session lasts as long as the process. Security
+  baseline section 8 requires OS-backed storage for a long-lived credential, and
+  every Android mechanism that provides it - `EncryptedSharedPreferences`, a
+  Keystore AES key, and therefore `flutter_secure_storage` - requires API 23.
+  FocusTrace supports API 21, deliberately (the WorkManager 2.10.x pin in
+  `android/app/build.gradle.kts` exists for that reason). Below API 23 the only
+  options are the clear, which the baseline forbids, or hand-rolled Keystore RSA
+  wrapping, which is not a place to save a dependency either. Storing nothing is
+  strictly stronger than both. `SyncCredentialStore` is the seam a Keystore
+  store drops into the day `minSdk` moves to 23; that is a product decision
+  about dropping Android 5.x, tracked in the plan, not a sync decision.
+- **One refresh at a time.** Requests that see a `401` await a single in-flight
+  rotation. Racing it would present the same refresh token twice, and the
+  server's replay detection would revoke the whole session chain.
+- **Deterministic rejections are not retried.** A `400` on a batch is counted
+  and passed over, and the watermark advances past it, because resending the
+  identical request is the loop 9.1 forbids. Those days stay local and
+  authoritative; nothing is deleted to satisfy the remote contract. A transient
+  failure instead leaves the watermark alone, so the next run re-offers the work
+  and the server answers `DUPLICATE`.
+
+Known limits of the Phase 2 slice, tracked in the plan rather than fixed here:
+`display_name` is a fixed string because `Build.MODEL` needs a platform call
+this stage does not add; a day with a `usage_snapshot_days` row is offered even
+when it holds no app rows, but a versionless day with none is not; and a full
+re-upload after an import loads every selected day into memory at once, which is
+acceptable at this data scale (risk 4).
 
 ---
 
@@ -1431,11 +1542,14 @@ models. The SQLite layer stays authoritative.
    not attempt identity resolution; devices are presented separately, so the
    mismatch is visible rather than silently wrong.
 
-3. **The watermark can miss days.** If a day is mutated by something that does not
-   advance `queried_at_ms` - a portable-data import, for example - the watermark
-   will not select it. `importPortableData` already clears `usage_snapshot_days`
-   and rotates `usage_recovery_generation`; the sync client should reset its
-   watermark on the same signal. This must be verified during implementation.
+3. **The watermark can miss days. Resolved in Phase 2.** A day mutated by
+   something that does not advance `queried_at_ms` - a portable-data import -
+   would never be selected again. Verified during implementation:
+   `importPortableData` replaces `daily_app_usage` rows in place and advances no
+   version. `_invalidateUsageRecovery` now resets `sync_usage_watermark_ms` to
+   `0` and advances `sync_imported_version_ms` in the same transaction that
+   clears `usage_snapshot_days` and rotates `usage_recovery_generation` (7.2,
+   8.2), so the next run re-offers every day and the mutated ones apply.
 
 4. **No local per-day upload state.** The watermark is a single scalar. Losing it
    causes a full re-upload, which is safe but heavy. Acceptable at this scale.

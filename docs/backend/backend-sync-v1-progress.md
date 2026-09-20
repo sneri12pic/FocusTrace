@@ -5,6 +5,131 @@ session reads to continue safely.
 
 ---
 
+## 2026-09-20 — Phase 2: Flutter sync client and the end-to-end proof
+
+Date: 2026-09-20
+Agent: Claude Code
+Goal: Resolve the versionless-day version policy, build the smallest complete
+Flutter sync slice behind `domain -> sync repository -> remote data source`, and
+prove Device B reads Device A's history through the real API. No UI, no
+scheduler, no scope beyond Sync v1.
+
+Completed:
+- **Version policy resolved and written down before client code depended on it**
+  (architecture 7.2). A day with no `usage_snapshot_days` row uploads under
+  `sync_imported_version_ms`, one settings value holding the wall clock at the
+  moment that versionless content was last established. The old rule
+  (`snapshot_version = 1`) regressed below any real uploaded version and reused
+  one version across two different imports; both are permanent `STALE`/`CONFLICT`
+  states the server cannot repair.
+- **Architecture risk 3 verified and closed.** `importPortableData` replaces
+  `daily_app_usage` rows in place and advances no `queried_at_ms`, so a
+  watermark alone would never re-offer them. `_invalidateUsageRecovery` now
+  advances the stamp and resets `sync_usage_watermark_ms` to `0` in the same
+  transaction that clears the snapshot rows and rotates
+  `usage_recovery_generation`.
+- **Found and fixed a portability defect while implementing it.**
+  `exportPortableData` excluded only `usage_recovery_generation`, so a backup
+  would have carried `sync_installation_id`; restoring it onto a second
+  installation would have made two installations upload as one device, each
+  overwriting the other under one `(device_id, local_date)` key. Every `sync`
+  key is now excluded from export and dropped on import.
+- **Client** (architecture 8.4): `SyncRepository` (domain), `SyncRepositoryImpl`
+  (selection, sanitization, batching, watermark), `FocusTraceSyncApi` (the only
+  HTTP in FocusTrace, plus the access-token lifecycle with one coordinated
+  refresh), `UsageSyncDataSource` (read-only local selection). Installation UUID
+  v4 in `settings`, app-generated, never hardware-derived. `syncNow` never
+  throws; sync is opt-in through `--dart-define=FOCUSTRACE_SYNC_BASE_URL` and is
+  `null` without it.
+- **No new dependency.** Transport is `dart:io` `HttpClient` with
+  `dart:convert`; tests drive a real local `HttpServer`. `pubspec.yaml` and
+  `pubspec.lock` are unchanged.
+
+Files materially changed:
+- new: `lib/src/domain/models/sync_usage.dart`,
+  `lib/src/domain/repositories/sync_repository.dart`,
+  `lib/src/data/datasources/focus_trace_sync_api.dart`,
+  `lib/src/data/repositories/sync_repository_impl.dart`
+- `lib/src/data/datasources/focus_trace_local_data_source.dart`:
+  `SyncSettingKeys`, `UsageSyncDataSource.readSyncUsageDays`, portable
+  export/import filter, `_invalidateUsageRecovery`
+- `lib/src/presentation/providers.dart` (`syncSupportedProvider`,
+  `syncRepositoryProvider`), `lib/focus_trace.dart`
+- new tests: `test/sync_local_selection_test.dart` (10),
+  `test/sync_repository_test.dart` (19), `test/sync_end_to_end_test.dart` (1,
+  skipped without a live backend)
+- architecture 7.2, 8.2, 8.4 and risk 3; plan 5
+
+Verification:
+- `flutter analyze` -> No issues found.
+- `flutter test` -> **151 passed, 1 skipped** (the end-to-end proof, which is
+  skipped unless a backend URL is supplied, so the suite needs no Docker).
+- `flutter build apk --debug` -> built.
+- `cd android && ./gradlew :app:testDebugUnitTest` -> BUILD SUCCESSFUL.
+- **End-to-end against the real backend**: `server` running under `bootRun` on
+  port 18080 against PostgreSQL 16.15 in Docker, then
+  `flutter test test/sync_end_to_end_test.dart --dart-define=FOCUSTRACE_SYNC_BASE_URL=http://localhost:18080`
+  -> passed. Two independent installations, one account: A registered and
+  uploaded two days, a second run sent nothing, a forced re-upload answered
+  `DUPLICATE` twice, B registered and uploaded the same date with different
+  content, B read A's days back with `deviceId` and `deviceName` intact, both
+  re-ran with no change, A's local rows were byte-identical, and a third account
+  saw nothing (including with A's `deviceId` as the filter).
+- Verified directly in PostgreSQL afterwards: each run left exactly 2 devices,
+  3 `usage_days` rows and 3 `usage_day_apps` rows, with `2026-09-18` present
+  once per device at 222 s and 999 s - two measurements, never summed.
+- Mutation checks, each restored byte-identical: removing the single-flight
+  refresh, disabling NUL/surrogate stripping, and advancing the watermark on a
+  transient failure each fail `sync_repository_test.dart`.
+
+Decisions made:
+- **Credentials are not persisted, and no dependency was added for them.** Both
+  tokens are memory-only. Baseline section 8 requires OS-backed storage, and
+  every Android mechanism that provides it - `EncryptedSharedPreferences`, a
+  Keystore AES key, `flutter_secure_storage` - requires API 23. FocusTrace
+  targets API 21 on purpose (the WorkManager 2.10.x pin). `flutter_secure_storage`
+  was added, failed the APK build on exactly that, and was removed; `pubspec` is
+  back to its original state. Storing nothing is stronger than storing it in the
+  clear. `SyncCredentialStore` is the seam a real store slots into.
+  **Raising `minSdk` to 23 drops Android 5.x and is a product decision, not a
+  sync one. It is open.**
+- A deterministic `400` is counted as rejected and the watermark advances past
+  it. Resending an identical request forever is the retry loop architecture 9.1
+  forbids. Those days stay local and authoritative.
+- A transient failure leaves the watermark alone; already-sent batches simply
+  answer `DUPLICATE` next time.
+- Device registration runs once per sync run, not once ever: `POST /devices` is
+  idempotent and it keeps `last_seen_at` current.
+- A versionless day's `timezoneId` is `UTC`. `usage_snapshot_days` is not
+  portable, so an imported or pre-v5 day genuinely has no recorded zone.
+- Windows is out of scope for the client. Every Windows day is Dart-written with
+  no snapshot row and the current day mutates within the day, which one stamp
+  cannot express. The Windows shell is on a parked branch (risk 8).
+
+Remaining:
+- The `minSdk` 21-vs-23 decision above.
+- No UI and no scheduler: `syncNow()` works but nothing calls it yet. Sign-in, an
+  opt-in switch and a background trigger are the next client stage.
+- `display_name` is the fixed string `'Android device'`; architecture section 3
+  wants `Build.MODEL`, which needs a platform call this stage did not add.
+- A versionless day holding no app rows is never offered (that selection is
+  driven by `daily_app_usage`).
+- Backend release hardening is unchanged: device lifecycle and an active-device
+  quota, a persistent-storage bound per account, authenticated per-user limits
+  for `PUT /sync/usage-days` and `GET /usage`, and the `README.md` /
+  `docs/privacy.html` statements that sync makes inaccurate.
+
+Risks / unresolved questions:
+- A wall-clock regression can put `sync_imported_version_ms` below a version
+  already uploaded, which reads as `STALE` until the next advance. Same
+  consequence as risk 1: a stale server copy, never local corruption.
+- A full re-upload after an import loads every selected day into memory at once.
+  Acceptable at this data scale; risk 4 already records the trade-off.
+
+Relevant commit: see the follow-up documentation commit for the hash.
+
+---
+
 ## 2026-09-20 — Phase 1 Step 5: usage history read; Phase 1 complete
 
 Date: 2026-09-20

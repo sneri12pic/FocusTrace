@@ -153,13 +153,34 @@ every one proven by `server/` tests executed against PostgreSQL via Testcontaine
 Next is Phase 2, the Flutter sync client. See `backend-sync-v1-progress.md` for
 current state.
 
-Before the Flutter sync client ships (Phase 2):
+Phase 2 is complete as a vertical slice. The version policy for versionless days
+and the watermark/import interaction are resolved (architecture 7.2, 8.2, risk
+3); the client is layered `domain -> sync repository -> remote data source` with
+no HTTP above the repository (architecture 8.4); client pre-validation and
+deterministic sanitization are implemented (architecture 9.1); and Device B
+reading Device A's history through the real API is proven by
+`test/sync_end_to_end_test.dart` against the running backend and PostgreSQL.
 
-- A client version policy for imported, legacy and Dart-written days that cannot
-  regress below an uploaded version or reuse a version for changed content
-  (architecture 9.2).
-- Client pre-validation and deterministic sanitization against the published
-  limits (architecture 9.1, client obligations).
+Remaining for Sync v1 correctness, none of it blocking the slice:
+
+- `display_name` is the fixed string `'Android device'`. Architecture section 3
+  wants `Build.MODEL`, which needs a platform call this stage did not add, and a
+  way for the user to edit it.
+- **Decision needed: `minSdk` 21 or 23.** The refresh token is memory-only, so
+  the user signs in again after every app restart. Persisting it needs OS-backed
+  storage, which on Android means API 23 (`EncryptedSharedPreferences`, a
+  Keystore AES key, `flutter_secure_storage`). FocusTrace targets API 21 on
+  purpose. Raising `minSdk` to 23 drops Android 5.x devices and is a product
+  call; `SyncCredentialStore` is already the seam it slots into.
+- There is no UI and no scheduler. `syncRepositoryProvider` exists and
+  `syncNow()` works, but nothing in the app calls it yet: sign-in, an opt-in
+  switch and a background trigger are the next client stage.
+- Windows days are out of scope. Every Windows day is Dart-written with no
+  snapshot row and the current day mutates within the day, which the single
+  imported-version stamp cannot express (architecture 7.2). The Windows shell is
+  on a parked branch.
+- A versionless day that holds no app rows is never offered, because the
+  versionless selection is driven by `daily_app_usage`.
 
 Before public release (backend):
 
