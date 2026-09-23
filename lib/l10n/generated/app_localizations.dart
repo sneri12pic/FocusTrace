@@ -1532,6 +1532,150 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{count, plural, =1{1 second} other{{count} seconds}}'**
   String secondsCount(int count);
+
+  /// No description provided for @settingsSyncSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Account & sync'**
+  String get settingsSyncSection;
+
+  /// No description provided for @settingsSyncTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Cloud sync'**
+  String get settingsSyncTitle;
+
+  /// No description provided for @settingsSyncBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in to copy your daily usage totals to your own account, so another device can see them. Off until you turn it on.'**
+  String get settingsSyncBody;
+
+  /// No description provided for @settingsSyncEmail.
+  ///
+  /// In en, this message translates to:
+  /// **'Email'**
+  String get settingsSyncEmail;
+
+  /// No description provided for @settingsSyncPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Password'**
+  String get settingsSyncPassword;
+
+  /// No description provided for @settingsSyncSignIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in'**
+  String get settingsSyncSignIn;
+
+  /// No description provided for @settingsSyncCreateAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'Create account'**
+  String get settingsSyncCreateAccount;
+
+  /// No description provided for @settingsSyncSignOut.
+  ///
+  /// In en, this message translates to:
+  /// **'Log out'**
+  String get settingsSyncSignOut;
+
+  /// No description provided for @settingsSyncEnabledLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Sync this device'**
+  String get settingsSyncEnabledLabel;
+
+  /// No description provided for @settingsSyncEnabledSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Turning this off stops sending new data. Nothing already synced is deleted.'**
+  String get settingsSyncEnabledSubtitle;
+
+  /// No description provided for @settingsSyncNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Sync now'**
+  String get settingsSyncNow;
+
+  /// No description provided for @settingsSyncNeverSynced.
+  ///
+  /// In en, this message translates to:
+  /// **'Not synced yet'**
+  String get settingsSyncNeverSynced;
+
+  /// No description provided for @settingsSyncStateSyncing.
+  ///
+  /// In en, this message translates to:
+  /// **'Syncing...'**
+  String get settingsSyncStateSyncing;
+
+  /// No description provided for @settingsSyncStateSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Sync complete'**
+  String get settingsSyncStateSuccess;
+
+  /// No description provided for @settingsSyncStateError.
+  ///
+  /// In en, this message translates to:
+  /// **'Sync failed'**
+  String get settingsSyncStateError;
+
+  /// No description provided for @settingsSyncErrorOffline.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not reach the sync service. Check your connection and try again.'**
+  String get settingsSyncErrorOffline;
+
+  /// No description provided for @settingsSyncErrorCredentials.
+  ///
+  /// In en, this message translates to:
+  /// **'That email and password did not match an account.'**
+  String get settingsSyncErrorCredentials;
+
+  /// No description provided for @settingsSyncErrorEmailTaken.
+  ///
+  /// In en, this message translates to:
+  /// **'An account already exists for that email.'**
+  String get settingsSyncErrorEmailTaken;
+
+  /// No description provided for @settingsSyncErrorWeakPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a longer, less common password.'**
+  String get settingsSyncErrorWeakPassword;
+
+  /// No description provided for @settingsSyncErrorSessionExpired.
+  ///
+  /// In en, this message translates to:
+  /// **'Your session has ended. Sign in again.'**
+  String get settingsSyncErrorSessionExpired;
+
+  /// No description provided for @settingsSyncErrorRefused.
+  ///
+  /// In en, this message translates to:
+  /// **'The sync service refused the request.'**
+  String get settingsSyncErrorRefused;
+
+  /// No description provided for @settingsSyncErrorUnknown.
+  ///
+  /// In en, this message translates to:
+  /// **'Something went wrong. Try again.'**
+  String get settingsSyncErrorUnknown;
+
+  /// No description provided for @settingsSyncMissingFields.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter an email and a password.'**
+  String get settingsSyncMissingFields;
+
+  /// No description provided for @settingsPrivacyBodySync.
+  ///
+  /// In en, this message translates to:
+  /// **'Your usage history and settings stay on this device unless you export a backup or turn on cloud sync below.'**
+  String get settingsPrivacyBodySync;
 }
 
 class _AppLocalizationsDelegate

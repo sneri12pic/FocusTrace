@@ -820,4 +820,79 @@ class AppLocalizationsJa extends AppLocalizations {
     );
     return '$_temp0';
   }
+
+  @override
+  String get settingsSyncSection => 'アカウントと同期';
+
+  @override
+  String get settingsSyncTitle => 'クラウド同期';
+
+  @override
+  String get settingsSyncBody =>
+      'サインインすると、1日の利用時間の合計を自分のアカウントにコピーし、別の端末から確認できます。オンにするまでは無効です。';
+
+  @override
+  String get settingsSyncEmail => 'メールアドレス';
+
+  @override
+  String get settingsSyncPassword => 'パスワード';
+
+  @override
+  String get settingsSyncSignIn => 'サインイン';
+
+  @override
+  String get settingsSyncCreateAccount => 'アカウントを作成';
+
+  @override
+  String get settingsSyncSignOut => 'ログアウト';
+
+  @override
+  String get settingsSyncEnabledLabel => 'この端末を同期する';
+
+  @override
+  String get settingsSyncEnabledSubtitle =>
+      'オフにすると新しいデータの送信を停止します。同期済みのデータは削除されません。';
+
+  @override
+  String get settingsSyncNow => '今すぐ同期';
+
+  @override
+  String get settingsSyncNeverSynced => '未同期';
+
+  @override
+  String get settingsSyncStateSyncing => '同期中...';
+
+  @override
+  String get settingsSyncStateSuccess => '同期が完了しました';
+
+  @override
+  String get settingsSyncStateError => '同期に失敗しました';
+
+  @override
+  String get settingsSyncErrorOffline => '同期サービスに接続できませんでした。接続を確認して再試行してください。';
+
+  @override
+  String get settingsSyncErrorCredentials => 'メールアドレスとパスワードが一致するアカウントはありません。';
+
+  @override
+  String get settingsSyncErrorEmailTaken => 'そのメールアドレスのアカウントは既に存在します。';
+
+  @override
+  String get settingsSyncErrorWeakPassword => 'もっと長く、推測されにくいパスワードを選んでください。';
+
+  @override
+  String get settingsSyncErrorSessionExpired => 'セッションが終了しました。もう一度サインインしてください。';
+
+  @override
+  String get settingsSyncErrorRefused => '同期サービスがリクエストを拒否しました。';
+
+  @override
+  String get settingsSyncErrorUnknown => '問題が発生しました。再試行してください。';
+
+  @override
+  String get settingsSyncMissingFields => 'メールアドレスとパスワードを入力してください。';
+
+  @override
+  String get settingsPrivacyBodySync =>
+      '利用履歴と設定は、バックアップを書き出すか下のクラウド同期をオンにしない限り、この端末に保存されたままです。';
 }

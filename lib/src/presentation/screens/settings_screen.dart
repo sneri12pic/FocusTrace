@@ -6,6 +6,7 @@ import '../../domain/models/app_language.dart';
 import '../localization/app_localizations_x.dart';
 import '../providers.dart';
 import '../view_models/settings_view_model.dart';
+import '../widgets/sync_account_card.dart';
 import 'reports_screen.dart';
 
 class SettingsScreen extends ConsumerWidget {
@@ -17,6 +18,7 @@ class SettingsScreen extends ConsumerWidget {
     final viewModel = ref.read(settingsViewModelProvider.notifier);
     final appLanguageState = ref.watch(appLanguageViewModelProvider);
     final dataTransferSupported = ref.watch(dataTransferSupportedProvider);
+    final syncSupported = ref.watch(syncSupportedProvider);
     final l10n = context.l10n;
     final settingsBusy = state.isSaving || state.isTransferring;
 
@@ -193,7 +195,14 @@ class SettingsScreen extends ConsumerWidget {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  Text(l10n.settingsPrivacyBody),
+                  // The plain sentence claims FocusTrace never uploads
+                  // anything, which stops being true once sync exists in the
+                  // build, so it is only shown where that still holds.
+                  Text(
+                    syncSupported
+                        ? l10n.settingsPrivacyBodySync
+                        : l10n.settingsPrivacyBody,
+                  ),
                   const SizedBox(height: 12),
                   OutlinedButton.icon(
                     onPressed: settingsBusy
@@ -220,6 +229,11 @@ class SettingsScreen extends ConsumerWidget {
               ),
             ),
           ),
+          if (syncSupported) ...[
+            const SizedBox(height: 24),
+            _sectionHeader(context, l10n.settingsSyncSection),
+            const SyncAccountCard(),
+          ],
           const SizedBox(height: 24),
           _sectionHeader(context, l10n.settingsSupportSection),
           // ponytail: Windows tracking card removed for Play release, restore

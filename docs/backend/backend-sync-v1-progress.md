@@ -5,6 +5,109 @@ session reads to continue safely.
 
 ---
 
+## 2026-09-20 — Phase 4: the sync UI slice
+
+Date: 2026-09-20
+Agent: Claude Code
+Goal: Make the existing sync capability reachable from the app with the
+smallest reasonable UI. No scheduler, no background sync, no incremental sync,
+no cross-device aggregation, no backend change.
+
+Completed:
+- **One new settings section, no new route.** `SyncAccountCard` renders inside
+  the existing `SettingsScreen` behind `syncSupportedProvider`, so a build
+  without `FOCUSTRACE_SYNC_BASE_URL` is byte-for-byte the app it was.
+  Signed out: email, password, Sign in, Create account. Signed in: the account,
+  an opt-in switch, Sync now, last successful sync, the current phase and
+  Log out.
+- **`SyncViewModel`** owns `SyncPhase { idle, syncing, success, error }`,
+  refuses a second run while one is in flight, and re-reads the session from the
+  repository - and therefore the keystore - on every load.
+- **Opt-in is real but lives in the view model, not `syncNow()`.** The
+  repository stays the raw capability; nothing calls it but this view model,
+  and `canSyncNow` requires the switch. `SyncRepository.isSyncEnabled` is the
+  flag a background scheduler must consult when it exists. Putting the check
+  inside `syncNow()` would have rewritten ten proven tests for no behaviour.
+- **Three device-local settings** under the `sync` prefix, so
+  `SyncSettingKeys.isDeviceLocal` already keeps them out of portable backups:
+  `sync_enabled`, `sync_last_success_ms`, `sync_account_email`. The email is not
+  a credential and is cleared on sign-out.
+- **Errors are classified, never echoed.** `SyncAuthException`/`SyncAuthFailure`
+  are new domain types: `SyncRepositoryImpl` translates `SyncApiException` into
+  them, so no status code, server body or exception string crosses into
+  presentation. `SyncRunResult` gained a `SyncFailureReason` for the same reason
+  on the sync path. The UI maps both onto localized sentences.
+- **A privacy claim that had gone false.** `settingsPrivacyBody` said
+  "FocusTrace never uploads them", which stops being true once sync exists in
+  the build. A sync-aware variant is shown where sync is available; the original
+  sentence is untouched everywhere else.
+- 24 new strings across all seven locales. No `@` metadata, matching the
+  convention for keys without placeholders.
+
+Files materially changed:
+- new: `lib/src/presentation/view_models/sync_view_model.dart`,
+  `lib/src/presentation/widgets/sync_account_card.dart`,
+  `test/sync_view_model_test.dart`, `test/sync_account_card_test.dart`
+- `lib/src/domain/models/sync_usage.dart` (`SyncFailureReason`,
+  `SyncAuthFailure`, `SyncAuthException`),
+  `lib/src/domain/repositories/sync_repository.dart`,
+  `lib/src/data/repositories/sync_repository_impl.dart`,
+  `lib/src/data/datasources/focus_trace_local_data_source.dart`,
+  `lib/src/presentation/providers.dart`,
+  `lib/src/presentation/screens/settings_screen.dart`, `lib/focus_trace.dart`,
+  all seven `lib/l10n/app_*.arb` and their generated output
+
+Verification:
+- `flutter analyze` -> No issues found.
+- `flutter test` -> **185 passed, 1 skipped** (was 159; +26 new).
+- `flutter build apk --debug` -> built.
+- `cd android && ./gradlew :app:testDebugUnitTest` -> 92 tests, 0 failures.
+- `:app:connectedDebugAndroidTest` on the SM-A366B -> 14 tests, 0 failures.
+- **End-to-end re-proved against the real backend** after the repository
+  changes: `bootRun` on port 18081 against PostgreSQL 16.15 in Docker, then
+  `flutter test test/sync_end_to_end_test.dart --dart-define=FOCUSTRACE_SYNC_BASE_URL=http://localhost:18081`
+  -> 2 passed.
+- **On the device**, with a build made using
+  `--dart-define=FOCUSTRACE_SYNC_BASE_URL=https://sync.invalid`: the section
+  renders in place, the empty-field guard fires, the password field obscures and
+  is cleared after a failed attempt, and a sign-in against an unreachable host
+  shows "Could not reach the sync service..." with no hostname, exception type
+  or stack trace on screen. Nothing from our process appeared in logcat for
+  `hunter2pw`, `refreshToken`, `accessToken` or `Bearer` - the password string
+  appears zero times anywhere in the buffer.
+- Not exercised on a device: a real signed-in session. The phone cannot reach a
+  localhost backend, and pointing it at one over cleartext would mean a
+  network-security-config change this task had no business making. The signed-in
+  paths are covered by the widget and view-model suites and by the end-to-end
+  run on the host.
+
+Decisions made:
+- Turning sync off disables Sync now as well. Opt-in that still allowed manual
+  uploads would not be opt-in.
+- Sign-out leaves `sync_usage_watermark_ms` alone: the server still holds what
+  this device uploaded, and signing back in should not re-send all of it.
+- A sync run that finds nothing to send still stamps the clock, so "last synced"
+  does not look permanently stale on an idle device.
+- A `sessionExpired` result drops the UI to signed out, because the credential
+  store has already cleared the token by then.
+
+Remaining:
+- No scheduler and no background sync; `isSyncEnabled` exists for it.
+- The opt-in gate is not enforced inside `syncNow()`. Any future caller that is
+  not this view model must check it.
+- `display_name` is still the fixed string `'Android device'`.
+
+Risks / unresolved questions:
+- With the soft keyboard open, an injected `KEYCODE_BACK` exited the app rather
+  than closing the keyboard. Under targetSdk 36 that key is no longer dispatched
+  to the app, so an injected event is not the same path a real gesture takes,
+  and an attempt to reproduce it with the on-screen back button did not register
+  the tap. Unverified either way; worth one manual check on a device.
+
+Relevant commit: (uncommitted at time of writing)
+
+---
+
 ## 2026-09-20 — Android 16 / API 36 targeting
 
 Not sync work. Recorded here because it closes the follow-up the Phase 3 entry

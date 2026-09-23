@@ -87,6 +87,17 @@ abstract final class SyncSettingKeys {
   static const usageWatermarkMs = 'sync_usage_watermark_ms';
   static const importedVersionMs = 'sync_imported_version_ms';
 
+  /// Opt-in. Absent means off: sync never starts on its own.
+  static const enabled = 'sync_enabled';
+
+  /// Wall clock of the last run that reached the server, for the UI only.
+  static const lastSuccessMs = 'sync_last_success_ms';
+
+  /// Which account this installation is signed into, so the UI can say so.
+  /// Not a credential, and cleared on sign-out. Device-local like every key
+  /// here, so it never travels in a portable backup.
+  static const accountEmail = 'sync_account_email';
+
   static const prefix = 'sync';
 
   static bool isDeviceLocal(String key) =>

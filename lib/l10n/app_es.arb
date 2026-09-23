@@ -8,20 +8,28 @@
   "durationMinutesShort": "{minutes} min",
   "@durationMinutesShort": {
     "placeholders": {
-      "minutes": {"type": "int"}
+      "minutes": {
+        "type": "int"
+      }
     }
   },
   "durationHoursShort": "{hours} h",
   "@durationHoursShort": {
     "placeholders": {
-      "hours": {"type": "int"}
+      "hours": {
+        "type": "int"
+      }
     }
   },
   "durationHoursMinutesShort": "{hours} h {minutes} min",
   "@durationHoursMinutesShort": {
     "placeholders": {
-      "hours": {"type": "int"},
-      "minutes": {"type": "int"}
+      "hours": {
+        "type": "int"
+      },
+      "minutes": {
+        "type": "int"
+      }
     }
   },
   "categoryEntertainment": "Entretenimiento",
@@ -60,8 +68,12 @@
   "onboardingAppUsageToday": "{appKey} · {duration} hoy",
   "@onboardingAppUsageToday": {
     "placeholders": {
-      "appKey": {"type": "String"},
-      "duration": {"type": "String"}
+      "appKey": {
+        "type": "String"
+      },
+      "duration": {
+        "type": "String"
+      }
     }
   },
   "onboardingDailyTarget": "Objetivo diario",
@@ -76,7 +88,9 @@
   "restrictionsRoutineAppCount": "{count} aplicaciones",
   "@restrictionsRoutineAppCount": {
     "placeholders": {
-      "count": {"type": "int"}
+      "count": {
+        "type": "int"
+      }
     }
   },
   "restrictionsDeleteRoutine": "Eliminar rutina",
@@ -95,27 +109,66 @@
   "routineAppsTitle": "Aplicaciones",
   "routineAddApp": "Añadir aplicación",
   "routineAppUsage": "{duration} hoy · Incluida en el límite",
-  "@routineAppUsage": {"placeholders": {"duration": {"type": "String"}}},
+  "@routineAppUsage": {
+    "placeholders": {
+      "duration": {
+        "type": "String"
+      }
+    }
+  },
   "routineAppUsageExcluded": "{duration} hoy · Excluida del límite",
-  "@routineAppUsageExcluded": {"placeholders": {"duration": {"type": "String"}}},
+  "@routineAppUsageExcluded": {
+    "placeholders": {
+      "duration": {
+        "type": "String"
+      }
+    }
+  },
   "routineRemoveApp": "Eliminar aplicación",
   "routineKeepOneApp": "Una rutina debe conservar al menos una aplicación.",
   "routineDeleteConfirmation": "¿Eliminar {name}? Esta acción no se puede deshacer.",
-  "@routineDeleteConfirmation": {"placeholders": {"name": {"type": "String"}}},
+  "@routineDeleteConfirmation": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "routineUsageToday": "Uso contabilizado hoy",
   "routineNoIncludedApps": "Incluye al menos una aplicación para activar el límite",
   "routineLimitReached": "Límite alcanzado · las aplicaciones incluidas están bloqueadas hasta medianoche",
   "routineActive": "Activa",
   "routinePaused": "En pausa",
   "routineUsageOfLimit": "{used} de {limit}",
-  "@routineUsageOfLimit": {"placeholders": {"used": {"type": "String"}, "limit": {"type": "String"}}},
+  "@routineUsageOfLimit": {
+    "placeholders": {
+      "used": {
+        "type": "String"
+      },
+      "limit": {
+        "type": "String"
+      }
+    }
+  },
   "routineRemaining": "Quedan {duration}",
-  "@routineRemaining": {"placeholders": {"duration": {"type": "String"}}},
+  "@routineRemaining": {
+    "placeholders": {
+      "duration": {
+        "type": "String"
+      }
+    }
+  },
   "routineSetLimit": "Establecer límite",
   "routineEditLimit": "Editar límite",
   "routineRemoveLimit": "Quitar límite",
   "routineUsageOnly": "{duration} hoy",
-  "@routineUsageOnly": {"placeholders": {"duration": {"type": "String"}}},
+  "@routineUsageOnly": {
+    "placeholders": {
+      "duration": {
+        "type": "String"
+      }
+    }
+  },
   "restrictionsPlatformStatusTitle": "Estado solo en esta plataforma",
   "restrictionsPlatformStatusBody": "Las reglas se guardan y se muestran aquí. Actualmente, el bloqueo a pantalla completa solo funciona en Android.",
   "restrictionsEmptyTitle": "No hay restricciones de aplicaciones",
@@ -127,22 +180,32 @@
   "restrictionsBlockedUntil": "Bloqueada hasta las {time}",
   "@restrictionsBlockedUntil": {
     "placeholders": {
-      "time": {"type": "String"}
+      "time": {
+        "type": "String"
+      }
     }
   },
   "restrictionsTemporaryBlockExpired": "El bloqueo temporal ha caducado",
   "restrictionsDailyLimitStatus": "Límite diario: {limitDuration} · Uso: {usedDuration}",
   "@restrictionsDailyLimitStatus": {
     "placeholders": {
-      "limitDuration": {"type": "String"},
-      "usedDuration": {"type": "String"}
+      "limitDuration": {
+        "type": "String"
+      },
+      "usedDuration": {
+        "type": "String"
+      }
     }
   },
   "restrictionsScheduleStatus": "Horario: {startTime}–{endTime}",
   "@restrictionsScheduleStatus": {
     "placeholders": {
-      "startTime": {"type": "String"},
-      "endTime": {"type": "String"}
+      "startTime": {
+        "type": "String"
+      },
+      "endTime": {
+        "type": "String"
+      }
     }
   },
   "restrictionsOverlayPermissionTitle": "Se requiere permiso para mostrar sobre otras aplicaciones",
@@ -161,13 +224,17 @@
   "restrictionEditorDailyLimitPerDay": "{duration} al día",
   "@restrictionEditorDailyLimitPerDay": {
     "placeholders": {
-      "duration": {"type": "String"}
+      "duration": {
+        "type": "String"
+      }
     }
   },
   "dashboardDayTracked": "Registrado · {duration}",
   "@dashboardDayTracked": {
     "placeholders": {
-      "duration": {"type": "String"}
+      "duration": {
+        "type": "String"
+      }
     }
   },
   "dashboardDayToday": "Hoy",
@@ -194,7 +261,9 @@
   "percentageValue": "{percentage}%",
   "@percentageValue": {
     "placeholders": {
-      "percentage": {"type": "String"}
+      "percentage": {
+        "type": "String"
+      }
     }
   },
   "actionRemoveFromToday": "Eliminar de hoy",
@@ -204,7 +273,9 @@
   "excludeAppDialogTitle": "¿Excluir {appName}?",
   "@excludeAppDialogTitle": {
     "placeholders": {
-      "appName": {"type": "String"}
+      "appName": {
+        "type": "String"
+      }
     }
   },
   "excludeAppDialogBody": "La aplicación dejará de registrarse y de mostrarse en las estadísticas. Puedes deshacerlo desde Ajustes.",
@@ -213,7 +284,9 @@
   "sessionTotal": "Total · {duration}",
   "@sessionTotal": {
     "placeholders": {
-      "duration": {"type": "String"}
+      "duration": {
+        "type": "String"
+      }
     }
   },
   "sessionDetailsUnavailable": "Los detalles de las sesiones no están disponibles en esta plataforma.",
@@ -222,16 +295,26 @@
   "sessionOngoingLabel": "{startTime} · {duration}",
   "@sessionOngoingLabel": {
     "placeholders": {
-      "startTime": {"type": "String"},
-      "duration": {"type": "String"}
+      "startTime": {
+        "type": "String"
+      },
+      "duration": {
+        "type": "String"
+      }
     }
   },
   "sessionRangeLabel": "{startTime} – {endTime} · {duration}",
   "@sessionRangeLabel": {
     "placeholders": {
-      "startTime": {"type": "String"},
-      "endTime": {"type": "String"},
-      "duration": {"type": "String"}
+      "startTime": {
+        "type": "String"
+      },
+      "endTime": {
+        "type": "String"
+      },
+      "duration": {
+        "type": "String"
+      }
     }
   },
   "permissionWindowsPrivacyTitle": "Privacidad de Windows",
@@ -247,27 +330,39 @@
   "bubblePercentageOfToday": "{percentage}% de hoy",
   "@bubblePercentageOfToday": {
     "placeholders": {
-      "percentage": {"type": "String"}
+      "percentage": {
+        "type": "String"
+      }
     }
   },
   "usageBubbleSemanticsLabel": "{appName}, {category}",
   "@usageBubbleSemanticsLabel": {
     "placeholders": {
-      "appName": {"type": "String"},
-      "category": {"type": "String"}
+      "appName": {
+        "type": "String"
+      },
+      "category": {
+        "type": "String"
+      }
     }
   },
   "usageBubbleNearLimitSemanticsLabel": "{appName}, {category}, límite diario casi alcanzado",
   "@usageBubbleNearLimitSemanticsLabel": {
     "placeholders": {
-      "appName": {"type": "String"},
-      "category": {"type": "String"}
+      "appName": {
+        "type": "String"
+      },
+      "category": {
+        "type": "String"
+      }
     }
   },
   "summaryLaunchCount": "Inicios: {count}",
   "@summaryLaunchCount": {
     "placeholders": {
-      "count": {"type": "int"}
+      "count": {
+        "type": "int"
+      }
     }
   },
   "usageTrendDayShort": "D",
@@ -276,35 +371,51 @@
   "usageTrendIncrease": "{period}: el uso aumentó un {percentage}%",
   "@usageTrendIncrease": {
     "placeholders": {
-      "period": {"type": "String"},
-      "percentage": {"type": "int"}
+      "period": {
+        "type": "String"
+      },
+      "percentage": {
+        "type": "int"
+      }
     }
   },
   "usageTrendDecrease": "{period}: el uso disminuyó un {percentage}%",
   "@usageTrendDecrease": {
     "placeholders": {
-      "period": {"type": "String"},
-      "percentage": {"type": "int"}
+      "period": {
+        "type": "String"
+      },
+      "percentage": {
+        "type": "int"
+      }
     }
   },
   "usageTrendUnchanged": "{period}: uso sin cambios",
   "@usageTrendUnchanged": {
     "placeholders": {
-      "period": {"type": "String"}
+      "period": {
+        "type": "String"
+      }
     }
   },
   "usageTrendNew": "Nuevo",
   "usageTrendNewLabel": "{period}: uso nuevo, sin datos anteriores para comparar",
   "@usageTrendNewLabel": {
     "placeholders": {
-      "period": {"type": "String"}
+      "period": {
+        "type": "String"
+      }
     }
   },
   "usageTrendIncreaseAboveCap": "{period}: el uso aumentó más de un {percentage}%",
   "@usageTrendIncreaseAboveCap": {
     "placeholders": {
-      "period": {"type": "String"},
-      "percentage": {"type": "int"}
+      "period": {
+        "type": "String"
+      },
+      "percentage": {
+        "type": "int"
+      }
     }
   },
   "usageDetailsLastSevenDays": "Últimos 7 días",
@@ -316,22 +427,62 @@
   "usageDetailsPeriodTotal": "{period}: {duration}",
   "@usageDetailsPeriodTotal": {
     "placeholders": {
-      "period": {"type": "String"},
-      "duration": {"type": "String"}
+      "period": {
+        "type": "String"
+      },
+      "duration": {
+        "type": "String"
+      }
     }
   },
   "usageDetailsMoreThanYesterday": "{percentage}% más que ayer",
-  "@usageDetailsMoreThanYesterday": {"placeholders": {"percentage": {"type": "int"}}},
+  "@usageDetailsMoreThanYesterday": {
+    "placeholders": {
+      "percentage": {
+        "type": "int"
+      }
+    }
+  },
   "usageDetailsLessThanYesterday": "{percentage}% menos que ayer",
-  "@usageDetailsLessThanYesterday": {"placeholders": {"percentage": {"type": "int"}}},
+  "@usageDetailsLessThanYesterday": {
+    "placeholders": {
+      "percentage": {
+        "type": "int"
+      }
+    }
+  },
   "usageDetailsSameAsYesterday": "Igual que ayer",
   "usageDetailsNoYesterdayComparison": "Aún no hay comparación con ayer",
   "usageDetailsRankLabel": "N.º {rank} más usada",
-  "@usageDetailsRankLabel": {"placeholders": {"rank": {"type": "int"}}},
+  "@usageDetailsRankLabel": {
+    "placeholders": {
+      "rank": {
+        "type": "int"
+      }
+    }
+  },
   "usageDetailsRankLead": "{duration} más que {appName}",
-  "@usageDetailsRankLead": {"placeholders": {"duration": {"type": "String"}, "appName": {"type": "String"}}},
+  "@usageDetailsRankLead": {
+    "placeholders": {
+      "duration": {
+        "type": "String"
+      },
+      "appName": {
+        "type": "String"
+      }
+    }
+  },
   "usageDetailsDayValue": "{date}: {duration}",
-  "@usageDetailsDayValue": {"placeholders": {"date": {"type": "String"}, "duration": {"type": "String"}}},
+  "@usageDetailsDayValue": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      },
+      "duration": {
+        "type": "String"
+      }
+    }
+  },
   "reportsTitle": "Informes",
   "reportsWeekly": "Semanal",
   "reportsMonthly": "Mensual",
@@ -346,7 +497,13 @@
   "reportsFirstApp": "Primera app más frecuente",
   "reportsConsistency": "Constancia del primer uso",
   "reportsVariationMinutes": "± {minutes} min",
-  "@reportsVariationMinutes": {"placeholders": {"minutes": {"type": "int"}}},
+  "@reportsVariationMinutes": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
   "reportsWakeHeuristic": "El primer uso se estima tras al menos 4 horas de inactividad, entre las 04:00 y las 14:00.",
   "reportsTopApps": "Apps más usadas",
   "reportsRestrictionsTitle": "Actividad de restricciones",
@@ -389,7 +546,33 @@
   "secondsCount": "{count, plural, =1{1 segundo} other{{count} segundos}}",
   "@secondsCount": {
     "placeholders": {
-      "count": {"type": "int"}
+      "count": {
+        "type": "int"
+      }
     }
-  }
+  },
+  "settingsSyncSection": "Cuenta y sincronización",
+  "settingsSyncTitle": "Sincronización en la nube",
+  "settingsSyncBody": "Inicia sesión para copiar tus totales de uso diario a tu propia cuenta y verlos en otro dispositivo. Desactivada hasta que la actives.",
+  "settingsSyncEmail": "Correo electrónico",
+  "settingsSyncPassword": "Contraseña",
+  "settingsSyncSignIn": "Iniciar sesión",
+  "settingsSyncCreateAccount": "Crear cuenta",
+  "settingsSyncSignOut": "Cerrar sesión",
+  "settingsSyncEnabledLabel": "Sincronizar este dispositivo",
+  "settingsSyncEnabledSubtitle": "Al desactivarlo se deja de enviar datos nuevos. No se borra nada ya sincronizado.",
+  "settingsSyncNow": "Sincronizar ahora",
+  "settingsSyncNeverSynced": "Aún sin sincronizar",
+  "settingsSyncStateSyncing": "Sincronizando...",
+  "settingsSyncStateSuccess": "Sincronización completada",
+  "settingsSyncStateError": "Error de sincronización",
+  "settingsSyncErrorOffline": "No se pudo contactar con el servicio. Comprueba tu conexión e inténtalo de nuevo.",
+  "settingsSyncErrorCredentials": "Ese correo y esa contraseña no coinciden con ninguna cuenta.",
+  "settingsSyncErrorEmailTaken": "Ya existe una cuenta con ese correo.",
+  "settingsSyncErrorWeakPassword": "Elige una contraseña más larga y menos común.",
+  "settingsSyncErrorSessionExpired": "Tu sesión ha terminado. Vuelve a iniciar sesión.",
+  "settingsSyncErrorRefused": "El servicio rechazó la solicitud.",
+  "settingsSyncErrorUnknown": "Algo salió mal. Inténtalo de nuevo.",
+  "settingsSyncMissingFields": "Introduce un correo y una contraseña.",
+  "settingsPrivacyBodySync": "Tu historial de uso y tus ajustes permanecen en este dispositivo salvo que exportes una copia o actives la sincronización en la nube más abajo."
 }

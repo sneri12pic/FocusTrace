@@ -140,6 +140,41 @@ class RemoteUsageDay {
   String toString() => 'RemoteUsageDay($deviceName/$localDate, ${apps.length})';
 }
 
+/// Why a sync run failed, in terms the UI can act on.
+///
+/// [SyncRunResult.failure] is a developer string: it can name an exception type
+/// and is never shown to anyone. This is the classification a screen may
+/// present, so it carries no status code, no server text and no transport
+/// detail - only the handful of cases a user can do something about.
+enum SyncFailureReason { notSignedIn, offline, sessionExpired, refused, unknown }
+
+/// Why signing in or creating an account failed.
+///
+/// Sign-in reports failure by throwing, because there is no useful "partial"
+/// result, while [SyncRunResult] reports it by value. Both classify into cases
+/// a user can act on and nothing more.
+enum SyncAuthFailure {
+  offline,
+  invalidCredentials,
+  emailTaken,
+  weakPassword,
+  unknown,
+}
+
+/// The only authentication error that leaves the sync repository.
+///
+/// Deliberately carries no status code, no server body and no inner exception:
+/// this is the object a screen sees, and the layer above the repository has no
+/// business knowing HTTP happened.
+class SyncAuthException implements Exception {
+  const SyncAuthException(this.failure);
+
+  final SyncAuthFailure failure;
+
+  @override
+  String toString() => 'SyncAuthException($failure)';
+}
+
 /// Outcome of one sync run. Best-effort by design: [failure] being set never
 /// means local data changed.
 class SyncRunResult {
@@ -148,9 +183,13 @@ class SyncRunResult {
     required this.results,
     required this.rejectedDays,
     this.failure,
+    this.reason,
   });
 
-  const SyncRunResult.failed(String this.failure)
+  const SyncRunResult.failed(
+    String this.failure, [
+    this.reason = SyncFailureReason.unknown,
+  ])
     : uploadedDays = 0,
       results = const <SyncUploadResult>[],
       rejectedDays = 0;
@@ -162,6 +201,10 @@ class SyncRunResult {
   /// retried unchanged (architecture 9.1, client obligations).
   final int rejectedDays;
   final String? failure;
+
+  /// Set whenever [failure] is. Defaults to [SyncFailureReason.unknown] so a
+  /// caller never has to handle "failed but unclassified".
+  final SyncFailureReason? reason;
 
   bool get succeeded => failure == null;
 

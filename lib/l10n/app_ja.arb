@@ -8,20 +8,28 @@
   "durationMinutesShort": "{minutes}分",
   "@durationMinutesShort": {
     "placeholders": {
-      "minutes": {"type": "int"}
+      "minutes": {
+        "type": "int"
+      }
     }
   },
   "durationHoursShort": "{hours}時間",
   "@durationHoursShort": {
     "placeholders": {
-      "hours": {"type": "int"}
+      "hours": {
+        "type": "int"
+      }
     }
   },
   "durationHoursMinutesShort": "{hours}時間{minutes}分",
   "@durationHoursMinutesShort": {
     "placeholders": {
-      "hours": {"type": "int"},
-      "minutes": {"type": "int"}
+      "hours": {
+        "type": "int"
+      },
+      "minutes": {
+        "type": "int"
+      }
     }
   },
   "categoryEntertainment": "エンターテインメント",
@@ -60,8 +68,12 @@
   "onboardingAppUsageToday": "{appKey}・今日 {duration}",
   "@onboardingAppUsageToday": {
     "placeholders": {
-      "appKey": {"type": "String"},
-      "duration": {"type": "String"}
+      "appKey": {
+        "type": "String"
+      },
+      "duration": {
+        "type": "String"
+      }
     }
   },
   "onboardingDailyTarget": "1日の目標",
@@ -76,7 +88,9 @@
   "restrictionsRoutineAppCount": "{count}個のアプリ",
   "@restrictionsRoutineAppCount": {
     "placeholders": {
-      "count": {"type": "int"}
+      "count": {
+        "type": "int"
+      }
     }
   },
   "restrictionsDeleteRoutine": "ルーティンを削除",
@@ -95,27 +109,66 @@
   "routineAppsTitle": "アプリ",
   "routineAddApp": "アプリを追加",
   "routineAppUsage": "今日 {duration} · 上限に含む",
-  "@routineAppUsage": {"placeholders": {"duration": {"type": "String"}}},
+  "@routineAppUsage": {
+    "placeholders": {
+      "duration": {
+        "type": "String"
+      }
+    }
+  },
   "routineAppUsageExcluded": "今日 {duration} · 上限から除外",
-  "@routineAppUsageExcluded": {"placeholders": {"duration": {"type": "String"}}},
+  "@routineAppUsageExcluded": {
+    "placeholders": {
+      "duration": {
+        "type": "String"
+      }
+    }
+  },
   "routineRemoveApp": "アプリを削除",
   "routineKeepOneApp": "ルーティンには1つ以上のアプリが必要です。",
   "routineDeleteConfirmation": "{name}を削除しますか？この操作は元に戻せません。",
-  "@routineDeleteConfirmation": {"placeholders": {"name": {"type": "String"}}},
+  "@routineDeleteConfirmation": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "routineUsageToday": "今日のカウント対象時間",
   "routineNoIncludedApps": "上限を有効にするにはアプリを1つ以上含めてください",
   "routineLimitReached": "上限に到達 · 対象アプリは午前0時までブロックされます",
   "routineActive": "有効",
   "routinePaused": "一時停止",
   "routineUsageOfLimit": "{limit}中 {used}",
-  "@routineUsageOfLimit": {"placeholders": {"used": {"type": "String"}, "limit": {"type": "String"}}},
+  "@routineUsageOfLimit": {
+    "placeholders": {
+      "used": {
+        "type": "String"
+      },
+      "limit": {
+        "type": "String"
+      }
+    }
+  },
   "routineRemaining": "残り {duration}",
-  "@routineRemaining": {"placeholders": {"duration": {"type": "String"}}},
+  "@routineRemaining": {
+    "placeholders": {
+      "duration": {
+        "type": "String"
+      }
+    }
+  },
   "routineSetLimit": "上限を設定",
   "routineEditLimit": "上限を編集",
   "routineRemoveLimit": "上限を削除",
   "routineUsageOnly": "今日 {duration}",
-  "@routineUsageOnly": {"placeholders": {"duration": {"type": "String"}}},
+  "@routineUsageOnly": {
+    "placeholders": {
+      "duration": {
+        "type": "String"
+      }
+    }
+  },
   "restrictionsPlatformStatusTitle": "このプラットフォームの状態のみ",
   "restrictionsPlatformStatusBody": "ルールは保存され、ここに表示されます。全画面ブロックは現在Androidでのみ動作します。",
   "restrictionsEmptyTitle": "アプリの制限はありません",
@@ -127,22 +180,32 @@
   "restrictionsBlockedUntil": "{time}までブロック",
   "@restrictionsBlockedUntil": {
     "placeholders": {
-      "time": {"type": "String"}
+      "time": {
+        "type": "String"
+      }
     }
   },
   "restrictionsTemporaryBlockExpired": "一時ブロックは終了しました",
   "restrictionsDailyLimitStatus": "1日の上限 {limitDuration}・{usedDuration} 使用済み",
   "@restrictionsDailyLimitStatus": {
     "placeholders": {
-      "limitDuration": {"type": "String"},
-      "usedDuration": {"type": "String"}
+      "limitDuration": {
+        "type": "String"
+      },
+      "usedDuration": {
+        "type": "String"
+      }
     }
   },
   "restrictionsScheduleStatus": "スケジュール {startTime}～{endTime}",
   "@restrictionsScheduleStatus": {
     "placeholders": {
-      "startTime": {"type": "String"},
-      "endTime": {"type": "String"}
+      "startTime": {
+        "type": "String"
+      },
+      "endTime": {
+        "type": "String"
+      }
     }
   },
   "restrictionsOverlayPermissionTitle": "オーバーレイ権限が必要です",
@@ -161,13 +224,17 @@
   "restrictionEditorDailyLimitPerDay": "1日あたり {duration}",
   "@restrictionEditorDailyLimitPerDay": {
     "placeholders": {
-      "duration": {"type": "String"}
+      "duration": {
+        "type": "String"
+      }
     }
   },
   "dashboardDayTracked": "記録・{duration}",
   "@dashboardDayTracked": {
     "placeholders": {
-      "duration": {"type": "String"}
+      "duration": {
+        "type": "String"
+      }
     }
   },
   "dashboardDayToday": "今日",
@@ -194,7 +261,9 @@
   "percentageValue": "{percentage}%",
   "@percentageValue": {
     "placeholders": {
-      "percentage": {"type": "String"}
+      "percentage": {
+        "type": "String"
+      }
     }
   },
   "actionRemoveFromToday": "今日から削除",
@@ -204,7 +273,9 @@
   "excludeAppDialogTitle": "{appName}を除外しますか？",
   "@excludeAppDialogTitle": {
     "placeholders": {
-      "appName": {"type": "String"}
+      "appName": {
+        "type": "String"
+      }
     }
   },
   "excludeAppDialogBody": "このアプリは追跡されず、統計にも表示されなくなります。「設定」から元に戻せます。",
@@ -213,7 +284,9 @@
   "sessionTotal": "合計・{duration}",
   "@sessionTotal": {
     "placeholders": {
-      "duration": {"type": "String"}
+      "duration": {
+        "type": "String"
+      }
     }
   },
   "sessionDetailsUnavailable": "このプラットフォームではセッションの詳細を利用できません。",
@@ -222,16 +295,26 @@
   "sessionOngoingLabel": "{startTime}・{duration}",
   "@sessionOngoingLabel": {
     "placeholders": {
-      "startTime": {"type": "String"},
-      "duration": {"type": "String"}
+      "startTime": {
+        "type": "String"
+      },
+      "duration": {
+        "type": "String"
+      }
     }
   },
   "sessionRangeLabel": "{startTime}～{endTime}・{duration}",
   "@sessionRangeLabel": {
     "placeholders": {
-      "startTime": {"type": "String"},
-      "endTime": {"type": "String"},
-      "duration": {"type": "String"}
+      "startTime": {
+        "type": "String"
+      },
+      "endTime": {
+        "type": "String"
+      },
+      "duration": {
+        "type": "String"
+      }
     }
   },
   "permissionWindowsPrivacyTitle": "Windowsのプライバシー",
@@ -247,27 +330,39 @@
   "bubblePercentageOfToday": "今日の{percentage}%",
   "@bubblePercentageOfToday": {
     "placeholders": {
-      "percentage": {"type": "String"}
+      "percentage": {
+        "type": "String"
+      }
     }
   },
   "usageBubbleSemanticsLabel": "{appName}、{category}",
   "@usageBubbleSemanticsLabel": {
     "placeholders": {
-      "appName": {"type": "String"},
-      "category": {"type": "String"}
+      "appName": {
+        "type": "String"
+      },
+      "category": {
+        "type": "String"
+      }
     }
   },
   "usageBubbleNearLimitSemanticsLabel": "{appName}、{category}、1日の上限にまもなく到達",
   "@usageBubbleNearLimitSemanticsLabel": {
     "placeholders": {
-      "appName": {"type": "String"},
-      "category": {"type": "String"}
+      "appName": {
+        "type": "String"
+      },
+      "category": {
+        "type": "String"
+      }
     }
   },
   "summaryLaunchCount": "起動回数: {count}",
   "@summaryLaunchCount": {
     "placeholders": {
-      "count": {"type": "int"}
+      "count": {
+        "type": "int"
+      }
     }
   },
   "usageTrendDayShort": "日",
@@ -276,35 +371,51 @@
   "usageTrendIncrease": "{period}: 使用時間が{percentage}%増加",
   "@usageTrendIncrease": {
     "placeholders": {
-      "period": {"type": "String"},
-      "percentage": {"type": "int"}
+      "period": {
+        "type": "String"
+      },
+      "percentage": {
+        "type": "int"
+      }
     }
   },
   "usageTrendDecrease": "{period}: 使用時間が{percentage}%減少",
   "@usageTrendDecrease": {
     "placeholders": {
-      "period": {"type": "String"},
-      "percentage": {"type": "int"}
+      "period": {
+        "type": "String"
+      },
+      "percentage": {
+        "type": "int"
+      }
     }
   },
   "usageTrendUnchanged": "{period}: 使用時間に変化なし",
   "@usageTrendUnchanged": {
     "placeholders": {
-      "period": {"type": "String"}
+      "period": {
+        "type": "String"
+      }
     }
   },
   "usageTrendNew": "新規",
   "usageTrendNewLabel": "{period}: 新しい使用、比較できる以前のデータなし",
   "@usageTrendNewLabel": {
     "placeholders": {
-      "period": {"type": "String"}
+      "period": {
+        "type": "String"
+      }
     }
   },
   "usageTrendIncreaseAboveCap": "{period}: 使用時間が{percentage}%以上増加",
   "@usageTrendIncreaseAboveCap": {
     "placeholders": {
-      "period": {"type": "String"},
-      "percentage": {"type": "int"}
+      "period": {
+        "type": "String"
+      },
+      "percentage": {
+        "type": "int"
+      }
     }
   },
   "usageDetailsLastSevenDays": "過去7日間",
@@ -316,22 +427,62 @@
   "usageDetailsPeriodTotal": "{period}: {duration}",
   "@usageDetailsPeriodTotal": {
     "placeholders": {
-      "period": {"type": "String"},
-      "duration": {"type": "String"}
+      "period": {
+        "type": "String"
+      },
+      "duration": {
+        "type": "String"
+      }
     }
   },
   "usageDetailsMoreThanYesterday": "昨日より{percentage}%多い",
-  "@usageDetailsMoreThanYesterday": {"placeholders": {"percentage": {"type": "int"}}},
+  "@usageDetailsMoreThanYesterday": {
+    "placeholders": {
+      "percentage": {
+        "type": "int"
+      }
+    }
+  },
   "usageDetailsLessThanYesterday": "昨日より{percentage}%少ない",
-  "@usageDetailsLessThanYesterday": {"placeholders": {"percentage": {"type": "int"}}},
+  "@usageDetailsLessThanYesterday": {
+    "placeholders": {
+      "percentage": {
+        "type": "int"
+      }
+    }
+  },
   "usageDetailsSameAsYesterday": "昨日と同じ",
   "usageDetailsNoYesterdayComparison": "昨日との比較はまだありません",
   "usageDetailsRankLabel": "利用時間第{rank}位",
-  "@usageDetailsRankLabel": {"placeholders": {"rank": {"type": "int"}}},
+  "@usageDetailsRankLabel": {
+    "placeholders": {
+      "rank": {
+        "type": "int"
+      }
+    }
+  },
   "usageDetailsRankLead": "{appName}より{duration}多い",
-  "@usageDetailsRankLead": {"placeholders": {"duration": {"type": "String"}, "appName": {"type": "String"}}},
+  "@usageDetailsRankLead": {
+    "placeholders": {
+      "duration": {
+        "type": "String"
+      },
+      "appName": {
+        "type": "String"
+      }
+    }
+  },
   "usageDetailsDayValue": "{date}: {duration}",
-  "@usageDetailsDayValue": {"placeholders": {"date": {"type": "String"}, "duration": {"type": "String"}}},
+  "@usageDetailsDayValue": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      },
+      "duration": {
+        "type": "String"
+      }
+    }
+  },
   "reportsTitle": "レポート",
   "reportsWeekly": "週間",
   "reportsMonthly": "月間",
@@ -346,7 +497,13 @@
   "reportsFirstApp": "最も多い最初のアプリ",
   "reportsConsistency": "初回使用の一貫性",
   "reportsVariationMinutes": "± {minutes}分",
-  "@reportsVariationMinutes": {"placeholders": {"minutes": {"type": "int"}}},
+  "@reportsVariationMinutes": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
   "reportsWakeHeuristic": "初回使用は、4時間以上操作がなく、04:00〜14:00の間に使われた時刻から推定されます。",
   "reportsTopApps": "最も使用したアプリ",
   "reportsRestrictionsTitle": "制限アクティビティ",
@@ -389,7 +546,33 @@
   "secondsCount": "{count, plural, other{{count}秒}}",
   "@secondsCount": {
     "placeholders": {
-      "count": {"type": "int"}
+      "count": {
+        "type": "int"
+      }
     }
-  }
+  },
+  "settingsSyncSection": "アカウントと同期",
+  "settingsSyncTitle": "クラウド同期",
+  "settingsSyncBody": "サインインすると、1日の利用時間の合計を自分のアカウントにコピーし、別の端末から確認できます。オンにするまでは無効です。",
+  "settingsSyncEmail": "メールアドレス",
+  "settingsSyncPassword": "パスワード",
+  "settingsSyncSignIn": "サインイン",
+  "settingsSyncCreateAccount": "アカウントを作成",
+  "settingsSyncSignOut": "ログアウト",
+  "settingsSyncEnabledLabel": "この端末を同期する",
+  "settingsSyncEnabledSubtitle": "オフにすると新しいデータの送信を停止します。同期済みのデータは削除されません。",
+  "settingsSyncNow": "今すぐ同期",
+  "settingsSyncNeverSynced": "未同期",
+  "settingsSyncStateSyncing": "同期中...",
+  "settingsSyncStateSuccess": "同期が完了しました",
+  "settingsSyncStateError": "同期に失敗しました",
+  "settingsSyncErrorOffline": "同期サービスに接続できませんでした。接続を確認して再試行してください。",
+  "settingsSyncErrorCredentials": "メールアドレスとパスワードが一致するアカウントはありません。",
+  "settingsSyncErrorEmailTaken": "そのメールアドレスのアカウントは既に存在します。",
+  "settingsSyncErrorWeakPassword": "もっと長く、推測されにくいパスワードを選んでください。",
+  "settingsSyncErrorSessionExpired": "セッションが終了しました。もう一度サインインしてください。",
+  "settingsSyncErrorRefused": "同期サービスがリクエストを拒否しました。",
+  "settingsSyncErrorUnknown": "問題が発生しました。再試行してください。",
+  "settingsSyncMissingFields": "メールアドレスとパスワードを入力してください。",
+  "settingsPrivacyBodySync": "利用履歴と設定は、バックアップを書き出すか下のクラウド同期をオンにしない限り、この端末に保存されたままです。"
 }

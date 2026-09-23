@@ -844,4 +844,85 @@ class AppLocalizationsEn extends AppLocalizations {
     );
     return '$_temp0';
   }
+
+  @override
+  String get settingsSyncSection => 'Account & sync';
+
+  @override
+  String get settingsSyncTitle => 'Cloud sync';
+
+  @override
+  String get settingsSyncBody =>
+      'Sign in to copy your daily usage totals to your own account, so another device can see them. Off until you turn it on.';
+
+  @override
+  String get settingsSyncEmail => 'Email';
+
+  @override
+  String get settingsSyncPassword => 'Password';
+
+  @override
+  String get settingsSyncSignIn => 'Sign in';
+
+  @override
+  String get settingsSyncCreateAccount => 'Create account';
+
+  @override
+  String get settingsSyncSignOut => 'Log out';
+
+  @override
+  String get settingsSyncEnabledLabel => 'Sync this device';
+
+  @override
+  String get settingsSyncEnabledSubtitle =>
+      'Turning this off stops sending new data. Nothing already synced is deleted.';
+
+  @override
+  String get settingsSyncNow => 'Sync now';
+
+  @override
+  String get settingsSyncNeverSynced => 'Not synced yet';
+
+  @override
+  String get settingsSyncStateSyncing => 'Syncing...';
+
+  @override
+  String get settingsSyncStateSuccess => 'Sync complete';
+
+  @override
+  String get settingsSyncStateError => 'Sync failed';
+
+  @override
+  String get settingsSyncErrorOffline =>
+      'Could not reach the sync service. Check your connection and try again.';
+
+  @override
+  String get settingsSyncErrorCredentials =>
+      'That email and password did not match an account.';
+
+  @override
+  String get settingsSyncErrorEmailTaken =>
+      'An account already exists for that email.';
+
+  @override
+  String get settingsSyncErrorWeakPassword =>
+      'Choose a longer, less common password.';
+
+  @override
+  String get settingsSyncErrorSessionExpired =>
+      'Your session has ended. Sign in again.';
+
+  @override
+  String get settingsSyncErrorRefused =>
+      'The sync service refused the request.';
+
+  @override
+  String get settingsSyncErrorUnknown => 'Something went wrong. Try again.';
+
+  @override
+  String get settingsSyncMissingFields => 'Enter an email and a password.';
+
+  @override
+  String get settingsPrivacyBodySync =>
+      'Your usage history and settings stay on this device unless you export a backup or turn on cloud sync below.';
 }

@@ -856,4 +856,87 @@ class AppLocalizationsDe extends AppLocalizations {
     );
     return '$_temp0';
   }
+
+  @override
+  String get settingsSyncSection => 'Konto und Synchronisierung';
+
+  @override
+  String get settingsSyncTitle => 'Cloud-Synchronisierung';
+
+  @override
+  String get settingsSyncBody =>
+      'Melde dich an, um deine täglichen Nutzungssummen in dein eigenes Konto zu kopieren und auf einem anderen Gerät zu sehen. Aus, bis du sie einschaltest.';
+
+  @override
+  String get settingsSyncEmail => 'E-Mail';
+
+  @override
+  String get settingsSyncPassword => 'Passwort';
+
+  @override
+  String get settingsSyncSignIn => 'Anmelden';
+
+  @override
+  String get settingsSyncCreateAccount => 'Konto erstellen';
+
+  @override
+  String get settingsSyncSignOut => 'Abmelden';
+
+  @override
+  String get settingsSyncEnabledLabel => 'Dieses Gerät synchronisieren';
+
+  @override
+  String get settingsSyncEnabledSubtitle =>
+      'Ausschalten stoppt das Senden neuer Daten. Bereits Synchronisiertes wird nicht gelöscht.';
+
+  @override
+  String get settingsSyncNow => 'Jetzt synchronisieren';
+
+  @override
+  String get settingsSyncNeverSynced => 'Noch nicht synchronisiert';
+
+  @override
+  String get settingsSyncStateSyncing => 'Wird synchronisiert...';
+
+  @override
+  String get settingsSyncStateSuccess => 'Synchronisierung abgeschlossen';
+
+  @override
+  String get settingsSyncStateError => 'Synchronisierung fehlgeschlagen';
+
+  @override
+  String get settingsSyncErrorOffline =>
+      'Der Dienst war nicht erreichbar. Prüfe deine Verbindung und versuche es erneut.';
+
+  @override
+  String get settingsSyncErrorCredentials =>
+      'E-Mail und Passwort passen zu keinem Konto.';
+
+  @override
+  String get settingsSyncErrorEmailTaken =>
+      'Für diese E-Mail gibt es bereits ein Konto.';
+
+  @override
+  String get settingsSyncErrorWeakPassword =>
+      'Wähle ein längeres, weniger verbreitetes Passwort.';
+
+  @override
+  String get settingsSyncErrorSessionExpired =>
+      'Deine Sitzung ist abgelaufen. Melde dich erneut an.';
+
+  @override
+  String get settingsSyncErrorRefused =>
+      'Der Dienst hat die Anfrage abgelehnt.';
+
+  @override
+  String get settingsSyncErrorUnknown =>
+      'Etwas ist schiefgelaufen. Versuche es erneut.';
+
+  @override
+  String get settingsSyncMissingFields =>
+      'Gib eine E-Mail und ein Passwort ein.';
+
+  @override
+  String get settingsPrivacyBodySync =>
+      'Dein Nutzungsverlauf und deine Einstellungen bleiben auf diesem Gerät, außer du exportierst eine Sicherung oder aktivierst unten die Cloud-Synchronisierung.';
 }

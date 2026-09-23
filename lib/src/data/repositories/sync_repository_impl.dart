@@ -50,20 +50,75 @@ class SyncRepositoryImpl implements SyncRepository {
   Future<bool> get isSignedIn => _api.hasSession;
 
   @override
+  Future<String?> accountEmail() =>
+      _local.readSetting(SyncSettingKeys.accountEmail);
+
+  @override
+  Future<bool> isSyncEnabled() async =>
+      await _local.readSetting(SyncSettingKeys.enabled) == 'true';
+
+  @override
+  Future<void> setSyncEnabled(bool enabled) => _local.writeSetting(
+    SyncSettingKeys.enabled,
+    enabled ? 'true' : 'false',
+  );
+
+  @override
+  Future<DateTime?> lastSuccessfulSyncAt() async {
+    final stored = await _readInt(SyncSettingKeys.lastSuccessMs);
+    return stored == null
+        ? null
+        : DateTime.fromMillisecondsSinceEpoch(stored);
+  }
+
+  @override
   Future<void> createAccount({
     required String email,
     required String password,
   }) async {
-    await _api.register(email, password);
-    await _api.signIn(email, password);
+    await _authenticating(() async {
+      await _api.register(email, password);
+      await _api.signIn(email, password);
+    });
+    await _local.writeSetting(SyncSettingKeys.accountEmail, email);
   }
 
   @override
-  Future<void> signIn({required String email, required String password}) =>
-      _api.signIn(email, password);
+  Future<void> signIn({required String email, required String password}) async {
+    await _authenticating(() => _api.signIn(email, password));
+    await _local.writeSetting(SyncSettingKeys.accountEmail, email);
+  }
 
+  /// Translates the transport's exception into the domain's, so nothing above
+  /// this repository can see a status code or a server message.
+  Future<void> _authenticating(Future<void> Function() action) async {
+    try {
+      await action();
+    } on SyncApiException catch (error) {
+      throw SyncAuthException(_authFailureFor(error));
+    }
+  }
+
+  static SyncAuthFailure _authFailureFor(SyncApiException error) {
+    if (error.statusCode == 0) {
+      return SyncAuthFailure.offline;
+    }
+    return switch (error.statusCode) {
+      400 || 401 => SyncAuthFailure.invalidCredentials,
+      409 => SyncAuthFailure.emailTaken,
+      422 => SyncAuthFailure.weakPassword,
+      _ => SyncAuthFailure.unknown,
+    };
+  }
+
+  /// Leaves the upload watermark alone: the server still holds what this
+  /// device uploaded, and signing back in should not re-send all of it.
   @override
-  Future<void> signOut() => _api.signOut();
+  Future<void> signOut() async {
+    await _api.signOut();
+    await _local.writeSetting(SyncSettingKeys.accountEmail, '');
+    await _local.writeSetting(SyncSettingKeys.enabled, 'false');
+  }
 
   @override
   Future<List<RemoteUsageDay>> readRemoteHistory({
@@ -90,7 +145,10 @@ class SyncRepositoryImpl implements SyncRepository {
   Future<SyncRunResult> syncNow() async {
     try {
       if (!await _api.hasSession) {
-        return const SyncRunResult.failed('Not signed in.');
+        return const SyncRunResult.failed(
+          'Not signed in.',
+          SyncFailureReason.notSignedIn,
+        );
       }
       final watermark = await _readInt(SyncSettingKeys.usageWatermarkMs) ?? 0;
       final days = _sanitize(
@@ -100,6 +158,9 @@ class SyncRepositoryImpl implements SyncRepository {
         ),
       );
       if (days.isEmpty) {
+        // Nothing to send is still a run that reached its conclusion, so the
+        // "last synced" stamp advances rather than looking permanently stale.
+        await _recordSuccess();
         return const SyncRunResult(
           uploadedDays: 0,
           results: <SyncUploadResult>[],
@@ -143,18 +204,42 @@ class SyncRepositoryImpl implements SyncRepository {
         SyncSettingKeys.usageWatermarkMs,
         '$highWater',
       );
+      await _recordSuccess();
       return SyncRunResult(
         uploadedDays: days.length - rejected,
         results: results,
         rejectedDays: rejected,
       );
     } on SyncApiException catch (error) {
-      return SyncRunResult.failed(error.message);
+      return SyncRunResult.failed(error.message, _reasonFor(error));
     } on Object catch (error) {
       // Swallowed exactly as recoverUsageHistory swallows its own: a sync
       // failure must not surface as an app failure.
-      return SyncRunResult.failed('Sync failed (${error.runtimeType}).');
+      return SyncRunResult.failed(
+        'Sync failed (${error.runtimeType}).',
+        SyncFailureReason.unknown,
+      );
     }
+  }
+
+  Future<void> _recordSuccess() => _local.writeSetting(
+    SyncSettingKeys.lastSuccessMs,
+    '${_now().millisecondsSinceEpoch}',
+  );
+
+  /// The status is deliberately not carried any further than this. Everything
+  /// above sees one of a handful of cases a user can act on.
+  static SyncFailureReason _reasonFor(SyncApiException error) {
+    if (error.statusCode == 0) {
+      return SyncFailureReason.offline;
+    }
+    if (error.isUnauthenticated) {
+      return SyncFailureReason.sessionExpired;
+    }
+    if (error.isPermanent) {
+      return SyncFailureReason.refused;
+    }
+    return SyncFailureReason.unknown;
   }
 
   // --- upload selection --------------------------------------------------------

@@ -857,4 +857,84 @@ class AppLocalizationsUk extends AppLocalizations {
     );
     return '$_temp0';
   }
+
+  @override
+  String get settingsSyncSection => 'Обліковий запис і синхронізація';
+
+  @override
+  String get settingsSyncTitle => 'Хмарна синхронізація';
+
+  @override
+  String get settingsSyncBody =>
+      'Увійдіть, щоб копіювати щоденні підсумки використання до власного облікового запису й бачити їх на іншому пристрої. Вимкнено, доки ви не увімкнете.';
+
+  @override
+  String get settingsSyncEmail => 'Електронна пошта';
+
+  @override
+  String get settingsSyncPassword => 'Пароль';
+
+  @override
+  String get settingsSyncSignIn => 'Увійти';
+
+  @override
+  String get settingsSyncCreateAccount => 'Створити обліковий запис';
+
+  @override
+  String get settingsSyncSignOut => 'Вийти';
+
+  @override
+  String get settingsSyncEnabledLabel => 'Синхронізувати цей пристрій';
+
+  @override
+  String get settingsSyncEnabledSubtitle =>
+      'Вимкнення зупиняє надсилання нових даних. Уже синхронізоване не видаляється.';
+
+  @override
+  String get settingsSyncNow => 'Синхронізувати зараз';
+
+  @override
+  String get settingsSyncNeverSynced => 'Ще не синхронізовано';
+
+  @override
+  String get settingsSyncStateSyncing => 'Синхронізація...';
+
+  @override
+  String get settingsSyncStateSuccess => 'Синхронізацію завершено';
+
+  @override
+  String get settingsSyncStateError => 'Помилка синхронізації';
+
+  @override
+  String get settingsSyncErrorOffline =>
+      'Не вдалося зв’язатися зі службою. Перевірте з’єднання та спробуйте ще раз.';
+
+  @override
+  String get settingsSyncErrorCredentials =>
+      'Ця пошта й пароль не відповідають жодному обліковому запису.';
+
+  @override
+  String get settingsSyncErrorEmailTaken =>
+      'Обліковий запис для цієї пошти вже існує.';
+
+  @override
+  String get settingsSyncErrorWeakPassword =>
+      'Виберіть довший і менш поширений пароль.';
+
+  @override
+  String get settingsSyncErrorSessionExpired =>
+      'Ваш сеанс завершився. Увійдіть знову.';
+
+  @override
+  String get settingsSyncErrorRefused => 'Служба відхилила запит.';
+
+  @override
+  String get settingsSyncErrorUnknown => 'Щось пішло не так. Спробуйте ще раз.';
+
+  @override
+  String get settingsSyncMissingFields => 'Введіть пошту та пароль.';
+
+  @override
+  String get settingsPrivacyBodySync =>
+      'Історія використання та налаштування залишаються на цьому пристрої, доки ви не експортуєте резервну копію або не ввімкнете хмарну синхронізацію нижче.';
 }

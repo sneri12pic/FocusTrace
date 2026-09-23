@@ -15,6 +15,22 @@ abstract interface class SyncRepository {
 
   Future<bool> get isSignedIn;
 
+  /// The account this installation is signed into, when it is known.
+  Future<String?> accountEmail();
+
+  /// Opt-in, and off until the user says otherwise.
+  ///
+  /// Nothing in this repository consults it: [syncNow] is the raw capability
+  /// and stays callable, because the decision to sync is the app's, not the
+  /// data layer's. Every caller that syncs without the user asking - the
+  /// background scheduler, when it exists - must check this first.
+  Future<bool> isSyncEnabled();
+
+  Future<void> setSyncEnabled(bool enabled);
+
+  /// When [syncNow] last reached the server, for display only.
+  Future<DateTime?> lastSuccessfulSyncAt();
+
   Future<void> createAccount({required String email, required String password});
 
   Future<void> signIn({required String email, required String password});

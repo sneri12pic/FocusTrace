@@ -8,20 +8,28 @@
   "durationMinutesShort": "{minutes} хв",
   "@durationMinutesShort": {
     "placeholders": {
-      "minutes": {"type": "int"}
+      "minutes": {
+        "type": "int"
+      }
     }
   },
   "durationHoursShort": "{hours} год",
   "@durationHoursShort": {
     "placeholders": {
-      "hours": {"type": "int"}
+      "hours": {
+        "type": "int"
+      }
     }
   },
   "durationHoursMinutesShort": "{hours} год {minutes} хв",
   "@durationHoursMinutesShort": {
     "placeholders": {
-      "hours": {"type": "int"},
-      "minutes": {"type": "int"}
+      "hours": {
+        "type": "int"
+      },
+      "minutes": {
+        "type": "int"
+      }
     }
   },
   "categoryEntertainment": "Розваги",
@@ -60,8 +68,12 @@
   "onboardingAppUsageToday": "{appKey} · {duration} сьогодні",
   "@onboardingAppUsageToday": {
     "placeholders": {
-      "appKey": {"type": "String"},
-      "duration": {"type": "String"}
+      "appKey": {
+        "type": "String"
+      },
+      "duration": {
+        "type": "String"
+      }
     }
   },
   "onboardingDailyTarget": "Денна ціль",
@@ -76,7 +88,9 @@
   "restrictionsRoutineAppCount": "Застосунків: {count}",
   "@restrictionsRoutineAppCount": {
     "placeholders": {
-      "count": {"type": "int"}
+      "count": {
+        "type": "int"
+      }
     }
   },
   "restrictionsDeleteRoutine": "Видалити рутину",
@@ -95,27 +109,66 @@
   "routineAppsTitle": "Застосунки",
   "routineAddApp": "Додати застосунок",
   "routineAppUsage": "Сьогодні {duration} · Враховується в ліміті",
-  "@routineAppUsage": {"placeholders": {"duration": {"type": "String"}}},
+  "@routineAppUsage": {
+    "placeholders": {
+      "duration": {
+        "type": "String"
+      }
+    }
+  },
   "routineAppUsageExcluded": "Сьогодні {duration} · Не враховується в ліміті",
-  "@routineAppUsageExcluded": {"placeholders": {"duration": {"type": "String"}}},
+  "@routineAppUsageExcluded": {
+    "placeholders": {
+      "duration": {
+        "type": "String"
+      }
+    }
+  },
   "routineRemoveApp": "Видалити застосунок",
   "routineKeepOneApp": "У рутині має залишитися хоча б один застосунок.",
   "routineDeleteConfirmation": "Видалити {name}? Цю дію неможливо скасувати.",
-  "@routineDeleteConfirmation": {"placeholders": {"name": {"type": "String"}}},
+  "@routineDeleteConfirmation": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "routineUsageToday": "Враховане використання сьогодні",
   "routineNoIncludedApps": "Додайте до ліміту хоча б один застосунок",
   "routineLimitReached": "Ліміт вичерпано · враховані застосунки заблоковано до опівночі",
   "routineActive": "Активна",
   "routinePaused": "Призупинена",
   "routineUsageOfLimit": "{used} з {limit}",
-  "@routineUsageOfLimit": {"placeholders": {"used": {"type": "String"}, "limit": {"type": "String"}}},
+  "@routineUsageOfLimit": {
+    "placeholders": {
+      "used": {
+        "type": "String"
+      },
+      "limit": {
+        "type": "String"
+      }
+    }
+  },
   "routineRemaining": "Залишилося {duration}",
-  "@routineRemaining": {"placeholders": {"duration": {"type": "String"}}},
+  "@routineRemaining": {
+    "placeholders": {
+      "duration": {
+        "type": "String"
+      }
+    }
+  },
   "routineSetLimit": "Установити ліміт",
   "routineEditLimit": "Змінити ліміт",
   "routineRemoveLimit": "Прибрати ліміт",
   "routineUsageOnly": "Сьогодні {duration}",
-  "@routineUsageOnly": {"placeholders": {"duration": {"type": "String"}}},
+  "@routineUsageOnly": {
+    "placeholders": {
+      "duration": {
+        "type": "String"
+      }
+    }
+  },
   "restrictionsPlatformStatusTitle": "На цій платформі — лише статус",
   "restrictionsPlatformStatusBody": "Правила зберігаються та відображаються тут. Повноекранне блокування наразі працює лише на Android.",
   "restrictionsEmptyTitle": "Немає обмежень застосунків",
@@ -127,22 +180,32 @@
   "restrictionsBlockedUntil": "Заблоковано до {time}",
   "@restrictionsBlockedUntil": {
     "placeholders": {
-      "time": {"type": "String"}
+      "time": {
+        "type": "String"
+      }
     }
   },
   "restrictionsTemporaryBlockExpired": "Тимчасове блокування завершилося",
   "restrictionsDailyLimitStatus": "Денний ліміт {limitDuration} · використано {usedDuration}",
   "@restrictionsDailyLimitStatus": {
     "placeholders": {
-      "limitDuration": {"type": "String"},
-      "usedDuration": {"type": "String"}
+      "limitDuration": {
+        "type": "String"
+      },
+      "usedDuration": {
+        "type": "String"
+      }
     }
   },
   "restrictionsScheduleStatus": "Розклад {startTime}–{endTime}",
   "@restrictionsScheduleStatus": {
     "placeholders": {
-      "startTime": {"type": "String"},
-      "endTime": {"type": "String"}
+      "startTime": {
+        "type": "String"
+      },
+      "endTime": {
+        "type": "String"
+      }
     }
   },
   "restrictionsOverlayPermissionTitle": "Потрібен дозвіл на накладання",
@@ -161,13 +224,17 @@
   "restrictionEditorDailyLimitPerDay": "{duration} на день",
   "@restrictionEditorDailyLimitPerDay": {
     "placeholders": {
-      "duration": {"type": "String"}
+      "duration": {
+        "type": "String"
+      }
     }
   },
   "dashboardDayTracked": "Відстежено · {duration}",
   "@dashboardDayTracked": {
     "placeholders": {
-      "duration": {"type": "String"}
+      "duration": {
+        "type": "String"
+      }
     }
   },
   "dashboardDayToday": "Сьогодні",
@@ -194,7 +261,9 @@
   "percentageValue": "{percentage}%",
   "@percentageValue": {
     "placeholders": {
-      "percentage": {"type": "String"}
+      "percentage": {
+        "type": "String"
+      }
     }
   },
   "actionRemoveFromToday": "Прибрати з сьогодні",
@@ -204,7 +273,9 @@
   "excludeAppDialogTitle": "Виключити {appName}?",
   "@excludeAppDialogTitle": {
     "placeholders": {
-      "appName": {"type": "String"}
+      "appName": {
+        "type": "String"
+      }
     }
   },
   "excludeAppDialogBody": "Застосунок більше не відстежуватиметься й не показуватиметься у статистиці. Це можна скасувати в Налаштуваннях.",
@@ -213,7 +284,9 @@
   "sessionTotal": "Усього · {duration}",
   "@sessionTotal": {
     "placeholders": {
-      "duration": {"type": "String"}
+      "duration": {
+        "type": "String"
+      }
     }
   },
   "sessionDetailsUnavailable": "Деталі сеансів недоступні на цій платформі.",
@@ -222,16 +295,26 @@
   "sessionOngoingLabel": "{startTime} · {duration}",
   "@sessionOngoingLabel": {
     "placeholders": {
-      "startTime": {"type": "String"},
-      "duration": {"type": "String"}
+      "startTime": {
+        "type": "String"
+      },
+      "duration": {
+        "type": "String"
+      }
     }
   },
   "sessionRangeLabel": "{startTime} – {endTime} · {duration}",
   "@sessionRangeLabel": {
     "placeholders": {
-      "startTime": {"type": "String"},
-      "endTime": {"type": "String"},
-      "duration": {"type": "String"}
+      "startTime": {
+        "type": "String"
+      },
+      "endTime": {
+        "type": "String"
+      },
+      "duration": {
+        "type": "String"
+      }
     }
   },
   "permissionWindowsPrivacyTitle": "Конфіденційність Windows",
@@ -247,27 +330,39 @@
   "bubblePercentageOfToday": "{percentage}% від сьогодні",
   "@bubblePercentageOfToday": {
     "placeholders": {
-      "percentage": {"type": "String"}
+      "percentage": {
+        "type": "String"
+      }
     }
   },
   "usageBubbleSemanticsLabel": "{appName}, {category}",
   "@usageBubbleSemanticsLabel": {
     "placeholders": {
-      "appName": {"type": "String"},
-      "category": {"type": "String"}
+      "appName": {
+        "type": "String"
+      },
+      "category": {
+        "type": "String"
+      }
     }
   },
   "usageBubbleNearLimitSemanticsLabel": "{appName}, {category}, денний ліміт майже вичерпано",
   "@usageBubbleNearLimitSemanticsLabel": {
     "placeholders": {
-      "appName": {"type": "String"},
-      "category": {"type": "String"}
+      "appName": {
+        "type": "String"
+      },
+      "category": {
+        "type": "String"
+      }
     }
   },
   "summaryLaunchCount": "Запуски: {count}",
   "@summaryLaunchCount": {
     "placeholders": {
-      "count": {"type": "int"}
+      "count": {
+        "type": "int"
+      }
     }
   },
   "usageTrendDayShort": "Д",
@@ -276,35 +371,51 @@
   "usageTrendIncrease": "{period}: використання зросло на {percentage}%",
   "@usageTrendIncrease": {
     "placeholders": {
-      "period": {"type": "String"},
-      "percentage": {"type": "int"}
+      "period": {
+        "type": "String"
+      },
+      "percentage": {
+        "type": "int"
+      }
     }
   },
   "usageTrendDecrease": "{period}: використання зменшилося на {percentage}%",
   "@usageTrendDecrease": {
     "placeholders": {
-      "period": {"type": "String"},
-      "percentage": {"type": "int"}
+      "period": {
+        "type": "String"
+      },
+      "percentage": {
+        "type": "int"
+      }
     }
   },
   "usageTrendUnchanged": "{period}: використання без змін",
   "@usageTrendUnchanged": {
     "placeholders": {
-      "period": {"type": "String"}
+      "period": {
+        "type": "String"
+      }
     }
   },
   "usageTrendNew": "Нове",
   "usageTrendNewLabel": "{period}: нове використання, немає попередніх даних для порівняння",
   "@usageTrendNewLabel": {
     "placeholders": {
-      "period": {"type": "String"}
+      "period": {
+        "type": "String"
+      }
     }
   },
   "usageTrendIncreaseAboveCap": "{period}: використання зросло більш ніж на {percentage}%",
   "@usageTrendIncreaseAboveCap": {
     "placeholders": {
-      "period": {"type": "String"},
-      "percentage": {"type": "int"}
+      "period": {
+        "type": "String"
+      },
+      "percentage": {
+        "type": "int"
+      }
     }
   },
   "usageDetailsLastSevenDays": "Останні 7 днів",
@@ -316,22 +427,62 @@
   "usageDetailsPeriodTotal": "{period}: {duration}",
   "@usageDetailsPeriodTotal": {
     "placeholders": {
-      "period": {"type": "String"},
-      "duration": {"type": "String"}
+      "period": {
+        "type": "String"
+      },
+      "duration": {
+        "type": "String"
+      }
     }
   },
   "usageDetailsMoreThanYesterday": "На {percentage}% більше, ніж учора",
-  "@usageDetailsMoreThanYesterday": {"placeholders": {"percentage": {"type": "int"}}},
+  "@usageDetailsMoreThanYesterday": {
+    "placeholders": {
+      "percentage": {
+        "type": "int"
+      }
+    }
+  },
   "usageDetailsLessThanYesterday": "На {percentage}% менше, ніж учора",
-  "@usageDetailsLessThanYesterday": {"placeholders": {"percentage": {"type": "int"}}},
+  "@usageDetailsLessThanYesterday": {
+    "placeholders": {
+      "percentage": {
+        "type": "int"
+      }
+    }
+  },
   "usageDetailsSameAsYesterday": "Так само, як учора",
   "usageDetailsNoYesterdayComparison": "Порівняння з учора ще немає",
   "usageDetailsRankLabel": "№{rank} за використанням",
-  "@usageDetailsRankLabel": {"placeholders": {"rank": {"type": "int"}}},
+  "@usageDetailsRankLabel": {
+    "placeholders": {
+      "rank": {
+        "type": "int"
+      }
+    }
+  },
   "usageDetailsRankLead": "на {duration} більше, ніж {appName}",
-  "@usageDetailsRankLead": {"placeholders": {"duration": {"type": "String"}, "appName": {"type": "String"}}},
+  "@usageDetailsRankLead": {
+    "placeholders": {
+      "duration": {
+        "type": "String"
+      },
+      "appName": {
+        "type": "String"
+      }
+    }
+  },
   "usageDetailsDayValue": "{date}: {duration}",
-  "@usageDetailsDayValue": {"placeholders": {"date": {"type": "String"}, "duration": {"type": "String"}}},
+  "@usageDetailsDayValue": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      },
+      "duration": {
+        "type": "String"
+      }
+    }
+  },
   "reportsTitle": "Звіти",
   "reportsWeekly": "Тижневий",
   "reportsMonthly": "Місячний",
@@ -346,7 +497,13 @@
   "reportsFirstApp": "Найчастіший перший застосунок",
   "reportsConsistency": "Стабільність першого використання",
   "reportsVariationMinutes": "± {minutes} хв",
-  "@reportsVariationMinutes": {"placeholders": {"minutes": {"type": "int"}}},
+  "@reportsVariationMinutes": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
   "reportsWakeHeuristic": "Перше використання визначається після щонайменше 4 годин бездіяльності між 04:00 і 14:00.",
   "reportsTopApps": "Найуживаніші застосунки",
   "reportsRestrictionsTitle": "Активність обмежень",
@@ -389,7 +546,33 @@
   "secondsCount": "{count, plural, =1{1 секунда} few{{count} секунди} many{{count} секунд} other{{count} секунди}}",
   "@secondsCount": {
     "placeholders": {
-      "count": {"type": "int"}
+      "count": {
+        "type": "int"
+      }
     }
-  }
+  },
+  "settingsSyncSection": "Обліковий запис і синхронізація",
+  "settingsSyncTitle": "Хмарна синхронізація",
+  "settingsSyncBody": "Увійдіть, щоб копіювати щоденні підсумки використання до власного облікового запису й бачити їх на іншому пристрої. Вимкнено, доки ви не увімкнете.",
+  "settingsSyncEmail": "Електронна пошта",
+  "settingsSyncPassword": "Пароль",
+  "settingsSyncSignIn": "Увійти",
+  "settingsSyncCreateAccount": "Створити обліковий запис",
+  "settingsSyncSignOut": "Вийти",
+  "settingsSyncEnabledLabel": "Синхронізувати цей пристрій",
+  "settingsSyncEnabledSubtitle": "Вимкнення зупиняє надсилання нових даних. Уже синхронізоване не видаляється.",
+  "settingsSyncNow": "Синхронізувати зараз",
+  "settingsSyncNeverSynced": "Ще не синхронізовано",
+  "settingsSyncStateSyncing": "Синхронізація...",
+  "settingsSyncStateSuccess": "Синхронізацію завершено",
+  "settingsSyncStateError": "Помилка синхронізації",
+  "settingsSyncErrorOffline": "Не вдалося зв’язатися зі службою. Перевірте з’єднання та спробуйте ще раз.",
+  "settingsSyncErrorCredentials": "Ця пошта й пароль не відповідають жодному обліковому запису.",
+  "settingsSyncErrorEmailTaken": "Обліковий запис для цієї пошти вже існує.",
+  "settingsSyncErrorWeakPassword": "Виберіть довший і менш поширений пароль.",
+  "settingsSyncErrorSessionExpired": "Ваш сеанс завершився. Увійдіть знову.",
+  "settingsSyncErrorRefused": "Служба відхилила запит.",
+  "settingsSyncErrorUnknown": "Щось пішло не так. Спробуйте ще раз.",
+  "settingsSyncMissingFields": "Введіть пошту та пароль.",
+  "settingsPrivacyBodySync": "Історія використання та налаштування залишаються на цьому пристрої, доки ви не експортуєте резервну копію або не ввімкнете хмарну синхронізацію нижче."
 }

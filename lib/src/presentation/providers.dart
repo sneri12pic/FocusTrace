@@ -30,6 +30,7 @@ import 'view_models/dashboard_view_model.dart';
 import 'view_models/onboarding_view_model.dart';
 import 'view_models/reports_view_model.dart';
 import 'view_models/restrictions_view_model.dart';
+import 'view_models/sync_view_model.dart';
 import 'view_models/settings_view_model.dart';
 import 'view_models/tracking_view_model.dart';
 
@@ -203,6 +204,20 @@ final syncRepositoryProvider = Provider<SyncRepository?>((ref) {
     deviceName: 'Android device',
   );
 });
+
+/// `null` when this build has no sync. Every widget that reads it must handle
+/// that, which is why the account card is only built behind
+/// [syncSupportedProvider].
+final syncViewModelProvider =
+    StateNotifierProvider<SyncViewModel, SyncState>((ref) {
+      final repository = ref.watch(syncRepositoryProvider);
+      if (repository == null) {
+        throw StateError('Sync is not configured in this build.');
+      }
+      final viewModel = SyncViewModel(repository);
+      viewModel.load();
+      return viewModel;
+    });
 
 final onboardingViewModelProvider =
     StateNotifierProvider<OnboardingViewModel, OnboardingState>((ref) {

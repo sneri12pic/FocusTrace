@@ -8,20 +8,28 @@
   "durationMinutesShort": "{minutes}m",
   "@durationMinutesShort": {
     "placeholders": {
-      "minutes": {"type": "int"}
+      "minutes": {
+        "type": "int"
+      }
     }
   },
   "durationHoursShort": "{hours}h",
   "@durationHoursShort": {
     "placeholders": {
-      "hours": {"type": "int"}
+      "hours": {
+        "type": "int"
+      }
     }
   },
   "durationHoursMinutesShort": "{hours}h {minutes}m",
   "@durationHoursMinutesShort": {
     "placeholders": {
-      "hours": {"type": "int"},
-      "minutes": {"type": "int"}
+      "hours": {
+        "type": "int"
+      },
+      "minutes": {
+        "type": "int"
+      }
     }
   },
   "categoryEntertainment": "Entertainment",
@@ -60,8 +68,12 @@
   "onboardingAppUsageToday": "{appKey} · {duration} today",
   "@onboardingAppUsageToday": {
     "placeholders": {
-      "appKey": {"type": "String"},
-      "duration": {"type": "String"}
+      "appKey": {
+        "type": "String"
+      },
+      "duration": {
+        "type": "String"
+      }
     }
   },
   "onboardingDailyTarget": "Daily target",
@@ -76,7 +88,9 @@
   "restrictionsRoutineAppCount": "{count} apps",
   "@restrictionsRoutineAppCount": {
     "placeholders": {
-      "count": {"type": "int"}
+      "count": {
+        "type": "int"
+      }
     }
   },
   "restrictionsDeleteRoutine": "Delete routine",
@@ -96,17 +110,29 @@
   "routineAddApp": "Add app",
   "routineAppUsage": "{duration} today · Included in limit",
   "@routineAppUsage": {
-    "placeholders": {"duration": {"type": "String"}}
+    "placeholders": {
+      "duration": {
+        "type": "String"
+      }
+    }
   },
   "routineAppUsageExcluded": "{duration} today · Excluded from limit",
   "@routineAppUsageExcluded": {
-    "placeholders": {"duration": {"type": "String"}}
+    "placeholders": {
+      "duration": {
+        "type": "String"
+      }
+    }
   },
   "routineRemoveApp": "Remove app",
   "routineKeepOneApp": "A routine must keep at least one app.",
   "routineDeleteConfirmation": "Delete {name}? This cannot be undone.",
   "@routineDeleteConfirmation": {
-    "placeholders": {"name": {"type": "String"}}
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
   },
   "routineUsageToday": "Counted usage today",
   "routineNoIncludedApps": "Include at least one app to enable the limit",
@@ -116,20 +142,32 @@
   "routineUsageOfLimit": "{used} of {limit}",
   "@routineUsageOfLimit": {
     "placeholders": {
-      "used": {"type": "String"},
-      "limit": {"type": "String"}
+      "used": {
+        "type": "String"
+      },
+      "limit": {
+        "type": "String"
+      }
     }
   },
   "routineRemaining": "{duration} remaining",
   "@routineRemaining": {
-    "placeholders": {"duration": {"type": "String"}}
+    "placeholders": {
+      "duration": {
+        "type": "String"
+      }
+    }
   },
   "routineSetLimit": "Set limit",
   "routineEditLimit": "Edit limit",
   "routineRemoveLimit": "Remove limit",
   "routineUsageOnly": "{duration} today",
   "@routineUsageOnly": {
-    "placeholders": {"duration": {"type": "String"}}
+    "placeholders": {
+      "duration": {
+        "type": "String"
+      }
+    }
   },
   "restrictionsPlatformStatusTitle": "Status only on this platform",
   "restrictionsPlatformStatusBody": "Rules are saved and shown here. Full-screen blocking currently runs only on Android.",
@@ -142,22 +180,32 @@
   "restrictionsBlockedUntil": "Blocked until {time}",
   "@restrictionsBlockedUntil": {
     "placeholders": {
-      "time": {"type": "String"}
+      "time": {
+        "type": "String"
+      }
     }
   },
   "restrictionsTemporaryBlockExpired": "Temporary block expired",
   "restrictionsDailyLimitStatus": "Daily limit {limitDuration} · {usedDuration} used",
   "@restrictionsDailyLimitStatus": {
     "placeholders": {
-      "limitDuration": {"type": "String"},
-      "usedDuration": {"type": "String"}
+      "limitDuration": {
+        "type": "String"
+      },
+      "usedDuration": {
+        "type": "String"
+      }
     }
   },
   "restrictionsScheduleStatus": "Schedule {startTime}–{endTime}",
   "@restrictionsScheduleStatus": {
     "placeholders": {
-      "startTime": {"type": "String"},
-      "endTime": {"type": "String"}
+      "startTime": {
+        "type": "String"
+      },
+      "endTime": {
+        "type": "String"
+      }
     }
   },
   "restrictionsOverlayPermissionTitle": "Overlay permission required",
@@ -176,13 +224,17 @@
   "restrictionEditorDailyLimitPerDay": "{duration} per day",
   "@restrictionEditorDailyLimitPerDay": {
     "placeholders": {
-      "duration": {"type": "String"}
+      "duration": {
+        "type": "String"
+      }
     }
   },
   "dashboardDayTracked": "Tracked · {duration}",
   "@dashboardDayTracked": {
     "placeholders": {
-      "duration": {"type": "String"}
+      "duration": {
+        "type": "String"
+      }
     }
   },
   "dashboardDayToday": "Today",
@@ -209,7 +261,9 @@
   "percentageValue": "{percentage}%",
   "@percentageValue": {
     "placeholders": {
-      "percentage": {"type": "String"}
+      "percentage": {
+        "type": "String"
+      }
     }
   },
   "actionRemoveFromToday": "Remove from today",
@@ -219,7 +273,9 @@
   "excludeAppDialogTitle": "Exclude {appName}?",
   "@excludeAppDialogTitle": {
     "placeholders": {
-      "appName": {"type": "String"}
+      "appName": {
+        "type": "String"
+      }
     }
   },
   "excludeAppDialogBody": "The app will no longer be tracked or shown in stats. You can undo this from Settings.",
@@ -228,7 +284,9 @@
   "sessionTotal": "Total · {duration}",
   "@sessionTotal": {
     "placeholders": {
-      "duration": {"type": "String"}
+      "duration": {
+        "type": "String"
+      }
     }
   },
   "sessionDetailsUnavailable": "Session details not available on this platform.",
@@ -237,16 +295,26 @@
   "sessionOngoingLabel": "{startTime} · {duration}",
   "@sessionOngoingLabel": {
     "placeholders": {
-      "startTime": {"type": "String"},
-      "duration": {"type": "String"}
+      "startTime": {
+        "type": "String"
+      },
+      "duration": {
+        "type": "String"
+      }
     }
   },
   "sessionRangeLabel": "{startTime} – {endTime} · {duration}",
   "@sessionRangeLabel": {
     "placeholders": {
-      "startTime": {"type": "String"},
-      "endTime": {"type": "String"},
-      "duration": {"type": "String"}
+      "startTime": {
+        "type": "String"
+      },
+      "endTime": {
+        "type": "String"
+      },
+      "duration": {
+        "type": "String"
+      }
     }
   },
   "permissionWindowsPrivacyTitle": "Windows privacy",
@@ -262,27 +330,39 @@
   "bubblePercentageOfToday": "{percentage}% of today",
   "@bubblePercentageOfToday": {
     "placeholders": {
-      "percentage": {"type": "String"}
+      "percentage": {
+        "type": "String"
+      }
     }
   },
   "usageBubbleSemanticsLabel": "{appName}, {category}",
   "@usageBubbleSemanticsLabel": {
     "placeholders": {
-      "appName": {"type": "String"},
-      "category": {"type": "String"}
+      "appName": {
+        "type": "String"
+      },
+      "category": {
+        "type": "String"
+      }
     }
   },
   "usageBubbleNearLimitSemanticsLabel": "{appName}, {category}, daily limit almost reached",
   "@usageBubbleNearLimitSemanticsLabel": {
     "placeholders": {
-      "appName": {"type": "String"},
-      "category": {"type": "String"}
+      "appName": {
+        "type": "String"
+      },
+      "category": {
+        "type": "String"
+      }
     }
   },
   "summaryLaunchCount": "Launches: {count}",
   "@summaryLaunchCount": {
     "placeholders": {
-      "count": {"type": "int"}
+      "count": {
+        "type": "int"
+      }
     }
   },
   "usageTrendDayShort": "D",
@@ -291,35 +371,51 @@
   "usageTrendIncrease": "{period}: usage increased by {percentage}%",
   "@usageTrendIncrease": {
     "placeholders": {
-      "period": {"type": "String"},
-      "percentage": {"type": "int"}
+      "period": {
+        "type": "String"
+      },
+      "percentage": {
+        "type": "int"
+      }
     }
   },
   "usageTrendDecrease": "{period}: usage decreased by {percentage}%",
   "@usageTrendDecrease": {
     "placeholders": {
-      "period": {"type": "String"},
-      "percentage": {"type": "int"}
+      "period": {
+        "type": "String"
+      },
+      "percentage": {
+        "type": "int"
+      }
     }
   },
   "usageTrendUnchanged": "{period}: usage unchanged",
   "@usageTrendUnchanged": {
     "placeholders": {
-      "period": {"type": "String"}
+      "period": {
+        "type": "String"
+      }
     }
   },
   "usageTrendNew": "New",
   "usageTrendNewLabel": "{period}: new usage, nothing earlier to compare",
   "@usageTrendNewLabel": {
     "placeholders": {
-      "period": {"type": "String"}
+      "period": {
+        "type": "String"
+      }
     }
   },
   "usageTrendIncreaseAboveCap": "{period}: usage increased by more than {percentage}%",
   "@usageTrendIncreaseAboveCap": {
     "placeholders": {
-      "period": {"type": "String"},
-      "percentage": {"type": "int"}
+      "period": {
+        "type": "String"
+      },
+      "percentage": {
+        "type": "int"
+      }
     }
   },
   "usageDetailsLastSevenDays": "Last 7 days",
@@ -331,20 +427,28 @@
   "usageDetailsPeriodTotal": "{period}: {duration}",
   "@usageDetailsPeriodTotal": {
     "placeholders": {
-      "period": {"type": "String"},
-      "duration": {"type": "String"}
+      "period": {
+        "type": "String"
+      },
+      "duration": {
+        "type": "String"
+      }
     }
   },
   "usageDetailsMoreThanYesterday": "{percentage}% more than yesterday",
   "@usageDetailsMoreThanYesterday": {
     "placeholders": {
-      "percentage": {"type": "int"}
+      "percentage": {
+        "type": "int"
+      }
     }
   },
   "usageDetailsLessThanYesterday": "{percentage}% less than yesterday",
   "@usageDetailsLessThanYesterday": {
     "placeholders": {
-      "percentage": {"type": "int"}
+      "percentage": {
+        "type": "int"
+      }
     }
   },
   "usageDetailsSameAsYesterday": "Same as yesterday",
@@ -352,21 +456,31 @@
   "usageDetailsRankLabel": "#{rank} most used",
   "@usageDetailsRankLabel": {
     "placeholders": {
-      "rank": {"type": "int"}
+      "rank": {
+        "type": "int"
+      }
     }
   },
   "usageDetailsRankLead": "{duration} more than {appName}",
   "@usageDetailsRankLead": {
     "placeholders": {
-      "duration": {"type": "String"},
-      "appName": {"type": "String"}
+      "duration": {
+        "type": "String"
+      },
+      "appName": {
+        "type": "String"
+      }
     }
   },
   "usageDetailsDayValue": "{date}: {duration}",
   "@usageDetailsDayValue": {
     "placeholders": {
-      "date": {"type": "String"},
-      "duration": {"type": "String"}
+      "date": {
+        "type": "String"
+      },
+      "duration": {
+        "type": "String"
+      }
     }
   },
   "reportsTitle": "Reports",
@@ -385,7 +499,9 @@
   "reportsVariationMinutes": "± {minutes} min",
   "@reportsVariationMinutes": {
     "placeholders": {
-      "minutes": {"type": "int"}
+      "minutes": {
+        "type": "int"
+      }
     }
   },
   "reportsWakeHeuristic": "First use is inferred after at least 4 hours inactive, between 04:00 and 14:00.",
@@ -430,7 +546,33 @@
   "secondsCount": "{count, plural, =1{1 second} other{{count} seconds}}",
   "@secondsCount": {
     "placeholders": {
-      "count": {"type": "int"}
+      "count": {
+        "type": "int"
+      }
     }
-  }
+  },
+  "settingsSyncSection": "Account & sync",
+  "settingsSyncTitle": "Cloud sync",
+  "settingsSyncBody": "Sign in to copy your daily usage totals to your own account, so another device can see them. Off until you turn it on.",
+  "settingsSyncEmail": "Email",
+  "settingsSyncPassword": "Password",
+  "settingsSyncSignIn": "Sign in",
+  "settingsSyncCreateAccount": "Create account",
+  "settingsSyncSignOut": "Log out",
+  "settingsSyncEnabledLabel": "Sync this device",
+  "settingsSyncEnabledSubtitle": "Turning this off stops sending new data. Nothing already synced is deleted.",
+  "settingsSyncNow": "Sync now",
+  "settingsSyncNeverSynced": "Not synced yet",
+  "settingsSyncStateSyncing": "Syncing...",
+  "settingsSyncStateSuccess": "Sync complete",
+  "settingsSyncStateError": "Sync failed",
+  "settingsSyncErrorOffline": "Could not reach the sync service. Check your connection and try again.",
+  "settingsSyncErrorCredentials": "That email and password did not match an account.",
+  "settingsSyncErrorEmailTaken": "An account already exists for that email.",
+  "settingsSyncErrorWeakPassword": "Choose a longer, less common password.",
+  "settingsSyncErrorSessionExpired": "Your session has ended. Sign in again.",
+  "settingsSyncErrorRefused": "The sync service refused the request.",
+  "settingsSyncErrorUnknown": "Something went wrong. Try again.",
+  "settingsSyncMissingFields": "Enter an email and a password.",
+  "settingsPrivacyBodySync": "Your usage history and settings stay on this device unless you export a backup or turn on cloud sync below."
 }

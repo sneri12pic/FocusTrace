@@ -852,4 +852,85 @@ class AppLocalizationsPt extends AppLocalizations {
     );
     return '$_temp0';
   }
+
+  @override
+  String get settingsSyncSection => 'Conta e sincronização';
+
+  @override
+  String get settingsSyncTitle => 'Sincronização na nuvem';
+
+  @override
+  String get settingsSyncBody =>
+      'Inicie sessão para copiar os seus totais de uso diário para a sua conta e vê-los noutro dispositivo. Desligada até a ativar.';
+
+  @override
+  String get settingsSyncEmail => 'E-mail';
+
+  @override
+  String get settingsSyncPassword => 'Palavra-passe';
+
+  @override
+  String get settingsSyncSignIn => 'Iniciar sessão';
+
+  @override
+  String get settingsSyncCreateAccount => 'Criar conta';
+
+  @override
+  String get settingsSyncSignOut => 'Terminar sessão';
+
+  @override
+  String get settingsSyncEnabledLabel => 'Sincronizar este dispositivo';
+
+  @override
+  String get settingsSyncEnabledSubtitle =>
+      'Desligar para de enviar dados novos. Nada já sincronizado é apagado.';
+
+  @override
+  String get settingsSyncNow => 'Sincronizar agora';
+
+  @override
+  String get settingsSyncNeverSynced => 'Ainda não sincronizado';
+
+  @override
+  String get settingsSyncStateSyncing => 'A sincronizar...';
+
+  @override
+  String get settingsSyncStateSuccess => 'Sincronização concluída';
+
+  @override
+  String get settingsSyncStateError => 'Falha na sincronização';
+
+  @override
+  String get settingsSyncErrorOffline =>
+      'Não foi possível contactar o serviço. Verifique a ligação e tente novamente.';
+
+  @override
+  String get settingsSyncErrorCredentials =>
+      'Esse e-mail e palavra-passe não correspondem a nenhuma conta.';
+
+  @override
+  String get settingsSyncErrorEmailTaken =>
+      'Já existe uma conta com esse e-mail.';
+
+  @override
+  String get settingsSyncErrorWeakPassword =>
+      'Escolha uma palavra-passe mais longa e menos comum.';
+
+  @override
+  String get settingsSyncErrorSessionExpired =>
+      'A sua sessão terminou. Inicie sessão novamente.';
+
+  @override
+  String get settingsSyncErrorRefused => 'O serviço recusou o pedido.';
+
+  @override
+  String get settingsSyncErrorUnknown => 'Algo correu mal. Tente novamente.';
+
+  @override
+  String get settingsSyncMissingFields =>
+      'Introduza um e-mail e uma palavra-passe.';
+
+  @override
+  String get settingsPrivacyBodySync =>
+      'O seu histórico de uso e as definições ficam neste dispositivo, a menos que exporte uma cópia ou ative a sincronização na nuvem abaixo.';
 }
