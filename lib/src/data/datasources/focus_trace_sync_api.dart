@@ -64,6 +64,18 @@ class FocusTraceSyncApi {
 
   String? _accessToken;
   DateTime? _accessTokenExpiry;
+  String? _sessionRefreshToken;
+
+  /// Called only after acquiring the repository's cross-engine gate. Another
+  /// engine may have rotated, replaced or cleared the persisted session.
+  Future<void> reconcileSession() async {
+    final current = await _credentials.readRefreshToken();
+    if (current != _sessionRefreshToken) {
+      _accessToken = null;
+      _accessTokenExpiry = null;
+      _sessionRefreshToken = current;
+    }
+  }
 
   /// One refresh at a time. Several requests hitting 401 together await this
   /// single attempt instead of racing the server's rotation, which would revoke
@@ -105,21 +117,27 @@ class FocusTraceSyncApi {
   /// Revokes this session server-side where possible, and always forgets it
   /// locally: a logout that cannot reach the network still signs the user out.
   Future<void> signOut() async {
-    final refreshToken = await _credentials.readRefreshToken();
-    _accessToken = null;
-    _accessTokenExpiry = null;
-    if (refreshToken != null) {
-      try {
-        await _authorized(
-          'POST',
-          '/api/v1/auth/logout',
-          body: {'refreshToken': refreshToken},
-        );
-      } on SyncApiException {
-        // Already revoked, or unreachable. Either way the local session goes.
+    try {
+      final refreshToken = await _credentials.readRefreshToken();
+      _accessToken = null;
+      _accessTokenExpiry = null;
+      if (refreshToken != null) {
+        try {
+          await _authorized(
+            'POST',
+            '/api/v1/auth/logout',
+            body: {'refreshToken': refreshToken},
+          );
+        } on SyncApiException {
+          // Already revoked, or unreachable. Either way the local session goes.
+        }
       }
+    } finally {
+      _accessToken = null;
+      _accessTokenExpiry = null;
+      _sessionRefreshToken = null;
+      await _credentials.clear();
     }
-    await _credentials.clear();
   }
 
   // --- devices --------------------------------------------------------------
@@ -274,6 +292,7 @@ class FocusTraceSyncApi {
     final accessToken = session['accessToken']! as String;
     final expiresIn = (session['expiresIn']! as num).toInt();
     await _credentials.writeRefreshToken(session['refreshToken']! as String);
+    _sessionRefreshToken = session['refreshToken']! as String;
     _accessToken = accessToken;
     _accessTokenExpiry = _now().add(Duration(seconds: expiresIn));
     return accessToken;
@@ -326,6 +345,5 @@ class _Response {
   final int status;
   final String body;
 
-  Map<String, Object?> get json =>
-      jsonDecode(body) as Map<String, Object?>;
+  Map<String, Object?> get json => jsonDecode(body) as Map<String, Object?>;
 }

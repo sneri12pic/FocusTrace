@@ -26,6 +26,7 @@ class MainActivity : FlutterActivity() {
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        SyncExecutionGateChannel(flutterEngine)
         UsageSnapshotScheduler.schedule(this)
         dataTransferDocumentBridge.configure(flutterEngine.dartExecutor.binaryMessenger)
 

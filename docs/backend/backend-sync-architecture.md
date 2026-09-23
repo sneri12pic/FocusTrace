@@ -1240,6 +1240,52 @@ acceptable at this data scale (risk 4).
 
 ---
 
+### 8.5 Android cross-engine execution boundary
+
+Implemented by the cross-engine prerequisite, before Phase 5 scheduling.
+`SyncRepositoryImpl` requires a `SyncExecutionGate`. Production injects
+`AndroidSyncExecutionGate`, whose `focustrace/sync_execution` method channel
+reaches one JVM `SyncExecutionGate` object shared by all engines in the process.
+Source and merged Android manifests declare no separate process. Moving sync
+to another OS process requires revisiting this assumption.
+
+Every engine that uses sync must attach `SyncExecutionGateChannel(engine)` once,
+before running its sync entrypoint. It needs no Activity. MainActivity attaches
+the foreground engine; no background engine or scheduler is introduced here.
+
+The repository holds one lease across each complete sync run (session check,
+selection, registration, refresh, upload, watermark and success timestamp),
+history request, sign-in, registration plus sign-in, and logout. Session reads
+also participate because a failed secure read can clear an unreadable token.
+Installation-ID creation and opt-in writes use the same gate; sync calls the
+private ID helper to avoid nested acquisition. API and credential helpers do
+not acquire the gate themselves. The ViewModel guard remains immediate UI
+feedback, not the correctness boundary.
+
+Acquisition waits asynchronously in FIFO order. No thread waits for network
+work, no polling, timeout or persistent lock exists. A native client identity
+bound to the engine and a fresh per-acquisition lease must both match on
+release. Foreign, duplicate and stale releases do not unlock another operation.
+Dart releases in `finally`, including errors. Gate unavailability fails closed.
+
+Whichever operation acquires first completes its session mutation first.
+On acquisition the API reconciles its memory-only access-token cache with the
+current persisted refresh credential, discarding stale access after another
+engine rotates, replaces or clears the session. Logout clears local credentials
+and its cache in `finally`; a subsequent sync sees no session. No new credential
+store or credential-bearing gate arguments are introduced.
+
+Engine teardown stops new gate calls and posts native ownership/queue cleanup
+to the platform loop after the synchronous teardown callback returns, rather
+than granting another engine while the old engine is still being destroyed.
+The channel also retires its client on engine restart. Process death destroys
+the gate naturally. Future worker cancellation must finish the operation or
+destroy its engine, never merely release a lease while Dart continues running.
+As before, process/engine death during a server refresh can lose its response
+and require sign-in; the gate does not roll back remote HTTP effects.
+
+---
+
 ## 9. REST API contract
 
 All endpoints under `/api/v1`. JSON in, JSON out. Errors use RFC 9457

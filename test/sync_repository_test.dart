@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
@@ -7,6 +8,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:focustrace/focus_trace.dart';
 import 'package:path/path.dart' as p;
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+
+import 'support/test_sync_execution_gate.dart';
 
 /// Sync repository behaviour against a real HTTP server on localhost.
 ///
@@ -26,8 +29,10 @@ void main() {
   late SqfliteFocusTraceLocalDataSource local;
   late Database db;
   late _FakeBackend backend;
+  late TestSyncExecutionGate gate;
 
   setUp(() async {
+    gate = TestSyncExecutionGate();
     sqfliteFfiInit();
     directory = await Directory.systemTemp.createTemp('sync_repository');
     local = SqfliteFocusTraceLocalDataSource(
@@ -55,6 +60,7 @@ void main() {
     String deviceName = 'Test device',
     int seed = 7,
   }) => SyncRepositoryImpl(
+    executionGate: gate,
     api: FocusTraceSyncApi(
       baseUrl: backend.baseUrl,
       credentials: credentials,
@@ -104,6 +110,177 @@ void main() {
     final stored = await local.readSetting(SyncSettingKeys.usageWatermarkMs);
     return stored == null ? null : int.parse(stored);
   }
+
+  group('cross-instance execution', () {
+    Future<void> signedInDay() async {
+      await repository.signIn(email: 'a@example.com', password: 'pw');
+      await seedDay('2026-09-17', queriedAtMs: 1000);
+    }
+
+    Future<T> queue<T>(Future<T> Function() operation) async {
+      final requested = Completer<void>();
+      gate.onRequested = () => requested.complete();
+      final pending = operation();
+      expect(requested.isCompleted, isTrue, reason: 'The contender must reach the gate before checking exclusion.');
+      gate.onRequested = null;
+      return pending;
+    }
+
+    test(
+      'two repositories serialize the entire upload and watermark run',
+      () async {
+        await signedInDay();
+        backend.hold('/api/v1/sync/usage-days');
+        final first = repository.syncNow();
+        await backend.entered!.future;
+        final paths = List<String>.of(backend.requestPaths);
+        final second = queue(() => repositoryFor(credentials).syncNow());
+        // queue's notification proves acquisition was attempted, not just scheduled.
+        await Future<void>.value();
+        expect(backend.requestPaths, paths);
+        expect(await watermark(), isNull);
+        backend.proceed!.complete();
+        expect((await first).uploadedDays, 1);
+        expect((await second).uploadedDays, 0);
+        expect(backend.uploadCount, 1);
+        expect(await watermark(), 1000);
+      },
+    );
+
+    test(
+      'sync first then logout leaves no session and later sync sends nothing',
+      () async {
+        await signedInDay();
+        backend.hold('/api/v1/sync/usage-days');
+        final first = repository.syncNow();
+        await backend.entered!.future;
+        final logout = queue(() => repositoryFor(credentials).signOut());
+        await Future<void>.value();
+        expect(backend.requestPaths, isNot(contains('/api/v1/auth/logout')));
+        backend.proceed!.complete();
+        expect((await first).succeeded, isTrue);
+        await logout;
+        expect(credentials.refreshToken, isNull);
+        final count = backend.requestPaths.length;
+        expect(
+          (await repository.syncNow()).reason,
+          SyncFailureReason.notSignedIn,
+        );
+        expect(backend.requestPaths.length, count);
+      },
+    );
+
+    test(
+      'logout first then a cached repository cannot restore the old session',
+      () async {
+        await signedInDay();
+        backend.hold('/api/v1/auth/logout');
+        final logout = repositoryFor(credentials).signOut();
+        await backend.entered!.future;
+        final sync = queue(repository.syncNow);
+        await Future<void>.value();
+        expect(backend.uploadCount, 0);
+        backend.proceed!.complete();
+        await logout;
+        expect((await sync).reason, SyncFailureReason.notSignedIn);
+        expect(credentials.refreshToken, isNull);
+        expect(backend.uploadCount, 0);
+        final count = backend.requestPaths.length;
+        await expectLater(
+          repository.readRemoteHistory(
+            from: DateTime.utc(2026, 9, 1),
+            to: DateTime.utc(2026, 9, 20),
+          ),
+          throwsA(isA<SyncApiException>()),
+        );
+        expect(backend.requestPaths.length, count);
+      },
+    );
+
+    for (final create in [false, true]) {
+      test(
+        'session ${create ? 'creation' : 'sign-in'} waits for an active sync',
+        () async {
+          await signedInDay();
+          backend.hold('/api/v1/sync/usage-days');
+          final sync = repository.syncNow();
+          await backend.entered!.future;
+          final other = repositoryFor(credentials);
+          final before = backend.requestPaths.length;
+          final auth = queue(
+            () => create
+                ? other.createAccount(email: 'b@example.com', password: 'pw')
+                : other.signIn(email: 'b@example.com', password: 'pw'),
+          );
+          await Future<void>.value();
+          expect(backend.requestPaths.length, before);
+          backend.proceed!.complete();
+          await sync;
+          await auth;
+          expect(await repository.accountEmail(), 'b@example.com');
+          final rotations = backend.refreshCount;
+          // The old repository must discard its cached access token after replacement.
+          await repository.readRemoteHistory(
+            from: DateTime.utc(2026, 9, 1),
+            to: DateTime.utc(2026, 9, 20),
+          );
+          expect(backend.refreshCount, rotations + 1);
+        },
+      );
+    }
+
+    test(
+      'sign-in first completes persistence before a queued sync enters',
+      () async {
+        await seedDay('2026-09-17', queriedAtMs: 1000);
+        backend.hold('/api/v1/auth/login');
+        final auth = repository.signIn(email: 'a@example.com', password: 'pw');
+        await backend.entered!.future;
+        final sync = queue(() => repositoryFor(credentials).syncNow());
+        await Future<void>.value();
+        expect(credentials.refreshToken, isNull);
+        expect(backend.uploadCount, 0);
+        backend.proceed!.complete();
+        await auth;
+        expect((await sync).succeeded, isTrue);
+        expect(backend.uploadCount, 1);
+      },
+    );
+
+    test('failed sync releases so logout can finish', () async {
+      await signedInDay();
+      backend.hold('/api/v1/sync/usage-days');
+      backend.nextUploadStatus = 503;
+      final sync = repository.syncNow();
+      await backend.entered!.future;
+      final logout = queue(() => repositoryFor(credentials).signOut());
+      backend.proceed!.complete();
+      expect((await sync).succeeded, isFalse);
+      await logout;
+      expect(credentials.refreshToken, isNull);
+    });
+
+    test('thrown sign-in and logout work releases the gate', () async {
+      backend.malformedLogin = true;
+      await expectLater(
+        repository.signIn(email: 'a@example.com', password: 'pw'),
+        throwsA(isA<TypeError>()),
+      );
+      backend.malformedLogin = false;
+      await signedInDay();
+      backend.malformedRefresh = true;
+      await expectLater(
+        repositoryFor(credentials).signOut(),
+        throwsA(isA<TypeError>()),
+      );
+      expect(credentials.refreshToken, isNull);
+      expect(await repository.isSignedIn, isFalse);
+      expect(
+        (await repository.syncNow()).reason,
+        SyncFailureReason.notSignedIn,
+      );
+    });
+  });
 
   group('installation identity', () {
     test('is a random v4 UUID and is stable across calls', () async {
@@ -599,6 +776,18 @@ class _FakeBackend {
   int? nextUploadStatus;
   bool rejectEveryUpload = false;
   var _issued = 0;
+  bool malformedLogin = false;
+  bool malformedRefresh = false;
+  String? heldPath;
+  Completer<void>? entered;
+  Completer<void>? proceed;
+
+  void hold(String path) {
+    heldPath = path;
+    entered = Completer<void>();
+    proceed = Completer<void>();
+  }
+
 
   /// Makes every outstanding access token stale, as expiry would.
   void expireAccessTokens() => _liveAccessTokens.clear();
@@ -626,6 +815,11 @@ class _FakeBackend {
 
   Future<void> _handle(HttpRequest request) async {
     requestPaths.add(request.uri.path);
+    if (request.uri.path == heldPath) {
+      heldPath = null;
+      entered!.complete();
+      await proceed!.future;
+    }
     final raw = await utf8.decoder.bind(request).join();
     final body = raw.isEmpty
         ? const <String, Object?>{}
@@ -644,8 +838,10 @@ class _FakeBackend {
       case '/api/v1/auth/register':
         return reply(201, {'userId': 'user-1'});
       case '/api/v1/auth/login':
+        if (malformedLogin) return reply(200, <String, Object?>{});
         return reply(200, _issueSession());
       case '/api/v1/auth/refresh':
+        if (malformedRefresh) return reply(200, <String, Object?>{});
         refreshCount++;
         final presented = body['refreshToken'] as String?;
         if (presented == null || !_liveRefreshTokens.remove(presented)) {

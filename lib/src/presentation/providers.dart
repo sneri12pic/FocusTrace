@@ -10,6 +10,7 @@ import '../data/datasources/platform_locale_data_source.dart';
 import '../data/datasources/focus_trace_sync_api.dart';
 import '../data/datasources/platform_usage_data_source.dart';
 import '../data/datasources/secure_sync_credential_store.dart';
+import '../data/datasources/sync_execution_gate.dart';
 import '../data/repositories/app_language_repository_impl.dart';
 import '../data/repositories/data_transfer_repository_impl.dart';
 import '../data/repositories/report_repository_impl.dart';
@@ -192,6 +193,7 @@ final syncRepositoryProvider = Provider<SyncRepository?>((ref) {
     throw StateError('The configured local data source cannot sync usage.');
   }
   return SyncRepositoryImpl(
+    executionGate: const AndroidSyncExecutionGate(),
     api: FocusTraceSyncApi(
       baseUrl: Uri.parse(syncBaseUrl),
       credentials: const SecureSyncCredentialStore(),

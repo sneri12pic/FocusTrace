@@ -4,6 +4,7 @@ import '../../domain/models/sync_usage.dart';
 import '../../domain/repositories/sync_repository.dart';
 import '../datasources/focus_trace_local_data_source.dart';
 import '../datasources/focus_trace_sync_api.dart';
+import '../datasources/sync_execution_gate.dart';
 
 /// Coordinates local selection, sanitization, device registration and upload.
 ///
@@ -13,6 +14,7 @@ import '../datasources/focus_trace_sync_api.dart';
 class SyncRepositoryImpl implements SyncRepository {
   SyncRepositoryImpl({
     required FocusTraceSyncApi api,
+    required SyncExecutionGate executionGate,
     required FocusTraceLocalDataSource localDataSource,
     required UsageSyncDataSource usageDataSource,
     required String deviceName,
@@ -20,6 +22,7 @@ class SyncRepositoryImpl implements SyncRepository {
     Random? random,
     DateTime Function()? now,
   }) : _api = api,
+       _gate = executionGate,
        _local = localDataSource,
        _usage = usageDataSource,
        _deviceName = deviceName,
@@ -39,6 +42,7 @@ class SyncRepositoryImpl implements SyncRepository {
   static final DateTime minLocalDate = DateTime.utc(2026, 1, 1);
 
   final FocusTraceSyncApi _api;
+  final SyncExecutionGate _gate;
   final FocusTraceLocalDataSource _local;
   final UsageSyncDataSource _usage;
   final String _deviceName;
@@ -47,7 +51,14 @@ class SyncRepositoryImpl implements SyncRepository {
   final DateTime Function() _now;
 
   @override
-  Future<bool> get isSignedIn => _api.hasSession;
+  Future<bool> get isSignedIn => _sessionOperation(() => _api.hasSession);
+
+  // This is the ownership boundary. API and credential helpers never reacquire.
+  Future<T> _sessionOperation<T>(Future<T> Function() operation) =>
+      _gate.run(() async {
+        await _api.reconcileSession();
+        return operation();
+      });
 
   @override
   Future<String?> accountEmail() =>
@@ -58,36 +69,37 @@ class SyncRepositoryImpl implements SyncRepository {
       await _local.readSetting(SyncSettingKeys.enabled) == 'true';
 
   @override
-  Future<void> setSyncEnabled(bool enabled) => _local.writeSetting(
-    SyncSettingKeys.enabled,
-    enabled ? 'true' : 'false',
+  Future<void> setSyncEnabled(bool enabled) => _gate.run(
+    () => _local.writeSetting(
+      SyncSettingKeys.enabled,
+      enabled ? 'true' : 'false',
+    ),
   );
 
   @override
   Future<DateTime?> lastSuccessfulSyncAt() async {
     final stored = await _readInt(SyncSettingKeys.lastSuccessMs);
-    return stored == null
-        ? null
-        : DateTime.fromMillisecondsSinceEpoch(stored);
+    return stored == null ? null : DateTime.fromMillisecondsSinceEpoch(stored);
   }
 
   @override
   Future<void> createAccount({
     required String email,
     required String password,
-  }) async {
+  }) => _sessionOperation(() async {
     await _authenticating(() async {
       await _api.register(email, password);
       await _api.signIn(email, password);
     });
     await _local.writeSetting(SyncSettingKeys.accountEmail, email);
-  }
+  });
 
   @override
-  Future<void> signIn({required String email, required String password}) async {
-    await _authenticating(() => _api.signIn(email, password));
-    await _local.writeSetting(SyncSettingKeys.accountEmail, email);
-  }
+  Future<void> signIn({required String email, required String password}) =>
+      _sessionOperation(() async {
+        await _authenticating(() => _api.signIn(email, password));
+        await _local.writeSetting(SyncSettingKeys.accountEmail, email);
+      });
 
   /// Translates the transport's exception into the domain's, so nothing above
   /// this repository can see a status code or a server message.
@@ -114,24 +126,31 @@ class SyncRepositoryImpl implements SyncRepository {
   /// Leaves the upload watermark alone: the server still holds what this
   /// device uploaded, and signing back in should not re-send all of it.
   @override
-  Future<void> signOut() async {
-    await _api.signOut();
-    await _local.writeSetting(SyncSettingKeys.accountEmail, '');
-    await _local.writeSetting(SyncSettingKeys.enabled, 'false');
-  }
+  Future<void> signOut() => _sessionOperation(() async {
+    try {
+      await _api.signOut();
+    } finally {
+      await _local.writeSetting(SyncSettingKeys.accountEmail, '');
+      await _local.writeSetting(SyncSettingKeys.enabled, 'false');
+    }
+  });
 
   @override
   Future<List<RemoteUsageDay>> readRemoteHistory({
     required DateTime from,
     required DateTime to,
     String? deviceId,
-  }) => _api.readHistory(from: from, to: to, deviceId: deviceId);
+  }) => _sessionOperation(
+    () => _api.readHistory(from: from, to: to, deviceId: deviceId),
+  );
 
   /// A random UUID v4, never derived from hardware, never `ANDROID_ID` and
   /// never an advertising id (architecture section 3). Clearing local data
   /// removes it and the installation legitimately becomes a new device.
   @override
-  Future<String> installationId() async {
+  Future<String> installationId() => _gate.run(_installationId);
+
+  Future<String> _installationId() async {
     final existing = await _local.readSetting(SyncSettingKeys.installationId);
     if (existing != null && existing.isNotEmpty) {
       return existing;
@@ -144,82 +163,81 @@ class SyncRepositoryImpl implements SyncRepository {
   @override
   Future<SyncRunResult> syncNow() async {
     try {
-      if (!await _api.hasSession) {
-        return const SyncRunResult.failed(
-          'Not signed in.',
-          SyncFailureReason.notSignedIn,
-        );
-      }
-      final watermark = await _readInt(SyncSettingKeys.usageWatermarkMs) ?? 0;
-      final days = _sanitize(
-        await _usage.readSyncUsageDays(
-          watermarkMs: watermark,
-          importedVersionMs: await _importedVersion(),
-        ),
-      );
-      if (days.isEmpty) {
-        // Nothing to send is still a run that reached its conclusion, so the
-        // "last synced" stamp advances rather than looking permanently stale.
-        await _recordSuccess();
-        return const SyncRunResult(
-          uploadedDays: 0,
-          results: <SyncUploadResult>[],
-          rejectedDays: 0,
-        );
-      }
-
-      final deviceId = await installationId();
-      // Idempotent: 201 once, 200 for every run after, and it keeps
-      // last_seen_at current. It never creates a second device.
-      await _api.registerDevice(
-        deviceId: deviceId,
-        displayName: _deviceName,
-        platform: _platform,
-      );
-
-      final results = <SyncUploadResult>[];
-      var rejected = 0;
-      var highWater = watermark;
-      for (final batch in _batches(days)) {
-        try {
-          results.addAll(await _api.uploadDays(deviceId, batch));
-        } on SyncApiException catch (error) {
-          if (!error.isPermanent) {
-            // Transient. Leave the watermark where it is and try again later;
-            // batches already sent will simply answer DUPLICATE.
-            rethrow;
-          }
-          // Deterministic rejection. Resending it unchanged would loop forever
-          // (architecture 9.1, client obligations), so it is counted and passed
-          // over. The local record is untouched and stays authoritative.
-          rejected += batch.length;
-        }
-        for (final day in batch) {
-          if (day.snapshotVersion > highWater) {
-            highWater = day.snapshotVersion;
-          }
-        }
-      }
-      await _local.writeSetting(
-        SyncSettingKeys.usageWatermarkMs,
-        '$highWater',
-      );
-      await _recordSuccess();
-      return SyncRunResult(
-        uploadedDays: days.length - rejected,
-        results: results,
-        rejectedDays: rejected,
-      );
+      return await _sessionOperation(_syncNow);
     } on SyncApiException catch (error) {
       return SyncRunResult.failed(error.message, _reasonFor(error));
-    } on Object catch (error) {
-      // Swallowed exactly as recoverUsageHistory swallows its own: a sync
-      // failure must not surface as an app failure.
-      return SyncRunResult.failed(
-        'Sync failed (${error.runtimeType}).',
+    } on Object {
+      return const SyncRunResult.failed(
+        'Sync failed.',
         SyncFailureReason.unknown,
       );
     }
+  }
+
+  Future<SyncRunResult> _syncNow() async {
+    if (!await _api.hasSession) {
+      return const SyncRunResult.failed(
+        'Not signed in.',
+        SyncFailureReason.notSignedIn,
+      );
+    }
+    final watermark = await _readInt(SyncSettingKeys.usageWatermarkMs) ?? 0;
+    final days = _sanitize(
+      await _usage.readSyncUsageDays(
+        watermarkMs: watermark,
+        importedVersionMs: await _importedVersion(),
+      ),
+    );
+    if (days.isEmpty) {
+      // Nothing to send is still a run that reached its conclusion, so the
+      // "last synced" stamp advances rather than looking permanently stale.
+      await _recordSuccess();
+      return const SyncRunResult(
+        uploadedDays: 0,
+        results: <SyncUploadResult>[],
+        rejectedDays: 0,
+      );
+    }
+
+    final deviceId = await _installationId();
+    // Idempotent: 201 once, 200 for every run after, and it keeps
+    // last_seen_at current. It never creates a second device.
+    await _api.registerDevice(
+      deviceId: deviceId,
+      displayName: _deviceName,
+      platform: _platform,
+    );
+
+    final results = <SyncUploadResult>[];
+    var rejected = 0;
+    var highWater = watermark;
+    for (final batch in _batches(days)) {
+      try {
+        results.addAll(await _api.uploadDays(deviceId, batch));
+      } on SyncApiException catch (error) {
+        if (!error.isPermanent) {
+          // Transient. Leave the watermark where it is and try again later;
+          // batches already sent will simply answer DUPLICATE.
+          rethrow;
+        }
+        // Deterministic rejection. Resending it unchanged would loop forever
+        // (architecture 9.1, client obligations), so it is counted and passed
+        // over. The local record is untouched and stays authoritative.
+        rejected += batch.length;
+      }
+      for (final day in batch) {
+        if (day.snapshotVersion > highWater) {
+          highWater = day.snapshotVersion;
+        }
+      }
+    }
+    await _local.writeSetting(SyncSettingKeys.usageWatermarkMs, '$highWater');
+    await _recordSuccess();
+    return SyncRunResult(
+      uploadedDays: days.length - rejected,
+      results: results,
+      rejectedDays: rejected,
+    );
   }
 
   Future<void> _recordSuccess() => _local.writeSetting(

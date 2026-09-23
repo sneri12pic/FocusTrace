@@ -5,6 +5,88 @@ session reads to continue safely.
 
 ---
 
+## 2026-09-23 — Cross-engine sync/session gate prerequisite
+
+Date: 2026-09-23
+Agent: Codex
+Goal: Close the concurrency blocker that stopped Phase 5, without implementing
+WorkManager, background engines, scheduling, retry policy or device naming.
+
+Completed:
+- Verified branch `feature/backend-sync-v1`, HEAD `31625ed`. Phase 3 is committed
+  (`48a1861`) and API 36 is committed (`31625ed`). Phase 4 remains uncommitted;
+  existing UI/localization work and unrelated `.agents/` / `skills-lock.json`
+  were preserved. No mixed commit was created.
+- Confirmed the race: ViewModel exclusion and API refresh coalescing were local
+  to Dart instances. Separate engines could rotate or clear the same persisted
+  credential concurrently, race logout, and independently advance the watermark.
+- Added a JVM singleton gate with asynchronous FIFO waiters and engine-bound
+  ownership plus a per-operation lease. Dart acquires over a small channel and
+  releases in `finally`. Native checks reject foreign/stale/duplicate release.
+  Engine destruction retires its active lease and pending requests after teardown
+  returns to the platform loop. No lock state is persisted.
+- Repository ownership covers the whole sync run, remote history, sign-in,
+  account creation/sign-in, logout, session reads, installation-ID creation and
+  opt-in writes. Helpers do not reacquire. The ViewModel guard stays unchanged.
+- Reconcile cached access tokens against the persisted session under the lease,
+  so another engine's logout or sign-in cannot leave a usable stale client cache.
+  Logout now clears credentials/cache in `finally` even for malformed responses.
+- Source and merged manifests have no separate Android process. The engine-only
+  channel attachment can be reused by a later worker without Activity ownership.
+
+Files materially changed:
+- native: `MainActivity.kt`, new `SyncExecutionGate.kt`,
+  `SyncExecutionGateChannel.kt`, `SyncExecutionGateTest.kt`,
+  `SyncExecutionGateInstrumentedTest.kt` under the existing Android package
+- Dart: new `data/datasources/sync_execution_gate.dart`,
+  `focus_trace_sync_api.dart`, `sync_repository_impl.dart`, `providers.dart`
+- tests: `sync_repository_test.dart`, `sync_end_to_end_test.dart` (required test
+  gate injection only), new `sync_execution_gate_test.dart` and
+  `support/test_sync_execution_gate.dart`
+- documentation: this entry and architecture section 8.5
+
+Verification:
+- `flutter analyze`: PASS, no issues.
+- `flutter build apk --debug`: PASS, built `build/app/outputs/flutter-apk/app-debug.apk`.
+- `flutter test --reporter expanded`: PASS, 195 passed, 0 failed, 1 skipped
+  (real-backend suite without its URL). Focused gate/repository rerun after
+  strengthening the contender assertion: 36 passed, 0 failed, 0 skipped.
+- `cd android; ./gradlew :app:testDebugUnitTest :app:connectedDebugAndroidTest`:
+  PASS. JVM XML totals: 98 total, 97 passed, 0 failures/errors, 1 skipped
+  (`UsageStatsAggregationBenchmarkTest.benchmarkFilteredAggregation`).
+  Device XML: 15 total/passed, 0 failures/errors/skips, SM-A366B Android 16/API 36.
+- Device gate test creates two actual FlutterEngine instances with separate
+  channel handlers, calls their native handlers, rejects foreign ownership,
+  destroys the active engine, and verifies deferred handoff. It does not run two
+  Dart sync entrypoints or a background worker.
+- Mutation proof: temporarily removed the native client-identity release check.
+  The targeted foreign-owner test failed (1 run, 1 failure, Gradle exit 1).
+  SHA-256 comparison confirmed byte-identical restoration; full native gates
+  then passed. JVM contention uses a latch, not sleeps.
+- Real-backend E2E: BLOCKED, Docker daemon unavailable and no local listener on
+  the existing backend/PostgreSQL ports (18080, 18081, 5432). Not executed.
+- `git diff --check`: PASS. Existing unrelated working-tree edits preserved.
+
+Decisions made:
+- One top-level repository ownership boundary, no per-request/nested locks.
+- FIFO completion ordering for sync/auth/logout; no gate retry or expiry policy.
+- Gate channel carries only synchronization leases, never credentials. No new
+  logs, credential storage, hardware identifiers, dependencies or backend changes.
+
+Remaining / risks:
+- Phase 5's cross-engine exclusion prerequisite is implemented. A future worker
+  must attach the gate channel and existing credential capability, use the same
+  repository gate, and stop Dart before releasing ownership on cancellation.
+- Scheduler, cadence/retry/opt-in lifecycle and background integration testing
+  remain separate work. No user-facing device sign-in flow was exercised here.
+- Engine/process death during refresh still has the existing lost-response
+  reauthentication risk; in-flight HTTP effects cannot be undone by a local lock.
+- No production release-hardening work was begun.
+
+Relevant commit: uncommitted; kept separate in scope from existing Phase 4 work.
+
+---
+
 ## 2026-09-20 — Phase 4: the sync UI slice
 
 Date: 2026-09-20

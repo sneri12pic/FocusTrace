@@ -1,5 +1,7 @@
 import 'dart:io';
 
+import 'support/test_sync_execution_gate.dart';
+
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:focustrace/focus_trace.dart';
@@ -203,6 +205,7 @@ void main() {
     // Every Dart object below is rebuilt from nothing but `deviceA.local` and
     // whatever the keystore kept, which is what a cold start actually has.
     SyncRepositoryImpl launch() => SyncRepositoryImpl(
+      executionGate: TestSyncExecutionGate(),
       api: FocusTraceSyncApi(
         baseUrl: Uri.parse(baseUrl),
         credentials: const SecureSyncCredentialStore(),
@@ -272,6 +275,7 @@ class _Installation {
       local,
       db,
       SyncRepositoryImpl(
+        executionGate: TestSyncExecutionGate(),
         api: FocusTraceSyncApi(
           baseUrl: Uri.parse(baseUrl),
           credentials: _MemoryCredentialStore(),
