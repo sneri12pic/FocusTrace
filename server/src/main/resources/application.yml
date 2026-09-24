@@ -65,6 +65,17 @@ focustrace:
       login-per-source: { capacity: 10, period: PT15M }
       login-per-account: { capacity: 5, period: PT15M }
       refresh-per-source: { capacity: 60, period: PT1H }
+      # D18: authenticated, keyed by the token's account id. Sized from the real
+      # client (architecture 5.1, D18): a full-history re-upload must fit the upload
+      # burst, because a run that fails part-way restarts from its first batch.
+      device-register-per-user: { capacity: 30, period: PT1H }
+      upload-per-user: { capacity: 300, period: PT6H }
+      history-per-user: { capacity: 60, period: PT1H }
+  # D18: per-account resource bounds; initial operational defaults, not architecture.
+  sync:
+    max-active-devices: 10
+    device-active-window: PT2160H  # 90 days
+    max-stored-days: 3650          # usage days across all the account's devices
 
 logging:
   level:

@@ -10,7 +10,14 @@ import java.net.http.HttpHeaders;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.security.SecureRandom;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
+import java.time.Duration;
+import java.util.concurrent.Future;
+import javax.sql.DataSource;
 import java.util.Base64;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -41,7 +48,10 @@ import tools.jackson.databind.json.JsonMapper;
             "focustrace.auth.rate-limit.register-per-source.capacity=1000000",
             "focustrace.auth.rate-limit.login-per-source.capacity=1000000",
             "focustrace.auth.rate-limit.login-per-account.capacity=1000000",
-            "focustrace.auth.rate-limit.refresh-per-source.capacity=1000000"
+            "focustrace.auth.rate-limit.refresh-per-source.capacity=1000000",
+            "focustrace.auth.rate-limit.device-register-per-user.capacity=1000000",
+            "focustrace.auth.rate-limit.upload-per-user.capacity=1000000",
+            "focustrace.auth.rate-limit.history-per-user.capacity=1000000"
         })
 public abstract class IntegrationTest {
 
@@ -72,6 +82,9 @@ public abstract class IntegrationTest {
 
     @Autowired
     protected JdbcTemplate jdbc;
+
+    @Autowired
+    protected DataSource dataSource;
 
     public static byte[] randomBytes(int length) {
         byte[] bytes = new byte[length];
@@ -146,6 +159,48 @@ public abstract class IntegrationTest {
             Thread.currentThread().interrupt();
             throw new IllegalStateException(e);
         }
+    }
+
+    // --- deterministic concurrency barrier ------------------------------------
+
+    /**
+     * Opens a transaction on its own connection holding {@code FOR UPDATE} on the
+     * account row, which conflicts with every lock a request takes on it. Commit or
+     * close the returned connection to release. Requests queued behind it are proven
+     * to overlap by {@link #awaitLockWaiters}, not by timing.
+     */
+    protected Connection lockAccount(UUID userId) throws SQLException {
+        Connection connection = dataSource.getConnection();
+        connection.setAutoCommit(false);
+        try (PreparedStatement lock = connection.prepareStatement("SELECT 1 FROM users WHERE id = ? FOR UPDATE")) {
+            lock.setObject(1, userId);
+            lock.executeQuery().close();
+        }
+        return connection;
+    }
+
+    /**
+     * Polls until {@code count} backends of this database wait on a lock, or every
+     * request has already finished (so a mutated build that never blocks still
+     * reaches its assertions instead of hanging).
+     */
+    protected void awaitLockWaiters(int count, List<? extends Future<?>> requests) {
+        long deadline = System.nanoTime() + Duration.ofSeconds(30).toNanos();
+        while (System.nanoTime() < deadline) {
+            Integer waiting = jdbc.queryForObject("""
+                    SELECT count(*) FROM pg_stat_activity
+                     WHERE datname = current_database() AND wait_event_type = 'Lock'""", Integer.class);
+            if (waiting >= count || requests.stream().allMatch(Future::isDone)) {
+                return;
+            }
+            try {
+                Thread.sleep(10); // poll interval only; correctness never depends on it
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new IllegalStateException(e);
+            }
+        }
+        throw new AssertionError("fewer than " + count + " requests reached the lock");
     }
 
     // --- auth flows -----------------------------------------------------------

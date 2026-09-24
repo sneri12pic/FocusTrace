@@ -486,6 +486,8 @@ field table:
 | `timezoneId` | at most 64 UTF-16 units, resolvable by `ZoneId.of` |
 | `appKey`, `appName` | non-blank, at most 255 / 200 UTF-16 units, no NUL or lone surrogates |
 | History read range | at most 400 days (Step 5) |
+| Stored usage days per account | at most 3,650 across all devices; a request that would create more is `403` and writes nothing (D18) |
+| New devices per account | admitted only while fewer than 10 devices were seen in the last 90 days; otherwise `403` (D18) |
 
 D13 closed the earlier gap, where 400 days times 2,000 apps allowed 800,000 app
 rows in one transaction.
@@ -560,10 +562,11 @@ V14 (Data Protection).
 Explicitly addresses **API4:2023 (Unrestricted Resource Consumption)** and
 **API6:2023 (Unrestricted Access to Sensitive Business Flows)**.
 
-Current state: **no throttling exists anywhere**, because no endpoint exists. The
-earlier deferral to "before a public deployment" has been withdrawn: D15 puts
-throttling on registration, login and refresh in Step 2, alongside the endpoints
-themselves. Registration and login are the sensitive business flows here —
+Current state (2026-09-24): D15 throttles the anonymous flows and D18 the
+authenticated device, upload and history routes. When this section was written no
+endpoint existed yet. The earlier deferral to "before a public deployment" has
+been withdrawn: D15 puts throttling on registration, login and refresh in Step 2,
+alongside the endpoints themselves. Registration and login are the sensitive business flows here —
 unthrottled login is credential stuffing, unthrottled registration is unbounded
 anonymous account creation — and they are the only anonymous flows the system
 has.
@@ -575,8 +578,19 @@ Required protection, per flow:
 | `POST /auth/register` | anonymous account creation, resource exhaustion | per-source rate limit |
 | `POST /auth/login` | credential stuffing, password brute force | per-source **and** per-account limits |
 | `POST /auth/refresh` | token brute force, rotation storm | per-source limit |
-| `PUT /sync/usage-days` | database work amplification | authenticated per-user limit plus the section 9 bounds |
-| `GET /usage` | read amplification | authenticated per-user limit plus the 400-day range cap |
+| `POST /devices` | device-row growth, write amplification | active-device quota plus an authenticated per-user limit (D18) |
+| `PUT /sync/usage-days` | database work amplification, storage growth | authenticated per-user limit, the section 9 bounds and the per-account stored-day budget (D18) |
+| `GET /usage` | read amplification | authenticated per-user limit plus the 400-day range cap (D18) |
+
+**Authenticated limits (D18, implemented 2026-09-24).** The three authenticated
+rows above use the same in-process buckets as D15, keyed by the authenticated
+account id taken from the verified token, never from request input or the source
+address. They are charged before the request body is parsed and after
+authentication, so an unauthenticated request never touches an account's budget.
+Values, sizing and the single-instance limitation are in architecture 5.1, D18.
+The two account quotas are enforced in the write transaction under a lock on the
+account row, so concurrent requests cannot race past them, and a refused request
+writes nothing.
 
 **Throttling dimensions must be independent.** A single combined `IP + username`
 bucket defeats neither attack that matters: one source trying many accounts stays
@@ -844,7 +858,7 @@ surfaces this system does not have.
 | API1 Broken Object Level Authorization | **Primary risk.** Device and usage objects are addressed by client-supplied identifiers. |
 | API2 Broken Authentication | **High from Step 2.** Registration, login, JWT, refresh rotation. |
 | API3 Broken Object Property Level Authorization | **High from Step 2.** Mass assignment into ownership fields; leaking `password_hash` or `token_hash` through a response. |
-| API4 Unrestricted Resource Consumption | **High, partly addressed.** Upload size is bounded (JSON document, 31 days, 1,000 rows; D13). Authenticated routes are not throttled, and devices per account are not capped. |
+| API4 Unrestricted Resource Consumption | **High, partly addressed.** Upload size is bounded (JSON document, 31 days, 1,000 rows; D13). D18 adds per-user limits on device registration, upload and history, an active-device quota and a per-account stored-day budget. Still open: session/token row retention, a page bound for the worst-case history response, and volumetric limits at a reverse proxy. |
 | API5 Broken Function Level Authorization | Moderate. One role today, so it reduces to deny-by-default. Becomes real if any administrative function appears. |
 | API6 Unrestricted Access to Sensitive Business Flows | **Relevant to registration and login.** Anonymous account creation and credential stuffing. |
 | API7 Server Side Request Forgery | **Not exposed.** The service makes no outbound request from client-controlled input and has no URL-valued field. Revisit only if a webhook, avatar fetch or import-by-URL feature is ever proposed. |
@@ -932,6 +946,19 @@ PostgreSQL via Testcontainers, consistent with the existing suite.
 | The 429 body reveals neither the tripped dimension nor whether the account exists, and is identical for an existing and a non-existent account | integration |
 | A supplied `X-Forwarded-For` does not change the bucket a request is counted against while no trusted proxy is configured | integration |
 | Bucket entries expire once idle beyond their refill period | unit test |
+| Upload, history and device registration past their per-user limit return 429 with `Retry-After`, write nothing, and do not affect another account (D18) | integration |
+| An unauthenticated request is 401 and consumes no account's budget; a rejected upload body still consumes one (D18) | integration |
+| A per-user bucket refills on its own schedule, keyed per account (D18) | unit test, fake clock |
+
+### Account quotas (D18)
+
+| Test | Method |
+| --- | --- |
+| A new device past the active-device quota is 403 with no row; re-registration at quota is 200; a foreign UUID is still 409; another account is unaffected | integration |
+| A device unseen for the active window frees its slot | integration |
+| Concurrent registrations for the last slot admit exactly one, proven queued together by a test-held account lock | concurrent integration test |
+| A request that would exceed the stored-day budget is 403 and leaves every row unchanged; replace, duplicate, stale and conflict are unaffected at the budget | integration |
+| Concurrent uploads for the last stored-day slot admit exactly one | concurrent integration test |
 
 ### Configuration
 
@@ -993,6 +1020,7 @@ describe the pre-Step-2 state and are not updated entry by entry.
 | D15 | Authentication rate limits | Resolved | architecture 5.1, D15 |
 | D16 | `403` versus non-revealing `404` for a foreign object | Resolved (2026-09-18) | architecture 5.1, D16 |
 | D17 | Compromised-password blocklist | Resolved | architecture 5.1, D17 |
+| D18 | Authenticated per-user limits, active-device quota, stored-day budget | Resolved (2026-09-24) | architecture 5.1, D18 |
 
 D16 was resolved before Step 3 (devices), which implements D12 and scopes every
 device query by owner. D13 was settled with Step 4 (the upload endpoint): at most

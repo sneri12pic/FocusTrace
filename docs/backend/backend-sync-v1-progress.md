@@ -5,6 +5,103 @@ session reads to continue safely.
 
 ---
 
+## 2026-09-24 — Release hardening: bounded sync resource consumption (D18)
+
+Date: 2026-09-24
+Agent: Claude Code
+Goal: Close the documented backend API4 release blockers (device growth,
+per-account storage growth, authenticated request rates) without changing the
+API design, authentication or upload contract.
+
+State before work: `feature/backend-sync-v1` at `0555e10`, clean tree except the
+unrelated untracked `.agents/` and `skills-lock.json` (excluded). Baseline
+`./gradlew test --rerun` on HEAD: 19 suites, 205 tests, 0 failures/errors/skips.
+
+Confirmed risks (from the code, not the docs):
+- `Devices.register` was `INSERT ... ON CONFLICT (id) DO NOTHING` with no count:
+  unlimited device UUIDs per account. Idempotent re-registration; no inactive
+  concept beyond `last_seen_at`; no deletion anywhere.
+- Per device: one day per date from `2026-01-01` to UTC today + 1, up to 500 app
+  rows each, whole-day replacement, retained forever. Account storage was
+  therefore proportional to the number of UUIDs the caller minted.
+- `POST/GET /devices`, `PUT /sync/usage-days` and `GET /usage` had no per-user
+  throttling; D15 covers only register/login/refresh.
+
+Completed (architecture 5.1, D18):
+- Active-device quota: a new UUID is admitted only while the account has fewer
+  than 10 devices seen within 90 days, else `403`, nothing written. Own
+  re-registration is never quota-checked (`200` at quota); a foreign UUID stays
+  `409`. A hard total cap was rejected because the installation UUID changes on
+  reinstall/data clear/new phone and no deletion exists, which would strand
+  ordinary users; the inactivity window needs no new endpoint and deletes nothing.
+- Concurrency: every registration first locks the caller's `users` row
+  `FOR NO KEY UPDATE`, then checks existence, counts and inserts.
+- Stored-day budget: at most 3,650 `usage_days` per account across devices. Only a
+  request that creates a day (`RETURNING xmax = 0`) is checked; it then locks the
+  account row and counts, after the writes. Over budget -> `403`, whole request
+  rolled back. Replace/duplicate/stale/conflict never trip it. Rejection chosen
+  over retention: no data is ever deleted to make room.
+- Per-user rate limits, same D15 GCRA buckets, keyed by the verified `sub`:
+  device registration 30/h, upload 300/6 h, history 60/h. Charged by a
+  `HandlerInterceptor` on `@AuthRateLimiter.PerUser` handlers: after
+  authentication, before body parsing, outside the transaction. `GET /devices`
+  deliberately unthrottled. Generic `429` + `Retry-After`.
+
+Files materially changed:
+- `server/src/main/java/.../auth/AuthRateLimiter.java`, `AuthProperties.java`,
+  new `PerUserRateLimitInterceptor.java`; new `common/SyncLimits.java`;
+  `common/ApiException.java` (`forbidden`); `device/Devices.java`,
+  `DeviceController.java`; `usage/UsageDays.java`, `UsageUploadController.java`,
+  `UsageHistoryController.java`; `FocusTraceSyncApplication.java`;
+  `application.yml`. No migration, no dependency, no Flutter/Android change.
+- Tests: new `device/DeviceQuotaIT`, `usage/StorageBudgetIT`,
+  `usage/PerUserRateLimitIT`; `TokenBucketTest` (+1); `IntegrationTest` (per-user
+  limits raised for other suites, account-lock barrier helpers).
+- Docs: architecture (D18, D16 note, 7.3, 9, 9.1, 9.3), security baseline
+  (sections 9, 12, 17, 18, decision table), plan section 5/6, this entry.
+
+Verification (Docker Desktop, PostgreSQL 16 via Testcontainers):
+- Focused: `DeviceQuotaIT` 7/7, `StorageBudgetIT` 6/6, `PerUserRateLimitIT` 6/6,
+  `TokenBucketTest` 7/7, `DeviceIT` 14/14, `UsageUploadIT` 24/24,
+  `UsageConcurrencyIT` 4/4, `UsageHistoryIT` 16/16, `RateLimitIT` 7/7: PASS.
+- `./gradlew test --rerun`: PASS, 22 suites, 225 tests, 0 failures, 0 errors,
+  0 skipped.
+- `./gradlew clean build`: PASS, same 225 tests.
+- Race tests hold the account row from the test and wait (polling
+  `pg_stat_activity`) until every request is queued on a lock before releasing,
+  so overlap is proven, not timed.
+- Mutation 1: removed the account lock from `Devices.register`. The barriered
+  last-slot test admitted 5/5 racers (7 devices on a quota of 3) and the
+  unbarriered rounds admitted 6/6. Restored; SHA-256 identical
+  (`7b2cbbb7...65fa6`).
+- Mutation 2: removed the account lock before the stored-day count. In 3 of 3
+  runs all four racers were admitted (budget 6 exceeded by 3). Restored; SHA-256
+  identical (`ae3ceb80...49720`).
+
+Decisions made: D18 (values are configuration; dimensions, keys, `403`/`429`
+responses and "reject, never delete" are policy).
+
+Remaining (plan section 5): device retirement/deletion; session and refresh-token
+row retention; a page bound for the worst-case history response; client
+per-batch watermark progress (the upload burst is sized to cover a full
+re-upload instead); proxy-level volumetric limits; in-process limiter means one
+instance only. Plan section 6 blockers (privacy copy, account deletion UI,
+email verification) are unchanged.
+
+Risks / unresolved questions:
+- `RETURNING xmax = 0` is a PostgreSQL implementation detail; the tests pin both
+  directions (a replacement at budget passes, a new day at budget is refused).
+- A future account or device deletion must take the account row lock first;
+  deleting a user while an upload waits for that lock can otherwise deadlock
+  (PostgreSQL aborts one side; no deletion endpoint exists today).
+- The Sync v1 client maps `403` to an `unknown` failure; there is no quota UI.
+- Worst-case per-account storage is still on the order of a few GB (3,650 days x
+  500 apps x maximal strings). The values are initial defaults to tune.
+
+Relevant commit: this entry's commit (`fix(server): bound sync resource consumption`).
+
+---
+
 ## 2026-09-23 — Phase 5 opt-in periodic synchronization
 
 Date: 2026-09-23; lifecycle blocker closed 2026-09-24

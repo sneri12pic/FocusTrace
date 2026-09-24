@@ -184,11 +184,30 @@ Remaining for Sync v1 correctness, none of it blocking the slice:
 
 Before public release (backend):
 
-- Device lifecycle: decide active/retired semantics and an active-device quota.
-  A hard delete cascades the device's synced history. No device deletion exists yet.
-- A simple persistent-storage bound per account or device. Request limits bound
-  one request, not what an account accumulates.
-- Authenticated per-user limits for upload and history (baseline section 11).
+- ~~Active-device quota~~, ~~persistent-storage bound~~ and ~~authenticated
+  per-user limits for upload and history~~: resolved 2026-09-24 as architecture
+  5.1, D18. Accepted when: a new device past the quota is `403` with no row, while
+  re-registration stays `200` and a foreign UUID stays `409`; a request that would
+  take an account past its stored-day budget is `403` and changes nothing, while
+  replace/duplicate/stale/conflict are unaffected; both quotas admit exactly one
+  of several requests racing for the last slot; upload, history and device
+  registration return `429` past their per-account limit with no write and no
+  effect on another account. All proven against PostgreSQL (`DeviceQuotaIT`,
+  `StorageBudgetIT`, `PerUserRateLimitIT`).
+- Device lifecycle beyond D18: explicit retirement or deletion. D18 frees a slot
+  after 90 days of inactivity, but device rows and their history are never
+  removed. A hard delete cascades the device's synced history and must take the
+  D18 account lock.
+- Session and refresh-token retention: every login adds an `auth_sessions` row and
+  every refresh a `refresh_tokens` row, never reclaimed (review brief, 2026-09-19).
+- A page bound for the worst-case history response: the stored-day budget now
+  caps it, but a full 400-day read can still return up to 3,650 days of 500 apps.
+- The Sync v1 client restarts a failed run from its first batch, so an upload
+  larger than the 300-request burst could never finish. The limit is sized above
+  realistic full uploads; advancing the watermark per accepted batch would remove
+  the coupling (client change, not done).
+- Volumetric limits and trusted-proxy handling at the reverse proxy (D15).
+- D18's buckets are in-process: one instance only.
 
 ## 6. Release blockers outside the backend
 
@@ -201,7 +220,7 @@ These are not backend tasks but must be resolved before sync ships to users:
 - Email addresses are never verified. Registration therefore discloses that an
   account exists (architecture 5.1, D11). Revisit if verification is added.
 - Authentication rate limiting landed in Step 2 (architecture 5.1, D15).
-  This does not establish abuse protection for device registration/listing or
-  future sync/history routes. Body limits, authenticated budgets and deployment
+  Authenticated budgets for device registration, upload and history followed in
+  D18 (2026-09-24); device listing is deliberately unthrottled. Deployment
   controls still require verification before public release; see the dated
   `backend-sync-v1-review-brief.md` for the 2026-09-19 assessment.

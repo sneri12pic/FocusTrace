@@ -1,6 +1,7 @@
 package com.stepandemianenko.focustrace.sync.device;
 
 import com.stepandemianenko.focustrace.sync.common.ApiException;
+import com.stepandemianenko.focustrace.sync.common.SyncLimits;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Instant;
@@ -28,9 +29,11 @@ class Devices {
     private static final String COLUMNS = "id, display_name, platform, registered_at, last_seen_at";
 
     private final JdbcClient jdbc;
+    private final SyncLimits limits;
 
-    Devices(JdbcClient jdbc) {
+    Devices(JdbcClient jdbc, SyncLimits limits) {
         this.jdbc = jdbc;
+        this.limits = limits;
     }
 
     /** Response DTO. Deliberately has no owner field. */
@@ -53,9 +56,32 @@ class Devices {
      * because no statement here assigns {@code user_id} to an existing row.
      * {@code platform} is fixed at first registration; an installation does not
      * change operating system.
+     *
+     * <p>D18 quota: a UUID that does not exist yet is admitted only while the caller
+     * has fewer than {@code maxActiveDevices} devices seen within the active window;
+     * otherwise 403 and nothing is written. An existing UUID - the caller's own
+     * re-registration or another account's 409 - is never quota-checked. Locking the
+     * caller's {@code users} row first serializes every registration of one account,
+     * so the count cannot be raced; other accounts and uploads are not blocked
+     * ({@code NO KEY UPDATE} does not conflict with the foreign-key {@code KEY SHARE}).
      */
     @Transactional
     Registration register(UUID userId, UUID deviceId, String displayName, String platform) {
+        jdbc.sql("SELECT 1 FROM users WHERE id = :userId FOR NO KEY UPDATE")
+                .param("userId", userId)
+                .query(Integer.class)
+                .optional()
+                .orElseThrow(ApiException::unauthorized);
+        boolean exists = jdbc.sql("SELECT 1 FROM devices WHERE id = :id")
+                .param("id", deviceId)
+                .query(Integer.class)
+                .optional()
+                .isPresent();
+        if (!exists && activeDevices(userId) >= limits.maxActiveDevices()) {
+            securityLog.warn("event=device_quota_exceeded userId={}", userId);
+            throw ApiException.forbidden("This account has reached its device limit.");
+        }
+
         Optional<DeviceResponse> created = jdbc.sql("""
                         INSERT INTO devices (id, user_id, display_name, platform, last_seen_at)
                         VALUES (:id, :userId, :displayName, :platform, now())
@@ -89,6 +115,18 @@ class Devices {
 
         securityLog.warn("event=device_id_conflict userId={} deviceId={}", userId, deviceId);
         throw ApiException.conflict("This device ID is already registered to another account.");
+    }
+
+    private int activeDevices(UUID userId) {
+        return jdbc.sql("""
+                        SELECT count(*) FROM devices
+                         WHERE user_id = :userId
+                           AND COALESCE(last_seen_at, registered_at)
+                               > now() - CAST(:windowSeconds AS bigint) * interval '1 second'""")
+                .param("userId", userId)
+                .param("windowSeconds", limits.deviceActiveWindow().toSeconds())
+                .query(Integer.class)
+                .single();
     }
 
     List<DeviceResponse> list(UUID userId) {

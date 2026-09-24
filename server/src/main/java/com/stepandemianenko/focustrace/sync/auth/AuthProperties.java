@@ -42,13 +42,16 @@ public record AuthProperties(@Valid @NotNull Jwt jwt, @Valid @NotNull Session se
             @NotNull @DurationMin(seconds = 0) Duration reuseGrace) {
     }
 
-    /** D15. */
+    /** D15; the three per-user limits are D18. */
     public record RateLimit(
             @Positive int maxEntriesPerLimiter,
             @Valid @NotNull Limit registerPerSource,
             @Valid @NotNull Limit loginPerSource,
             @Valid @NotNull Limit loginPerAccount,
-            @Valid @NotNull Limit refreshPerSource) {
+            @Valid @NotNull Limit refreshPerSource,
+            @Valid @NotNull Limit deviceRegisterPerUser,
+            @Valid @NotNull Limit uploadPerUser,
+            @Valid @NotNull Limit historyPerUser) {
     }
 
     /** {@code capacity} requests per {@code period}, refilled continuously. */

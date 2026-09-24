@@ -1,5 +1,6 @@
 package com.stepandemianenko.focustrace.sync.device;
 
+import com.stepandemianenko.focustrace.sync.auth.AuthRateLimiter;
 import com.stepandemianenko.focustrace.sync.common.ApiException;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
@@ -42,8 +43,12 @@ class DeviceController {
             @NotNull @Pattern(regexp = "android|windows") String platform) {
     }
 
-    /** 201 for a new installation, 200 for the caller's own re-registration, 409 for another account's UUID. */
+    /**
+     * 201 for a new installation, 200 for the caller's own re-registration, 409 for
+     * another account's UUID, 403 for a new installation past the device quota (D18).
+     */
     @PostMapping
+    @AuthRateLimiter.PerUser(AuthRateLimiter.Bucket.DEVICE_REGISTER_PER_USER)
     ResponseEntity<Devices.DeviceResponse> register(
             @Valid @RequestBody RegisterDeviceRequest request, @AuthenticationPrincipal Jwt principal) {
         // Architecture section 3: an app-generated random UUID, never a hardware-derived one.

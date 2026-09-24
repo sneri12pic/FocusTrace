@@ -1,5 +1,6 @@
 package com.stepandemianenko.focustrace.sync.usage;
 
+import com.stepandemianenko.focustrace.sync.auth.AuthRateLimiter;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -63,6 +64,7 @@ class UsageUploadController {
     }
 
     @PutMapping("/api/v1/sync/usage-days")
+    @AuthRateLimiter.PerUser(AuthRateLimiter.Bucket.UPLOAD_PER_USER)
     UploadResponse upload(@Valid @RequestBody UploadRequest request, @AuthenticationPrincipal Jwt principal) {
         return new UploadResponse(usageDays.upload(UUID.fromString(principal.getSubject()), request));
     }

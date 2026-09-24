@@ -776,7 +776,8 @@ anything added later that belongs to one account.
   caller's objects only; a foreign `deviceId` filter yields an empty result or `404`
   exactly as an unknown one would.
 - **`403`** stays reserved for an authenticated caller refused for a reason
-  unrelated to object ownership. There is no such case today.
+  unrelated to object ownership. D18's account limits (device quota, stored-day
+  budget) are the only such case.
 
 **Scope limit.** D16 does not override an endpoint whose contract deliberately
 discloses existence. The one such endpoint is `POST /api/v1/devices` (D12, section
@@ -796,6 +797,138 @@ byte-for-byte unchanged; User A still reaches the object. Step 3 exposes no rout
 that addresses a single device by id (`POST` is D12's exception and `GET` is a
 scoped collection), so D16's `404` path is first exercised by the Step 4 upload and
 Step 5 history endpoints.
+
+#### D18 Per-account resource bounds (API4)
+
+**Resolved and implemented 2026-09-24**, the first release-hardening slice. Three
+bounds, all server-side, all configuration (`focustrace.sync.*`,
+`focustrace.auth.rate-limit.*-per-user`). The existence of each bound, its
+dimension, key and response are **policy**; the numbers are **initial operational
+defaults**, like D15's.
+
+Before this, an authenticated account could register unlimited installation
+UUIDs (`INSERT ... ON CONFLICT (id) DO NOTHING`, no count), each device could hold
+one day per date from `2026-01-01` to UTC today + 1 at up to 500 app rows, nothing
+expired, and no authenticated route was throttled. Storage per account therefore
+grew with the number of UUIDs the caller chose to mint.
+
+**1. Active-device quota: 10.** `POST /devices` admits a UUID that does not exist
+yet only while the account has fewer than `max-active-devices` devices whose
+`COALESCE(last_seen_at, registered_at)` is within `device-active-window` (90 days).
+Otherwise `403` with the common problem body, nothing written.
+
+- An existing UUID is never quota-checked: the caller's own re-registration is
+  `200` at or over the quota, and another account's UUID is still `409` (D12),
+  checked before the quota so D12's contract is unchanged.
+- **Why "active" rather than a hard count.** The installation UUID is regenerated
+  by a reinstall, a data clear or a new phone, and no device deletion exists. A hard
+  cap would permanently strand an ordinary user after their tenth installation with
+  no recovery short of a new account. The window frees a slot 90 days after a
+  device last registered; the device row and its history are kept, and it may
+  re-register (reactivation is not quota-checked). The Sync v1 client re-registers
+  on every run that has data (`SyncRepositoryImpl`), so a device in use never ages
+  out. This is an
+  admission bound, not a count of rows: device rows can grow by at most 10 per
+  90-day window (about 41 per year). Explicit retirement/deletion remains release
+  work (plan section 5).
+- **Concurrency.** The transaction first takes `SELECT 1 FROM users WHERE id =
+  :userId FOR NO KEY UPDATE`, then checks existence, counts and inserts. Every
+  registration for one account serializes on that row, so two requests cannot both
+  see the last free slot. `NO KEY UPDATE` does not conflict with the `KEY SHARE`
+  that foreign-key checks take, so logins, refreshes and uploads are not blocked.
+
+**2. Stored-day budget: 3,650 per account.** An account may hold at most
+`max-stored-days` rows in `usage_days` across all its devices (a stored day is one
+device's one date). A request that would **create** days beyond the budget is
+refused whole with `403`; the exception rolls the transaction back, so nothing it
+wrote - including replacements earlier in the same request - persists.
+
+- Only day creation counts. Replacing (`APPLIED` over an older version),
+  `DUPLICATE`, `STALE` and `CONFLICT` never trip it, at or over the budget. The
+  upsert reports creation with `RETURNING xmax = 0`: zero only on a freshly
+  inserted row version, never on the `DO UPDATE` path.
+- **Rejection, not retention.** Deleting old days to make room would silently
+  destroy history the user may still want and needs an agreed retention contract;
+  rejecting keeps every stored day and every local day intact. The Sync v1 client
+  treats `403` as neither permanent (`400`/`404`) nor transient: the run fails as
+  `unknown`, the watermark does not advance, nothing local changes, and the next
+  scheduled run tries once more. No retry storm (section 8.6).
+- **Concurrency.** Checked **after** the day writes, only when the request created
+  a day: lock the account row as above, then count. Under READ COMMITTED the count
+  sees every earlier creator's committed rows plus the caller's own, so two uploads
+  cannot both fit the last slot. Taking the lock last keeps section 7.3's upsert
+  races exactly as they were (a lock before the writes would serialize them and
+  hide them from the concurrency tests); the lock holder only reads, so it never
+  waits on a day row another upload holds and cannot join a lock cycle.
+- **3,650** = ten device-years: one phone for ten years, or three devices for over
+  three. Real data starts at `2026-01-01`, so no current user is near it.
+
+**Resulting storage bound per account** (current limits, not byte-exact):
+
+| Item | Bound |
+| --- | --- |
+| `usage_days` rows | 3,650 |
+| `usage_day_apps` rows | 3,650 x 500 = 1,825,000 (realistic: ~100 apps/day -> ~365,000) |
+| app row, worst case | `app_key` 255 + `app_name` 200 UTF-16 units, up to ~1.4 KB in 3-byte UTF-8, plus its primary-key index entry |
+| `devices` rows | at most 10 new per 90 days (~41/year), ~200 bytes each, holding no usage beyond the day budget |
+| `auth_sessions`, `refresh_tokens` | **not bounded by D18** (plan section 5) |
+
+So one account's usage storage is bounded by configuration, independent of how
+many devices or requests it makes: worst case on the order of a few GB, realistic
+case tens of MB. What remains approximate: device rows grow slowly without an
+absolute cap, session/token rows are unbounded, and the number of accounts is
+bounded only by D15's registration limit. Neither quota is a database constraint
+or trigger: both are enforced in the only write paths, inside the same transaction
+as the write, under a database row lock. A future writer of devices or days
+(device deletion, import) must take the same account lock.
+
+**3. Authenticated per-user rate limits.** The D15 token buckets (same GCRA
+`TokenBucket`, same bounded self-expiring map), three more dimensions:
+
+| Route | Bucket | Capacity / period | Sustained |
+| --- | --- | --- | --- |
+| `POST /api/v1/devices` | `DEVICE_REGISTER_PER_USER` | 30 / 1 h | 1 per 2 min |
+| `PUT /api/v1/sync/usage-days` | `UPLOAD_PER_USER` | 300 / 6 h | 1 per 72 s |
+| `GET /api/v1/usage` | `HISTORY_PER_USER` | 60 / 1 h | 1 per min |
+
+- **Key: the authenticated account id**, i.e. the principal name the JWT converter
+  sets to the verified `sub` of an existing account (section 5.1). Never a request
+  field and never a source address: several devices of one account share one
+  budget, and a NAT shared by many accounts does not.
+- **Where.** A Spring MVC `HandlerInterceptor` charges any handler annotated
+  `@AuthRateLimiter.PerUser(bucket)`. It runs after the security filter chain (an
+  unauthenticated request is a 401 and touches no bucket) and **before argument
+  resolution**, so a malformed or oversized upload body still costs a token and is
+  never parsed once the caller is over budget. It runs outside the upload
+  transaction: a 429 opens no transaction and writes nothing.
+- **Sizing, from the real client.** Background sync runs every 6 h, plus manual
+  runs and at most three retries per period (8.6); every run with data registers
+  once and uploads `ceil(rows / 1,000)` batches. A normal device spends a handful of
+  tokens a day. The upload burst is sized for the worst legitimate case, a
+  full-history re-upload after an import or a lost watermark: a run that fails
+  part-way does not advance the watermark and restarts from its first batch (8.2),
+  so a burst smaller than one full upload would never let it finish. 300 batches
+  cover 600 days at the 500-app cap, 900 at 300 apps/day, or about 3,000 at 100.
+  History reads and device registration are cheap and infrequent in the client, so
+  their budgets are small.
+- `GET /api/v1/devices` stays unthrottled: it reads the caller's own device rows,
+  a small bounded set.
+- Response: D15's generic `429` with `Retry-After`; it names neither the bucket nor
+  the account.
+
+**Single instance.** Buckets are in-process, per JVM, reset on restart, and each
+limiter map holds at most `max-entries-per-limiter` (10,000) keys; beyond that the
+least recently used key's bucket is evicted, i.e. reset to full. Per-user keys
+exist only for real accounts (registration is D15-limited), so an attacker cannot
+cheaply force that eviction. Running more than one instance multiplies every
+budget by the instance count; that deployment needs a shared limiter and is not
+this one.
+
+Verification: `DeviceQuotaIT`, `StorageBudgetIT`, `PerUserRateLimitIT`
+(PostgreSQL via Testcontainers) and `TokenBucketTest`. Both quota race tests hold
+the account row from the test and wait until every request is queued on a lock
+(`pg_stat_activity`), so overlap is proven rather than hoped for; with the
+service's account lock removed, both admit every racer (progress, 2026-09-24).
 
 ### 5.2 Authorization
 
@@ -1087,6 +1220,10 @@ have. A newer snapshot with `apps: []` replaces an older non-empty one.
 Every statement carries the caller's `user_id` (D16): the upsert inserts only via
 the owner-filtered `SELECT`, and the delete and equal-version reads join `devices`.
 
+**Stored-day budget (D18).** After the per-day writes, if any day was created
+rather than replaced, the account row is locked and its stored days counted; over
+budget is `403` and the whole request rolls back.
+
 **Concurrency.** Relies on PostgreSQL READ COMMITTED, which is not overridden.
 `ON CONFLICT DO UPDATE` locks the conflicting row even when its `WHERE` is false,
 and holds the lock to commit. A concurrent insert of the same key waits for the
@@ -1367,9 +1504,11 @@ POST /api/v1/auth/logout          {refreshToken}                   -> 204 (idemp
                                   requires a bearer access token - baseline section 13)
 
 POST /api/v1/devices              {deviceId, displayName, platform} -> 200/201 {device}
+                                  (403 past the device quota, D18)
 GET  /api/v1/devices                                                -> 200 [{device}]
 
 PUT  /api/v1/sync/usage-days      {deviceId, days:[...]}            -> 200 {results:[...]}
+                                  (403 past the stored-day budget, D18)
 
 GET  /api/v1/usage?from=&to=[&deviceId=]                            -> 200 {days:[...]}
 ```
@@ -1444,7 +1583,8 @@ storage limit with ample room for real zone IDs. Validity is decided by `ZoneId.
 not by the length.
 
 The `2026-01-01` floor exists because no FocusTrace data predates 2026. It also
-bounds how many dates a device can hold. It is not a storage quota; see the plan.
+bounds how many dates a device can hold. It is not a storage quota; the per-account
+stored-day budget is D18.
 
 **Client obligations.** One invalid day fails the whole request, and a
 deterministic failure repeats on every retry. A sync client must therefore:
@@ -1524,8 +1664,9 @@ malformed `deviceId`, are the framework's generic `400`.
 
 The 400-day cap bounds one response along the date axis only. It is not a
 per-account storage bound: an account with many devices still gets one entry per
-device per date. The storage bound and the authenticated per-user rate limits
-remain release work; see the plan.
+device per date. D18's stored-day budget now bounds what any range can return
+(at most 3,650 days of up to 500 apps), and reads are rate-limited per account; a
+page bound for that worst case is still open (plan section 5).
 
 ### 9.4 Future incremental sync
 

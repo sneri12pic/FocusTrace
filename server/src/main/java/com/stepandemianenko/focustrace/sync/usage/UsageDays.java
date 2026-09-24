@@ -1,6 +1,7 @@
 package com.stepandemianenko.focustrace.sync.usage;
 
 import com.stepandemianenko.focustrace.sync.common.ApiException;
+import com.stepandemianenko.focustrace.sync.common.SyncLimits;
 import com.stepandemianenko.focustrace.sync.usage.UsageUploadController.App;
 import com.stepandemianenko.focustrace.sync.usage.UsageUploadController.Day;
 import com.stepandemianenko.focustrace.sync.usage.UsageUploadController.UploadRequest;
@@ -53,6 +54,10 @@ class UsageDays {
     record DayResult(LocalDate localDate, Outcome outcome, long storedVersion) {
     }
 
+    /** {@code created}: this request inserted the day rather than replacing it. */
+    private record Written(DayResult result, boolean created) {
+    }
+
     /**
      * Architecture 9.3. Devices are never merged, so the source device travels with
      * the day: {@code deviceName} is what makes the Phase 2 proof observable.
@@ -75,11 +80,13 @@ class UsageDays {
     private final JdbcClient jdbc;
     private final JdbcTemplate jdbcTemplate;
     private final Clock clock;
+    private final SyncLimits limits;
 
-    UsageDays(JdbcClient jdbc, JdbcTemplate jdbcTemplate, Clock clock) {
+    UsageDays(JdbcClient jdbc, JdbcTemplate jdbcTemplate, Clock clock, SyncLimits limits) {
         this.jdbc = jdbc;
         this.jdbcTemplate = jdbcTemplate;
         this.clock = clock;
+        this.limits = limits;
     }
 
     /** Results are in request order, one per submitted day. */
@@ -103,10 +110,48 @@ class UsageDays {
         // Ascending date order is a total lock order across concurrent requests,
         // so overlapping batches cannot deadlock.
         Map<LocalDate, DayResult> results = new HashMap<>();
-        request.days().stream()
-                .sorted(Comparator.comparing(Day::localDate))
-                .forEach(day -> results.put(day.localDate(), write(userId, deviceId, day)));
+        boolean created = false;
+        for (Day day : request.days().stream().sorted(Comparator.comparing(Day::localDate)).toList()) {
+            Written written = write(userId, deviceId, day);
+            results.put(day.localDate(), written.result());
+            created |= written.created();
+        }
+        if (created) {
+            enforceStoredDayBudget(userId);
+        }
         return request.days().stream().map(day -> results.get(day.localDate())).toList();
+    }
+
+    /**
+     * D18: the account may hold at most {@code maxStoredDays} usage days across all its
+     * devices. Checked only when this request created a day, so replacing, duplicate,
+     * stale and conflicting days never trip it. Over budget -> 403, and the exception
+     * rolls back the whole request.
+     *
+     * <p>Taken after the writes, not before, so concurrent uploads still race through
+     * the guarded upsert exactly as before (7.3) and serialize only here. Every
+     * day-creating transaction counts under the same account row lock, and under READ
+     * COMMITTED the count sees every earlier creator's committed rows plus its own, so
+     * two uploads cannot both fit into the last slot. The lock holder only reads, so it
+     * never waits on a day row another upload holds: no lock cycle.
+     */
+    private void enforceStoredDayBudget(UUID userId) {
+        jdbc.sql("SELECT 1 FROM users WHERE id = :userId FOR NO KEY UPDATE")
+                .param("userId", userId)
+                .query(Integer.class)
+                .optional()
+                .orElseThrow(ApiException::unauthorized);
+        long stored = jdbc.sql("""
+                        SELECT count(*)
+                          FROM usage_days d
+                          JOIN devices dev ON dev.id = d.device_id
+                         WHERE dev.user_id = :userId""")
+                .param("userId", userId)
+                .query(Long.class)
+                .single();
+        if (stored > limits.maxStoredDays()) {
+            throw ApiException.forbidden("This account has reached its usage storage limit.");
+        }
     }
 
     /**
@@ -190,8 +235,9 @@ class UsageDays {
     }
 
     /** Every statement carries {@code userId} (D16), not only the gate above. */
-    private DayResult write(UUID userId, UUID deviceId, Day day) {
-        Optional<Long> applied = jdbc.sql("""
+    private Written write(UUID userId, UUID deviceId, Day day) {
+        // xmax = 0 only on a freshly inserted row version; the DO UPDATE path stamps it.
+        Optional<Boolean> applied = jdbc.sql("""
                         INSERT INTO usage_days (device_id, local_date, snapshot_version, timezone_id, source_status)
                         SELECT id, :localDate, :version, :timezoneId, :sourceStatus
                           FROM devices
@@ -202,18 +248,18 @@ class UsageDays {
                                source_status    = EXCLUDED.source_status,
                                received_at      = now()
                          WHERE usage_days.snapshot_version < EXCLUDED.snapshot_version
-                        RETURNING snapshot_version""")
+                        RETURNING xmax = 0 AS created""")
                 .param("deviceId", deviceId)
                 .param("localDate", day.localDate())
                 .param("version", day.snapshotVersion())
                 .param("timezoneId", day.timezoneId())
                 .param("sourceStatus", day.sourceStatus())
                 .param("userId", userId)
-                .query(Long.class)
+                .query(Boolean.class)
                 .optional();
         if (applied.isPresent()) {
             replaceApps(userId, deviceId, day);
-            return new DayResult(day.localDate(), Outcome.APPLIED, day.snapshotVersion());
+            return new Written(new DayResult(day.localDate(), Outcome.APPLIED, day.snapshotVersion()), applied.get());
         }
 
         // The stored version is >= incoming, and the upsert holds the row lock until
@@ -230,13 +276,14 @@ class UsageDays {
                         rs.getLong("snapshot_version"), rs.getString("timezone_id"), rs.getString("source_status")))
                 .single();
         if (stored.version() > day.snapshotVersion()) {
-            return new DayResult(day.localDate(), Outcome.STALE, stored.version());
+            return new Written(new DayResult(day.localDate(), Outcome.STALE, stored.version()), false);
         }
         boolean same = stored.timezoneId().equals(day.timezoneId())
                 && stored.sourceStatus().equals(day.sourceStatus())
                 // Apps are a keyed set (appKey unique on both sides): order is irrelevant.
                 && new HashSet<>(storedApps(userId, deviceId, day.localDate())).equals(new HashSet<>(day.apps()));
-        return new DayResult(day.localDate(), same ? Outcome.DUPLICATE : Outcome.CONFLICT, stored.version());
+        return new Written(
+                new DayResult(day.localDate(), same ? Outcome.DUPLICATE : Outcome.CONFLICT, stored.version()), false);
     }
 
     /** Whole-day replace, never merge: durations are totals, not deltas. */

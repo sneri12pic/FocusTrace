@@ -34,6 +34,11 @@ public final class ApiException extends RuntimeException {
         return new ApiException(HttpStatus.CONFLICT, detail, null, 0);
     }
 
+    /** D18: the caller's own account limit. Says nothing about any other account. */
+    public static ApiException forbidden(String detail) {
+        return new ApiException(HttpStatus.FORBIDDEN, detail, null, 0);
+    }
+
     public static ApiException invalidField(String field, String message) {
         return new ApiException(HttpStatus.BAD_REQUEST, message, field, 0);
     }

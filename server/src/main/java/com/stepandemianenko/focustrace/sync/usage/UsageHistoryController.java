@@ -1,5 +1,6 @@
 package com.stepandemianenko.focustrace.sync.usage;
 
+import com.stepandemianenko.focustrace.sync.auth.AuthRateLimiter;
 import com.stepandemianenko.focustrace.sync.common.ApiException;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
@@ -36,6 +37,7 @@ class UsageHistoryController {
      * one does (D16), so no lookup precedes the query.
      */
     @GetMapping("/api/v1/usage")
+    @AuthRateLimiter.PerUser(AuthRateLimiter.Bucket.HISTORY_PER_USER)
     HistoryResponse history(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
