@@ -1665,6 +1665,48 @@ abstract class AppLocalizations {
   /// **'Something went wrong. Try again.'**
   String get settingsSyncErrorUnknown;
 
+  /// No description provided for @settingsSyncDeleteAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete account'**
+  String get settingsSyncDeleteAccount;
+
+  /// No description provided for @settingsSyncDeleteTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete your FocusTrace account?'**
+  String get settingsSyncDeleteTitle;
+
+  /// No description provided for @settingsSyncDeleteBody.
+  ///
+  /// In en, this message translates to:
+  /// **'This permanently deletes your FocusTrace cloud account and all usage data synced to the server. It cannot be undone.\n\nUsage history on this device stays, and sync will be turned off.'**
+  String get settingsSyncDeleteBody;
+
+  /// No description provided for @settingsSyncDeletePassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Current password'**
+  String get settingsSyncDeletePassword;
+
+  /// No description provided for @settingsSyncDeleteConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete permanently'**
+  String get settingsSyncDeleteConfirm;
+
+  /// No description provided for @settingsSyncDeleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Your FocusTrace account was deleted. Usage history on this device was kept.'**
+  String get settingsSyncDeleted;
+
+  /// No description provided for @settingsSyncErrorWrongPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'That password is not correct. Your account was not deleted.'**
+  String get settingsSyncErrorWrongPassword;
+
   /// No description provided for @settingsSyncMissingFields.
   ///
   /// In en, this message translates to:

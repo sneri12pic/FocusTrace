@@ -888,7 +888,7 @@ absolute cap, session/token rows are unbounded, and the number of accounts is
 bounded only by D15's registration limit. Neither quota is a database constraint
 or trigger: both are enforced in the only write paths, inside the same transaction
 as the write, under a database row lock. A future writer of devices or days
-(device deletion, import) must take the same account lock.
+(device deletion, import) must take the same account lock, first (D19).
 
 **3. Authenticated per-user rate limits.** The D15 token buckets (same GCRA
 `TokenBucket`, same bounded self-expiring map), three more dimensions:
@@ -937,6 +937,131 @@ Verification: `DeviceQuotaIT`, `StorageBudgetIT`, `PerUserRateLimitIT`
 the account row from the test and wait until every request is queued on a lock
 (`pg_stat_activity`), so overlap is proven rather than hoped for; with the
 service's account lock removed, both admit every racer (progress, 2026-09-24).
+
+#### D19 Account deletion
+
+**Resolved and implemented 2026-09-24.** Deleting the account deletes the
+FocusTrace cloud identity and everything the server holds for it. It never
+touches local usage history: cloud deletion and local-data deletion stay separate
+product actions.
+
+**Contract.** `POST /api/v1/account/delete` with `{"password": "..."}` and a
+bearer access token; `204` with no body on success. A `POST` to a named action, not
+`DELETE /api/v1/account`: the request must carry the current password, and a body
+on `DELETE` has no defined semantics (RFC 9110 9.3.5), so intermediaries may drop
+or reject it. Only one of the two exists.
+
+- **Owner = the token's `sub`.** The body holds only the password; unknown
+  properties (`userId`, `email`) are `400`, like every DTO here (baseline section 4).
+- **Re-authentication.** The password is verified through the existing
+  `PasswordProcessor.matches` (Argon2id, the same normalization as login), before
+  any lock is taken. Bounds as login (`@NotNull`, at most 1,024 UTF-16 units):
+  missing, null, oversized or malformed JSON is the common `400`.
+- **Wrong password: `403`**, generic body ("Password confirmation failed."). Not
+  `401`: the bearer token is valid, and the Sync v1 client answers any `401` by
+  refreshing and replaying, which would resend the password and misreport an
+  expired session. The account and its sessions are untouched.
+- **Throttled** like login, because each attempt verifies a password: per-user
+  bucket `ACCOUNT_DELETE_PER_USER`, 5 per 15 min (D15/D18 buckets, same `429`).
+- The password is never logged, echoed or persisted; the request DTO redacts it in
+  `toString`. The security log records `account_deleted` / `account_delete_rejected`
+  with the internal user id only.
+
+**Transaction and cascade.** One statement, `DELETE FROM users WHERE id = :sub`.
+Every account-owned table cascades from `users` (V1, V2): `auth_sessions`,
+`refresh_tokens` (directly and through its session), `devices`, and through them
+`usage_days` and `usage_day_apps`. No other table references them. There is no
+soft delete and no tombstone.
+
+**Lock order (applies to every account-graph writer).** The account row is locked
+**first**, before any device, day, session or token row:
+
+| Operation | First lock | Then |
+| --- | --- | --- |
+| account deletion | `users` `FOR UPDATE` (taken by the `DELETE` itself) | cascade into every child row |
+| device registration (D18) | `users` `FOR NO KEY UPDATE` | device rows |
+| usage upload | `users` `FOR KEY SHARE` | device `KEY SHARE`, day rows, then `NO KEY UPDATE` on `users` if a day was created (D18) |
+| login session start, refresh rotation, logout | `users` `FOR KEY SHARE` | session and token rows |
+
+`KEY SHARE` conflicts only with `FOR UPDATE`, i.e. only with deletion, so these
+never block one another. Before this, an upload held device and day rows and only
+then asked for the account row, and a refresh held its token row and then needed
+the account row for its successor's foreign-key check, while a deletion takes the
+account row and then cascades into exactly those rows: two real lock cycles. Both
+were reproduced in PostgreSQL (`deadlock detected`) by removing the new first lock
+(progress, 2026-09-24). Rotation reads the token's `user_id` unlocked to know which
+account to lock; if the token or account has gone, the claim finds nothing.
+
+**After deletion.**
+
+- An access token issued before deletion stops working at once: the JWT converter
+  already requires `sub` to be an existing account (section 5.1), so every
+  protected route answers `401`. No deny-list.
+- Refresh tokens and sessions are deleted rows: refresh is `401` and cannot mint a
+  session. A refresh already in flight either completes before the deletion (which
+  then deletes what it issued) or finds nothing.
+- An upload or registration that reaches the account lock after the deletion
+  finds no account (`401`); one that got there first completes and is then
+  deleted. Nothing can be recreated under the deleted account: every insert
+  depends on the `users` row through a foreign key.
+- The email is free again; registering it creates a new, unrelated account. The
+  installation UUID is not account-scoped: once its device row is gone, the same
+  installation registers afresh under any account.
+
+**Lost response.** Not idempotent across a commit, and not faked: once the account
+is gone the original token cannot authenticate a retry, which is `401` like any
+dead session. The client cannot tell "deleted, response lost" from "session
+expired", so it never infers deletion and never recreates an account; it is built
+so that the ambiguity is harmless (below).
+
+**Client (`SyncRepositoryImpl.deleteAccount`).** The whole operation runs inside
+the shared `SyncExecutionGate`, like sign-in and logout, so it serializes against
+foreground and headless sync and every other session change:
+
+1. Acquire the gate; reconcile the session from the keystore.
+2. Cancel periodic work (`reconcileSchedule(false)`), so nothing new is scheduled
+   while the outcome is unknown. A headless run already holding the gate finished
+   before step 1; one queued behind it rechecks consent afterwards.
+3. Reset `sync_usage_watermark_ms` to `0`, before the request. A lost response
+   must not leave "already uploaded" behind for a later account. The watermark is
+   an optimisation (8.2): at worst the same account re-sends days that return
+   `DUPLICATE`.
+4. Send the request. The API forgets the session (in-memory tokens and the
+   keystore credential) only on `204`.
+5. On `204`: `sync_enabled = false`, `sync_account_email` and
+   `sync_last_success_ms` cleared, scheduling cancelled again.
+6. On failure: the watermark is restored only if the server certainly deleted
+   nothing (`400`, `403`, `429`); scheduling is reconciled back to the stored
+   consent; nothing else changes. `401` means the refresh failed and the API has
+   already dropped the credential (existing rule); the UI shows "session ended",
+   never "deleted".
+
+| Setting | Scope | On deletion |
+| --- | --- | --- |
+| `sync_installation_id` | installation | kept |
+| `sync_imported_version_ms` | local content version (7.2) | kept |
+| `sync_usage_watermark_ms` | account upload progress | reset to `0` before the request |
+| `sync_enabled` | account consent | `false` on success |
+| `sync_account_email` | account, UI | cleared on success |
+| `sync_last_success_ms` | UI status | cleared on success |
+| refresh token (keystore), access token (memory) | session | cleared on success |
+
+Local usage tables, schedules, limits and every non-sync setting are never
+touched. Ordinary logout is unchanged and still keeps the watermark: signing back
+into the **same** account should not resend everything.
+
+**UI.** The signed-in account card has a destructive "Delete account" button. It
+opens a dialog that states the cloud account and synced server data are deleted
+permanently, that this cannot be undone, that usage history on the device stays,
+and that sync is turned off; "Delete permanently" is disabled until the current
+password is typed. Success returns to the signed-out form with a notice that
+local history was kept. Wrong password: "That password is not correct. Your
+account was not deleted."
+
+Verification: `AccountDeletionIT` (PostgreSQL via Testcontainers), repository,
+view-model and card tests, and the real-backend E2E
+(`sync_end_to_end_test.dart`: account A uploads, is deleted, and account B on the
+same installation uploads the same history again).
 
 ### 5.2 Authorization
 
@@ -1508,6 +1633,7 @@ All endpoints under `/api/v1`. JSON in, JSON out. Errors use RFC 9457
 POST /api/v1/auth/register        {email, password}                -> 201 {userId}
 POST /api/v1/auth/login           {email, password}                -> 200 {accessToken, expiresIn, refreshToken}
 POST /api/v1/auth/refresh         {refreshToken}                   -> 200 {accessToken, expiresIn, refreshToken}
+POST /api/v1/account/delete       {password}                       -> 204 (D19; 403 wrong password)
 POST /api/v1/auth/logout          {refreshToken}                   -> 204 (idempotent, see D10;
                                   requires a bearer access token - baseline section 13)
 
@@ -1762,9 +1888,9 @@ location, contacts, messages, hardware identifiers, advertising identifiers.
 
 Sync is opt-in. An account is required to sync; the app works fully without one.
 `README.md` and `docs/privacy.html` currently state that FocusTrace never sends
-data to a server. **Both must be updated before any sync code ships to users**,
-alongside account deletion (`ON DELETE CASCADE` from `users` already makes the
-data deletion correct).
+data to a server. **Both must be updated before any sync code ships to users**.
+Account deletion is implemented end to end (D19): the server cascade from
+`users`, and the in-app action that reaches it.
 
 ---
 

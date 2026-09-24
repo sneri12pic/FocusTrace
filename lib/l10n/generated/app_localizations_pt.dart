@@ -927,6 +927,30 @@ class AppLocalizationsPt extends AppLocalizations {
   String get settingsSyncErrorUnknown => 'Algo correu mal. Tente novamente.';
 
   @override
+  String get settingsSyncDeleteAccount => 'Excluir conta';
+
+  @override
+  String get settingsSyncDeleteTitle => 'Excluir sua conta do FocusTrace?';
+
+  @override
+  String get settingsSyncDeleteBody =>
+      'Isso exclui permanentemente sua conta na nuvem do FocusTrace e todos os dados de uso sincronizados com o servidor. Não é possível desfazer.\n\nO histórico de uso neste dispositivo é mantido e a sincronização será desativada.';
+
+  @override
+  String get settingsSyncDeletePassword => 'Senha atual';
+
+  @override
+  String get settingsSyncDeleteConfirm => 'Excluir permanentemente';
+
+  @override
+  String get settingsSyncDeleted =>
+      'Sua conta do FocusTrace foi excluída. O histórico de uso neste dispositivo foi mantido.';
+
+  @override
+  String get settingsSyncErrorWrongPassword =>
+      'Essa senha não está correta. Sua conta não foi excluída.';
+
+  @override
   String get settingsSyncMissingFields =>
       'Introduza um e-mail e uma palavra-passe.';
 

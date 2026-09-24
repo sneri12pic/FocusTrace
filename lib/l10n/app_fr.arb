@@ -573,6 +573,13 @@
   "settingsSyncErrorSessionExpired": "Votre session a expiré. Reconnectez-vous.",
   "settingsSyncErrorRefused": "Le service a refusé la requête.",
   "settingsSyncErrorUnknown": "Une erreur est survenue. Réessayez.",
+  "settingsSyncDeleteAccount": "Supprimer le compte",
+  "settingsSyncDeleteTitle": "Supprimer votre compte FocusTrace ?",
+  "settingsSyncDeleteBody": "Cela supprime définitivement votre compte cloud FocusTrace et toutes les données d’utilisation synchronisées sur le serveur. Cette action est irréversible.\n\nL’historique d’utilisation de cet appareil est conservé et la synchronisation sera désactivée.",
+  "settingsSyncDeletePassword": "Mot de passe actuel",
+  "settingsSyncDeleteConfirm": "Supprimer définitivement",
+  "settingsSyncDeleted": "Votre compte FocusTrace a été supprimé. L’historique d’utilisation de cet appareil a été conservé.",
+  "settingsSyncErrorWrongPassword": "Ce mot de passe est incorrect. Votre compte n’a pas été supprimé.",
   "settingsSyncMissingFields": "Saisissez un e-mail et un mot de passe.",
   "settingsPrivacyBodySync": "Votre historique d’utilisation et vos réglages restent sur cet appareil, sauf si vous exportez une sauvegarde ou activez la synchronisation cloud ci-dessous."
 }

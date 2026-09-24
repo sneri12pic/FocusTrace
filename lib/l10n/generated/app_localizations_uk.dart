@@ -932,6 +932,30 @@ class AppLocalizationsUk extends AppLocalizations {
   String get settingsSyncErrorUnknown => 'Щось пішло не так. Спробуйте ще раз.';
 
   @override
+  String get settingsSyncDeleteAccount => 'Видалити обліковий запис';
+
+  @override
+  String get settingsSyncDeleteTitle => 'Видалити обліковий запис FocusTrace?';
+
+  @override
+  String get settingsSyncDeleteBody =>
+      'Це назавжди видалить ваш хмарний обліковий запис FocusTrace і всі дані використання, синхронізовані на сервер. Цю дію не можна скасувати.\n\nІсторія використання на цьому пристрої залишиться, а синхронізацію буде вимкнено.';
+
+  @override
+  String get settingsSyncDeletePassword => 'Поточний пароль';
+
+  @override
+  String get settingsSyncDeleteConfirm => 'Видалити назавжди';
+
+  @override
+  String get settingsSyncDeleted =>
+      'Ваш обліковий запис FocusTrace видалено. Історію використання на цьому пристрої збережено.';
+
+  @override
+  String get settingsSyncErrorWrongPassword =>
+      'Пароль неправильний. Обліковий запис не видалено.';
+
+  @override
   String get settingsSyncMissingFields => 'Введіть пошту та пароль.';
 
   @override

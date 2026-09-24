@@ -158,6 +158,10 @@ enum SyncAuthFailure {
   invalidCredentials,
   emailTaken,
   weakPassword,
+
+  /// The session was rejected. Only account deletion reports it: sign-in and
+  /// account creation have no session yet.
+  sessionExpired,
   unknown,
 }
 

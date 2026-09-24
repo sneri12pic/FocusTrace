@@ -71,6 +71,8 @@ focustrace:
       device-register-per-user: { capacity: 30, period: PT1H }
       upload-per-user: { capacity: 300, period: PT6H }
       history-per-user: { capacity: 60, period: PT1H }
+      # D19: each attempt verifies a password, so it is throttled like login.
+      account-delete-per-user: { capacity: 5, period: PT15M }
   # D18: per-account resource bounds; initial operational defaults, not architecture.
   sync:
     max-active-devices: 10

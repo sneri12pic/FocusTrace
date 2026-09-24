@@ -5,6 +5,107 @@ session reads to continue safely.
 
 ---
 
+## 2026-09-24 — Account deletion (D19)
+
+Date: 2026-09-24
+Agent: Claude Code
+Goal: User-initiated deletion of the FocusTrace cloud account and all server data,
+keeping local usage history, without racing sync or session changes.
+
+State before work: HEAD `e9b96f6`, clean tree except the unrelated untracked
+`.agents/` and `skills-lock.json` (excluded).
+
+Findings (from the code):
+- Every account-owned table cascades from `users` (V1/V2); no other table exists.
+  One `DELETE FROM users` removes the whole graph.
+- The JWT converter already rejects a `sub` that is not an existing account, so an
+  access token issued before deletion dies with it. No deny-list needed.
+- Two real lock cycles against a deletion: an upload held device/day rows before
+  locking the account row, and a refresh held its token row before its successor's
+  foreign-key check took the account row. Both were reproduced as PostgreSQL
+  `deadlock detected`.
+- The client's `_authorized` refreshes and replays on any `401`, so a wrong
+  password must not be `401`.
+- Logout already keeps the watermark (same-account re-login); deletion must not.
+
+Completed (architecture 5.1, D19):
+- `POST /api/v1/account/delete {password}` -> `204`; wrong password `403`;
+  malformed `400`; unauthenticated `401`; per-user limit 5 / 15 min. Owner is the
+  token's `sub`; the body cannot name one. Password verified with the existing
+  `PasswordProcessor.matches` before any lock; DTO redacts it.
+- Lock order: the account row first, for every account-graph writer. Upload,
+  login session start, refresh rotation and logout now take `users` `KEY SHARE`
+  first; registration already took `NO KEY UPDATE` first; deletion's `DELETE`
+  takes `FOR UPDATE`.
+- Client: `SyncRepository.deleteAccount` runs entirely inside the shared
+  `SyncExecutionGate`. It cancels scheduling, resets the watermark before the
+  request, clears the session only on `204`, then sets `sync_enabled=false` and
+  clears email and last-success. On a certain refusal (400/403/429) it restores
+  the watermark and scheduling. The installation id, imported version, local
+  usage and non-sync settings are kept. The sync card has "Delete account" with a
+  password-gated confirmation dialog, in 7 locales.
+
+Files materially changed:
+- Server: new `auth/AccountController.java`; `auth/AuthService.java`,
+  `AuthSessions.java`, `AuthRateLimiter.java`, `AuthProperties.java`;
+  `usage/UsageDays.java`; `application.yml`. No migration, no dependency.
+- Server tests: new `usage/AccountDeletionIT.java`; `IntegrationTest.java`
+  (lock-mode helpers), `usage/StorageBudgetIT.java` (its race now holds
+  `NO KEY UPDATE`, so uploads still queue at the budget check rather than at their
+  new first lock), `auth/TokenBucketTest.java`.
+- Flutter: `focus_trace_sync_api.dart`, `sync_repository.dart`,
+  `sync_repository_impl.dart`, `sync_usage.dart`, `sync_view_model.dart`,
+  `sync_account_card.dart`, `lib/l10n/app_*.arb` and generated localizations.
+- Flutter tests: `sync_repository_test.dart`, `sync_view_model_test.dart`,
+  `sync_account_card_test.dart`, `sync_end_to_end_test.dart`.
+- Docs: architecture (D19, D16/D18 cross-references, API list, privacy note),
+  security baseline, plan section 6, this entry.
+
+Verification:
+- `./gradlew test --tests '*Account*'`: PASS (12 suites, 32 tests matched by name;
+  `AccountDeletionIT` 11/11).
+- `./gradlew test --rerun`: PASS, 23 suites, 241 tests, 0 failures, 0 errors,
+  0 skipped. `./gradlew clean build`: PASS, same 241.
+- `flutter analyze`: no issues. `flutter test`: PASS, 230 passed, 0 failed,
+  1 skipped (the real-backend suite without a URL). `flutter build apk --debug`:
+  PASS. `android ./gradlew :app:testDebugUnitTest`: PASS, 10 suites, 114 tests,
+  0 failures/errors, 1 skipped benchmark.
+- Real E2E: backend `bootRun` against PostgreSQL 16 in Docker,
+  `flutter test test/sync_end_to_end_test.dart --dart-define=...`: 3/3 PASS,
+  including account A upload -> wrong-password refusal -> deletion -> old refresh
+  401 and login 401 -> account B on the same installation re-uploads both days.
+  A direct database check found 0 rows left for account A.
+- `connectedDebugAndroidTest`: not run, no device attached.
+- Mutations (each restored byte-identically, SHA-256 checked):
+  1. Upload without the account-first lock: the upload-vs-deletion race failed
+     with PostgreSQL `deadlock detected` (500).
+  2. Refresh rotation without it: the refresh-vs-deletion race failed with
+     `deadlock detected`. The first version of that test blocked the refresh on
+     its session row, where the successor's user FK check had already taken the
+     account row, so the mutation passed. The test now blocks on the token row
+     before the claim, which is the actual exposure.
+  3. Client without the pre-request watermark reset: account B after deleting A
+     uploaded 0 of 2 days; the success and offline tests also failed.
+
+Decisions made: D19.
+
+Remaining (release, unchanged unless noted): privacy copy (`README.md`,
+`docs/privacy.html`); a Google Play web account-deletion path for users without
+the app; device retirement/deletion; session/token row retention; history page
+bound; proxy volumetric limits and trusted-proxy handling; single-instance limiter.
+
+Risks / unresolved questions:
+- Lost response: after a committed deletion the retry is `401` and the client
+  shows "session ended". Signing in then fails and the user may re-register; the
+  watermark was reset before the request, so no upload progress leaks.
+- A login whose password check passes just as the account is deleted gets `401`
+  (session start re-checks under the account lock).
+- The deletion notice is in-memory UI state; it is not shown again after restart.
+
+Relevant commit: this entry's commit (`feat(account): add secure account deletion`).
+
+---
+
 ## 2026-09-24 — D18 fix: device reactivation obeys the active-device quota
 
 Date: 2026-09-24

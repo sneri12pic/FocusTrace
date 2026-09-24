@@ -920,6 +920,30 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsSyncErrorUnknown => 'Something went wrong. Try again.';
 
   @override
+  String get settingsSyncDeleteAccount => 'Delete account';
+
+  @override
+  String get settingsSyncDeleteTitle => 'Delete your FocusTrace account?';
+
+  @override
+  String get settingsSyncDeleteBody =>
+      'This permanently deletes your FocusTrace cloud account and all usage data synced to the server. It cannot be undone.\n\nUsage history on this device stays, and sync will be turned off.';
+
+  @override
+  String get settingsSyncDeletePassword => 'Current password';
+
+  @override
+  String get settingsSyncDeleteConfirm => 'Delete permanently';
+
+  @override
+  String get settingsSyncDeleted =>
+      'Your FocusTrace account was deleted. Usage history on this device was kept.';
+
+  @override
+  String get settingsSyncErrorWrongPassword =>
+      'That password is not correct. Your account was not deleted.';
+
+  @override
   String get settingsSyncMissingFields => 'Enter an email and a password.';
 
   @override

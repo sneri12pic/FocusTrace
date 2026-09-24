@@ -137,6 +137,63 @@ class SyncRepositoryImpl implements SyncRepository {
     }
   });
 
+  /// Backend D19. The whole operation holds the shared execution gate, so no sync,
+  /// sign-in or sign-out - foreground or headless - interleaves with it.
+  ///
+  /// Order: stop periodic work, reset the upload watermark, ask the server, and
+  /// only on its confirmation clear the account's local state.
+  ///
+  /// The watermark is reset before the request because a lost response cannot be
+  /// told apart from a failure: the account may be gone while this installation
+  /// still believes otherwise, and a later account must not inherit "already
+  /// uploaded". Losing it is safe by design - at worst the same account re-sends
+  /// days that come back DUPLICATE. It is restored only when the server certainly
+  /// deleted nothing (400, 403, 429).
+  ///
+  /// Kept on success: the installation id (it names this app install, not an
+  /// account), `sync_imported_version_ms` (it versions local content) and every
+  /// local usage row and non-sync setting.
+  @override
+  Future<void> deleteAccount({required String password}) =>
+      _sessionOperation(() async {
+        await _reconcileSchedule?.call(false);
+        final watermark = await _local.readSetting(
+          SyncSettingKeys.usageWatermarkMs,
+        );
+        await _local.writeSetting(SyncSettingKeys.usageWatermarkMs, '0');
+        try {
+          await _api.deleteAccount(password);
+        } on Object catch (error) {
+          final status = error is SyncApiException ? error.statusCode : null;
+          if (watermark != null && const {400, 403, 429}.contains(status)) {
+            await _local.writeSetting(
+              SyncSettingKeys.usageWatermarkMs,
+              watermark,
+            );
+          }
+          await _reconcileSchedule?.call(await isSyncEnabled());
+          if (error is SyncApiException) {
+            throw SyncAuthException(_deletionFailureFor(error));
+          }
+          rethrow;
+        }
+        await _local.writeSetting(SyncSettingKeys.enabled, 'false');
+        await _local.writeSetting(SyncSettingKeys.accountEmail, '');
+        await _local.writeSetting(SyncSettingKeys.lastSuccessMs, '');
+        await _reconcileSchedule?.call(false);
+      });
+
+  static SyncAuthFailure _deletionFailureFor(SyncApiException error) {
+    return switch (error.statusCode) {
+      0 => SyncAuthFailure.offline,
+      // Only after a failed refresh: the session is gone, which the API has
+      // already cleared locally. The account may or may not still exist.
+      401 => SyncAuthFailure.sessionExpired,
+      400 || 403 => SyncAuthFailure.invalidCredentials,
+      _ => SyncAuthFailure.unknown,
+    };
+  }
+
   @override
   Future<List<RemoteUsageDay>> readRemoteHistory({
     required DateTime from,

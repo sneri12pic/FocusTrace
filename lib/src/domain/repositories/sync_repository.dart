@@ -37,6 +37,13 @@ abstract interface class SyncRepository {
 
   Future<void> signOut();
 
+  /// Permanently deletes the signed-in cloud account and everything the server
+  /// holds for it, confirmed with the current [password]. Local usage history is
+  /// never touched. On success this installation is signed out, sync is off and
+  /// account-specific progress is reset, so a later account uploads everything
+  /// again. Throws [SyncAuthException] when the deletion was not confirmed.
+  Future<void> deleteAccount({required String password});
+
   /// Registers this installation if needed and uploads every local day that has
   /// changed since the last successful run. Never throws.
   /// Background callers must require opt-in; it is checked inside the run gate.

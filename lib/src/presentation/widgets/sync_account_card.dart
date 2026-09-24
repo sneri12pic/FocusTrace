@@ -84,6 +84,10 @@ class _SyncAccountCardState extends ConsumerState<SyncAccountCard> {
     final l10n = context.l10n;
     final busy = state.isAuthenticating;
     return [
+      if (state.accountDeleted) ...[
+        Text(key: const ValueKey('sync-account-deleted'), l10n.settingsSyncDeleted),
+        const SizedBox(height: 12),
+      ],
       TextField(
         key: const ValueKey('sync-email-field'),
         controller: _email,
@@ -184,6 +188,19 @@ class _SyncAccountCardState extends ConsumerState<SyncAccountCard> {
           ),
         ],
       ),
+      Align(
+        alignment: AlignmentDirectional.centerStart,
+        child: TextButton(
+          key: const ValueKey('sync-delete-account-button'),
+          style: TextButton.styleFrom(
+            foregroundColor: Theme.of(context).colorScheme.error,
+          ),
+          onPressed: state.isAuthenticating || state.isSyncing
+              ? null
+              : _confirmDeletion,
+          child: Text(l10n.settingsSyncDeleteAccount),
+        ),
+      ),
       if (state.phase != SyncPhase.idle) ...[
         const SizedBox(height: 8),
         Text(
@@ -222,6 +239,20 @@ class _SyncAccountCardState extends ConsumerState<SyncAccountCard> {
     }
   }
 
+  /// Two deliberate steps: open the dialog, then type the current password and
+  /// confirm. The password lives only in the dialog's own controller and is
+  /// discarded with it.
+  Future<void> _confirmDeletion() async {
+    final password = await showDialog<String>(
+      context: context,
+      builder: (context) => const _DeleteAccountDialog(),
+    );
+    if (password == null || password.isEmpty || !mounted) {
+      return;
+    }
+    await ref.read(syncViewModelProvider.notifier).deleteAccount(password);
+  }
+
   String _lastSyncText(BuildContext context, SyncState state) {
     final at = state.lastSuccessAt;
     if (at == null) {
@@ -242,6 +273,7 @@ class _SyncAccountCardState extends ConsumerState<SyncAccountCard> {
       SyncErrorKind.weakPassword => l10n.settingsSyncErrorWeakPassword,
       SyncErrorKind.sessionExpired => l10n.settingsSyncErrorSessionExpired,
       SyncErrorKind.refused => l10n.settingsSyncErrorRefused,
+      SyncErrorKind.wrongPassword => l10n.settingsSyncErrorWrongPassword,
       SyncErrorKind.unknown => l10n.settingsSyncErrorUnknown,
     };
   }
@@ -253,6 +285,70 @@ class _SyncAccountCardState extends ConsumerState<SyncAccountCard> {
         message,
         style: TextStyle(color: Theme.of(context).colorScheme.error),
       ),
+    );
+  }
+}
+
+/// Explains exactly what is and is not deleted, and returns the password only
+/// when the user confirms with one typed in.
+class _DeleteAccountDialog extends StatefulWidget {
+  const _DeleteAccountDialog();
+
+  @override
+  State<_DeleteAccountDialog> createState() => _DeleteAccountDialogState();
+}
+
+class _DeleteAccountDialogState extends State<_DeleteAccountDialog> {
+  final _password = TextEditingController();
+
+  @override
+  void dispose() {
+    _password.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final error = Theme.of(context).colorScheme.error;
+    return AlertDialog(
+      title: Text(l10n.settingsSyncDeleteTitle),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(l10n.settingsSyncDeleteBody),
+            const SizedBox(height: 16),
+            TextField(
+              key: const ValueKey('sync-delete-password-field'),
+              controller: _password,
+              obscureText: true,
+              autofocus: true,
+              onChanged: (_) => setState(() {}),
+              decoration: InputDecoration(
+                labelText: l10n.settingsSyncDeletePassword,
+                border: const OutlineInputBorder(),
+              ),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          key: const ValueKey('sync-delete-cancel-button'),
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text(l10n.settingsCancel),
+        ),
+        FilledButton(
+          key: const ValueKey('sync-delete-confirm-button'),
+          style: FilledButton.styleFrom(backgroundColor: error),
+          onPressed: _password.text.isEmpty
+              ? null
+              : () => Navigator.of(context).pop(_password.text),
+          child: Text(l10n.settingsSyncDeleteConfirm),
+        ),
+      ],
     );
   }
 }

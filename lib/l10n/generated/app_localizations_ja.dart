@@ -890,6 +890,29 @@ class AppLocalizationsJa extends AppLocalizations {
   String get settingsSyncErrorUnknown => '問題が発生しました。再試行してください。';
 
   @override
+  String get settingsSyncDeleteAccount => 'アカウントを削除';
+
+  @override
+  String get settingsSyncDeleteTitle => 'FocusTrace アカウントを削除しますか？';
+
+  @override
+  String get settingsSyncDeleteBody =>
+      'FocusTrace のクラウドアカウントと、サーバーに同期されたすべての利用データが完全に削除されます。元に戻すことはできません。\n\nこの端末の利用履歴は残り、同期はオフになります。';
+
+  @override
+  String get settingsSyncDeletePassword => '現在のパスワード';
+
+  @override
+  String get settingsSyncDeleteConfirm => '完全に削除';
+
+  @override
+  String get settingsSyncDeleted => 'FocusTrace アカウントを削除しました。この端末の利用履歴は残っています。';
+
+  @override
+  String get settingsSyncErrorWrongPassword =>
+      'パスワードが正しくありません。アカウントは削除されていません。';
+
+  @override
   String get settingsSyncMissingFields => 'メールアドレスとパスワードを入力してください。';
 
   @override

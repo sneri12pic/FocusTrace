@@ -573,6 +573,13 @@
   "settingsSyncErrorSessionExpired": "Your session has ended. Sign in again.",
   "settingsSyncErrorRefused": "The sync service refused the request.",
   "settingsSyncErrorUnknown": "Something went wrong. Try again.",
+  "settingsSyncDeleteAccount": "Delete account",
+  "settingsSyncDeleteTitle": "Delete your FocusTrace account?",
+  "settingsSyncDeleteBody": "This permanently deletes your FocusTrace cloud account and all usage data synced to the server. It cannot be undone.\n\nUsage history on this device stays, and sync will be turned off.",
+  "settingsSyncDeletePassword": "Current password",
+  "settingsSyncDeleteConfirm": "Delete permanently",
+  "settingsSyncDeleted": "Your FocusTrace account was deleted. Usage history on this device was kept.",
+  "settingsSyncErrorWrongPassword": "That password is not correct. Your account was not deleted.",
   "settingsSyncMissingFields": "Enter an email and a password.",
   "settingsPrivacyBodySync": "Your usage history and settings stay on this device unless you export a backup or turn on cloud sync below."
 }

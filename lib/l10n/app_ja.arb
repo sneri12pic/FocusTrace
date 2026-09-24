@@ -573,6 +573,13 @@
   "settingsSyncErrorSessionExpired": "セッションが終了しました。もう一度サインインしてください。",
   "settingsSyncErrorRefused": "同期サービスがリクエストを拒否しました。",
   "settingsSyncErrorUnknown": "問題が発生しました。再試行してください。",
+  "settingsSyncDeleteAccount": "アカウントを削除",
+  "settingsSyncDeleteTitle": "FocusTrace アカウントを削除しますか？",
+  "settingsSyncDeleteBody": "FocusTrace のクラウドアカウントと、サーバーに同期されたすべての利用データが完全に削除されます。元に戻すことはできません。\n\nこの端末の利用履歴は残り、同期はオフになります。",
+  "settingsSyncDeletePassword": "現在のパスワード",
+  "settingsSyncDeleteConfirm": "完全に削除",
+  "settingsSyncDeleted": "FocusTrace アカウントを削除しました。この端末の利用履歴は残っています。",
+  "settingsSyncErrorWrongPassword": "パスワードが正しくありません。アカウントは削除されていません。",
   "settingsSyncMissingFields": "メールアドレスとパスワードを入力してください。",
   "settingsPrivacyBodySync": "利用履歴と設定は、バックアップを書き出すか下のクラウド同期をオンにしない限り、この端末に保存されたままです。"
 }

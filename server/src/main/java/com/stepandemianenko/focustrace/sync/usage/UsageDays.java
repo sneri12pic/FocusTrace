@@ -92,6 +92,14 @@ class UsageDays {
     /** Results are in request order, one per submitted day. */
     @Transactional
     List<DayResult> upload(UUID userId, UploadRequest request) {
+        // D19 lock order: the account row first, before any device or day row, so an
+        // account deletion waits for this upload instead of deadlocking with it. KEY
+        // SHARE blocks only deletion; the budget check below upgrades it in place.
+        jdbc.sql("SELECT 1 FROM users WHERE id = :userId FOR KEY SHARE")
+                .param("userId", userId)
+                .query(Integer.class)
+                .optional()
+                .orElseThrow(ApiException::unauthorized);
         UUID deviceId = request.deviceId();
         // D16: ownership is the query predicate; foreign and unknown are the same 404
         // and nothing is written. KEY SHARE keeps the device from being deleted under

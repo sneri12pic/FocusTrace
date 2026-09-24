@@ -573,6 +573,13 @@
   "settingsSyncErrorSessionExpired": "A sua sessão terminou. Inicie sessão novamente.",
   "settingsSyncErrorRefused": "O serviço recusou o pedido.",
   "settingsSyncErrorUnknown": "Algo correu mal. Tente novamente.",
+  "settingsSyncDeleteAccount": "Excluir conta",
+  "settingsSyncDeleteTitle": "Excluir sua conta do FocusTrace?",
+  "settingsSyncDeleteBody": "Isso exclui permanentemente sua conta na nuvem do FocusTrace e todos os dados de uso sincronizados com o servidor. Não é possível desfazer.\n\nO histórico de uso neste dispositivo é mantido e a sincronização será desativada.",
+  "settingsSyncDeletePassword": "Senha atual",
+  "settingsSyncDeleteConfirm": "Excluir permanentemente",
+  "settingsSyncDeleted": "Sua conta do FocusTrace foi excluída. O histórico de uso neste dispositivo foi mantido.",
+  "settingsSyncErrorWrongPassword": "Essa senha não está correta. Sua conta não foi excluída.",
   "settingsSyncMissingFields": "Introduza um e-mail e uma palavra-passe.",
   "settingsPrivacyBodySync": "O seu histórico de uso e as definições ficam neste dispositivo, a menos que exporte uma cópia ou ative a sincronização na nuvem abaixo."
 }

@@ -162,6 +162,111 @@ void main() {
     expect(find.byKey(const ValueKey('sync-email-field')), findsOneWidget);
     expect(find.text('a@example.com'), findsNothing);
   });
+
+  group('account deletion', () {
+    _FakeSyncRepository signedIn() => _FakeSyncRepository()
+      ..signedIn = true
+      ..email = 'a@example.com'
+      ..enabled = true;
+
+    Future<void> openDialog(WidgetTester tester) async {
+      await tester.ensureVisible(
+        find.byKey(const ValueKey('sync-delete-account-button')),
+      );
+      await tester.tap(find.byKey(const ValueKey('sync-delete-account-button')));
+      await tester.pumpAndSettle();
+    }
+
+    FilledButton confirmButton(WidgetTester tester) => tester.widget(
+      find.byKey(const ValueKey('sync-delete-confirm-button')),
+    );
+
+    Future<void> typePassword(WidgetTester tester, String password) async {
+      await tester.enterText(
+        find.byKey(const ValueKey('sync-delete-password-field')),
+        password,
+      );
+      await tester.pump();
+    }
+
+    testWidgets('explains what is deleted and needs the password first', (
+      tester,
+    ) async {
+      final repository = signedIn();
+      await pump(tester, repository);
+
+      await openDialog(tester);
+
+      expect(find.text('Delete your FocusTrace account?'), findsOneWidget);
+      expect(
+        find.textContaining('permanently deletes your FocusTrace cloud account'),
+        findsOneWidget,
+      );
+      expect(find.textContaining('synced to the server'), findsOneWidget);
+      expect(find.textContaining('cannot be undone'), findsOneWidget);
+      expect(
+        find.textContaining('Usage history on this device stays'),
+        findsOneWidget,
+      );
+      expect(find.textContaining('sync will be turned off'), findsOneWidget);
+      // Opening the dialog did nothing; confirming needs a password.
+      expect(repository.deletedWith, isNull);
+      expect(confirmButton(tester).onPressed, isNull);
+
+      await typePassword(tester, 'current-password');
+      expect(confirmButton(tester).onPressed, isNotNull);
+    });
+
+    testWidgets('cancel deletes nothing', (tester) async {
+      final repository = signedIn();
+      await pump(tester, repository);
+      await openDialog(tester);
+      await typePassword(tester, 'current-password');
+
+      await tester.tap(find.byKey(const ValueKey('sync-delete-cancel-button')));
+      await tester.pumpAndSettle();
+
+      expect(repository.deletedWith, isNull);
+      expect(find.text('a@example.com'), findsOneWidget);
+    });
+
+    testWidgets('confirming deletes with the typed password and signs out', (
+      tester,
+    ) async {
+      final repository = signedIn();
+      await pump(tester, repository);
+      await openDialog(tester);
+      await typePassword(tester, 'current-password');
+
+      await tester.tap(find.byKey(const ValueKey('sync-delete-confirm-button')));
+      await tester.pumpAndSettle();
+
+      expect(repository.deletedWith, 'current-password');
+      expect(find.byKey(const ValueKey('sync-account-deleted')), findsOneWidget);
+      expect(find.byKey(const ValueKey('sync-email-field')), findsOneWidget);
+      expect(find.text('a@example.com'), findsNothing);
+    });
+
+    testWidgets('a wrong password says so and keeps the account', (
+      tester,
+    ) async {
+      final repository = signedIn()
+        ..deleteFailure = SyncAuthFailure.invalidCredentials;
+      await pump(tester, repository);
+      await openDialog(tester);
+      await typePassword(tester, 'wrong-password');
+
+      await tester.tap(find.byKey(const ValueKey('sync-delete-confirm-button')));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text('That password is not correct. Your account was not deleted.'),
+        findsOneWidget,
+      );
+      expect(find.text('a@example.com'), findsOneWidget);
+      expect(find.byKey(const ValueKey('sync-account-deleted')), findsNothing);
+    });
+  });
 }
 
 class _FakeSyncRepository implements SyncRepository {
@@ -176,6 +281,8 @@ class _FakeSyncRepository implements SyncRepository {
   int signInCalls = 0;
   int syncRuns = 0;
   bool signedOut = false;
+  SyncAuthFailure? deleteFailure;
+  String? deletedWith;
 
   @override
   Future<bool> get isSignedIn async => signedIn;
@@ -231,6 +338,17 @@ class _FakeSyncRepository implements SyncRepository {
       results: <SyncUploadResult>[],
       rejectedDays: 0,
     );
+  }
+
+  @override
+  Future<void> deleteAccount({required String password}) async {
+    deletedWith = password;
+    if (deleteFailure != null) {
+      throw SyncAuthException(deleteFailure!);
+    }
+    signedIn = false;
+    email = null;
+    enabled = false;
   }
 
   @override

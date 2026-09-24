@@ -103,6 +103,25 @@ public class AuthService {
                 .orElseThrow(ApiException::unauthorized);
     }
 
+    /**
+     * D19: deletes the caller's account and everything it owns, after re-verifying
+     * the current password. The Argon2id verification runs before any lock is taken;
+     * the deletion itself is one statement. A wrong password is a 403, not a 401: the
+     * bearer token is valid, and a 401 would make a client refresh and resend.
+     */
+    public void deleteAccount(UUID userId, String password) {
+        User user = users.findById(userId).orElseThrow(ApiException::unauthorized);
+        if (!passwords.matches(password, user.getPasswordHash())) {
+            securityLog.info("event=account_delete_rejected reason=wrong_password userId={}", userId);
+            throw ApiException.forbidden("Password confirmation failed.");
+        }
+        if (!sessions.deleteAccount(userId)) {
+            // Deleted concurrently by another request of this account.
+            throw ApiException.unauthorized();
+        }
+        securityLog.info("event=account_deleted userId={}", userId);
+    }
+
     /** D10: revokes the caller's session named by the token; always succeeds. */
     public void logout(String refreshToken, UUID userId) {
         sessions.logout(refreshToken, userId);

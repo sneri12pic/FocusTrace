@@ -933,6 +933,30 @@ class AppLocalizationsDe extends AppLocalizations {
       'Etwas ist schiefgelaufen. Versuche es erneut.';
 
   @override
+  String get settingsSyncDeleteAccount => 'Konto löschen';
+
+  @override
+  String get settingsSyncDeleteTitle => 'FocusTrace-Konto löschen?';
+
+  @override
+  String get settingsSyncDeleteBody =>
+      'Dadurch werden dein FocusTrace-Cloudkonto und alle auf den Server synchronisierten Nutzungsdaten dauerhaft gelöscht. Das kann nicht rückgängig gemacht werden.\n\nDer Nutzungsverlauf auf diesem Gerät bleibt erhalten, und die Synchronisierung wird ausgeschaltet.';
+
+  @override
+  String get settingsSyncDeletePassword => 'Aktuelles Passwort';
+
+  @override
+  String get settingsSyncDeleteConfirm => 'Endgültig löschen';
+
+  @override
+  String get settingsSyncDeleted =>
+      'Dein FocusTrace-Konto wurde gelöscht. Der Nutzungsverlauf auf diesem Gerät wurde behalten.';
+
+  @override
+  String get settingsSyncErrorWrongPassword =>
+      'Das Passwort ist nicht korrekt. Dein Konto wurde nicht gelöscht.';
+
+  @override
   String get settingsSyncMissingFields =>
       'Gib eine E-Mail und ein Passwort ein.';
 

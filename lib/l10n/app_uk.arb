@@ -573,6 +573,13 @@
   "settingsSyncErrorSessionExpired": "Ваш сеанс завершився. Увійдіть знову.",
   "settingsSyncErrorRefused": "Служба відхилила запит.",
   "settingsSyncErrorUnknown": "Щось пішло не так. Спробуйте ще раз.",
+  "settingsSyncDeleteAccount": "Видалити обліковий запис",
+  "settingsSyncDeleteTitle": "Видалити обліковий запис FocusTrace?",
+  "settingsSyncDeleteBody": "Це назавжди видалить ваш хмарний обліковий запис FocusTrace і всі дані використання, синхронізовані на сервер. Цю дію не можна скасувати.\n\nІсторія використання на цьому пристрої залишиться, а синхронізацію буде вимкнено.",
+  "settingsSyncDeletePassword": "Поточний пароль",
+  "settingsSyncDeleteConfirm": "Видалити назавжди",
+  "settingsSyncDeleted": "Ваш обліковий запис FocusTrace видалено. Історію використання на цьому пристрої збережено.",
+  "settingsSyncErrorWrongPassword": "Пароль неправильний. Обліковий запис не видалено.",
   "settingsSyncMissingFields": "Введіть пошту та пароль.",
   "settingsPrivacyBodySync": "Історія використання та налаштування залишаються на цьому пристрої, доки ви не експортуєте резервну копію або не ввімкнете хмарну синхронізацію нижче."
 }

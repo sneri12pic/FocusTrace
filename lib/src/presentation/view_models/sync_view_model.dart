@@ -18,6 +18,9 @@ enum SyncErrorKind {
   weakPassword,
   sessionExpired,
   refused,
+
+  /// Account deletion: the confirmation password was wrong.
+  wrongPassword,
   unknown,
 }
 
@@ -31,6 +34,7 @@ class SyncState {
     this.lastSuccessAt,
     this.error,
     this.isAuthenticating = false,
+    this.accountDeleted = false,
   });
 
   final bool isLoading;
@@ -41,8 +45,11 @@ class SyncState {
   final DateTime? lastSuccessAt;
   final SyncErrorKind? error;
 
-  /// Sign-in, account creation or sign-out is in flight.
+  /// Sign-in, account creation, sign-out or account deletion is in flight.
   final bool isAuthenticating;
+
+  /// The account was just deleted, so the signed-out form can say so.
+  final bool accountDeleted;
 
   bool get isSyncing => phase == SyncPhase.syncing;
 
@@ -59,6 +66,7 @@ class SyncState {
     DateTime? lastSuccessAt,
     SyncErrorKind? error,
     bool? isAuthenticating,
+    bool? accountDeleted,
     bool clearError = false,
     bool clearAccountEmail = false,
     bool clearLastSuccess = false,
@@ -76,6 +84,7 @@ class SyncState {
           : lastSuccessAt ?? this.lastSuccessAt,
       error: clearError ? null : error ?? this.error,
       isAuthenticating: isAuthenticating ?? this.isAuthenticating,
+      accountDeleted: accountDeleted ?? this.accountDeleted,
     );
   }
 }
@@ -123,7 +132,11 @@ class SyncViewModel extends StateNotifier<SyncState> {
     if (state.isAuthenticating) {
       return;
     }
-    state = state.copyWith(isAuthenticating: true, clearError: true);
+    state = state.copyWith(
+      isAuthenticating: true,
+      accountDeleted: false,
+      clearError: true,
+    );
     try {
       await action();
     } on SyncAuthException catch (error) {
@@ -156,6 +169,39 @@ class SyncViewModel extends StateNotifier<SyncState> {
       // The credential is gone regardless; there is nothing useful to say.
     }
     state = const SyncState(isLoading: false);
+  }
+
+  /// Permanent. The password is only passed through, never kept. Success ends
+  /// signed out with sync off; any other outcome leaves the account signed in and
+  /// untouched, except a rejected session, which is signed out like a failed sync.
+  Future<void> deleteAccount(String password) async {
+    if (state.isAuthenticating || state.isSyncing) {
+      return;
+    }
+    state = state.copyWith(isAuthenticating: true, clearError: true);
+    try {
+      await _repository.deleteAccount(password: password);
+    } on SyncAuthException catch (error) {
+      final kind = error.failure == SyncAuthFailure.invalidCredentials
+          ? SyncErrorKind.wrongPassword
+          : _authErrorFor(error.failure);
+      state = state.copyWith(isAuthenticating: false, error: kind);
+      if (kind == SyncErrorKind.sessionExpired) {
+        state = state.copyWith(
+          isSignedIn: false,
+          syncEnabled: false,
+          clearAccountEmail: true,
+        );
+      }
+      return;
+    } on Object {
+      state = state.copyWith(
+        isAuthenticating: false,
+        error: SyncErrorKind.unknown,
+      );
+      return;
+    }
+    state = const SyncState(isLoading: false, accountDeleted: true);
   }
 
   /// Off does not delete anything the server already holds, and does not sign
@@ -207,6 +253,7 @@ class SyncViewModel extends StateNotifier<SyncState> {
       SyncAuthFailure.invalidCredentials => SyncErrorKind.invalidCredentials,
       SyncAuthFailure.emailTaken => SyncErrorKind.emailTaken,
       SyncAuthFailure.weakPassword => SyncErrorKind.weakPassword,
+      SyncAuthFailure.sessionExpired => SyncErrorKind.sessionExpired,
       SyncAuthFailure.unknown => SyncErrorKind.unknown,
     };
   }

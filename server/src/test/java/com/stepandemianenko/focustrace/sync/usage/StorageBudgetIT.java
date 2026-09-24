@@ -135,8 +135,9 @@ class StorageBudgetIT extends UsageTestSupport {
 
     /**
      * Four devices each race one new day into the last free slot. The test holds the
-     * account row, so all four have written their day and are queued at the budget
-     * check at once; releasing it admits exactly one and rolls the rest back whole.
+     * account row in {@code NO KEY UPDATE}, which lets each upload take its D19
+     * {@code KEY SHARE} and write its day, so all four are queued at the budget check
+     * at once; releasing it admits exactly one and rolls the rest back whole.
      */
     @Test
     void concurrentUploadsForTheLastSlotAdmitExactlyOne() throws Exception {
@@ -151,7 +152,8 @@ class StorageBudgetIT extends UsageTestSupport {
             LocalDate date = START.plusDays(BUDGET);
 
             List<Integer> statuses;
-            try (Connection lock = lockAccount(a.id()); ExecutorService pool = Executors.newFixedThreadPool(4)) {
+            try (Connection lock = lockAccount(a.id(), "FOR NO KEY UPDATE");
+                    ExecutorService pool = Executors.newFixedThreadPool(4)) {
                 List<CompletableFuture<Response>> requests = new ArrayList<>();
                 for (UUID device : racers) {
                     requests.add(CompletableFuture.supplyAsync(

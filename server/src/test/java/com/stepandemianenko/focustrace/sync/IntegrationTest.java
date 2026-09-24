@@ -51,7 +51,8 @@ import tools.jackson.databind.json.JsonMapper;
             "focustrace.auth.rate-limit.refresh-per-source.capacity=1000000",
             "focustrace.auth.rate-limit.device-register-per-user.capacity=1000000",
             "focustrace.auth.rate-limit.upload-per-user.capacity=1000000",
-            "focustrace.auth.rate-limit.history-per-user.capacity=1000000"
+            "focustrace.auth.rate-limit.history-per-user.capacity=1000000",
+            "focustrace.auth.rate-limit.account-delete-per-user.capacity=1000000"
         })
 public abstract class IntegrationTest {
 
@@ -170,10 +171,25 @@ public abstract class IntegrationTest {
      * to overlap by {@link #awaitLockWaiters}, not by timing.
      */
     protected Connection lockAccount(UUID userId) throws SQLException {
+        return lockAccount(userId, "FOR UPDATE");
+    }
+
+    /**
+     * {@code mode} {@code "FOR NO KEY UPDATE"} lets requests take the account's
+     * {@code KEY SHARE} (D19) and stops them only where they need more.
+     */
+    protected Connection lockAccount(UUID userId, String mode) throws SQLException {
+        return lockRow("SELECT 1 FROM users WHERE id = ? " + mode, userId);
+    }
+
+    /** Holds the row lock {@code sql} takes on its own connection until committed or closed. */
+    protected Connection lockRow(String sql, Object... params) throws SQLException {
         Connection connection = dataSource.getConnection();
         connection.setAutoCommit(false);
-        try (PreparedStatement lock = connection.prepareStatement("SELECT 1 FROM users WHERE id = ? FOR UPDATE")) {
-            lock.setObject(1, userId);
+        try (PreparedStatement lock = connection.prepareStatement(sql)) {
+            for (int i = 0; i < params.length; i++) {
+                lock.setObject(i + 1, params[i]);
+            }
             lock.executeQuery().close();
         }
         return connection;

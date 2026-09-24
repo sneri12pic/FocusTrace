@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'support/test_sync_execution_gate.dart';
@@ -195,6 +196,74 @@ void main() {
     );
   }, timeout: const Timeout(Duration(minutes: 3)));
 
+  test('deleting account A lets account B on the same installation upload '
+      'the same local history again', () async {
+    final stamp = DateTime.now().microsecondsSinceEpoch;
+    final emailA = 'e2e-delete-a-$stamp@example.com';
+    final emailB = 'e2e-delete-b-$stamp@example.com';
+    final first = _dayKey(DateTime.now().toUtc().subtract(const Duration(days: 5)));
+    final second = _dayKey(DateTime.now().toUtc().subtract(const Duration(days: 6)));
+
+    // Account A registers this installation and uploads its history.
+    await deviceA.repository.createAccount(email: emailA, password: password);
+    await deviceA.repository.setSyncEnabled(true);
+    await deviceA.seed(first, queriedAtMs: 1_700_000_000_011,
+        appKey: 'com.first', appName: 'First', durationSeconds: 411);
+    await deviceA.seed(second, queriedAtMs: 1_700_000_000_012,
+        appKey: 'com.second', appName: 'Second', durationSeconds: 412);
+    final localBefore = await deviceA.usageRows();
+    final installation = await deviceA.repository.installationId();
+    final uploadedByA = await deviceA.repository.syncNow();
+    expect(uploadedByA.countOf(SyncDayOutcome.applied), 2);
+    expect(
+      (await deviceA.repository.readRemoteHistory(
+        from: DateTime.utc(2026, 1, 1),
+        to: DateTime.now().toUtc().add(const Duration(days: 1)),
+      )).map((day) => day.deviceId).toSet(),
+      {installation},
+    );
+    final oldRefreshToken = await deviceA.credentials.readRefreshToken();
+    expect(oldRefreshToken, isNotNull);
+
+    // A wrong password deletes nothing.
+    await expectLater(
+      deviceA.repository.deleteAccount(password: 'Not-The-Password-12345'),
+      throwsA(isA<SyncAuthException>()),
+    );
+    expect(await deviceA.repository.isSignedIn, isTrue);
+
+    await deviceA.repository.deleteAccount(password: password);
+
+    // The old credential and the account are gone server-side.
+    expect(await deviceA.repository.isSignedIn, isFalse);
+    expect(await deviceA.repository.isSyncEnabled(), isFalse);
+    expect(
+      await _status('/api/v1/auth/refresh', {'refreshToken': oldRefreshToken}),
+      401,
+    );
+    expect(
+      await _status('/api/v1/auth/login', {'email': emailA, 'password': password}),
+      401,
+    );
+    // Local history is exactly what it was.
+    expect(await deviceA.usageRows(), localBefore);
+
+    // Account B on the same installation uploads that history again.
+    await deviceA.repository.createAccount(email: emailB, password: password);
+    await deviceA.repository.setSyncEnabled(true);
+    final uploadedByB = await deviceA.repository.syncNow();
+    expect(uploadedByB.failure, isNull);
+    expect(uploadedByB.countOf(SyncDayOutcome.applied), 2,
+        reason: 'B must not inherit the deleted account\'s watermark');
+    final historyB = await deviceA.repository.readRemoteHistory(
+      from: DateTime.utc(2026, 1, 1),
+      to: DateTime.now().toUtc().add(const Duration(days: 1)),
+    );
+    expect(historyB.map((day) => day.localDate).toSet(), {first, second});
+    expect(historyB.map((day) => day.deviceId).toSet(), {installation});
+    expect(await deviceA.repository.installationId(), installation);
+  }, timeout: const Timeout(Duration(minutes: 3)));
+
   test('a restart restores the session from secure storage', () async {
     final stamp = DateTime.now().microsecondsSinceEpoch;
     final email = 'e2e-restart-$stamp@example.com';
@@ -250,6 +319,21 @@ void main() {
   }, timeout: const Timeout(Duration(minutes: 3)));
 }
 
+/// Status of a raw call, bypassing the client, for credentials it no longer holds.
+Future<int> _status(String path, Map<String, Object?> body) async {
+  final client = HttpClient();
+  try {
+    final request = await client.postUrl(Uri.parse(baseUrl).replace(path: path));
+    request.headers.contentType = ContentType.json;
+    request.add(utf8.encode(jsonEncode(body)));
+    final response = await request.close();
+    await response.drain<void>();
+    return response.statusCode;
+  } finally {
+    client.close(force: true);
+  }
+}
+
 String _dayKey(DateTime day) =>
     '${day.year.toString().padLeft(4, '0')}-'
     '${day.month.toString().padLeft(2, '0')}-'
@@ -258,7 +342,13 @@ String _dayKey(DateTime day) =>
 /// One FocusTrace installation: its own database, its own installation UUID and
 /// its own credential store.
 class _Installation {
-  _Installation(this.directory, this.local, this.db, this.repository);
+  _Installation(
+    this.directory,
+    this.local,
+    this.db,
+    this.credentials,
+    this.repository,
+  );
 
   static Future<_Installation> create(String prefix, String deviceName) async {
     final directory = await Directory.systemTemp.createTemp(prefix);
@@ -270,15 +360,17 @@ class _Installation {
     final db = await databaseFactoryFfi.openDatabase(
       p.join(directory.path, 'focus_trace.db'),
     );
+    final credentials = _MemoryCredentialStore();
     return _Installation(
       directory,
       local,
       db,
+      credentials,
       SyncRepositoryImpl(
         executionGate: TestSyncExecutionGate(),
         api: FocusTraceSyncApi(
           baseUrl: Uri.parse(baseUrl),
-          credentials: _MemoryCredentialStore(),
+          credentials: credentials,
         ),
         localDataSource: local,
         usageDataSource: local,
@@ -290,6 +382,7 @@ class _Installation {
   final Directory directory;
   final SqfliteFocusTraceLocalDataSource local;
   final Database db;
+  final SyncCredentialStore credentials;
   final SyncRepositoryImpl repository;
 
   Future<void> seed(

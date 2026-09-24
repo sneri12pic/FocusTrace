@@ -43,6 +43,85 @@ void main() {
     });
   });
 
+  group('delete account', () {
+    Future<void> signedInAndSyncing() async {
+      await viewModel.signIn(email: 'a@example.com', password: 'pw');
+      await viewModel.setSyncEnabled(true);
+    }
+
+    test('success ends signed out with sync off and says so', () async {
+      await signedInAndSyncing();
+
+      await viewModel.deleteAccount('current-password');
+
+      expect(repository.deletedWith, 'current-password');
+      expect(viewModel.state.isSignedIn, isFalse);
+      expect(viewModel.state.syncEnabled, isFalse);
+      expect(viewModel.state.accountEmail, isNull);
+      expect(viewModel.state.accountDeleted, isTrue);
+      expect(viewModel.state.error, isNull);
+      expect(viewModel.state.isAuthenticating, isFalse);
+    });
+
+    test('a wrong password keeps the account and reports it as such', () async {
+      await signedInAndSyncing();
+      repository.deleteFailure = SyncAuthFailure.invalidCredentials;
+
+      await viewModel.deleteAccount('wrong');
+
+      expect(viewModel.state.error, SyncErrorKind.wrongPassword);
+      expect(viewModel.state.isSignedIn, isTrue);
+      expect(viewModel.state.syncEnabled, isTrue);
+      expect(viewModel.state.accountEmail, 'a@example.com');
+      expect(viewModel.state.accountDeleted, isFalse);
+    });
+
+    test('offline keeps the account so the user can retry', () async {
+      await signedInAndSyncing();
+      repository.deleteFailure = SyncAuthFailure.offline;
+
+      await viewModel.deleteAccount('current-password');
+
+      expect(viewModel.state.error, SyncErrorKind.offline);
+      expect(viewModel.state.isSignedIn, isTrue);
+      expect(viewModel.state.syncEnabled, isTrue);
+    });
+
+    test('a rejected session signs out without claiming deletion', () async {
+      await signedInAndSyncing();
+      repository.deleteFailure = SyncAuthFailure.sessionExpired;
+
+      await viewModel.deleteAccount('current-password');
+
+      expect(viewModel.state.error, SyncErrorKind.sessionExpired);
+      expect(viewModel.state.isSignedIn, isFalse);
+      expect(viewModel.state.accountDeleted, isFalse);
+    });
+
+    test('is ignored while a sync is in flight', () async {
+      await signedInAndSyncing();
+      repository.hold();
+      final run = viewModel.syncNow();
+
+      await viewModel.deleteAccount('current-password');
+      repository.release();
+      await run;
+
+      expect(repository.deletedWith, isNull);
+      expect(viewModel.state.isSignedIn, isTrue);
+    });
+
+    test('a later sign-in clears the deletion notice', () async {
+      await signedInAndSyncing();
+      await viewModel.deleteAccount('current-password');
+
+      await viewModel.signIn(email: 'b@example.com', password: 'pw');
+
+      expect(viewModel.state.accountDeleted, isFalse);
+      expect(viewModel.state.accountEmail, 'b@example.com');
+    });
+  });
+
   group('sign in', () {
     test('a successful sign-in restores the account', () async {
       await viewModel.load();
@@ -291,6 +370,8 @@ class _FakeSyncRepository implements SyncRepository {
   bool signOutThrows = false;
   SyncAuthFailure? authFailure;
   SyncFailureReason? syncFailure;
+  SyncAuthFailure? deleteFailure;
+  String? deletedWith;
 
   int syncRuns = 0;
   int _activeRuns = 0;
@@ -383,6 +464,17 @@ class _FakeSyncRepository implements SyncRepository {
     } finally {
       _activeRuns--;
     }
+  }
+
+  @override
+  Future<void> deleteAccount({required String password}) async {
+    deletedWith = password;
+    if (deleteFailure != null) {
+      throw SyncAuthException(deleteFailure!);
+    }
+    signedIn = false;
+    email = null;
+    enabled = false;
   }
 
   @override

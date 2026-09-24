@@ -216,8 +216,15 @@ These are not backend tasks but must be resolved before sync ships to users:
 
 - `README.md:102` and `docs/privacy.html` currently state that FocusTrace never
   sends tracked data to a server. Both become inaccurate the moment sync ships.
-- Account deletion must be reachable from the UI. `ON DELETE CASCADE` from
-  `users` already makes the server-side deletion correct.
+- ~~Account deletion must be reachable from the UI.~~ Resolved 2026-09-24
+  (architecture 5.1, D19): "Delete account" in the sync card, confirmed with the
+  current password; the server deletes the whole account graph; local usage
+  history is kept. Accepted when the server graph is empty after deletion, old
+  access and refresh tokens are dead, deletion races with upload, registration
+  and refresh neither deadlock nor resurrect anything, and a new account on the
+  same installation uploads the full local history (`AccountDeletionIT`, Flutter
+  repository/view-model/card tests, real-backend E2E). Still open around it: the
+  Google Play web deletion page, and the privacy copy above.
 - Email addresses are never verified. Registration therefore discloses that an
   account exists (architecture 5.1, D11). Revisit if verification is added.
 - Authentication rate limiting landed in Step 2 (architecture 5.1, D15).

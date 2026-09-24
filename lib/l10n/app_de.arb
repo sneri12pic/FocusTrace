@@ -573,6 +573,13 @@
   "settingsSyncErrorSessionExpired": "Deine Sitzung ist abgelaufen. Melde dich erneut an.",
   "settingsSyncErrorRefused": "Der Dienst hat die Anfrage abgelehnt.",
   "settingsSyncErrorUnknown": "Etwas ist schiefgelaufen. Versuche es erneut.",
+  "settingsSyncDeleteAccount": "Konto löschen",
+  "settingsSyncDeleteTitle": "FocusTrace-Konto löschen?",
+  "settingsSyncDeleteBody": "Dadurch werden dein FocusTrace-Cloudkonto und alle auf den Server synchronisierten Nutzungsdaten dauerhaft gelöscht. Das kann nicht rückgängig gemacht werden.\n\nDer Nutzungsverlauf auf diesem Gerät bleibt erhalten, und die Synchronisierung wird ausgeschaltet.",
+  "settingsSyncDeletePassword": "Aktuelles Passwort",
+  "settingsSyncDeleteConfirm": "Endgültig löschen",
+  "settingsSyncDeleted": "Dein FocusTrace-Konto wurde gelöscht. Der Nutzungsverlauf auf diesem Gerät wurde behalten.",
+  "settingsSyncErrorWrongPassword": "Das Passwort ist nicht korrekt. Dein Konto wurde nicht gelöscht.",
   "settingsSyncMissingFields": "Gib eine E-Mail und ein Passwort ein.",
   "settingsPrivacyBodySync": "Dein Nutzungsverlauf und deine Einstellungen bleiben auf diesem Gerät, außer du exportierst eine Sicherung oder aktivierst unten die Cloud-Synchronisierung."
 }

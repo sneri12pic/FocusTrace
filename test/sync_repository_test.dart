@@ -699,6 +699,197 @@ void main() {
     });
   });
 
+  group('account deletion', () {
+    const keys = [
+      SyncSettingKeys.installationId,
+      SyncSettingKeys.usageWatermarkMs,
+      SyncSettingKeys.importedVersionMs,
+      SyncSettingKeys.enabled,
+      SyncSettingKeys.lastSuccessMs,
+      SyncSettingKeys.accountEmail,
+      'unrelated_local_setting',
+    ];
+
+    Future<Map<String, String?>> settings() async => {
+      for (final key in keys) key: await local.readSetting(key),
+    };
+
+    late List<bool> schedules;
+    late SyncRepositoryImpl subject;
+
+    /// Signed in, opted in, two local days uploaded, an unrelated local setting.
+    Future<void> syncedAccount() async {
+      schedules = [];
+      subject = repositoryFor(
+        credentials,
+        reconcileSchedule: (enabled) async => schedules.add(enabled),
+      );
+      await subject.signIn(email: 'a@example.com', password: 'pw');
+      await subject.setSyncEnabled(true);
+      await seedDay('2026-09-16', queriedAtMs: 1000);
+      await seedDay('2026-09-17', queriedAtMs: 2000);
+      await local.writeSetting('unrelated_local_setting', 'kept');
+      final run = await subject.syncNow();
+      expect(run.countOf(SyncDayOutcome.applied), 2);
+      expect(await watermark(), 2000);
+      schedules.clear();
+    }
+
+    test('success deletes the cloud account and resets only account state', () async {
+      await syncedAccount();
+      final before = await settings();
+
+      await subject.deleteAccount(password: 'pw');
+
+      expect(backend.deleteCount, 1);
+      expect(backend.devices, isEmpty);
+      expect(credentials.refreshToken, isNull);
+      expect(await subject.isSignedIn, isFalse);
+      final after = await settings();
+      // Account-scoped: reset.
+      expect(after[SyncSettingKeys.enabled], 'false');
+      expect(after[SyncSettingKeys.accountEmail], '');
+      expect(await subject.lastSuccessfulSyncAt(), isNull);
+      expect(after[SyncSettingKeys.usageWatermarkMs], '0');
+      // Installation, local-content and unrelated state: untouched.
+      for (final key in [
+        SyncSettingKeys.installationId,
+        SyncSettingKeys.importedVersionMs,
+        'unrelated_local_setting',
+      ]) {
+        expect(after[key], before[key], reason: key);
+      }
+      expect(await db.query('daily_app_usage'), hasLength(2));
+      expect(await db.query('usage_snapshot_days'), hasLength(2));
+      // Scheduling stopped before the request and stays stopped.
+      expect(schedules, [false, false]);
+      backend.requestPaths.clear();
+      expect((await subject.syncNow()).succeeded, isFalse);
+      expect(backend.requestPaths, isEmpty);
+    });
+
+    test('a wrong password changes nothing locally and keeps sync scheduled', () async {
+      await syncedAccount();
+      final before = await settings();
+
+      await expectLater(
+        subject.deleteAccount(password: 'wrong'),
+        throwsA(isA<SyncAuthException>().having(
+          (e) => e.failure, 'failure', SyncAuthFailure.invalidCredentials,
+        )),
+      );
+
+      expect(await settings(), before);
+      expect(credentials.refreshToken, isNotNull);
+      expect(backend.deleteCount, 0);
+      expect(schedules, [false, true]);
+      expect((await subject.syncNow()).succeeded, isTrue);
+    });
+
+    test('an unreachable server keeps the session and only resets the watermark', () async {
+      await syncedAccount();
+      final before = await settings();
+      await backend.stop();
+
+      await expectLater(
+        subject.deleteAccount(password: 'pw'),
+        throwsA(isA<SyncAuthException>().having(
+          (e) => e.failure, 'failure', SyncAuthFailure.offline,
+        )),
+      );
+
+      final after = await settings();
+      expect(after[SyncSettingKeys.usageWatermarkMs], '0',
+          reason: 'the deletion may have committed with its response lost');
+      expect({...after}..remove(SyncSettingKeys.usageWatermarkMs),
+          {...before}..remove(SyncSettingKeys.usageWatermarkMs));
+      expect(credentials.refreshToken, isNotNull);
+      expect(schedules, [false, true]);
+    });
+
+    test('a rejected session is reported without clearing account state', () async {
+      await syncedAccount();
+      final fresh = repositoryFor(credentials);
+      await credentials.writeRefreshToken('revoked-test-session');
+
+      await expectLater(
+        fresh.deleteAccount(password: 'pw'),
+        throwsA(isA<SyncAuthException>().having(
+          (e) => e.failure, 'failure', SyncAuthFailure.sessionExpired,
+        )),
+      );
+
+      expect(credentials.refreshToken, isNull);
+      expect(backend.deleteCount, 0);
+      expect(await local.readSetting(SyncSettingKeys.accountEmail), 'a@example.com');
+    });
+
+    test('account B after deleting account A uploads the existing local history', () async {
+      await syncedAccount();
+      final installation = await subject.installationId();
+      await subject.deleteAccount(password: 'pw');
+
+      await subject.signIn(email: 'b@example.com', password: 'pw');
+      await subject.setSyncEnabled(true);
+      final run = await subject.syncNow();
+
+      expect(run.succeeded, isTrue);
+      expect(run.countOf(SyncDayOutcome.applied), 2,
+          reason: 'B must not inherit A\'s upload watermark');
+      expect(backend.storedDays, hasLength(2));
+      expect(backend.devices.single.deviceId, installation);
+      expect(await subject.installationId(), installation);
+    });
+
+    test('deletion queues on the shared gate behind running work', () async {
+      await syncedAccount();
+      final blocker = Completer<void>();
+      final entered = Completer<void>();
+      final holder = gate.run(() async {
+        entered.complete();
+        await blocker.future;
+      });
+      await entered.future;
+      backend.requestPaths.clear();
+
+      final deletion = subject.deleteAccount(password: 'pw');
+      await Future<void>.delayed(Duration.zero);
+      expect(backend.requestPaths, isEmpty);
+      expect(schedules, isEmpty, reason: 'nothing runs before the gate is granted');
+
+      blocker.complete();
+      await holder;
+      await deletion;
+      expect(backend.deleteCount, 1);
+    });
+
+    test('a background run in flight finishes first and nothing syncs after deletion', () async {
+      await syncedAccount();
+      await seedDay('2026-09-18', queriedAtMs: 3000);
+      backend.hold('/api/v1/sync/usage-days');
+      final background = runBackgroundSync(repositoryFor(credentials));
+      await backend.entered!.future;
+
+      final deletion = subject.deleteAccount(password: 'pw');
+      await Future<void>.delayed(Duration.zero);
+      expect(backend.deleteCount, 0);
+      backend.proceed!.complete();
+      expect(await background, 'success');
+      await deletion;
+      expect(backend.deleteCount, 1);
+
+      // Stale or repeated background callbacks: no credential, no consent.
+      backend.requestPaths.clear();
+      for (var i = 0; i < 2; i++) {
+        expect(await runBackgroundSync(repositoryFor(credentials)), 'success');
+      }
+      expect(backend.requestPaths, isEmpty);
+      expect(await subject.isSyncEnabled(), isFalse);
+      expect(credentials.refreshToken, isNull);
+      expect(schedules.last, isFalse);
+    });
+  });
+
   group('readRemoteHistory', () {
     test('returns the source device with every day', () async {
       await repository.createAccount(email: 'a@example.com', password: 'pw');
@@ -892,6 +1083,10 @@ class _FakeBackend {
 
   int uploadCount = 0;
   int refreshCount = 0;
+  int deleteCount = 0;
+
+  /// The account's password, for D19's confirmation. The fake holds one account.
+  String accountPassword = 'pw';
   int? nextUploadStatus;
   bool rejectEveryUpload = false;
   var _issued = 0;
@@ -970,6 +1165,16 @@ class _FakeBackend {
       case '/api/v1/auth/logout':
         if (!_authorized(request)) return reply(401);
         _liveRefreshTokens.remove(body['refreshToken']);
+        return reply(204);
+      case '/api/v1/account/delete':
+        if (!_authorized(request)) return reply(401);
+        if (body['password'] != accountPassword) return reply(403);
+        // The cascade: the account, its sessions, devices and usage are gone.
+        deleteCount++;
+        devices.clear();
+        storedDays.clear();
+        _liveAccessTokens.clear();
+        _liveRefreshTokens.clear();
         return reply(204);
       case '/api/v1/devices':
         if (!_authorized(request)) return reply(401);

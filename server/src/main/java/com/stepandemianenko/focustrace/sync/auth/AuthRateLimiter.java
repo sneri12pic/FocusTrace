@@ -36,7 +36,8 @@ public class AuthRateLimiter {
         REFRESH_PER_SOURCE,
         DEVICE_REGISTER_PER_USER,
         UPLOAD_PER_USER,
-        HISTORY_PER_USER
+        HISTORY_PER_USER,
+        ACCOUNT_DELETE_PER_USER
     }
 
     /**
@@ -67,6 +68,7 @@ public class AuthRateLimiter {
         limiters.put(Bucket.DEVICE_REGISTER_PER_USER, TokenBucket.of(config.deviceRegisterPerUser(), maxEntries, clock));
         limiters.put(Bucket.UPLOAD_PER_USER, TokenBucket.of(config.uploadPerUser(), maxEntries, clock));
         limiters.put(Bucket.HISTORY_PER_USER, TokenBucket.of(config.historyPerUser(), maxEntries, clock));
+        limiters.put(Bucket.ACCOUNT_DELETE_PER_USER, TokenBucket.of(config.accountDeletePerUser(), maxEntries, clock));
     }
 
     /**

@@ -1,5 +1,6 @@
 package com.stepandemianenko.focustrace.sync.auth;
 
+import com.stepandemianenko.focustrace.sync.common.ApiException;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -48,6 +49,10 @@ public class AuthSessions {
     /** Opens a session for a freshly authenticated user and issues its first refresh token. */
     @Transactional
     public Issued start(UUID userId) {
+        // D19 lock order. Deleted since the password was verified: the same 401 (D11).
+        if (!lockAccountShared(userId)) {
+            throw ApiException.unauthorized();
+        }
         UUID sessionId = UUID.randomUUID();
         jdbc.sql("""
                         INSERT INTO auth_sessions (id, user_id, absolute_expires_at)
@@ -72,6 +77,13 @@ public class AuthSessions {
     @Transactional
     public Optional<Issued> rotate(String presentedToken) {
         byte[] hash = sha256(presentedToken);
+        // D19 lock order: the account row before the token row. Unlocked read; if the
+        // token or account is gone, the claim below simply finds nothing.
+        jdbc.sql("SELECT user_id FROM refresh_tokens WHERE token_hash = :hash")
+                .param("hash", hash)
+                .query(UUID.class)
+                .optional()
+                .ifPresent(this::lockAccountShared);
         Optional<Claimed> claimed = jdbc.sql("""
                         UPDATE refresh_tokens t
                            SET revoked_at = now()
@@ -103,6 +115,7 @@ public class AuthSessions {
      */
     @Transactional
     public void logout(String presentedToken, UUID userId) {
+        lockAccountShared(userId); // D19 lock order
         jdbc.sql("SELECT session_id FROM refresh_tokens WHERE token_hash = :hash AND user_id = :userId")
                 .param("hash", sha256(presentedToken))
                 .param("userId", userId)
@@ -113,6 +126,34 @@ public class AuthSessions {
                         securityLog.info("event=session_revoked reason=logout userId={} sessionId={}", userId, sessionId);
                     }
                 });
+    }
+
+    /**
+     * D19: deletes the account row; {@code ON DELETE CASCADE} removes its sessions,
+     * refresh tokens, devices, usage days and app rows in the same statement, so the
+     * statement is the transaction. The {@code DELETE} takes {@code FOR UPDATE} on the
+     * account row before any cascade runs, and every other writer of the account graph
+     * takes a lock on that row first ({@link #lockAccountShared}), so deletion waits for
+     * them rather than for a child row they hold: one lock order, no cycle.
+     *
+     * @return false if the account no longer existed
+     */
+    @Transactional
+    public boolean deleteAccount(UUID userId) {
+        return jdbc.sql("DELETE FROM users WHERE id = :userId").param("userId", userId).update() == 1;
+    }
+
+    /**
+     * D19 lock order: the account row first. {@code KEY SHARE} conflicts only with
+     * {@code FOR UPDATE}, i.e. only with account deletion, so sessions of one account
+     * never block each other. False if the account is gone.
+     */
+    boolean lockAccountShared(UUID userId) {
+        return jdbc.sql("SELECT 1 FROM users WHERE id = :userId FOR KEY SHARE")
+                .param("userId", userId)
+                .query(Integer.class)
+                .optional()
+                .isPresent();
     }
 
     /** Classifies a token that could not be claimed, and applies the D08 replay rule. */

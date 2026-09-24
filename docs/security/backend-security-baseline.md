@@ -101,6 +101,7 @@ list — not by assuming Spring Boot defaults.
   tokens.
 - `ON DELETE CASCADE` from `users` through `devices`, `usage_days`,
   `usage_day_apps` and `refresh_tokens` — account deletion removes all data.
+  Exposed as `POST /api/v1/account/delete` since 2026-09-24 (D19).
 - Value bounds in the database: `duration_seconds` in `[0, 86400]`,
   `launch_count >= 0`, `snapshot_version > 0`,
   `platform IN ('android','windows')`,
@@ -581,6 +582,7 @@ Required protection, per flow:
 | `POST /devices` | device-row growth, write amplification | active-device quota plus an authenticated per-user limit (D18) |
 | `PUT /sync/usage-days` | database work amplification, storage growth | authenticated per-user limit, the section 9 bounds and the per-account stored-day budget (D18) |
 | `GET /usage` | read amplification | authenticated per-user limit plus the 400-day range cap (D18) |
+| `POST /account/delete` | password guessing with a stolen access token | re-authentication with the current password, per-user limit of 5 / 15 min (D19) |
 
 **Authenticated limits (D18, implemented 2026-09-24).** The three authenticated
 rows above use the same in-process buckets as D15, keyed by the authenticated
@@ -950,6 +952,17 @@ PostgreSQL via Testcontainers, consistent with the existing suite.
 | An unauthenticated request is 401 and consumes no account's budget; a rejected upload body still consumes one (D18) | integration |
 | A per-user bucket refills on its own schedule, keyed per account (D18) | unit test, fake clock |
 
+### Account deletion (D19)
+
+| Test | Method |
+| --- | --- |
+| Deletion with the right password is 204 and leaves no row in `users`, `auth_sessions`, `refresh_tokens`, `devices`, `usage_days` or `usage_day_apps` for the account | integration |
+| A wrong password is 403 and changes nothing; unauthenticated is 401; malformed input, or a body naming another account, is 400 | integration |
+| After deletion the old access token is 401 on every route and the old refresh token cannot refresh | integration |
+| Another account is byte-for-byte unchanged | integration |
+| Deletion racing an upload that holds its rows, a registration, and a refresh completes without deadlock and leaves nothing | concurrent integration test, lock order proven by mutation |
+| The client clears account state only on 204, never local usage, and a later account uploads the full local history | Flutter tests and real-backend E2E |
+
 ### Account quotas (D18)
 
 | Test | Method |
@@ -1022,6 +1035,7 @@ describe the pre-Step-2 state and are not updated entry by entry.
 | D16 | `403` versus non-revealing `404` for a foreign object | Resolved (2026-09-18) | architecture 5.1, D16 |
 | D17 | Compromised-password blocklist | Resolved | architecture 5.1, D17 |
 | D18 | Authenticated per-user limits, active-device quota, stored-day budget | Resolved (2026-09-24) | architecture 5.1, D18 |
+| D19 | Account deletion: contract, re-authentication, lock order, client cleanup | Resolved (2026-09-24) | architecture 5.1, D19 |
 
 D16 was resolved before Step 3 (devices), which implements D12 and scopes every
 device query by owner. D13 was settled with Step 4 (the upload endpoint): at most

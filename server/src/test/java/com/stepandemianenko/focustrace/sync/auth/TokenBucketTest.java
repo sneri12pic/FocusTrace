@@ -86,7 +86,7 @@ class TokenBucketTest {
         AuthProperties.Limit limit = new AuthProperties.Limit(3, Duration.ofHours(6));
         AuthProperties.Limit unused = new AuthProperties.Limit(1, Duration.ofHours(1));
         AuthRateLimiter limiter = new AuthRateLimiter(new AuthProperties(null, null, new AuthProperties.RateLimit(
-                100, unused, unused, unused, unused, unused, limit, unused)), clock::get);
+                100, unused, unused, unused, unused, unused, limit, unused, unused)), clock::get);
         String alice = "0b7e2c55-4a8e-4b8f-9d6a-1f2e3d4c5b6a";
         String bob = "5d1c0f2e-7b3a-4c9d-8e6f-a1b2c3d4e5f6";
 

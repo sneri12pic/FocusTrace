@@ -135,11 +135,32 @@ class FocusTraceSyncApi {
         }
       }
     } finally {
-      _accessToken = null;
-      _accessTokenExpiry = null;
-      _sessionRefreshToken = null;
-      await _credentials.clear();
+      await _forgetSession();
     }
+  }
+
+  /// Backend D19: deletes the signed-in account and everything the server holds
+  /// for it, confirmed with the current password. The body carries nothing else:
+  /// the account is always the bearer token's. Only a 204 is success, and only
+  /// then is the session forgotten here - the server no longer has it. A wrong
+  /// password is a 403, so it never triggers the 401 refresh-and-replay below.
+  Future<void> deleteAccount(String password) async {
+    final response = await _authorized(
+      'POST',
+      '/api/v1/account/delete',
+      body: {'password': password},
+    );
+    if (response.status != 204) {
+      throw SyncApiException(response.status, 'Account deletion was refused.');
+    }
+    await _forgetSession();
+  }
+
+  Future<void> _forgetSession() async {
+    _accessToken = null;
+    _accessTokenExpiry = null;
+    _sessionRefreshToken = null;
+    await _credentials.clear();
   }
 
   // --- devices --------------------------------------------------------------

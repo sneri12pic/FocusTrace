@@ -939,6 +939,30 @@ class AppLocalizationsFr extends AppLocalizations {
   String get settingsSyncErrorUnknown => 'Une erreur est survenue. Réessayez.';
 
   @override
+  String get settingsSyncDeleteAccount => 'Supprimer le compte';
+
+  @override
+  String get settingsSyncDeleteTitle => 'Supprimer votre compte FocusTrace ?';
+
+  @override
+  String get settingsSyncDeleteBody =>
+      'Cela supprime définitivement votre compte cloud FocusTrace et toutes les données d’utilisation synchronisées sur le serveur. Cette action est irréversible.\n\nL’historique d’utilisation de cet appareil est conservé et la synchronisation sera désactivée.';
+
+  @override
+  String get settingsSyncDeletePassword => 'Mot de passe actuel';
+
+  @override
+  String get settingsSyncDeleteConfirm => 'Supprimer définitivement';
+
+  @override
+  String get settingsSyncDeleted =>
+      'Votre compte FocusTrace a été supprimé. L’historique d’utilisation de cet appareil a été conservé.';
+
+  @override
+  String get settingsSyncErrorWrongPassword =>
+      'Ce mot de passe est incorrect. Votre compte n’a pas été supprimé.';
+
+  @override
   String get settingsSyncMissingFields =>
       'Saisissez un e-mail et un mot de passe.';
 
