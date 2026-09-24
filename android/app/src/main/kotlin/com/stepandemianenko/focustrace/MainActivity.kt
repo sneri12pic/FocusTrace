@@ -26,7 +26,7 @@ class MainActivity : FlutterActivity() {
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
-        SyncExecutionGateChannel(flutterEngine)
+        attachSyncChannels(flutterEngine, applicationContext)
         UsageSnapshotScheduler.schedule(this)
         dataTransferDocumentBridge.configure(flutterEngine.dartExecutor.binaryMessenger)
 
@@ -57,17 +57,6 @@ class MainActivity : FlutterActivity() {
                     }
                     "syncRestrictions" -> {
                         syncRestrictions(call.arguments as? String ?: "")
-                        result.success(null)
-                    }
-                    "readSyncCredential" -> result.success(
-                        SecureCredentialStore.read(this)
-                    )
-                    "writeSyncCredential" -> {
-                        SecureCredentialStore.write(this, call.arguments as String)
-                        result.success(null)
-                    }
-                    "clearSyncCredential" -> {
-                        SecureCredentialStore.clear(this)
                         result.success(null)
                     }
                     "getAppMetadata" -> {

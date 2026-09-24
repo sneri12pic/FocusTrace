@@ -220,7 +220,7 @@ class _FakeSyncRepository implements SyncRepository {
   }
 
   @override
-  Future<SyncRunResult> syncNow() async {
+  Future<SyncRunResult> syncNow({bool requireEnabled = false}) async {
     syncRuns++;
     if (syncFailure != null) {
       return SyncRunResult.failed(rawFailure, syncFailure!);

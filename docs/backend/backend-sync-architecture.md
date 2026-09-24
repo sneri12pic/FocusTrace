@@ -1251,7 +1251,8 @@ to another OS process requires revisiting this assumption.
 
 Every engine that uses sync must attach `SyncExecutionGateChannel(engine)` once,
 before running its sync entrypoint. It needs no Activity. MainActivity attaches
-the foreground engine; no background engine or scheduler is introduced here.
+the foreground engine through `attachSyncChannels`; Phase 5 uses the same
+registration for its headless engine.
 
 The repository holds one lease across each complete sync run (session check,
 selection, registration, refresh, upload, watermark and success timestamp),
@@ -1283,6 +1284,73 @@ the gate naturally. Future worker cancellation must finish the operation or
 destroy its engine, never merely release a lease while Dart continues running.
 As before, process/engine death during a server refresh can lose its response
 and require sign-in; the gate does not roll back remote HTTP effects.
+
+---
+
+### 8.6 Android periodic synchronization
+
+WorkManager invokes `SyncWorker`, which creates an Activity-free Flutter engine,
+attaches the shared sync/credential/gate channels, and runs the retained
+`backgroundSync` Dart entrypoint. A fresh ProviderContainer uses the existing
+production repository and API. The background SQLite connection is explicitly
+non-singleton so closing it cannot close the foreground engine's connection.
+No HTTP client, upload selection or authentication logic is implemented in Kotlin.
+
+The unique periodic work `focustrace_periodic_sync_v1` uses KEEP, a six-hour
+implementation-policy interval, and only NetworkType.CONNECTED. Opt-in writes
+and logout reconcile scheduling under the same repository gate; logout retains
+the existing policy of disabling sync. Startup reconciles persisted consent to
+repair interrupted scheduling and enroll previously opted-in installations.
+It never changes consent. Background sync checks consent again inside the whole
+logical run's lease. Existing manual UI eligibility remains unchanged.
+
+Uploads and successful no-ops complete successfully. Signed-out, revoked,
+disabled and deterministically refused runs also complete without retry.
+Transport failures and HTTP 408/429/500/502/503/504 request exponential backoff
+starting at 30 minutes, capped at three retries per period. Other failures,
+including unknown bugs, return failure without retry. Periodic work remains
+eligible at the next cadence; failure is not a Settings error notification.
+
+Each invocation owns an in-memory, main-thread lifecycle:
+`STARTING -> READY -> AUTHORIZED -> RUNNING -> DRAINED -> COMPLETED -> CLOSED`.
+READY follows Dart bindings, provider construction, native channel registration
+and a successful database-plugin probe (no connection or credential is opened).
+Dart awaits a boolean authorization reply before calling the repository. READY
+alone cannot acquire the gate. Unconfigured builds complete without RUNNING.
+
+A 60-second startup deadline covers asynchronous loader initialization, Dart and
+plugin readiness, and the interval between authorization and gate admission.
+This allows generous cold-start time; it is not a network/sync timeout. The gate
+channel admits exactly one background acquisition, only in AUTHORIZED, and
+changes the lifecycle to RUNNING **before** queuing or granting its lease. That
+is the exact boundary where the engine owns or may later own the gate. The
+deadline is disabled until the validated owner releases normally. No native
+cleanup forges a release. Foreground gate behavior and caller/lease validation
+are unchanged.
+
+After release, DRAINED permanently closes admission and allows another 60 seconds
+for Dart resource disposal and its final result. A missing completion then fails
+safely without an active or possible future lease. Startup/disposal deadlines
+and initialization exceptions map to failure, without WorkManager retry. Ordinary
+transport/server retry mapping remains unchanged. A premature completion during
+RUNNING is ignored. Worker cancellation before admission closes immediately;
+after admission it drains protected work and awaits completion (or the bounded
+post-release wait). WorkManager discards the stopped result.
+
+One finally path closes admission, cancels both deferred waits and the deadline,
+detaches completion/platform handlers and destroys the owned engine once. Engine
+teardown retires its gate caller through section 8.5's existing listener. Late
+loader/READY/completion callbacks cannot revive an invocation or affect another
+engine's messenger. No lifecycle state is persisted and no completed engine is
+stored globally. No engine is destroyed while its execution owns or may own the
+gate. Active protected work is intentionally drained without a blanket timeout;
+as with Android lifecycle delivery generally, deadlines require a responsive
+platform looper. Process death retains section 8.5's refresh-response-loss
+limitation. No credentials or error strings enter the handshake, WorkManager
+input/output or new logs; sync remains silent.
+
+Device registration reads Android Build.MODEL as cosmetic display text. The
+random UUID v4 remains the sole installation identity.
 
 ---
 

@@ -39,7 +39,8 @@ abstract interface class SyncRepository {
 
   /// Registers this installation if needed and uploads every local day that has
   /// changed since the last successful run. Never throws.
-  Future<SyncRunResult> syncNow();
+  /// Background callers must require opt-in; it is checked inside the run gate.
+  Future<SyncRunResult> syncNow({bool requireEnabled = false});
 
   /// Reads this account's history back, across every device it has registered.
   /// [from] inclusive, [to] exclusive, at most 400 days.

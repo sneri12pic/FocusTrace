@@ -54,7 +54,7 @@ void main() {
     sqfliteFfiInit();
     nativeKeystore = <String, String>{};
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-        .setMockMethodCallHandler(const MethodChannel('focustrace/usage'), (
+        .setMockMethodCallHandler(const MethodChannel('focustrace/sync'), (
           call,
         ) async {
           switch (call.method) {
@@ -76,7 +76,7 @@ void main() {
 
   tearDown(() async {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-        .setMockMethodCallHandler(const MethodChannel('focustrace/usage'), null);
+        .setMockMethodCallHandler(const MethodChannel('focustrace/sync'), null);
     await deviceA.dispose();
     await deviceB.dispose();
     await otherAccount.dispose();
@@ -212,7 +212,7 @@ void main() {
       ),
       localDataSource: deviceA.local,
       usageDataSource: deviceA.local,
-      deviceName: 'E2E Device A',
+      deviceName: () async => 'E2E Device A',
     );
 
     await launch().createAccount(email: email, password: password);
@@ -282,7 +282,7 @@ class _Installation {
         ),
         localDataSource: local,
         usageDataSource: local,
-        deviceName: deviceName,
+        deviceName: () async => deviceName,
       ),
     );
   }

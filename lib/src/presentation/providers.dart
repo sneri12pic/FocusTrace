@@ -11,6 +11,7 @@ import '../data/datasources/focus_trace_sync_api.dart';
 import '../data/datasources/platform_usage_data_source.dart';
 import '../data/datasources/secure_sync_credential_store.dart';
 import '../data/datasources/sync_execution_gate.dart';
+import '../data/datasources/sync_scheduler.dart';
 import '../data/repositories/app_language_repository_impl.dart';
 import '../data/repositories/data_transfer_repository_impl.dart';
 import '../data/repositories/report_repository_impl.dart';
@@ -192,19 +193,33 @@ final syncRepositoryProvider = Provider<SyncRepository?>((ref) {
   if (source is! UsageSyncDataSource) {
     throw StateError('The configured local data source cannot sync usage.');
   }
-  return SyncRepositoryImpl(
-    executionGate: const AndroidSyncExecutionGate(),
-    api: FocusTraceSyncApi(
+  final api = FocusTraceSyncApi(
       baseUrl: Uri.parse(syncBaseUrl),
       credentials: const SecureSyncCredentialStore(),
-    ),
+    );
+  ref.onDispose(api.close);
+  return SyncRepositoryImpl(
+    executionGate: const AndroidSyncExecutionGate(),
+    reconcileSchedule: const AndroidSyncScheduler().reconcile,
+    api: api,
     localDataSource: source,
     // Promotion does not survive the interface split, as in portableLocalDataSourceProvider.
     usageDataSource: source as UsageSyncDataSource,
-    // Architecture section 3 wants Build.MODEL here, which needs a platform
-    // call this stage does not add. Tracked in the plan.
-    deviceName: 'Android device',
+    deviceName: const AndroidSyncScheduler().deviceModel,
   );
+});
+
+/// Repairs a crash between persisting opt-in and updating WorkManager, and
+/// schedules users who enabled sync before the scheduler existed. KEEP preserves
+/// an existing request. It never changes consent or blocks the app's startup.
+final syncScheduleBootstrapProvider = FutureProvider<void>((ref) async {
+  if (ref.watch(usagePlatformProvider) != UsagePlatform.android) return;
+  final repository = ref.watch(syncRepositoryProvider);
+  await const AndroidSyncExecutionGate().run(() async {
+    await const AndroidSyncScheduler().reconcile(
+      repository != null && await repository.isSyncEnabled(),
+    );
+  });
 });
 
 /// `null` when this build has no sync. Every widget that reads it must handle

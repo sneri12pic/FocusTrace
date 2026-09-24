@@ -17,7 +17,8 @@ class SyncRepositoryImpl implements SyncRepository {
     required SyncExecutionGate executionGate,
     required FocusTraceLocalDataSource localDataSource,
     required UsageSyncDataSource usageDataSource,
-    required String deviceName,
+    required Future<String> Function() deviceName,
+    Future<void> Function(bool enabled)? reconcileSchedule,
     String platform = 'android',
     Random? random,
     DateTime Function()? now,
@@ -26,6 +27,7 @@ class SyncRepositoryImpl implements SyncRepository {
        _local = localDataSource,
        _usage = usageDataSource,
        _deviceName = deviceName,
+       _reconcileSchedule = reconcileSchedule,
        _platform = platform,
        _random = random ?? Random.secure(),
        _now = now ?? DateTime.now;
@@ -45,7 +47,8 @@ class SyncRepositoryImpl implements SyncRepository {
   final SyncExecutionGate _gate;
   final FocusTraceLocalDataSource _local;
   final UsageSyncDataSource _usage;
-  final String _deviceName;
+  final Future<String> Function() _deviceName;
+  final Future<void> Function(bool)? _reconcileSchedule;
   final String _platform;
   final Random _random;
   final DateTime Function() _now;
@@ -69,12 +72,10 @@ class SyncRepositoryImpl implements SyncRepository {
       await _local.readSetting(SyncSettingKeys.enabled) == 'true';
 
   @override
-  Future<void> setSyncEnabled(bool enabled) => _gate.run(
-    () => _local.writeSetting(
-      SyncSettingKeys.enabled,
-      enabled ? 'true' : 'false',
-    ),
-  );
+  Future<void> setSyncEnabled(bool enabled) => _gate.run(() async {
+    await _local.writeSetting(SyncSettingKeys.enabled, enabled ? 'true' : 'false');
+    await _reconcileSchedule?.call(enabled);
+  });
 
   @override
   Future<DateTime?> lastSuccessfulSyncAt() async {
@@ -132,6 +133,7 @@ class SyncRepositoryImpl implements SyncRepository {
     } finally {
       await _local.writeSetting(SyncSettingKeys.accountEmail, '');
       await _local.writeSetting(SyncSettingKeys.enabled, 'false');
+      await _reconcileSchedule?.call(false);
     }
   });
 
@@ -161,9 +163,14 @@ class SyncRepositoryImpl implements SyncRepository {
   }
 
   @override
-  Future<SyncRunResult> syncNow() async {
+  Future<SyncRunResult> syncNow({bool requireEnabled = false}) async {
     try {
-      return await _sessionOperation(_syncNow);
+      return await _sessionOperation(() async {
+        if (requireEnabled && !await isSyncEnabled()) {
+          return const SyncRunResult(uploadedDays: 0, results: [], rejectedDays: 0);
+        }
+        return _syncNow();
+      });
     } on SyncApiException catch (error) {
       return SyncRunResult.failed(error.message, _reasonFor(error));
     } on Object {
@@ -204,7 +211,7 @@ class SyncRepositoryImpl implements SyncRepository {
     // last_seen_at current. It never creates a second device.
     await _api.registerDevice(
       deviceId: deviceId,
-      displayName: _deviceName,
+      displayName: await _deviceName(),
       platform: _platform,
     );
 
@@ -256,6 +263,9 @@ class SyncRepositoryImpl implements SyncRepository {
     }
     if (error.isPermanent) {
       return SyncFailureReason.refused;
+    }
+    if (const {408, 429, 500, 502, 503, 504}.contains(error.statusCode)) {
+      return SyncFailureReason.temporary;
     }
     return SyncFailureReason.unknown;
   }

@@ -5,6 +5,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 import 'src/presentation/focus_trace_app.dart';
+import 'src/application/services/background_sync.dart';
+
+@pragma('vm:entry-point')
+Future<void> backgroundSync() => backgroundSyncEntrypoint();
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();

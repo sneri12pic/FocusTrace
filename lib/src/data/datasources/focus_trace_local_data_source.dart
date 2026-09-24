@@ -134,6 +134,7 @@ class SqfliteFocusTraceLocalDataSource
         UsageSyncDataSource {
   SqfliteFocusTraceLocalDataSource({
     this.databaseName = 'focus_trace.db',
+    this.singleInstance = true,
     DatabaseFactory? databaseFactoryOverride,
     Future<Directory> Function()? applicationSupportDirectoryProvider,
   }) : _databaseFactoryOverride = databaseFactoryOverride,
@@ -141,6 +142,8 @@ class SqfliteFocusTraceLocalDataSource
            applicationSupportDirectoryProvider;
 
   final String databaseName;
+  /// A headless engine owns and closes its own connection, not the UI's handle.
+  final bool singleInstance;
   final DatabaseFactory? _databaseFactoryOverride;
   final Future<Directory> Function()? _applicationSupportDirectoryProvider;
   Database? _database;
@@ -162,6 +165,7 @@ class SqfliteFocusTraceLocalDataSource
     final opened = await factory.openDatabase(
       path,
       options: OpenDatabaseOptions(
+        singleInstance: singleInstance,
         version: 5,
         onDowngrade: (db, oldVersion, newVersion) async {
           throw StateError(

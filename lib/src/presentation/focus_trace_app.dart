@@ -11,6 +11,7 @@ class FocusTraceApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    ref.watch(syncScheduleBootstrapProvider);
     final appLanguageState = ref.watch(appLanguageViewModelProvider);
     return MaterialApp(
       onGenerateTitle: (context) => AppLocalizations.of(context).appTitle,

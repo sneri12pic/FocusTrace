@@ -360,7 +360,7 @@ class _FakeSyncRepository implements SyncRepository {
   }
 
   @override
-  Future<SyncRunResult> syncNow() async {
+  Future<SyncRunResult> syncNow({bool requireEnabled = false}) async {
     _activeRuns++;
     maxConcurrentRuns =
         _activeRuns > maxConcurrentRuns ? _activeRuns : maxConcurrentRuns;

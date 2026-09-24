@@ -163,16 +163,18 @@ reading Device A's history through the real API is proven by
 
 Remaining for Sync v1 correctness, none of it blocking the slice:
 
-- `display_name` is the fixed string `'Android device'`. Architecture section 3
-  wants `Build.MODEL`, which needs a platform call this stage did not add, and a
-  way for the user to edit it.
+- Phase 5 reads `Build.MODEL` for cosmetic `display_name`; installation identity
+  remains a random UUID. User editing is not implemented in this slice.
 - ~~**Decision needed: `minSdk` 21 or 23.**~~ Resolved: `minSdk` is 23. The
   refresh token is persisted in `AndroidKeyStore`-sealed storage through
   `SyncCredentialStore`, so a restart no longer forces a new sign-in. Android
   5.0/5.1 are dropped; nothing else in FocusTrace required API 21.
-- There is no UI and no scheduler. `syncRepositoryProvider` exists and
-  `syncNow()` works, but nothing in the app calls it yet: sign-in, an opt-in
-  switch and a background trigger are the next client stage.
+- Phase 4 supplies sign-in, opt-in and manual sync. Phase 5 adds six-hour unique
+  WorkManager execution through the existing repository and process gate.
+  The startup/completion lifecycle blocker is closed with bounded pre-admission
+  startup and post-release cleanup, preserving safe protected-operation drain.
+  Actual headless-device execution and real-backend background verification
+  remain pending where a connected device/backend are available.
 - Windows days are out of scope. Every Windows day is Dart-written with no
   snapshot row and the current day mutates within the day, which the single
   imported-version stamp cannot express (architecture 7.2). The Windows shell is

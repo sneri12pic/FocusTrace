@@ -62,6 +62,8 @@ class FocusTraceSyncApi {
   final Duration _timeout;
   final DateTime Function() _now;
 
+  void close() => _client.close(force: true);
+
   String? _accessToken;
   DateTime? _accessTokenExpiry;
   String? _sessionRefreshToken;

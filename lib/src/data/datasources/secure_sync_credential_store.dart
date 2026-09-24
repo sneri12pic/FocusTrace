@@ -14,7 +14,7 @@ import 'focus_trace_sync_api.dart';
 /// requires Android; on any other platform the channel would not answer.
 class SecureSyncCredentialStore implements SyncCredentialStore {
   const SecureSyncCredentialStore({
-    MethodChannel channel = const MethodChannel('focustrace/usage'),
+    MethodChannel channel = const MethodChannel('focustrace/sync'),
   }) : _channel = channel;
 
   final MethodChannel _channel;

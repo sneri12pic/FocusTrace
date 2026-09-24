@@ -10,6 +10,7 @@ import 'package:path/path.dart' as p;
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 import 'support/test_sync_execution_gate.dart';
+import 'package:focustrace/src/application/services/background_sync.dart';
 
 /// Sync repository behaviour against a real HTTP server on localhost.
 ///
@@ -59,8 +60,10 @@ void main() {
     SyncCredentialStore credentials, {
     String deviceName = 'Test device',
     int seed = 7,
+    Future<void> Function(bool)? reconcileSchedule,
   }) => SyncRepositoryImpl(
     executionGate: gate,
+    reconcileSchedule: reconcileSchedule,
     api: FocusTraceSyncApi(
       baseUrl: backend.baseUrl,
       credentials: credentials,
@@ -68,7 +71,7 @@ void main() {
     ),
     localDataSource: local,
     usageDataSource: local,
-    deviceName: deviceName,
+    deviceName: () async => deviceName,
     random: Random(seed),
     now: () => DateTime.utc(2026, 9, 19, 12),
   );
@@ -279,6 +282,122 @@ void main() {
         (await repository.syncNow()).reason,
         SyncFailureReason.notSignedIn,
       );
+    });
+  });
+
+  group('background orchestration', () {
+    test('disabled worker does no network or upload even when signed in', () async {
+      await repository.signIn(email: 'a@example.com', password: 'pw');
+      await seedDay('2026-09-17', queriedAtMs: 1000);
+      backend.requestPaths.clear();
+      expect(await runBackgroundSync(repository), 'success');
+      expect(backend.requestPaths, isEmpty);
+      expect(await watermark(), isNull);
+    });
+
+    test('enabling, repeated enable, disabling and logout reconcile authoritative consent', () async {
+      final schedules = <bool>[];
+      final subject = repositoryFor(credentials, reconcileSchedule: (enabled) async {
+        expect(await local.readSetting(SyncSettingKeys.enabled), '$enabled');
+        schedules.add(enabled);
+      });
+      await subject.setSyncEnabled(true);
+      await subject.setSyncEnabled(true);
+      await subject.setSyncEnabled(false);
+      await subject.setSyncEnabled(true);
+      await subject.signOut();
+      expect(schedules, [true, true, false, true, false]);
+      expect(await subject.isSyncEnabled(), isFalse);
+      expect(await runBackgroundSync(subject), 'success');
+      expect(backend.requestPaths, isEmpty);
+    });
+
+    test('background upload uses model name while UUID stays authoritative', () async {
+      final subject = repositoryFor(credentials, deviceName: 'SM-A366B');
+      await subject.signIn(email: 'a@example.com', password: 'pw');
+      await subject.setSyncEnabled(true);
+      final id = await subject.installationId();
+      await seedDay('2026-09-17', queriedAtMs: 1000);
+      expect(await runBackgroundSync(subject), 'success');
+      expect(backend.devices.single.displayName, 'SM-A366B');
+      expect(backend.devices.single.deviceId, id);
+      expect(await subject.installationId(), id);
+      expect(await runBackgroundSync(repositoryFor(credentials)), 'success');
+      expect(backend.uploadCount, 1);
+    });
+
+    for (final status in [400, 500, 502, 503, 504, 408, 429, 501]) {
+      test('background classifies upload HTTP $status without guessing unknown retry', () async {
+        await repository.signIn(email: 'a@example.com', password: 'pw');
+        await repository.setSyncEnabled(true);
+        await seedDay('2026-09-17', queriedAtMs: 1000);
+        backend.nextUploadStatus = status;
+        expect(await runBackgroundSync(repository), status == 400 ? 'success' : status == 501 ? 'failure' : 'retry');
+      });
+    }
+
+    test('revoked and signed-out background sessions end without retries', () async {
+      await repository.setSyncEnabled(true);
+      expect(await runBackgroundSync(repository), 'success');
+      await credentials.writeRefreshToken('revoked-test-session');
+      await seedDay('2026-09-17', queriedAtMs: 1000);
+      expect(await runBackgroundSync(repositoryFor(credentials)), 'success');
+      expect(credentials.refreshToken, isNull);
+    });
+
+    test('network transport failure retries but unconfigured builds do not', () async {
+      await repository.signIn(email: 'a@example.com', password: 'pw');
+      await repository.setSyncEnabled(true);
+      await seedDay('2026-09-17', queriedAtMs: 1000);
+      await backend.stop();
+      expect(await runBackgroundSync(repository), 'retry');
+      expect(await runBackgroundSync(null), 'success');
+    });
+
+    test('queued background work checks opt-out after acquiring the manual gate', () async {
+      await repository.setSyncEnabled(true);
+      final blocker = Completer<void>();
+      final entered = Completer<void>();
+      final first = gate.run(() async { entered.complete(); await blocker.future; });
+      await entered.future;
+      final off = repository.setSyncEnabled(false);
+      final background = runBackgroundSync(repositoryFor(credentials));
+      blocker.complete();
+      await first;
+      await off;
+      expect(await background, 'success');
+      expect(backend.requestPaths, isEmpty);
+    });
+
+    test('background owns gate, manual and logout wait without session resurrection', () async {
+      await repository.signIn(email: 'a@example.com', password: 'pw');
+      await repository.setSyncEnabled(true);
+      await seedDay('2026-09-17', queriedAtMs: 1000);
+      backend.hold('/api/v1/sync/usage-days');
+      final background = runBackgroundSync(repositoryFor(credentials));
+      await backend.entered!.future;
+      final manual = repository.syncNow();
+      final logout = repository.signOut();
+      expect(backend.uploadCount, 0);
+      backend.proceed!.complete();
+      expect(await background, 'success');
+      expect((await manual).uploadedDays, 0);
+      await logout;
+      expect(credentials.refreshToken, isNull);
+      expect(await runBackgroundSync(repositoryFor(credentials)), 'success');
+      expect(backend.uploadCount, 1);
+    });
+
+    test('closing a headless database connection leaves foreground usable', () async {
+      final background = SqfliteFocusTraceLocalDataSource(
+        singleInstance: false,
+        databaseFactoryOverride: databaseFactoryFfi,
+        applicationSupportDirectoryProvider: () async => directory,
+      );
+      await background.writeSetting('connection_test', 'ok');
+      await background.close();
+      expect(await local.readSetting('connection_test'), 'ok');
+      await local.writeSetting('connection_test', 'still open');
     });
   });
 
@@ -606,7 +725,7 @@ void main() {
   /// that survives a process death. Rebuilding the store, the API and the
   /// repository from it is a restart: every Dart object is new.
   group('credential persistence', () {
-    const channel = MethodChannel('focustrace/usage');
+    const channel = MethodChannel('focustrace/sync');
     late Map<String, String> nativeStore;
     late bool keystoreUnavailable;
 

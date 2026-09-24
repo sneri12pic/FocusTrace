@@ -5,6 +5,125 @@ session reads to continue safely.
 
 ---
 
+## 2026-09-23 — Phase 5 opt-in periodic synchronization
+
+Date: 2026-09-23; lifecycle blocker closed 2026-09-24
+Agent: Codex
+Goal: Trigger the existing gated Dart sync repository from Android WorkManager.
+
+Completed:
+- Inspected existing changes and checkpointed Phase 4 separately as `db87c03`
+  and the cross-engine prerequisite as `dd62ba8`. Phase 3 (`48a1861`) and API 36
+  (`31625ed`) were already committed. Unrelated `.agents/` and `skills-lock.json`
+  remain excluded. Checkpoint Flutter suite: 195 passed, 0 failed, 1 skipped.
+- Unique KEEP work `focustrace_periodic_sync_v1`, every six hours, CONNECTED
+  network constraint, no charging/idle/unmetered requirement or notification.
+- Opt-in changes and logout reconcile scheduling under the shared gate.
+  Startup repairs interrupted reconciliation; the worker rechecks consent
+  inside the repository gate. Logout preserves the existing disable-sync policy.
+- Activity-free Flutter engine attaches the same native gate and secure-store
+  channels as foreground. Tiny Dart entrypoint uses production providers and
+  `syncNow(requireEnabled: true)`. No Kotlin HTTP or sync business logic.
+- Background connections use SQLite singleInstance=false and close after the
+  run; API client/container disposal precedes native completion and destruction.
+  Worker cancellation drains the protected operation before engine teardown.
+- Success/no-op/disabled/signed-out/revoked/refused complete without retry.
+  Transport and HTTP 408/429/500/502/503/504 retry with exponential 30-minute
+  backoff, at most three retries per period. Unknown failures do not retry.
+- Registration uses Build.MODEL; the existing UUID remains authoritative.
+- Closed the blocker that prevented Phase 5 completion: the entire original
+  engine invocation was NonCancellable and waited only for `complete`, so failed
+  Dart/plugin startup retained both the wait and engine indefinitely.
+- Lifecycle: STARTING -> READY -> AUTHORIZED -> RUNNING -> DRAINED -> COMPLETED
+  -> CLOSED, with startup exception/deadline/cancellation exits. READY follows
+  binding/provider/channel setup and a database-plugin probe without opening a
+  database or touching credentials; Dart awaits explicit native authorization.
+- A 60-second deadline covers cold loader/VM/plugin startup and authorization
+  until actual native gate admission. Only admission suspends the deadline,
+  before the gate can queue/grant this engine's single acquisition. Validated
+  owner release seals admission and starts a 60-second disposal/completion bound.
+  Startup/initialization/post-release timeout is terminal failure, never retry.
+- Cancellation before admission destroys safely; afterward it drains the existing
+  protected operation. Cleanup never releases a Dart lease itself. One finally
+  closes admission, cancels pending waits/timer, detaches handlers and destroys
+  the engine once; its existing lifecycle listener retires the caller. Late or
+  duplicate callbacks cannot resurrect execution or affect a later engine.
+
+Files materially changed:
+- Android: manifest INTERNET permission; MainActivity shared registration;
+  new SyncPlatformChannel.kt, SyncScheduler.kt, SyncWorker.kt,
+  BackgroundSyncLifecycle.kt; SyncExecutionGateChannel.kt admission/release hooks;
+  SyncSchedulerTest.kt, BackgroundSyncLifecycleTest.kt and
+  BackgroundSyncInstrumentedTest.kt.
+- Dart: main.dart, application/services/background_sync.dart,
+  data/datasources/{sync_scheduler,secure_sync_credential_store,
+  focus_trace_sync_api,focus_trace_local_data_source}.dart,
+  sync_repository_impl.dart, sync_usage.dart, sync_repository.dart,
+  providers.dart and focus_trace_app.dart.
+- Tests: sync_repository_test.dart, sync_end_to_end_test.dart,
+  sync_account_card_test.dart, sync_view_model_test.dart,
+  background_sync_lifecycle_test.dart; canonical stage docs.
+
+Verification (rerun 2026-09-24 after the lifecycle fix):
+- `flutter analyze`: PASS, no issues.
+- `flutter test --reporter expanded`: PASS, 213 passed, 0 failed, 1 skipped
+  (real-backend suite without configured backend); includes two new Dart handshake
+  tests and the existing 50 repository tests.
+- `flutter build apk --debug`: PASS.
+- `cd android; ./gradlew :app:testDebugUnitTest`: PASS, 114 total,
+  113 passed, 0 failures/errors, 1 skipped benchmark. Includes real WorkManager
+  unique enqueue/cancel under Robolectric, cadence/constraints and bounded mapping.
+- `./gradlew :app:compileDebugAndroidTestKotlin`: PASS.
+- 13 deterministic lifecycle tests cover normal ordering, deadline with paused
+  Robolectric time (59,999 + 1 ms), bootstrap exceptions, cancellation before
+  READY/authorization/acquisition, active drain, both result/cancel orderings,
+  stale callbacks, missing post-release completion, and premature completion.
+  Each terminal invocation asserts one completion/cleanup and a free real gate.
+- Mutation proof: removed startup `postDelayed`; targeted never-ready test
+  failed with `startup deadline must terminate the wait` (Gradle exit 1).
+  Production restored byte-identically, SHA-256
+  `6a49578dfeccc28cf92cbc4e199401a11858d98ee514fa238f67d880e55fc7ce`;
+  the full Android suite subsequently passed.
+- Instrumentation now observes real engine destruction and plugin detachment
+  after repeated production Dart handshakes, plus cancellation of a real engine
+  whose Dart entrypoint is never started. These three Phase 5 tests compile but
+  have NOT executed. ADB reports no connected devices, so
+  connectedDebugAndroidTest and the Samsung manual/device pass were not run.
+- `docker info`: daemon unavailable (`docker_engine` pipe absent); real-backend E2E
+  and authenticated background upload were not reverified.
+- Repository tests cover disabled upload, model/UUID, transport/server/revoked
+  mapping, queued opt-out, background/manual/logout ordering and separate DB close.
+- `git diff --check`: PASS. No backend changes or new dependencies.
+
+Security review:
+- No secrets or backend messages in WorkManager data, outcomes or new logging.
+  Secure credential storage is reused; no access-token persistence or hardware ID.
+- Same gate covers background, foreground, opt-out and logout; no second lock.
+  KEEP avoids duplicate schedules; unknown errors cannot trigger retry storms.
+- Cancellation does not release a lease while live Dart continues to mutate it.
+
+Decisions / remaining / risks:
+- Six hours is implementation policy, not an exact-time guarantee. An operation
+  already owning the gate may finish before opt-out/logout takes its turn.
+- Device runtime proof remains unverified: real headless entrypoint with configured
+  repository, gate contention, cancellation/teardown, repeated runs, forced
+  WorkManager execution, model registration and logcat secret checks. The default
+  unconfigured build's headless test only proves the no-op engine path.
+- Startup and post-release completion waits are now bounded. Protected work is
+  deliberately not force-timed-out; it retains the established drain semantics.
+  Deadline delivery assumes a responsive Android platform looper, as do engine
+  creation/destruction and all native method-channel callbacks.
+- Phase 5 meets the deterministic acceptance gate; connected-device execution,
+  logcat credential inspection and authenticated background upload remain
+  unavailable, not claimed as passed. No scheduler/retry/backend policy changed.
+- Existing backend public-release blockers remain in the plan; no release-hardening
+  work was started. No natural six-hour execution or production readiness claimed.
+
+Relevant commit: the Phase 5 `feat(sync): add reliable background synchronization`
+commit containing this entry; resolve its hash with Git history.
+
+---
+
 ## 2026-09-23 — Cross-engine sync/session gate prerequisite
 
 Date: 2026-09-23
