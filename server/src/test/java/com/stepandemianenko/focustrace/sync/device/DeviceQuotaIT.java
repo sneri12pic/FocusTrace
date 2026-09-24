@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.stepandemianenko.focustrace.sync.IntegrationTest;
 import java.sql.Connection;
+import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -12,6 +13,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.function.Supplier;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.context.TestPropertySource;
 
@@ -55,6 +57,39 @@ class DeviceQuotaIT extends IntegrationTest {
 
     private int deviceCount(Account account) {
         return jdbc.queryForObject("SELECT count(*) FROM devices WHERE user_id = ?", Integer.class, account.id());
+    }
+
+    /** The D18 definition, with the default 90-day window. */
+    private int activeCount(Account account) {
+        return jdbc.queryForObject("""
+                SELECT count(*) FROM devices WHERE user_id = ?
+                   AND COALESCE(last_seen_at, registered_at) > now() - interval '90 days'""",
+                Integer.class, account.id());
+    }
+
+    private void makeInactive(UUID deviceId) {
+        jdbc.update("UPDATE devices SET last_seen_at = now() - interval '91 days' WHERE id = ?", deviceId);
+    }
+
+    private Map<String, Object> row(UUID deviceId) {
+        return jdbc.queryForMap("SELECT * FROM devices WHERE id = ?", deviceId);
+    }
+
+    /**
+     * Starts every call while the test holds the account row, waits until all are
+     * queued on a lock (proven overlap, no sleeps), then releases them.
+     */
+    private List<Integer> raceUnderAccountLock(Account account, List<Supplier<Response>> calls) throws Exception {
+        try (Connection lock = lockAccount(account.id());
+                ExecutorService pool = Executors.newFixedThreadPool(calls.size())) {
+            List<CompletableFuture<Response>> requests = new ArrayList<>();
+            for (Supplier<Response> call : calls) {
+                requests.add(CompletableFuture.supplyAsync(call, pool));
+            }
+            awaitLockWaiters(calls.size(), requests);
+            lock.commit();
+            return requests.stream().map(f -> f.join().status()).toList();
+        }
     }
 
     private int rowCount(UUID deviceId) {
@@ -112,28 +147,121 @@ class DeviceQuotaIT extends IntegrationTest {
         assertThat(registerDevice(a, bDevice, "Takeover").status()).isEqualTo(409);
         fill(a, QUOTA);
         Response atQuota = registerDevice(a, bDevice, "Takeover");
+        makeInactive(bDevice);
+        Map<String, Object> before = row(bDevice);
+        Response inactiveAtQuota = registerDevice(a, bDevice, "Takeover");
 
         assertThat(atQuota.status()).isEqualTo(409);
+        assertThat(inactiveAtQuota.status()).isEqualTo(409);
+        assertThat(inactiveAtQuota.body()).isEqualTo(atQuota.body());
+        assertThat(row(bDevice)).isEqualTo(before);
         assertThat(jdbc.queryForObject("SELECT user_id FROM devices WHERE id = ?", UUID.class, bDevice))
                 .isEqualTo(b.id());
         assertThat(deviceCount(a)).isEqualTo(QUOTA);
     }
 
-    /**
-     * A device unseen for longer than the active window stops holding a slot, so a
-     * reinstalled app is never stranded. Its data and row are kept, and it may still
-     * re-register: the quota bounds admission of new installations only.
-     */
+    /** A device unseen for longer than the active window stops holding a slot. */
     @Test
     void aDeviceUnseenForTheActiveWindowFreesItsSlot() {
         Account a = newAccount();
         UUID retired = fill(a, QUOTA).getFirst();
-        jdbc.update("UPDATE devices SET last_seen_at = now() - interval '91 days' WHERE id = ?", retired);
+        makeInactive(retired);
 
         assertThat(registerDevice(a, UUID.randomUUID(), "Replacement").status()).isEqualTo(201);
         assertThat(registerDevice(a, UUID.randomUUID(), "One too many").status()).isEqualTo(403);
-        assertThat(registerDevice(a, retired, "Back again").status()).isEqualTo(200);
-        assertThat(deviceCount(a)).isEqualTo(QUOTA + 1);
+        assertThat(activeCount(a)).isEqualTo(QUOTA);
+    }
+
+    /** Re-registering an already-active device at full quota takes no slot. */
+    @Test
+    void anActiveDeviceReRegistersAtFullQuota() {
+        Account a = newAccount();
+        UUID target = fill(a, QUOTA).getFirst();
+        jdbc.update("UPDATE devices SET last_seen_at = now() - interval '1 day' WHERE id = ?", target);
+        Timestamp before = (Timestamp) row(target).get("last_seen_at");
+
+        Response again = registerDevice(a, target, "Phone");
+
+        assertThat(again.status()).as(again.body()).isEqualTo(200);
+        assertThat(activeCount(a)).isEqualTo(QUOTA);
+        assertThat((Timestamp) row(target).get("last_seen_at")).isAfter(before);
+    }
+
+    /** Reactivation takes a slot; with one free it succeeds on the same row and owner. */
+    @Test
+    void anInactiveDeviceReactivatesBelowQuota() {
+        Account a = newAccount();
+        UUID dormant = fill(a, QUOTA).getFirst();
+        makeInactive(dormant);
+        assertThat(activeCount(a)).isEqualTo(QUOTA - 1);
+
+        Response back = registerDevice(a, dormant, "Back again");
+
+        assertThat(back.status()).as(back.body()).isEqualTo(200);
+        assertThat(activeCount(a)).isEqualTo(QUOTA);
+        assertThat(deviceCount(a)).isEqualTo(QUOTA);
+        assertThat(row(dormant)).containsEntry("user_id", a.id()).containsEntry("display_name", "Back again");
+    }
+
+    /**
+     * Regression: reactivation at quota used to bypass it and leave QUOTA + 1 active
+     * devices. It is now the same 403 as a new device, and the row is untouched.
+     */
+    @Test
+    void anInactiveDeviceAtQuotaIsRefusedAndLeftUnchanged() {
+        Account a = newAccount();
+        UUID dormant = fill(a, QUOTA).getFirst();
+        makeInactive(dormant);
+        assertThat(registerDevice(a, UUID.randomUUID(), "Replacement").status()).isEqualTo(201);
+        Map<String, Object> before = row(dormant);
+        Response newAtQuota = registerDevice(a, UUID.randomUUID(), "New");
+
+        Response reactivation = registerDevice(a, dormant, "Back again");
+
+        assertThat(newAtQuota.status()).isEqualTo(403);
+        assertThat(reactivation.status()).isEqualTo(403);
+        assertThat(reactivation.body()).isEqualTo(newAtQuota.body());
+        assertThat(row(dormant)).isEqualTo(before);
+        assertThat(activeCount(a)).isEqualTo(QUOTA);
+    }
+
+    /** Two dormant devices race for the last slot: exactly one comes back. */
+    @Test
+    void concurrentReactivationsForTheLastSlotAdmitExactlyOne() throws Exception {
+        for (int round = 0; round < 3; round++) {
+            Account a = newAccount();
+            List<UUID> devices = fill(a, QUOTA);
+            makeInactive(devices.get(0));
+            makeInactive(devices.get(1));
+            assertThat(registerDevice(a, UUID.randomUUID(), "Active").status()).isEqualTo(201);
+            assertThat(activeCount(a)).isEqualTo(QUOTA - 1);
+
+            List<Integer> statuses = raceUnderAccountLock(a, List.of(
+                    () -> registerDevice(a, devices.get(0), "Back"),
+                    () -> registerDevice(a, devices.get(1), "Back")));
+
+            assertThat(statuses).containsExactlyInAnyOrder(200, 403);
+            assertThat(activeCount(a)).isEqualTo(QUOTA);
+        }
+    }
+
+    /** A reactivation and a new installation race for the last slot: exactly one wins. */
+    @Test
+    void reactivationAndNewDeviceRacingForTheLastSlotAdmitExactlyOne() throws Exception {
+        for (int round = 0; round < 3; round++) {
+            Account a = newAccount();
+            UUID dormant = fill(a, QUOTA).getFirst();
+            makeInactive(dormant);
+            UUID fresh = UUID.randomUUID();
+
+            List<Integer> statuses = raceUnderAccountLock(a, List.of(
+                    () -> registerDevice(a, dormant, "Back"),
+                    () -> registerDevice(a, fresh, "New")));
+
+            // Either may win: 200 (reactivated) + 403, or 201 (created) + 403.
+            assertThat(statuses).containsOnlyOnce(403).hasSize(2).containsAnyOf(200, 201);
+            assertThat(activeCount(a)).isEqualTo(QUOTA);
+        }
     }
 
     /**

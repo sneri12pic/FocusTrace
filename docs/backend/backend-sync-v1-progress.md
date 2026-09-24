@@ -5,6 +5,59 @@ session reads to continue safely.
 
 ---
 
+## 2026-09-24 — D18 fix: device reactivation obeys the active-device quota
+
+Date: 2026-09-24
+Agent: Claude Code
+Goal: Close the reactivation hole in `7d0dad6`'s active-device quota.
+
+Bug (confirmed in code): `Devices.register` quota-checked only UUIDs that did not
+exist (`!exists`). An inactive device of the caller re-registering at quota was
+exempt and had `last_seen_at` refreshed, so an account at 10 active devices could
+reach 11 (and more, one dormant device at a time).
+
+Completed:
+- Invariant: at most `max-active-devices` (10) of an account's devices are active
+  (`COALESCE(last_seen_at, registered_at)` within 90 days). New UUID or reactivation
+  of the caller's inactive device takes a slot; at quota it is the same `403` as
+  before and the row is untouched. Re-registering an active device takes no slot.
+  Foreign UUID: unchanged `409`, same precedence.
+- Under the existing account-row lock, one query classifies the UUID (owner,
+  active) using the same `ACTIVE` predicate as the count. Both use PostgreSQL
+  `now()` (transaction start), so they share one cutoff. No schema change.
+- `DeviceQuotaIT`: the previous test asserting reactivation at quota succeeds
+  encoded the bug and was replaced. New: active re-registration at full quota
+  (200, `last_seen_at` advances), reactivation below quota (200, same row/owner,
+  active = quota), reactivation at quota (403, body identical to new-device 403,
+  row identical), foreign inactive UUID at quota (409, row unchanged), two
+  reactivations racing for the last slot, reactivation vs new device racing for
+  the last slot (both under the test-held account lock, 3 rounds each).
+
+Files materially changed: `server/.../device/Devices.java`,
+`server/.../device/DeviceQuotaIT.java`; architecture 5.1 D18, security baseline
+sections 9 and 18, plan section 5, this entry.
+
+Verification (PostgreSQL 16 via Testcontainers):
+- `DeviceQuotaIT` 12/12, `DeviceIT` 14/14: PASS.
+- `./gradlew test --rerun`: PASS, 22 suites, 230 tests, 0 failures, 0 errors,
+  0 skipped. `./gradlew clean build`: PASS, same 230.
+- Mutation: restored the old `!exists` exemption. Exactly the three reactivation
+  tests failed (at-quota reactivation 200 instead of 403; racing reactivations
+  [200, 200]; reactivation vs new [200, 201]). Restored; SHA-256 identical
+  (`5a8f51af...c18386`).
+
+Decisions made: D18 wording corrected to the explicit active-device invariant.
+
+Remaining: unchanged from the entry below; the D18 resource-control slice is
+closed for its stated scope.
+
+Risks / unresolved questions: none new. Lock order is unchanged (account row
+first, then device rows), and only registration writes `last_seen_at`.
+
+Relevant commit: this entry's commit (`fix(server): enforce quota on device reactivation`).
+
+---
+
 ## 2026-09-24 — Release hardening: bounded sync resource consumption (D18)
 
 Date: 2026-09-24

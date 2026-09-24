@@ -812,29 +812,37 @@ one day per date from `2026-01-01` to UTC today + 1 at up to 500 app rows, nothi
 expired, and no authenticated route was throttled. Storage per account therefore
 grew with the number of UUIDs the caller chose to mint.
 
-**1. Active-device quota: 10.** `POST /devices` admits a UUID that does not exist
-yet only while the account has fewer than `max-active-devices` devices whose
-`COALESCE(last_seen_at, registered_at)` is within `device-active-window` (90 days).
-Otherwise `403` with the common problem body, nothing written.
+**1. Active-device quota: 10.** An account may have at most 10 active devices
+(`max-active-devices`). A device is active when its
+`COALESCE(last_seen_at, registered_at)` is within the configured 90-day activity
+window (`device-active-window`). Re-registering an already-active device does not
+consume a slot. Registering a new UUID, or reactivating an inactive existing device,
+does consume a slot and is rejected with `403` (the common problem body, identical
+for both) if the account is already at the limit; a rejected reactivation leaves
+the row untouched, `last_seen_at` included. (Corrected 2026-09-24: the first D18
+implementation exempted every existing UUID, so a reactivation could take an
+account to 11 active devices.)
 
-- An existing UUID is never quota-checked: the caller's own re-registration is
-  `200` at or over the quota, and another account's UUID is still `409` (D12),
-  checked before the quota so D12's contract is unchanged.
+- Another account's UUID takes no slot and is still `409` (D12), unchanged in
+  precedence and body; the quota never masks it.
+- **One cutoff per registration.** Classification and count both use PostgreSQL
+  `now()`, which is fixed at transaction start, so they cannot disagree about the
+  window boundary.
 - **Why "active" rather than a hard count.** The installation UUID is regenerated
   by a reinstall, a data clear or a new phone, and no device deletion exists. A hard
   cap would permanently strand an ordinary user after their tenth installation with
   no recovery short of a new account. The window frees a slot 90 days after a
   device last registered; the device row and its history are kept, and it may
-  re-register (reactivation is not quota-checked). The Sync v1 client re-registers
-  on every run that has data (`SyncRepositoryImpl`), so a device in use never ages
-  out. This is an
-  admission bound, not a count of rows: device rows can grow by at most 10 per
-  90-day window (about 41 per year). Explicit retirement/deletion remains release
+  come back if a slot is free. The Sync v1 client re-registers on every run that
+  has data (`SyncRepositoryImpl`), so a device in use never ages out. The invariant
+  bounds active devices, not rows: device rows can grow by at most 10 per 90-day
+  window (about 41 per year). Explicit retirement/deletion remains release
   work (plan section 5).
 - **Concurrency.** The transaction first takes `SELECT 1 FROM users WHERE id =
-  :userId FOR NO KEY UPDATE`, then checks existence, counts and inserts. Every
-  registration for one account serializes on that row, so two requests cannot both
-  see the last free slot. `NO KEY UPDATE` does not conflict with the `KEY SHARE`
+  :userId FOR NO KEY UPDATE`, then classifies the UUID, counts and inserts or
+  updates. Every registration for one account - new, reactivation or re-registration
+  - serializes on that row, and only registration writes `last_seen_at`, so two
+  requests cannot both see the last free slot. `NO KEY UPDATE` does not conflict with the `KEY SHARE`
   that foreign-key checks take, so logins, refreshes and uploads are not blocked.
 
 **2. Stored-day budget: 3,650 per account.** An account may hold at most

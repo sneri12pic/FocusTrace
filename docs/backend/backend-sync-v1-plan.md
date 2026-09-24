@@ -186,8 +186,9 @@ Before public release (backend):
 
 - ~~Active-device quota~~, ~~persistent-storage bound~~ and ~~authenticated
   per-user limits for upload and history~~: resolved 2026-09-24 as architecture
-  5.1, D18. Accepted when: a new device past the quota is `403` with no row, while
-  re-registration stays `200` and a foreign UUID stays `409`; a request that would
+  5.1, D18. Accepted when: at most 10 devices per account are ever active - a new
+  device or a reactivated inactive one past the quota is `403` with no write, while
+  re-registering an active device stays `200` and a foreign UUID stays `409`; a request that would
   take an account past its stored-day budget is `403` and changes nothing, while
   replace/duplicate/stale/conflict are unaffected; both quotas admit exactly one
   of several requests racing for the last slot; upload, history and device

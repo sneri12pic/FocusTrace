@@ -487,7 +487,7 @@ field table:
 | `appKey`, `appName` | non-blank, at most 255 / 200 UTF-16 units, no NUL or lone surrogates |
 | History read range | at most 400 days (Step 5) |
 | Stored usage days per account | at most 3,650 across all devices; a request that would create more is `403` and writes nothing (D18) |
-| New devices per account | admitted only while fewer than 10 devices were seen in the last 90 days; otherwise `403` (D18) |
+| Active devices per account | at most 10 seen within 90 days; a new device or a reactivated inactive one past that is `403` and writes nothing (D18) |
 
 D13 closed the earlier gap, where 400 days times 2,000 apps allowed 800,000 app
 rows in one transaction.
@@ -954,8 +954,9 @@ PostgreSQL via Testcontainers, consistent with the existing suite.
 
 | Test | Method |
 | --- | --- |
-| A new device past the active-device quota is 403 with no row; re-registration at quota is 200; a foreign UUID is still 409; another account is unaffected | integration |
-| A device unseen for the active window frees its slot | integration |
+| A new device past the active-device quota is 403 with no row; re-registration of an active device at quota is 200; a foreign UUID is still 409; another account is unaffected | integration |
+| A device unseen for the active window frees its slot; reactivating it takes a slot and at quota is the same 403 with the row unchanged | integration |
+| Concurrent reactivations, and a reactivation racing a new device, for the last slot admit exactly one | concurrent integration test |
 | Concurrent registrations for the last slot admit exactly one, proven queued together by a test-held account lock | concurrent integration test |
 | A request that would exceed the stored-day budget is 403 and leaves every row unchanged; replace, duplicate, stale and conflict are unaffected at the budget | integration |
 | Concurrent uploads for the last stored-day slot admit exactly one | concurrent integration test |

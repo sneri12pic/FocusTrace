@@ -28,6 +28,14 @@ class Devices {
 
     private static final String COLUMNS = "id, display_name, platform, registered_at, last_seen_at";
 
+    /**
+     * D18 "active". {@code now()} is the transaction start time in PostgreSQL, so every
+     * use within one registration shares one cutoff: classification and count cannot
+     * straddle the window boundary.
+     */
+    private static final String ACTIVE = "COALESCE(last_seen_at, registered_at)"
+            + " > now() - CAST(:windowSeconds AS bigint) * interval '1 second'";
+
     private final JdbcClient jdbc;
     private final SyncLimits limits;
 
@@ -44,6 +52,9 @@ class Devices {
     record Registration(boolean created, DeviceResponse device) {
     }
 
+    private record Existing(boolean own, boolean active) {
+    }
+
     /**
      * Idempotent on the installation UUID. Two statements, each deciding by its
      * returned row:
@@ -57,10 +68,11 @@ class Devices {
      * {@code platform} is fixed at first registration; an installation does not
      * change operating system.
      *
-     * <p>D18 quota: a UUID that does not exist yet is admitted only while the caller
-     * has fewer than {@code maxActiveDevices} devices seen within the active window;
-     * otherwise 403 and nothing is written. An existing UUID - the caller's own
-     * re-registration or another account's 409 - is never quota-checked. Locking the
+     * <p>D18 quota: at most {@code maxActiveDevices} of the caller's devices may be
+     * active. A registration that would make a device active - a new UUID, or the
+     * caller's own inactive device (reactivation) - needs a free slot; otherwise 403
+     * and nothing is written. Re-registering an already-active device takes no slot.
+     * Another account's UUID is never quota-checked and stays a 409. Locking the
      * caller's {@code users} row first serializes every registration of one account,
      * so the count cannot be raced; other accounts and uploads are not blocked
      * ({@code NO KEY UPDATE} does not conflict with the foreign-key {@code KEY SHARE}).
@@ -72,12 +84,17 @@ class Devices {
                 .query(Integer.class)
                 .optional()
                 .orElseThrow(ApiException::unauthorized);
-        boolean exists = jdbc.sql("SELECT 1 FROM devices WHERE id = :id")
+        // Empty for a new UUID. A foreign UUID takes no slot: the owner-scoped
+        // statements below turn it into D12's 409, exactly as before.
+        Optional<Existing> existing = jdbc.sql(
+                        "SELECT user_id = :userId AS own, " + ACTIVE + " AS active FROM devices WHERE id = :id")
                 .param("id", deviceId)
-                .query(Integer.class)
-                .optional()
-                .isPresent();
-        if (!exists && activeDevices(userId) >= limits.maxActiveDevices()) {
+                .param("userId", userId)
+                .param("windowSeconds", limits.deviceActiveWindow().toSeconds())
+                .query((rs, row) -> new Existing(rs.getBoolean("own"), rs.getBoolean("active")))
+                .optional();
+        boolean takesSlot = existing.map(e -> e.own() && !e.active()).orElse(true);
+        if (takesSlot && activeDevices(userId) >= limits.maxActiveDevices()) {
             securityLog.warn("event=device_quota_exceeded userId={}", userId);
             throw ApiException.forbidden("This account has reached its device limit.");
         }
@@ -118,11 +135,7 @@ class Devices {
     }
 
     private int activeDevices(UUID userId) {
-        return jdbc.sql("""
-                        SELECT count(*) FROM devices
-                         WHERE user_id = :userId
-                           AND COALESCE(last_seen_at, registered_at)
-                               > now() - CAST(:windowSeconds AS bigint) * interval '1 second'""")
+        return jdbc.sql("SELECT count(*) FROM devices WHERE user_id = :userId AND " + ACTIVE)
                 .param("userId", userId)
                 .param("windowSeconds", limits.deviceActiveWindow().toSeconds())
                 .query(Integer.class)
