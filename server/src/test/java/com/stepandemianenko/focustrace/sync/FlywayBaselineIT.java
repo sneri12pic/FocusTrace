@@ -75,7 +75,24 @@ class FlywayBaselineIT extends IntegrationTest {
                 "SELECT version FROM flyway_schema_history WHERE success = true ORDER BY installed_rank",
                 String.class);
 
-        assertThat(versions).containsExactly("1", "2", "3");
+        assertThat(versions).containsExactly("1", "2", "3", "4");
+    }
+
+    /**
+     * V4: a plain index on refresh_tokens(session_id) for the D08 replay check and the
+     * cascade from auth_sessions, beside - not replacing - V2's partial unique index.
+     */
+    @Test
+    void refreshTokensAreIndexedBySession() {
+        assertThat(indexDefinition("refresh_tokens_session_id_idx"))
+                .isEqualTo("CREATE INDEX refresh_tokens_session_id_idx ON public.refresh_tokens USING btree (session_id)");
+        assertThat(indexDefinition("refresh_tokens_one_current_per_session"))
+                .isEqualTo("CREATE UNIQUE INDEX refresh_tokens_one_current_per_session ON public.refresh_tokens"
+                        + " USING btree (session_id) WHERE (revoked_at IS NULL)");
+    }
+
+    private String indexDefinition(String index) {
+        return jdbc.queryForObject("SELECT indexdef FROM pg_indexes WHERE indexname = ?", String.class, index);
     }
 
     private List<String> primaryKeyColumnsOf(String table) {

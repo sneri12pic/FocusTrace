@@ -201,8 +201,13 @@ Before public release (backend):
   D18 account lock.
 - Session and refresh-token retention: every login adds an `auth_sessions` row and
   every refresh a `refresh_tokens` row, never reclaimed (review brief, 2026-09-19).
-- A page bound for the worst-case history response: the stored-day budget now
-  caps it, but a full 400-day read can still return up to 3,650 days of 500 apps.
+- ~~A page bound for the worst-case history response~~: resolved 2026-09-26 as a
+  hard bound of 20,000 result rows (architecture 9.3); with the
+  `refresh_tokens(session_id)` index (V4, architecture 6.3). Accepted when a read
+  at the bound succeeds, one row past it is `400` with nothing truncated, rows
+  spread over devices cannot escape it, the device filter and D16 behaviour are
+  unchanged, and the index exists beside V2's partial one (`HistoryBoundIT`,
+  `FlywayBaselineIT`).
 - The Sync v1 client restarts a failed run from its first batch, so an upload
   larger than the 300-request burst could never finish. The limit is sized above
   realistic full uploads; advancing the watermark per accepted batch would remove

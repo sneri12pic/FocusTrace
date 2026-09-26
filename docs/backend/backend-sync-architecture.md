@@ -1318,6 +1318,21 @@ A fixed bound, not one derived per `localDate` and `timezoneId`: the extra preci
 is not worth the complexity. Relaxing a CHECK cannot invalidate existing rows.
 `V1` and `V2` are not edited. The DTO bound (`@Max(90000)`) matches it.
 
+### 6.3 `V4` - refresh tokens indexed by session (`V4__refresh_tokens_session_index.sql`)
+
+```sql
+CREATE INDEX refresh_tokens_session_id_idx ON refresh_tokens (session_id);
+```
+
+V2's `refresh_tokens_one_current_per_session` is partial (`WHERE revoked_at IS
+NULL`), so it cannot serve the D08 replay check, which looks for a newer,
+already-revoked token in the same session. That check scanned the whole table
+(measured: parallel sequential scan, 15-134 ms at 600,000 rows) and grows with a
+table nothing prunes; with the index it is an index scan (0.065 ms). The cascade
+from `auth_sessions` also finds tokens by `session_id`. `session_id` alone is
+selective - one session holds at most a few hundred tokens - so no composite. No
+constraint, token semantics or session behaviour changes.
+
 ---
 
 ## 7. Idempotency and versioning
@@ -1872,12 +1887,27 @@ malformed `deviceId`, are the framework's generic `400`.
 | ordering | Days ascending by `localDate`, then by `deviceId`; apps ascending by `appKey`. An unchanged stored day therefore always reads back identically. |
 | `deviceId` | A predicate in the query, never a lookup. A device the caller does not own and a device that does not exist both yield `{"days": []}` - D16's "collections filter, they do not fail". Nothing runs before the query, so there is no side effect and no existence oracle. |
 | apps | One `LEFT JOIN`, so a day whose snapshot has no app rows is returned with `"apps": []` instead of disappearing, and no day costs a second query. |
+| size | At most `max-history-rows` (20,000) result rows: one per app of a returned day, or one for a returned day without apps. More is `400` with the common error model on field `to` ("request a shorter range or a single device"), never a truncated history. Applies with and without `deviceId`; a foreign or unknown `deviceId` still yields `{"days": []}`. |
 
-The 400-day cap bounds one response along the date axis only. It is not a
-per-account storage bound: an account with many devices still gets one entry per
-device per date. D18's stored-day budget now bounds what any range can return
-(at most 3,650 days of up to 500 apps), and reads are rate-limited per account; a
-page bound for that worst case is still open (plan section 5).
+The 400-day cap bounds one response along the date axis only: an account with
+many devices still gets one entry per device per date, and one day holds up to 500
+apps. **Response bound (2026-09-26).** The unit is the query's result row, which is
+exactly what PostgreSQL returns, JDBC transfers, the service materialises and
+Jackson serialises; a day count would not bound it. The same single query ends in
+`LIMIT max-history-rows + 1`; the result extractor rejects the request on seeing
+the extra row. No count query, no second round trip, no truncation, no
+pagination protocol. 20,000 rows is about 2.4 MB of JSON typically and about
+28 MB with every string at its limit; it covers one device over 400 days at 50
+apps a day, or 200 days at 100. A caller needing more narrows the range or asks
+per device - the Sync v1 app currently has no screen that reads history at all.
+Before this, a single read of an account at its D18 budget returned 1,825,000 rows.
+
+Residual, measured on PostgreSQL 16: `LIMIT` bounds what leaves the database,
+not the sort. For an account at its full D18 budget (10 devices x 365 days x 500
+apps) PostgreSQL still sorts every joined row in the range - about 2.4 s and a
+218 MB temporary-file spill - before returning 20,001 rows. That work is bounded
+by the stored-day budget and by the 60-per-hour history limit, not by the response
+bound.
 
 ### 9.4 Future incremental sync
 

@@ -487,6 +487,7 @@ field table:
 | `timezoneId` | at most 64 UTF-16 units, resolvable by `ZoneId.of` |
 | `appKey`, `appName` | non-blank, at most 255 / 200 UTF-16 units, no NUL or lone surrogates |
 | History read range | at most 400 days (Step 5) |
+| History response | at most 20,000 result rows (app rows, plus one per app-less day); more is `400`, never truncated (architecture 9.3) |
 | Stored usage days per account | at most 3,650 across all devices; a request that would create more is `403` and writes nothing (D18) |
 | Active devices per account | at most 10 seen within 90 days; a new device or a reactivated inactive one past that is `403` and writes nothing (D18) |
 
@@ -494,8 +495,10 @@ D13 closed the earlier gap, where 400 days times 2,000 apps allowed 800,000 app
 rows in one transaction.
 
 No unbounded, client-controlled bulk endpoint is added. The history read is
-bounded by its 400-day range; if per-device fan-out makes a bounded range produce
-an unbounded response, the read gains a page bound at that point.
+bounded by its 400-day range and, since per-device fan-out made that range
+insufficient, by a hard response bound of 20,000 result rows (architecture 9.3).
+The database still sorts every row in the range before the bound applies; that
+work is bounded by the stored-day budget and the per-user history limit (D18).
 
 ---
 
@@ -862,7 +865,7 @@ surfaces this system does not have.
 | API1 Broken Object Level Authorization | **Primary risk.** Device and usage objects are addressed by client-supplied identifiers. |
 | API2 Broken Authentication | **High from Step 2.** Registration, login, JWT, refresh rotation. |
 | API3 Broken Object Property Level Authorization | **High from Step 2.** Mass assignment into ownership fields; leaking `password_hash` or `token_hash` through a response. |
-| API4 Unrestricted Resource Consumption | **High, partly addressed.** Upload size is bounded (JSON document, 31 days, 1,000 rows; D13). D18 adds per-user limits on device registration, upload and history, an active-device quota and a per-account stored-day budget. Still open: session/token row retention, a page bound for the worst-case history response, and volumetric limits at a reverse proxy. |
+| API4 Unrestricted Resource Consumption | **High, partly addressed.** Upload size is bounded (JSON document, 31 days, 1,000 rows; D13). D18 adds per-user limits on device registration, upload and history, an active-device quota and a per-account stored-day budget. The history response is bounded to 20,000 rows (architecture 9.3), and the refresh-token replay check is indexed (V4). Still open: session/token row retention, and volumetric limits at the reverse proxy. |
 | API5 Broken Function Level Authorization | Moderate. One role today, so it reduces to deny-by-default. Becomes real if any administrative function appears. |
 | API6 Unrestricted Access to Sensitive Business Flows | **Relevant to registration and login.** Anonymous account creation and credential stuffing. |
 | API7 Server Side Request Forgery | **Not exposed.** The service makes no outbound request from client-controlled input and has no URL-valued field. Revisit only if a webhook, avatar fetch or import-by-URL feature is ever proposed. |

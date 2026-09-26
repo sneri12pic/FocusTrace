@@ -83,6 +83,9 @@ focustrace:
     max-active-devices: 10
     device-active-window: PT2160H  # 90 days
     max-stored-days: 3650          # usage days across all the account's devices
+    # Architecture 9.3: rows in one history response (app rows, plus one per
+    # app-less day). Bounds what one read sorts, holds and serialises.
+    max-history-rows: 20000
 
 logging:
   level:

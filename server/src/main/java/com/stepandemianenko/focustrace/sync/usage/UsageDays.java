@@ -23,6 +23,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.ResultSetExtractor;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -45,7 +46,7 @@ class UsageDays {
     static final int MAX_APP_ROWS = 1000;
     /** No FocusTrace data predates 2026 (first commit 2026-06-30); bounds per-device storage. */
     static final LocalDate MIN_DATE = LocalDate.of(2026, 1, 1);
-    /** Architecture 9.3. Bounds one response; it is not a per-account storage quota (see the plan). */
+    /** Architecture 9.3. Bounds the date axis; {@link SyncLimits#maxHistoryRows()} bounds the size. */
     static final int MAX_HISTORY_DAYS = 400;
 
     enum Outcome { APPLIED, DUPLICATE, STALE, CONFLICT }
@@ -167,8 +168,13 @@ class UsageDays {
      * so a day's app rows cost no extra round trip; ownership is the join predicate,
      * so an unowned or unknown {@code deviceId} filters to nothing instead of being
      * resolved and then rejected (D16). {@code deviceId} may be null (no filter).
+     *
+     * <p>Bounded: at most {@code maxHistoryRows} result rows. {@code LIMIT} one past
+     * the bound keeps PostgreSQL to a top-N sort of that size, and seeing the extra
+     * row rejects the whole request with 400 - never a truncated history.
      */
     List<HistoryDay> history(UUID userId, LocalDate from, LocalDate to, UUID deviceId) {
+        int maxRows = limits.maxHistoryRows();
         return jdbc.sql("""
                         SELECT d.device_id, dev.display_name, d.local_date, d.timezone_id, d.snapshot_version,
                                a.app_key, a.app_name, a.duration_seconds, a.launch_count
@@ -180,18 +186,29 @@ class UsageDays {
                            AND d.local_date >= :from
                            AND d.local_date < :to
                            AND (CAST(:deviceId AS uuid) IS NULL OR d.device_id = CAST(:deviceId AS uuid))
-                         ORDER BY d.local_date, d.device_id, a.app_key""")
+                         ORDER BY d.local_date, d.device_id, a.app_key
+                         LIMIT :rowLimit""")
                 .param("userId", userId)
                 .param("from", from)
                 .param("to", to)
                 .param("deviceId", deviceId)
-                .query(UsageDays::toHistory);
+                .param("rowLimit", maxRows + 1)
+                .query((ResultSetExtractor<List<HistoryDay>>) rs -> toHistory(rs, maxRows));
     }
 
-    /** The ORDER BY groups a day's app rows together; the map keeps that order. */
-    private static List<HistoryDay> toHistory(ResultSet rs) throws SQLException {
+    /**
+     * The ORDER BY groups a day's app rows together; the map keeps that order. More
+     * than {@code maxRows} rows rejects the request (the exception passes through
+     * the JDBC layer untouched, being neither an SQLException nor translated).
+     */
+    private static List<HistoryDay> toHistory(ResultSet rs, int maxRows) throws SQLException {
         Map<DayKey, HistoryDay> days = new LinkedHashMap<>();
+        int rows = 0;
         while (rs.next()) {
+            if (++rows > maxRows) {
+                throw ApiException.invalidField("to", "More than " + maxRows
+                        + " history rows in this range. Request a shorter range or a single device.");
+            }
             DayKey key = new DayKey(rs.getObject("device_id", UUID.class), rs.getObject("local_date", LocalDate.class));
             HistoryDay day = days.get(key);
             if (day == null) {

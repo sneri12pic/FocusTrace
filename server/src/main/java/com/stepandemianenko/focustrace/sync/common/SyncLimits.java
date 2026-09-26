@@ -15,11 +15,14 @@ import org.springframework.validation.annotation.Validated;
  *                           fewer devices seen within {@code deviceActiveWindow}
  * @param deviceActiveWindow how long after its last registration a device keeps a slot
  * @param maxStoredDays      stored usage days, one per device per date, across the account
+ * @param maxHistoryRows     rows one history response may hold: one per app per stored day,
+ *                           or one for a stored day without apps (architecture 9.3)
  */
 @Validated
 @ConfigurationProperties("focustrace.sync")
 public record SyncLimits(
         @Positive int maxActiveDevices,
         @NotNull @DurationMin(days = 1) Duration deviceActiveWindow,
-        @Positive int maxStoredDays) {
+        @Positive int maxStoredDays,
+        @Positive int maxHistoryRows) {
 }

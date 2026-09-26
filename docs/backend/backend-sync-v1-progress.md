@@ -5,6 +5,78 @@ session reads to continue safely.
 
 ---
 
+## 2026-09-26 — History response bound and refresh-session index
+
+Date: 2026-09-26
+Agent: Claude Code
+Goal: Bound the worst-case `GET /api/v1/usage` response and index
+`refresh_tokens(session_id)`.
+
+State before work: HEAD `3c1501a`, clean tree except the unrelated untracked
+`.agents/` and `skills-lock.json` (excluded). Code matched the documents: the read
+is one owner-scoped `LEFT JOIN` bounded only by the 400-day range; the only
+session index is V2's partial unique one.
+
+Confirmed problems:
+- One read of an account at its D18 budget (10 devices x 365 days x 500 apps)
+  returned 1,825,000 rows, fully materialised in the JVM and serialised: a single
+  account could exhaust the one instance's heap. No production screen reads
+  history.
+- The D08 replay check (`n.session_id = ... AND n.revoked_at > ...`) cannot use the
+  partial index and scanned `refresh_tokens` (15-134 ms at 600,000 rows).
+
+Completed:
+- Architecture 9.3 size rule: at most `focustrace.sync.max-history-rows` = 20,000
+  result rows (one per app of a returned day, one per app-less day). Enforced in
+  the same query with `LIMIT max + 1`; the extractor rejects on the extra row with
+  `400` on field `to` ("request a shorter range or a single device"). Never
+  truncated, no count query, no pagination. Ordering, range rules, device filter
+  and D16 behaviour unchanged.
+- `V4__refresh_tokens_session_index.sql`: `CREATE INDEX
+  refresh_tokens_session_id_idx ON refresh_tokens (session_id)`. Measured on
+  600,000 tokens: parallel seq scan (15 ms warm) -> bitmap index scan (0.065 ms).
+
+Files materially changed:
+- `server/.../usage/UsageDays.java`, `common/SyncLimits.java`,
+  `application.yml`, new `db/migration/V4__refresh_tokens_session_index.sql`.
+- Tests: new `usage/HistoryBoundIT.java` (8 tests, bound set to 10);
+  `FlywayBaselineIT.java` (migration list now 1-4, which V4 requires; index
+  definition test).
+- Docs: architecture 6.3 and 9.3, security baseline (sync limits, section 9
+  statement, API4 row), plan section 5, this entry.
+
+Verification (PostgreSQL 16 via Testcontainers):
+- `UsageHistoryIT` 16/16, `HistoryBoundIT` 8/8, `FlywayBaselineIT` 7/7,
+  `--tests '*Auth*'` 4 suites / 18 tests: PASS.
+- `./gradlew test --rerun`: PASS, 26 suites, 272 tests, 0 failures, 0 errors,
+  0 skipped. `./gradlew clean build`: PASS, same 272.
+- Mutation: removed the `LIMIT` and the extractor check. The 5 over-bound tests
+  failed (200 instead of 400); the at-bound, empty and range tests stayed green.
+  Restored byte-identically (SHA-256 `184a7489...c69603`).
+- A first version returned `null` from the extractor for "too large", which
+  `JdbcClient` rejects ("No result from ResultSetExtractor") as a 500 - caught by
+  the tests; the extractor now throws the 400 itself.
+
+Decisions made: history size rule in architecture 9.3; V4 in 6.3.
+
+Remaining production blockers, in order: installation-ID backup fix; privacy,
+README and Play copy plus the web account-deletion page; the staging deployment
+(proxy, TLS, private port, backups, log persistence) and the physical-device pass;
+session/token row cleanup before a wide rollout.
+
+Risks / unresolved questions:
+- Measured residual: for an account at its full budget PostgreSQL still sorts the
+  whole range (about 2.4 s and a 218 MB temporary spill) before `LIMIT` applies;
+  it does not use a bounded top-N sort at this width. Bounded by the stored-day
+  budget and 60 reads per hour per account, not by the response bound.
+- 20,000 rows rejects some legitimate full-range reads (one device beyond about 50
+  apps a day for 400 days). No client calls history today; a future caller must
+  narrow the range or read per device.
+
+Relevant commit: this entry's commit (`fix(server): bound history responses and index refresh sessions`).
+
+---
+
 ## 2026-09-26 — Network edge: trusted-proxy client address (D20)
 
 Date: 2026-09-24 (started) - 2026-09-26
