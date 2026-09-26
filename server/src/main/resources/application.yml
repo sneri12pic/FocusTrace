@@ -34,9 +34,8 @@ spring:
           max-document-length: 2097152
 
 server:
-  # D15: the client source is the socket peer. Forwarded / X-Forwarded-For are
-  # untrusted until a reverse proxy exists; trusted-proxy handling ships in the
-  # same change that introduces it.
+  # D15/D20: always none. Boot's own forwarded-header support would trust every
+  # private range; a proxy is trusted only through focustrace.network below.
   forward-headers-strategy: none
   # Baseline section 13: explicit, not inherited defaults.
   error:
@@ -46,6 +45,12 @@ server:
     include-exception: false
 
 focustrace:
+  network:
+    # D20. direct: the client is the socket peer; forwarding headers are ignored.
+    # trusted-proxy: X-Forwarded-For is honoured only from the exact IP literals in
+    # trusted-proxies (the addresses Spring sees the proxy connect from).
+    mode: direct
+    trusted-proxies: []
   auth:
     jwt:
       # D09: no default in any profile. Base64 of at least 32 CSPRNG bytes:

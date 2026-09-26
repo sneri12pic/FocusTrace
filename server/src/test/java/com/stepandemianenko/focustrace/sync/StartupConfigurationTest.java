@@ -26,7 +26,8 @@ import org.springframework.context.ConfigurableApplicationContext;
 class StartupConfigurationTest {
 
     private static final List<String> VARIABLES = List.of(
-            "FOCUSTRACE_DB_URL", "FOCUSTRACE_DB_USER", "FOCUSTRACE_DB_PASSWORD", "FOCUSTRACE_JWT_SECRET");
+            "FOCUSTRACE_DB_URL", "FOCUSTRACE_DB_USER", "FOCUSTRACE_DB_PASSWORD", "FOCUSTRACE_JWT_SECRET",
+            "FOCUSTRACE_NETWORK_MODE", "FOCUSTRACE_TRUSTED_PROXIES");
 
     @BeforeAll
     static void variablesNotAlreadySetInThisEnvironment() {
@@ -76,7 +77,8 @@ class StartupConfigurationTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"FOCUSTRACE_DB_URL", "FOCUSTRACE_DB_USER", "FOCUSTRACE_DB_PASSWORD", "FOCUSTRACE_JWT_SECRET"})
+    @ValueSource(strings = {"FOCUSTRACE_DB_URL", "FOCUSTRACE_DB_USER", "FOCUSTRACE_DB_PASSWORD", "FOCUSTRACE_JWT_SECRET",
+        "FOCUSTRACE_NETWORK_MODE"})
     void prodFailsWhenAVariableIsMissing(String variable) {
         Map<String, Object> settings = settings(secretOfBytes(32));
         settings.remove(variable);
@@ -93,6 +95,59 @@ class StartupConfigurationTest {
         assertStartupFails("prod", settings, "missing or blank: [" + variable + "]", null);
     }
 
+    // --- D20 network edge --------------------------------------------------------
+
+    @Test
+    void prodStartsBehindAnExplicitlyTrustedProxy() {
+        Map<String, Object> settings = settings(secretOfBytes(32));
+        settings.put("FOCUSTRACE_NETWORK_MODE", "trusted-proxy");
+        settings.put("FOCUSTRACE_TRUSTED_PROXIES", "10.0.0.5, fd00::5");
+        try (ConfigurableApplicationContext context = start("prod", settings)) {
+            assertThat(context.isRunning()).isTrue();
+        }
+    }
+
+    @Test
+    void prodTrustedProxyModeWithoutProxiesFailsClosed() {
+        Map<String, Object> settings = settings(secretOfBytes(32));
+        settings.put("FOCUSTRACE_NETWORK_MODE", "trusted-proxy");
+
+        assertStartupFails("prod", settings, "'trusted-proxy' requires focustrace.network.trusted-proxies", null);
+    }
+
+    /** Names, ranges and patterns would widen trust beyond the one proxy; each is refused. */
+    @ParameterizedTest
+    @ValueSource(strings = {"proxy.internal", "10.0.0.0/8", "10.0.0.*", ".*", "10.0.0.256", "fe80::1%eth0", "0.0.0.0", "::"})
+    void trustedProxiesMustBeExactAddresses(String entry) {
+        Map<String, Object> settings = settings(secretOfBytes(32));
+        settings.put("FOCUSTRACE_NETWORK_MODE", "trusted-proxy");
+        settings.put("FOCUSTRACE_TRUSTED_PROXIES", "10.0.0.5," + entry);
+
+        assertStartupFails("prod", settings, "focustrace.network.trusted-proxies entry", null);
+    }
+
+    @Test
+    void anUnknownModeFailsStartup() {
+        Map<String, Object> settings = settings(secretOfBytes(32));
+        settings.put("FOCUSTRACE_NETWORK_MODE", "proxy");
+
+        assertStartupFails("prod", settings, "focustrace.network", null);
+    }
+
+    /** Command-line arguments: builder properties are defaults, which application.yml overrides. */
+    @Test
+    void directModeRefusesAProxyList() {
+        assertStartupFails(null, settings(secretOfBytes(32)), "is set but mode is 'direct'", null,
+                "--focustrace.network.trusted-proxies=10.0.0.5");
+    }
+
+    /** Boot's own forwarded-header support would trust every private range by default. */
+    @Test
+    void springForwardedHeaderSupportCannotBeReEnabled() {
+        assertStartupFails(null, settings(secretOfBytes(32)), "server.forward-headers-strategy must be 'none'", null,
+                "--server.forward-headers-strategy=native");
+    }
+
     // --- helpers ---------------------------------------------------------------
 
     private static Map<String, Object> settings(String secret) {
@@ -100,13 +155,14 @@ class StartupConfigurationTest {
         settings.put("FOCUSTRACE_DB_URL", IntegrationTest.POSTGRES.getJdbcUrl());
         settings.put("FOCUSTRACE_DB_USER", IntegrationTest.POSTGRES.getUsername());
         settings.put("FOCUSTRACE_DB_PASSWORD", IntegrationTest.POSTGRES.getPassword());
+        settings.put("FOCUSTRACE_NETWORK_MODE", "direct");
         if (secret != null) {
             settings.put("FOCUSTRACE_JWT_SECRET", secret);
         }
         return settings;
     }
 
-    private static ConfigurableApplicationContext start(String profile, Map<String, Object> settings) {
+    private static ConfigurableApplicationContext start(String profile, Map<String, Object> settings, String... args) {
         SpringApplicationBuilder builder = new SpringApplicationBuilder(FocusTraceSyncApplication.class)
                 .web(WebApplicationType.SERVLET)
                 .properties(settings);
@@ -114,11 +170,12 @@ class StartupConfigurationTest {
         if (profile != null) {
             builder.profiles(profile);
         }
-        return builder.run();
+        return builder.run(args);
     }
 
-    private static void assertStartupFails(String profile, Map<String, Object> settings, String expected, String secretValue) {
-        assertThatThrownBy(() -> start(profile, settings).close())
+    private static void assertStartupFails(
+            String profile, Map<String, Object> settings, String expected, String secretValue, String... args) {
+        assertThatThrownBy(() -> start(profile, settings, args).close())
                 .satisfies(e -> {
                     String messages = String.join("\n", messages(e));
                     assertThat(messages).contains(expected);

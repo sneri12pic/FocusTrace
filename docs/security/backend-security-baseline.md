@@ -618,10 +618,12 @@ Volumetric abuse is the reverse proxy's job; this layer exists to stop credentia
 stuffing.
 
 The source identity a bucket is keyed on comes from the transport connection.
-`Forwarded` and `X-Forwarded-For` are untrusted input until a reverse proxy
-exists and trusted-proxy handling is configured in the same change that
-introduces it; until then, honouring them would let an attacker both evade the
-limit and evict other callers' buckets.
+`Forwarded` and `X-Forwarded-For` are untrusted input except, since D20
+(2026-09-26), `X-Forwarded-For` from an explicitly listed reverse-proxy address in
+`trusted-proxy` mode, where the rightmost entry that is not a listed proxy is the
+client. From any other peer, honouring them would let an attacker both evade the
+limit and evict other callers' buckets. The application port must be reachable
+only from that proxy (architecture 5.1, D20).
 
 Usage synchronization keeps bounded request size, days per request, apps per day,
 duration values, retries, and database work per request. The retry path in
@@ -947,6 +949,9 @@ PostgreSQL via Testcontainers, consistent with the existing suite.
 | Exhausting one account's login budget does not lock out a different account from the same source | integration |
 | The 429 body reveals neither the tripped dimension nor whether the account exists, and is identical for an existing and a non-existent account | integration |
 | A supplied `X-Forwarded-For` does not change the bucket a request is counted against while no trusted proxy is configured | integration |
+| Behind the configured proxy, forwarded clients get separate source buckets; prepended entries, `Forwarded` and `X-Real-IP` do not choose the key (D20) | integration |
+| From a peer that is not the configured proxy, `X-Forwarded-For` changes nothing (D20) | integration |
+| Proxy mode without an exact proxy address list, with names, ranges or patterns, or with Boot's forwarded-header support re-enabled, fails startup (D20) | configuration test |
 | Bucket entries expire once idle beyond their refill period | unit test |
 | Upload, history and device registration past their per-user limit return 429 with `Retry-After`, write nothing, and do not affect another account (D18) | integration |
 | An unauthenticated request is 401 and consumes no account's budget; a rejected upload body still consumes one (D18) | integration |
@@ -1036,6 +1041,7 @@ describe the pre-Step-2 state and are not updated entry by entry.
 | D17 | Compromised-password blocklist | Resolved | architecture 5.1, D17 |
 | D18 | Authenticated per-user limits, active-device quota, stored-day budget | Resolved (2026-09-24) | architecture 5.1, D18 |
 | D19 | Account deletion: contract, re-authentication, lock order, client cleanup | Resolved (2026-09-24) | architecture 5.1, D19 |
+| D20 | Network edge: topology, TLS termination, trusted-proxy client address | Resolved (2026-09-26) | architecture 5.1, D20 |
 
 D16 was resolved before Step 3 (devices), which implements D12 and scopes every
 device query by owner. D13 was settled with Step 4 (the upload endpoint): at most

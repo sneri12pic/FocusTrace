@@ -5,6 +5,87 @@ session reads to continue safely.
 
 ---
 
+## 2026-09-26 — Network edge: trusted-proxy client address (D20)
+
+Date: 2026-09-24 (started) - 2026-09-26
+Agent: Claude Code
+Goal: Record the v1 production topology and make the D15 source limits key on the
+real client behind one TLS-terminating reverse proxy, without trusting headers
+from anyone else.
+
+State before work: HEAD `4ec67d4`, clean tree except the unrelated untracked
+`.agents/` and `skills-lock.json` (excluded).
+
+Problem (from the code): `server.forward-headers-strategy: none` and
+`AuthController` keys the register/login/refresh source buckets on
+`getRemoteAddr()`. Behind a proxy every request has the proxy's address, so each
+source limit becomes one limit for all users (registration 5/h, login 10/15 min,
+refresh 60/h service-wide) and one client can lock out every login. No security
+event logged a source address.
+
+Completed (architecture 5.1, D20):
+- Topology recorded: HTTPS to one reverse proxy (TLS terminates there), private
+  HTTP to one Spring instance, one PostgreSQL; the Spring port must be reachable
+  only from the proxy.
+- `focustrace.network.mode`: `direct` (socket peer, headers ignored; default
+  outside `prod`) or `trusted-proxy` with `focustrace.network.trusted-proxies`
+  (exact IP literals). `prod` requires `FOCUSTRACE_NETWORK_MODE`; proxy mode
+  requires `FOCUSTRACE_TRUSTED_PROXIES`.
+- Tomcat's `RemoteIpValve`, added only in proxy mode, with the validated
+  literals as a quoted exact-match regex. Verified in Tomcat 11.0.22 bytecode:
+  without `/` the value is a regex (raw `10.0.0.5` would also match `10.0.0.15`),
+  and CIDR matching calls `InetAddress.getByName` (DNS for names). Boot's
+  forwarded-header support must stay `none` (its default trusts private ranges).
+- One hop: rightmost `X-Forwarded-For` entry that is not a listed proxy is the
+  client; prepended entries ignored; `Forwarded`/`X-Real-IP` never read.
+- `getRemoteAddr()` stays the one resolved address. `event=rate_limited` now logs
+  `source=` for the three per-source buckets only. Budgets unchanged.
+
+Files materially changed:
+- New `server/.../common/ClientAddressConfiguration.java`;
+  `common/ProductionConfiguration.java` (required mode),
+  `auth/AuthRateLimiter.java` (source in the event), `auth/AuthController.java`
+  (comment), `application.yml`, `application-prod.yml`.
+- Tests: new `auth/TrustedProxyIT.java`, `auth/UntrustedPeerIT.java`;
+  `StartupConfigurationTest.java` (new required variable; D20 cases; command-line
+  arguments for the two overrides, since builder properties are defaults that
+  `application.yml` overrides).
+- Docs: architecture (D20; D15 note corrected - appending or overwriting both
+  work with the valve), security baseline (section 12, verification, decision
+  table), plan section 5, this entry.
+
+Verification (Docker Desktop, PostgreSQL 16 via Testcontainers):
+- `./gradlew test --tests '*RateLimit*'`: PASS, 3 suites, 14 tests.
+- `./gradlew test --tests '*Auth*'`: PASS, 4 suites, 18 tests.
+- `TrustedProxyIT` 7/7, `UntrustedPeerIT` 1/1, `StartupConfigurationTest` 27/27.
+- `./gradlew test --rerun`: PASS, 25 suites, 263 tests, 0 failures, 0 errors,
+  0 skipped. `./gradlew clean build`: PASS, same 263.
+- Mutations (restored byte-identically, SHA-256 `16f48a27...a45928`):
+  1. Valve trusting any peer (`.*`): `UntrustedPeerIT` failed - the spoofing
+     client got [401, 401, 401] instead of being limited.
+  2. No valve: all 7 `TrustedProxyIT` tests failed - forwarded clients collapsed
+     into the proxy's one bucket.
+
+Decisions made: D20.
+
+Remaining: the deployment itself (proxy product, host, certificates, private
+application port, proxy volumetric limits, PostgreSQL backups and retention, log
+persistence); the rest of the release sequence (history row cap and
+`refresh_tokens(session_id)` index, installation-ID backup fix, privacy/Play
+copy and web deletion page, physical-device pass, session cleanup).
+
+Risks / unresolved questions:
+- A listed proxy that omits `X-Forwarded-For` puts all its traffic in one
+  bucket; the proxy configuration must be checked in staging.
+- The trusted address must be the one Spring sees (e.g. IPv4 vs IPv4-mapped
+  IPv6 on dual-stack sockets); confirm from the security log in staging.
+- Rate-limit events now contain client IP addresses: log retention must be
+  covered by the privacy policy.
+
+Relevant commit: this entry's commit (`fix(server): trust client IP only through configured proxy`).
+
+---
+
 ## 2026-09-24 — Account deletion (D19)
 
 Date: 2026-09-24

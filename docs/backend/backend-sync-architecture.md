@@ -677,12 +677,11 @@ is the socket peer address. This corrects the `framework` value written here
 earlier, which assumed a proxy that does not exist yet.
 
 **When a reverse proxy is introduced** - it will be, since it terminates TLS -
-trusted-proxy handling must be configured explicitly **in the same change** that
-puts the proxy in front of the service: the proxy set to overwrite rather than
-append the forwarded header, and the application configured to accept it only
-from that proxy's address. Deploying behind a proxy without that step silently
-turns every rate limit into a per-attacker-chosen-string limit, and every log
-entry's client address into a fiction.
+trusted-proxy handling must be configured explicitly: the application accepts the
+forwarded address only from that proxy's address. Deploying behind a proxy
+without that step silently turns every per-source limit into one limit shared by
+every user, or, with naive header trust, into a per-attacker-chosen-string limit.
+Implemented as D20 (2026-09-26); the mode is a required production setting.
 
 Exceeding a limit returns `429` with `Retry-After` and the standard problem body,
 revealing neither which dimension tripped nor whether the account exists.
@@ -1062,6 +1061,84 @@ Verification: `AccountDeletionIT` (PostgreSQL via Testcontainers), repository,
 view-model and card tests, and the real-backend E2E
 (`sync_end_to_end_test.dart`: account A uploads, is deleted, and account B on the
 same installation uploads the same history again).
+
+#### D20 Network edge and client address
+
+**Resolved and implemented 2026-09-26.** The v1 production topology:
+
+```text
+Android client
+    | HTTPS only
+one reverse proxy            <- TLS terminates here
+    | private HTTP, proxy -> Spring only
+one Spring Boot instance     <- single instance (D15/D18 buckets are in-process)
+    |
+one PostgreSQL instance
+```
+
+- Public traffic is HTTPS only; Spring has no TLS configuration and speaks plain
+  HTTP to the proxy. Release Android builds refuse cleartext, so a sync base URL
+  must be `https://`. Transport security is not claimed complete until a staging
+  deployment exists.
+- **The Spring port must be reachable only from the proxy** (host firewall,
+  security group or private network - deployment infrastructure, not this
+  repository). Header trust is keyed on the socket peer; if an attacker can reach
+  the port directly from an address in the trusted list, nothing here can tell.
+- No proxy product, host or cloud is chosen yet; no Kubernetes, CDN, service mesh
+  or second instance.
+
+**Two explicit modes** (`focustrace.network.mode`):
+
+| Mode | Client address | Forwarding headers |
+| --- | --- | --- |
+| `direct` (default outside `prod`) | the socket peer | all ignored - today's D15 behaviour |
+| `trusted-proxy` | from `X-Forwarded-For`, only when the socket peer is listed in `focustrace.network.trusted-proxies` | `X-Forwarded-For` (and `X-Forwarded-Proto` for the scheme) from listed peers only; `Forwarded` and `X-Real-IP` never |
+
+`prod` has no default: `FOCUSTRACE_NETWORK_MODE` is required (D14 fail-fast), and
+`trusted-proxy` requires `FOCUSTRACE_TRUSTED_PROXIES`, a comma-separated list of
+exact IP literals - the address Spring sees the proxy connect from. Host names,
+CIDR ranges, patterns, zone ids and the unspecified address fail startup, as does
+a proxy list in `direct` mode, an unknown mode, and any
+`server.forward-headers-strategy` other than `none`. The addresses are deployment
+configuration and are never committed.
+
+**Mechanism.** Tomcat's own `RemoteIpValve` (Tomcat 11.0.22), added only in
+`trusted-proxy` mode by `common/ClientAddressConfiguration`. Two Tomcat behaviours
+decided how it is configured:
+
+- `internalProxies` is read as a CIDR list if the value contains `/` and as a
+  **regex** otherwise, so a raw `10.0.0.5` would also match `10.0.0.15`, and
+  Boot's `server.tomcat.remoteip.internal-proxies` defaults to every private
+  range. So Boot's forwarded-header support stays off and each validated literal
+  is passed as a quoted, exact-match regex.
+- CIDR matching resolves each candidate with `InetAddress.getByName`, which does a
+  DNS lookup for a name. Regex matching never does.
+
+**Chain semantics: one trusted hop.** For a request from a listed proxy the valve
+walks `X-Forwarded-For` right to left, skips entries that are themselves listed
+proxies, and takes the first other entry as the client; everything to its left is
+ignored. The proxy must put the address it saw as the rightmost entry - appending
+(`nginx $proxy_add_x_forwarded_for`) or overwriting both satisfy this. A client
+can therefore prepend anything without choosing its key. A request from a listed
+proxy with no `X-Forwarded-For` keeps the proxy's own address (a misconfiguration:
+every such request shares one bucket). Chains through further, unlisted proxies
+are not supported.
+
+**One resolved address.** After the valve, `HttpServletRequest.getRemoteAddr()` is
+the client for everything downstream - the D15 source buckets
+(`AuthController`) and the security log. Nothing else reads a forwarding header.
+`event=rate_limited` now names the source for the three per-source buckets only
+(`source=<resolved address>`), so an operator can act on it at the proxy; an
+account bucket's key (an email) and per-user keys are still never logged. Budgets
+are unchanged.
+
+Verification: `TrustedProxyIT` (separate buckets per forwarded client, prepended
+entries ignored, trusted hop skipped, `Forwarded`/`X-Real-IP` ignored, log source
+equals limiter key, missing header falls back to the proxy, malformed value gets
+the ordinary generic 401), `UntrustedPeerIT` (headers from an unlisted peer change
+nothing), `RateLimitIT` (direct mode unchanged), `StartupConfigurationTest` (every
+invalid configuration fails startup). Mutations: trusting any peer, and removing
+the valve, each fail their tests (progress, 2026-09-26).
 
 ### 5.2 Authorization
 

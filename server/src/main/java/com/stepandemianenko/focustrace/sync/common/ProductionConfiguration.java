@@ -22,8 +22,10 @@ import org.springframework.stereotype.Component;
 @Profile("prod")
 class ProductionConfiguration implements BeanFactoryPostProcessor, EnvironmentAware {
 
+    /** FOCUSTRACE_NETWORK_MODE: production states its network edge explicitly (D20). */
     static final List<String> REQUIRED = List.of(
-            "FOCUSTRACE_DB_URL", "FOCUSTRACE_DB_USER", "FOCUSTRACE_DB_PASSWORD", "FOCUSTRACE_JWT_SECRET");
+            "FOCUSTRACE_DB_URL", "FOCUSTRACE_DB_USER", "FOCUSTRACE_DB_PASSWORD", "FOCUSTRACE_JWT_SECRET",
+            "FOCUSTRACE_NETWORK_MODE");
 
     private Environment environment;
 

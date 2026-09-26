@@ -207,7 +207,13 @@ Before public release (backend):
   larger than the 300-request burst could never finish. The limit is sized above
   realistic full uploads; advancing the watermark per accepted batch would remove
   the coupling (client change, not done).
-- Volumetric limits and trusted-proxy handling at the reverse proxy (D15).
+- ~~Trusted-proxy client address~~: resolved 2026-09-26 (architecture 5.1, D20).
+  Accepted when source buckets separate clients behind the configured proxy,
+  forwarded headers from any other peer change nothing, and every invalid network
+  configuration fails startup.
+- The staging/production deployment itself: proxy product and host, TLS
+  certificates, private-only application port, volumetric limits at the proxy,
+  PostgreSQL backups and their retention, log persistence.
 - D18's buckets are in-process: one instance only.
 
 ## 6. Release blockers outside the backend

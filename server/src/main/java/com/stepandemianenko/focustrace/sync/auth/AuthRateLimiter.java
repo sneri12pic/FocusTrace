@@ -30,14 +30,21 @@ public class AuthRateLimiter {
     private static final Logger securityLog = LoggerFactory.getLogger("focustrace.security");
 
     public enum Bucket {
-        REGISTER_PER_SOURCE,
-        LOGIN_PER_SOURCE,
-        LOGIN_PER_ACCOUNT,
-        REFRESH_PER_SOURCE,
-        DEVICE_REGISTER_PER_USER,
-        UPLOAD_PER_USER,
-        HISTORY_PER_USER,
-        ACCOUNT_DELETE_PER_USER
+        REGISTER_PER_SOURCE(true),
+        LOGIN_PER_SOURCE(true),
+        LOGIN_PER_ACCOUNT(false),
+        REFRESH_PER_SOURCE(true),
+        DEVICE_REGISTER_PER_USER(false),
+        UPLOAD_PER_USER(false),
+        HISTORY_PER_USER(false),
+        ACCOUNT_DELETE_PER_USER(false);
+
+        /** Keyed by the resolved client address (D20), which the security log may name. */
+        private final boolean perSource;
+
+        Bucket(boolean perSource) {
+            this.perSource = perSource;
+        }
     }
 
     /**
@@ -74,12 +81,17 @@ public class AuthRateLimiter {
     /**
      * Takes one token or throws a generic 429. The key is a socket peer address, a
      * canonical email or an authenticated account id - never request input for the
-     * latter. Only the bucket name is logged, never an account identifier.
+     * latter. A source bucket logs its key, the resolved client address, so an
+     * operator can act on it at the proxy; an account key (an email) is never logged.
      */
     void acquire(Bucket bucket, String key) {
         long waitNanos = limiters.get(bucket).tryAcquire(key);
         if (waitNanos > 0) {
-            securityLog.warn("event=rate_limited bucket={}", bucket);
+            if (bucket.perSource) {
+                securityLog.warn("event=rate_limited bucket={} source={}", bucket, key);
+            } else {
+                securityLog.warn("event=rate_limited bucket={}", bucket);
+            }
             throw ApiException.tooManyRequests(Math.max(1, TimeUnit.NANOSECONDS.toSeconds(waitNanos + 999_999_999)));
         }
     }

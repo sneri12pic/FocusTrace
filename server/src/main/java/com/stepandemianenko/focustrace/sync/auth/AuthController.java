@@ -18,9 +18,9 @@ import org.springframework.web.bind.annotation.RestController;
  * Architecture section 9 auth endpoints. Request DTOs list exactly the writable
  * fields; unknown JSON properties are rejected (spring.jackson.deserialization).
  *
- * <p>The rate-limit source is {@link HttpServletRequest#getRemoteAddr()}: with
- * {@code server.forward-headers-strategy: none} that is the socket peer, and
- * {@code X-Forwarded-For} / {@code Forwarded} cannot change it (D15).
+ * <p>The rate-limit source is {@link HttpServletRequest#getRemoteAddr()}, the one
+ * resolved client address (D20): the socket peer in {@code direct} mode, and behind
+ * a configured trusted proxy the client that proxy reports. No header is read here.
  */
 @RestController
 @RequestMapping("/api/v1/auth")

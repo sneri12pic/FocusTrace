@@ -6,3 +6,10 @@ spring:
     url: ${FOCUSTRACE_DB_URL}
     username: ${FOCUSTRACE_DB_USER}
     password: ${FOCUSTRACE_DB_PASSWORD}
+
+# D20: no default. 'direct', or 'trusted-proxy' with FOCUSTRACE_TRUSTED_PROXIES
+# (comma-separated IP literals). Deployment configuration, never committed here.
+focustrace:
+  network:
+    mode: ${FOCUSTRACE_NETWORK_MODE}
+    trusted-proxies: ${FOCUSTRACE_TRUSTED_PROXIES:}
