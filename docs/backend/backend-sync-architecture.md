@@ -110,6 +110,40 @@ existing `settings` table under key `sync_installation_id`.
   a new device. That is correct behaviour, not a bug.
 - The UUID is the primary key of `devices` server-side. No surrogate id.
 
+**Backup and transfer (implemented 2026-09-26).** The database lives in
+`getFilesDir()`, which Android Auto Backup restores on every install (Play,
+device setup, `adb install`) and device-to-device transfer copies; until this
+change nothing excluded it, so a restored or transferred copy re-registered as the
+original device (same account: the two phones' days overwrote each other under one
+device; another account: a permanent `409`) and carried the original's opt-in.
+The database value alone therefore cannot identify an installation.
+
+A second copy of the id is kept in `focustrace_sync_installation.xml`
+(`SyncInstallationMarker.kt`), a SharedPreferences file excluded - like the
+refresh-token file - from legacy full backup and from both the `cloud-backup` and
+`device-transfer` sections of the Android 12+ rules. (`allowBackup="false"` would
+not suffice: on some devices it does not stop device-to-device transfer.) Inside
+the execution gate, before any gated sync or session operation:
+
+| Database id | Marker | Meaning | Result |
+| --- | --- | --- | --- |
+| present | equal | this installation | kept |
+| absent | any | first use, or **Clear Local Data** | new id |
+| present | absent, and a refresh credential exists | installed before the marker; credentials are never backed up, so this database is its own | kept; marker written |
+| present | absent without a credential, or different | restored/transferred copy, a reinstall restored from backup, or a signed-out pre-marker installation - indistinguishable | new id |
+
+A new id replacing a copied one also resets the copied installation's opt-in
+(`sync_enabled = false`), `sync_account_email` and `sync_last_success_ms`, and
+cancels periodic work, before the new id is committed. The watermark,
+`sync_imported_version_ms` and all local history are kept: restored history is
+attributed to the installation that measured and uploaded it, not re-uploaded
+under the new identity (only days newer than the copied watermark upload). Writes
+are ordered marker, state reset, database id; the database id is the commit
+point, so an interrupted transition repeats on the next operation and nothing is
+registered under an unbound id. An unreadable or unwritable marker fails the
+operation instead of being treated as absent. The old device row stays on the
+server and ages out of the active-device quota after 90 days (D18).
+
 A `display_name` (user-editable, defaults to `Build.MODEL`) and `platform`
 (`android` / `windows`) are stored for UI only.
 
@@ -1517,6 +1551,8 @@ reason, and `importPortableData` drops them from an incoming backup as well.
 Otherwise restoring one installation's backup onto another would clone
 `sync_installation_id`, and two installations would upload as one device - each
 overwriting the other's days under a single `(device_id, local_date)` key.
+Android's own backup and transfer copy the database file itself, which this
+filter cannot see; section 3 covers that path.
 
 ### 8.3 Offline and retry behaviour
 

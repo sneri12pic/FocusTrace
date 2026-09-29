@@ -61,16 +61,19 @@ void main() {
     String deviceName = 'Test device',
     int seed = 7,
     Future<void> Function(bool)? reconcileSchedule,
+    InstallationMarkerStore? marker,
+    SqfliteFocusTraceLocalDataSource? source,
   }) => SyncRepositoryImpl(
     executionGate: gate,
     reconcileSchedule: reconcileSchedule,
+    installationMarker: marker,
     api: FocusTraceSyncApi(
       baseUrl: backend.baseUrl,
       credentials: credentials,
       timeout: const Duration(seconds: 5),
     ),
-    localDataSource: local,
-    usageDataSource: local,
+    localDataSource: source ?? local,
+    usageDataSource: source ?? local,
     deviceName: () async => deviceName,
     random: Random(seed),
     now: () => DateTime.utc(2026, 9, 19, 12),
@@ -124,7 +127,11 @@ void main() {
       final requested = Completer<void>();
       gate.onRequested = () => requested.complete();
       final pending = operation();
-      expect(requested.isCompleted, isTrue, reason: 'The contender must reach the gate before checking exclusion.');
+      expect(
+        requested.isCompleted,
+        isTrue,
+        reason: 'The contender must reach the gate before checking exclusion.',
+      );
       gate.onRequested = null;
       return pending;
     }
@@ -286,119 +293,162 @@ void main() {
   });
 
   group('background orchestration', () {
-    test('disabled worker does no network or upload even when signed in', () async {
-      await repository.signIn(email: 'a@example.com', password: 'pw');
-      await seedDay('2026-09-17', queriedAtMs: 1000);
-      backend.requestPaths.clear();
-      expect(await runBackgroundSync(repository), 'success');
-      expect(backend.requestPaths, isEmpty);
-      expect(await watermark(), isNull);
-    });
+    test(
+      'disabled worker does no network or upload even when signed in',
+      () async {
+        await repository.signIn(email: 'a@example.com', password: 'pw');
+        await seedDay('2026-09-17', queriedAtMs: 1000);
+        backend.requestPaths.clear();
+        expect(await runBackgroundSync(repository), 'success');
+        expect(backend.requestPaths, isEmpty);
+        expect(await watermark(), isNull);
+      },
+    );
 
-    test('enabling, repeated enable, disabling and logout reconcile authoritative consent', () async {
-      final schedules = <bool>[];
-      final subject = repositoryFor(credentials, reconcileSchedule: (enabled) async {
-        expect(await local.readSetting(SyncSettingKeys.enabled), '$enabled');
-        schedules.add(enabled);
-      });
-      await subject.setSyncEnabled(true);
-      await subject.setSyncEnabled(true);
-      await subject.setSyncEnabled(false);
-      await subject.setSyncEnabled(true);
-      await subject.signOut();
-      expect(schedules, [true, true, false, true, false]);
-      expect(await subject.isSyncEnabled(), isFalse);
-      expect(await runBackgroundSync(subject), 'success');
-      expect(backend.requestPaths, isEmpty);
-    });
+    test(
+      'enabling, repeated enable, disabling and logout reconcile authoritative consent',
+      () async {
+        final schedules = <bool>[];
+        final subject = repositoryFor(
+          credentials,
+          reconcileSchedule: (enabled) async {
+            expect(
+              await local.readSetting(SyncSettingKeys.enabled),
+              '$enabled',
+            );
+            schedules.add(enabled);
+          },
+        );
+        await subject.setSyncEnabled(true);
+        await subject.setSyncEnabled(true);
+        await subject.setSyncEnabled(false);
+        await subject.setSyncEnabled(true);
+        await subject.signOut();
+        expect(schedules, [true, true, false, true, false]);
+        expect(await subject.isSyncEnabled(), isFalse);
+        expect(await runBackgroundSync(subject), 'success');
+        expect(backend.requestPaths, isEmpty);
+      },
+    );
 
-    test('background upload uses model name while UUID stays authoritative', () async {
-      final subject = repositoryFor(credentials, deviceName: 'SM-A366B');
-      await subject.signIn(email: 'a@example.com', password: 'pw');
-      await subject.setSyncEnabled(true);
-      final id = await subject.installationId();
-      await seedDay('2026-09-17', queriedAtMs: 1000);
-      expect(await runBackgroundSync(subject), 'success');
-      expect(backend.devices.single.displayName, 'SM-A366B');
-      expect(backend.devices.single.deviceId, id);
-      expect(await subject.installationId(), id);
-      expect(await runBackgroundSync(repositoryFor(credentials)), 'success');
-      expect(backend.uploadCount, 1);
-    });
+    test(
+      'background upload uses model name while UUID stays authoritative',
+      () async {
+        final subject = repositoryFor(credentials, deviceName: 'SM-A366B');
+        await subject.signIn(email: 'a@example.com', password: 'pw');
+        await subject.setSyncEnabled(true);
+        final id = await subject.installationId();
+        await seedDay('2026-09-17', queriedAtMs: 1000);
+        expect(await runBackgroundSync(subject), 'success');
+        expect(backend.devices.single.displayName, 'SM-A366B');
+        expect(backend.devices.single.deviceId, id);
+        expect(await subject.installationId(), id);
+        expect(await runBackgroundSync(repositoryFor(credentials)), 'success');
+        expect(backend.uploadCount, 1);
+      },
+    );
 
     for (final status in [400, 500, 502, 503, 504, 408, 429, 501]) {
-      test('background classifies upload HTTP $status without guessing unknown retry', () async {
+      test(
+        'background classifies upload HTTP $status without guessing unknown retry',
+        () async {
+          await repository.signIn(email: 'a@example.com', password: 'pw');
+          await repository.setSyncEnabled(true);
+          await seedDay('2026-09-17', queriedAtMs: 1000);
+          backend.nextUploadStatus = status;
+          expect(
+            await runBackgroundSync(repository),
+            status == 400
+                ? 'success'
+                : status == 501
+                ? 'failure'
+                : 'retry',
+          );
+        },
+      );
+    }
+
+    test(
+      'revoked and signed-out background sessions end without retries',
+      () async {
+        await repository.setSyncEnabled(true);
+        expect(await runBackgroundSync(repository), 'success');
+        await credentials.writeRefreshToken('revoked-test-session');
+        await seedDay('2026-09-17', queriedAtMs: 1000);
+        expect(await runBackgroundSync(repositoryFor(credentials)), 'success');
+        expect(credentials.refreshToken, isNull);
+      },
+    );
+
+    test(
+      'network transport failure retries but unconfigured builds do not',
+      () async {
         await repository.signIn(email: 'a@example.com', password: 'pw');
         await repository.setSyncEnabled(true);
         await seedDay('2026-09-17', queriedAtMs: 1000);
-        backend.nextUploadStatus = status;
-        expect(await runBackgroundSync(repository), status == 400 ? 'success' : status == 501 ? 'failure' : 'retry');
-      });
-    }
+        await backend.stop();
+        expect(await runBackgroundSync(repository), 'retry');
+        expect(await runBackgroundSync(null), 'success');
+      },
+    );
 
-    test('revoked and signed-out background sessions end without retries', () async {
-      await repository.setSyncEnabled(true);
-      expect(await runBackgroundSync(repository), 'success');
-      await credentials.writeRefreshToken('revoked-test-session');
-      await seedDay('2026-09-17', queriedAtMs: 1000);
-      expect(await runBackgroundSync(repositoryFor(credentials)), 'success');
-      expect(credentials.refreshToken, isNull);
-    });
+    test(
+      'queued background work checks opt-out after acquiring the manual gate',
+      () async {
+        await repository.setSyncEnabled(true);
+        final blocker = Completer<void>();
+        final entered = Completer<void>();
+        final first = gate.run(() async {
+          entered.complete();
+          await blocker.future;
+        });
+        await entered.future;
+        final off = repository.setSyncEnabled(false);
+        final background = runBackgroundSync(repositoryFor(credentials));
+        blocker.complete();
+        await first;
+        await off;
+        expect(await background, 'success');
+        expect(backend.requestPaths, isEmpty);
+      },
+    );
 
-    test('network transport failure retries but unconfigured builds do not', () async {
-      await repository.signIn(email: 'a@example.com', password: 'pw');
-      await repository.setSyncEnabled(true);
-      await seedDay('2026-09-17', queriedAtMs: 1000);
-      await backend.stop();
-      expect(await runBackgroundSync(repository), 'retry');
-      expect(await runBackgroundSync(null), 'success');
-    });
+    test(
+      'background owns gate, manual and logout wait without session resurrection',
+      () async {
+        await repository.signIn(email: 'a@example.com', password: 'pw');
+        await repository.setSyncEnabled(true);
+        await seedDay('2026-09-17', queriedAtMs: 1000);
+        backend.hold('/api/v1/sync/usage-days');
+        final background = runBackgroundSync(repositoryFor(credentials));
+        await backend.entered!.future;
+        final manual = repository.syncNow();
+        final logout = repository.signOut();
+        expect(backend.uploadCount, 0);
+        backend.proceed!.complete();
+        expect(await background, 'success');
+        expect((await manual).uploadedDays, 0);
+        await logout;
+        expect(credentials.refreshToken, isNull);
+        expect(await runBackgroundSync(repositoryFor(credentials)), 'success');
+        expect(backend.uploadCount, 1);
+      },
+    );
 
-    test('queued background work checks opt-out after acquiring the manual gate', () async {
-      await repository.setSyncEnabled(true);
-      final blocker = Completer<void>();
-      final entered = Completer<void>();
-      final first = gate.run(() async { entered.complete(); await blocker.future; });
-      await entered.future;
-      final off = repository.setSyncEnabled(false);
-      final background = runBackgroundSync(repositoryFor(credentials));
-      blocker.complete();
-      await first;
-      await off;
-      expect(await background, 'success');
-      expect(backend.requestPaths, isEmpty);
-    });
-
-    test('background owns gate, manual and logout wait without session resurrection', () async {
-      await repository.signIn(email: 'a@example.com', password: 'pw');
-      await repository.setSyncEnabled(true);
-      await seedDay('2026-09-17', queriedAtMs: 1000);
-      backend.hold('/api/v1/sync/usage-days');
-      final background = runBackgroundSync(repositoryFor(credentials));
-      await backend.entered!.future;
-      final manual = repository.syncNow();
-      final logout = repository.signOut();
-      expect(backend.uploadCount, 0);
-      backend.proceed!.complete();
-      expect(await background, 'success');
-      expect((await manual).uploadedDays, 0);
-      await logout;
-      expect(credentials.refreshToken, isNull);
-      expect(await runBackgroundSync(repositoryFor(credentials)), 'success');
-      expect(backend.uploadCount, 1);
-    });
-
-    test('closing a headless database connection leaves foreground usable', () async {
-      final background = SqfliteFocusTraceLocalDataSource(
-        singleInstance: false,
-        databaseFactoryOverride: databaseFactoryFfi,
-        applicationSupportDirectoryProvider: () async => directory,
-      );
-      await background.writeSetting('connection_test', 'ok');
-      await background.close();
-      expect(await local.readSetting('connection_test'), 'ok');
-      await local.writeSetting('connection_test', 'still open');
-    });
+    test(
+      'closing a headless database connection leaves foreground usable',
+      () async {
+        final background = SqfliteFocusTraceLocalDataSource(
+          singleInstance: false,
+          databaseFactoryOverride: databaseFactoryFfi,
+          applicationSupportDirectoryProvider: () async => directory,
+        );
+        await background.writeSetting('connection_test', 'ok');
+        await background.close();
+        expect(await local.readSetting('connection_test'), 'ok');
+        await local.writeSetting('connection_test', 'still open');
+      },
+    );
   });
 
   group('installation identity', () {
@@ -427,6 +477,355 @@ void main() {
 
       expect(theirs, isNot(mine));
     });
+  });
+
+  group('installation identity across backup and transfer', () {
+    late _MemoryMarker marker;
+    late List<bool> schedules;
+
+    setUp(() {
+      marker = _MemoryMarker();
+      schedules = [];
+    });
+
+    SyncRepositoryImpl installation({
+      int seed = 7,
+      SyncCredentialStore? store,
+      _MemoryMarker? ownMarker,
+      SqfliteFocusTraceLocalDataSource? source,
+    }) => repositoryFor(
+      store ?? credentials,
+      seed: seed,
+      marker: ownMarker ?? marker,
+      source: source,
+      reconcileSchedule: (enabled) async => schedules.add(enabled),
+    );
+
+    /// What Android backs up or transfers: a consistent copy of the database
+    /// file. Not the credential file and not the marker, which the rules exclude.
+    Future<(SqfliteFocusTraceLocalDataSource, Directory)> restoredCopy() async {
+      final target = await Directory.systemTemp.createTemp('sync_restored');
+      addTearDown(() async {
+        if (target.existsSync()) await target.delete(recursive: true);
+      });
+      await db.execute('VACUUM INTO ?', [
+        p.join(target.path, 'focus_trace.db'),
+      ]);
+      final copy = SqfliteFocusTraceLocalDataSource(
+        databaseFactoryOverride: databaseFactoryFfi,
+        applicationSupportDirectoryProvider: () async => target,
+      );
+      addTearDown(copy.close);
+      return (copy, target);
+    }
+
+    test(
+      'first use creates one identity and binds it outside the database',
+      () async {
+        final id = await installation().installationId();
+
+        expect(marker.value, id);
+        expect(await local.readSetting(SyncSettingKeys.installationId), id);
+        expect(marker.writes, 1);
+      },
+    );
+
+    test('a restart or an app update keeps the same identity', () async {
+      final id = await installation().installationId();
+
+      // New objects over the same database, marker and keystore.
+      expect(await installation(seed: 99).installationId(), id);
+      expect(await installation(seed: 123).installationId(), id);
+      expect(marker.writes, 1);
+    });
+
+    test('concurrent first access settles on one identity', () async {
+      final ids = await Future.wait([
+        for (var i = 0; i < 6; i++) installation(seed: i).installationId(),
+      ]);
+
+      expect(ids.toSet(), hasLength(1));
+      expect(marker.writes, 1);
+      expect(
+        await local.readSetting(SyncSettingKeys.installationId),
+        ids.first,
+      );
+    });
+
+    test(
+      'a restored or transferred copy gets its own identity and keeps local history',
+      () async {
+        final original = installation();
+        await original.signIn(email: 'a@example.com', password: 'pw');
+        await original.setSyncEnabled(true);
+        await seedDay('2026-09-16', queriedAtMs: 1000);
+        await seedDay('2026-09-17', queriedAtMs: 2000);
+        expect((await original.syncNow()).countOf(SyncDayOutcome.applied), 2);
+        final originalId = await original.installationId();
+        final importedVersion = await local.readSetting(
+          SyncSettingKeys.importedVersionMs,
+        );
+
+        final (copy, copyDir) = await restoredCopy();
+        expect(
+          await copy.readSetting(SyncSettingKeys.installationId),
+          originalId,
+          reason: 'the backed-up database carries the identity',
+        );
+        final restoredCredentials = _MemoryCredentialStore();
+        final restoredMarker = _MemoryMarker();
+        schedules.clear();
+        final restored = installation(
+          seed: 99,
+          store: restoredCredentials,
+          ownMarker: restoredMarker,
+          source: copy,
+        );
+
+        final restoredId = await restored.installationId();
+
+        expect(restoredId, isNot(originalId));
+        expect(restoredMarker.value, restoredId);
+        expect(
+          await copy.readSetting(SyncSettingKeys.installationId),
+          restoredId,
+        );
+        // Another installation's consent, account and status do not carry over.
+        expect(await restored.isSyncEnabled(), isFalse);
+        expect(await restored.accountEmail(), '');
+        expect(await restored.lastSuccessfulSyncAt(), isNull);
+        expect(schedules, [false]);
+        // History, and the watermark covering what the original already uploaded, do.
+        expect(
+          await copy.readSetting(SyncSettingKeys.usageWatermarkMs),
+          '2000',
+        );
+        expect(
+          await copy.readSetting(SyncSettingKeys.importedVersionMs),
+          importedVersion,
+        );
+        final copyDb = await databaseFactoryFfi.openDatabase(
+          p.join(copyDir.path, 'focus_trace.db'),
+          options: OpenDatabaseOptions(singleInstance: false),
+        );
+        expect(
+          await copyDb.query('daily_app_usage'),
+          await db.query('daily_app_usage'),
+        );
+        await copyDb.close();
+        // The original is untouched.
+        expect(await original.installationId(), originalId);
+        expect(marker.value, originalId);
+      },
+    );
+
+    test(
+      'a restored copy registers as a second device and uploads only its own new days',
+      () async {
+        final original = installation();
+        await original.signIn(email: 'a@example.com', password: 'pw');
+        await original.setSyncEnabled(true);
+        await seedDay('2026-09-16', queriedAtMs: 1000);
+        await seedDay('2026-09-17', queriedAtMs: 2000);
+        await original.syncNow();
+        final (copy, copyDir) = await restoredCopy();
+        // The new device's own keystore and marker: empty after a restore, and
+        // shared by its foreground and headless engines.
+        final restoredStore = _MemoryCredentialStore();
+        final restoredMarker = _MemoryMarker();
+        SyncRepositoryImpl onNewDevice(int seed) => installation(
+          seed: seed,
+          store: restoredStore,
+          ownMarker: restoredMarker,
+          source: copy,
+        );
+        final restored = onNewDevice(99);
+
+        // Signing in on the new device does not resume the old device's opt-in.
+        await restored.signIn(email: 'a@example.com', password: 'pw');
+        backend.requestPaths.clear();
+        expect(await runBackgroundSync(onNewDevice(100)), 'success');
+        expect(
+          backend.uploadCount,
+          1,
+          reason: 'only the original uploaded so far',
+        );
+        expect(await restored.isSyncEnabled(), isFalse);
+
+        await restored.setSyncEnabled(true);
+        // A separate connection: closing it must not close the data source's.
+        final copyDb = await databaseFactoryFfi.openDatabase(
+          p.join(copyDir.path, 'focus_trace.db'),
+          options: OpenDatabaseOptions(singleInstance: false),
+        );
+        await copyDb.insert('usage_snapshot_days', {
+          'day': '2026-09-18',
+          'start_ms': 0,
+          'end_ms': 0,
+          'timezone_id': 'Europe/London',
+          'queried_at_ms': 3000,
+          'covered_until_ms': 0,
+          'status': 'reconciled',
+        });
+        await copyDb.insert('daily_app_usage', {
+          'day': '2026-09-18',
+          'app_key': 'com.new',
+          'app_name': 'New',
+          'duration_seconds': 60,
+          'launch_count': 1,
+        });
+        await copyDb.close();
+        final run = await restored.syncNow();
+
+        expect(
+          run.countOf(SyncDayOutcome.applied),
+          1,
+          reason:
+              'restored days were uploaded by the device that measured them',
+        );
+        expect(backend.devices, hasLength(2));
+        expect(backend.devices.map((d) => d.deviceId).toSet(), {
+          await original.installationId(),
+          await restored.installationId(),
+        });
+      },
+    );
+
+    test(
+      'a pre-marker installation with a session keeps its identity',
+      () async {
+        await local.writeSetting(SyncSettingKeys.installationId, 'legacy-id');
+        await local.writeSetting(SyncSettingKeys.enabled, 'true');
+        await credentials.writeRefreshToken('persisted-session');
+
+        expect(await installation().installationId(), 'legacy-id');
+        expect(await installation(seed: 5).installationId(), 'legacy-id');
+
+        expect(marker.value, 'legacy-id');
+        expect(marker.writes, 1);
+        expect(await local.readSetting(SyncSettingKeys.enabled), 'true');
+        expect(schedules, isEmpty);
+      },
+    );
+
+    test(
+      'a pre-marker installation without a session is replaced once, then stable',
+      () async {
+        await local.writeSetting(SyncSettingKeys.installationId, 'legacy-id');
+        await local.writeSetting(SyncSettingKeys.usageWatermarkMs, '2000');
+
+        final first = await installation().installationId();
+        final again = await installation(seed: 5).installationId();
+
+        expect(first, isNot('legacy-id'));
+        expect(again, first);
+        expect(marker.writes, 1);
+        expect(
+          await local.readSetting(SyncSettingKeys.usageWatermarkMs),
+          '2000',
+        );
+      },
+    );
+
+    test(
+      'an unwritable marker fails the operation and changes nothing',
+      () async {
+        await installation().signIn(email: 'a@example.com', password: 'pw');
+        await local.writeSetting(SyncSettingKeys.installationId, '');
+        marker
+          ..value = null
+          ..writes = 0
+          ..failWrites = true;
+        await seedDay('2026-09-17', queriedAtMs: 1000);
+        backend.requestPaths.clear();
+
+        final run = await installation().syncNow();
+
+        expect(run.succeeded, isFalse);
+        expect(backend.requestPaths, isNot(contains('/api/v1/devices')));
+        expect(await local.readSetting(SyncSettingKeys.installationId), '');
+
+        marker.failWrites = false;
+        final id = await installation().installationId();
+        expect(await installation(seed: 5).installationId(), id);
+        expect(marker.value, id);
+      },
+    );
+
+    test('an unreadable marker is an error, never treated as absent', () async {
+      final id = await installation().installationId();
+      marker.failReads = true;
+
+      await expectLater(
+        installation(seed: 5).installationId(),
+        throwsA(isA<StateError>()),
+      );
+
+      marker.failReads = false;
+      expect(await installation(seed: 5).installationId(), id);
+      expect(marker.writes, 1);
+    });
+
+    test(
+      'an interrupted transition is repaired by the next operation',
+      () async {
+        await local.writeSetting(SyncSettingKeys.installationId, 'copied-id');
+        await local.writeSetting(SyncSettingKeys.enabled, 'true');
+        // Crash after the marker was written, before the database commit.
+        marker.value = 'half-written';
+
+        final id = await installation().installationId();
+
+        expect(id, isNot('copied-id'));
+        expect(id, isNot('half-written'));
+        expect(marker.value, id);
+        expect(await local.readSetting(SyncSettingKeys.installationId), id);
+        expect(await local.readSetting(SyncSettingKeys.enabled), 'false');
+        expect(await installation(seed: 5).installationId(), id);
+      },
+    );
+
+    test('foreground and headless runs register the same identity', () async {
+      final foreground = installation();
+      await foreground.signIn(email: 'a@example.com', password: 'pw');
+      await foreground.setSyncEnabled(true);
+      final id = await foreground.installationId();
+      await seedDay('2026-09-17', queriedAtMs: 1000);
+
+      expect(await runBackgroundSync(installation(seed: 42)), 'success');
+
+      expect(backend.devices.single.deviceId, id);
+    });
+
+    test('Clear Local Data still starts a new device, as documented', () async {
+      final id = await installation().installationId();
+
+      await local.clearAllData();
+
+      final next = await installation(seed: 5).installationId();
+      expect(next, isNot(id));
+      expect(marker.value, next);
+    });
+
+    test(
+      'a portable import cannot replace the installation identity',
+      () async {
+        final id = await installation().installationId();
+
+        await local.importPortableData({
+          'settings': [
+            {
+              'key': SyncSettingKeys.installationId,
+              'value': 'imported-foreign-id',
+            },
+            {'key': SyncSettingKeys.usageWatermarkMs, 'value': '999999'},
+          ],
+        });
+
+        expect(await local.readSetting(SyncSettingKeys.installationId), id);
+        expect(await installation(seed: 5).installationId(), id);
+      },
+    );
   });
 
   group('syncNow', () {
@@ -503,22 +902,25 @@ void main() {
       expect(await watermark(), 3000);
     });
 
-    test('a transient failure keeps the watermark and the local record', () async {
-      await repository.createAccount(email: 'a@example.com', password: 'pw');
-      await seedDay('2026-09-17', queriedAtMs: 1000);
-      backend.nextUploadStatus = 503;
+    test(
+      'a transient failure keeps the watermark and the local record',
+      () async {
+        await repository.createAccount(email: 'a@example.com', password: 'pw');
+        await seedDay('2026-09-17', queriedAtMs: 1000);
+        backend.nextUploadStatus = 503;
 
-      final failed = await repository.syncNow();
+        final failed = await repository.syncNow();
 
-      expect(failed.succeeded, isFalse);
-      expect(await watermark(), isNull);
-      expect(await db.query('daily_app_usage'), hasLength(1));
+        expect(failed.succeeded, isFalse);
+        expect(await watermark(), isNull);
+        expect(await db.query('daily_app_usage'), hasLength(1));
 
-      final retried = await repository.syncNow();
-      expect(retried.succeeded, isTrue);
-      expect(retried.countOf(SyncDayOutcome.applied), 1);
-      expect(await watermark(), 1000);
-    });
+        final retried = await repository.syncNow();
+        expect(retried.succeeded, isTrue);
+        expect(retried.countOf(SyncDayOutcome.applied), 1);
+        expect(await watermark(), 1000);
+      },
+    );
 
     test('a deterministic 400 is counted, not retried forever', () async {
       await repository.createAccount(email: 'a@example.com', password: 'pw');
@@ -554,24 +956,30 @@ void main() {
   });
 
   group('client sanitization', () {
-    test('drops NUL and unpaired surrogates, truncates deterministically', () async {
-      await repository.createAccount(email: 'a@example.com', password: 'pw');
-      await seedDay(
-        '2026-09-17',
-        queriedAtMs: 1000,
-        appKey: 'com.example',
-        appName: 'Bad\u0000Name\ud800 ${'x' * 300}',
-      );
+    test(
+      'drops NUL and unpaired surrogates, truncates deterministically',
+      () async {
+        await repository.createAccount(email: 'a@example.com', password: 'pw');
+        await seedDay(
+          '2026-09-17',
+          queriedAtMs: 1000,
+          appKey: 'com.example',
+          appName: 'Bad\u0000Name\ud800 ${'x' * 300}',
+        );
 
-      await repository.syncNow();
+        await repository.syncNow();
 
-      final name = backend.storedDays.single.apps.single['appName']! as String;
-      expect(name.contains('\u0000'), isFalse);
-      expect(name.codeUnits.any((unit) => unit >= 0xD800 && unit <= 0xDFFF),
-          isFalse);
-      expect(name.length, lessThanOrEqualTo(200));
-      expect(name, startsWith('BadName'));
-    });
+        final name =
+            backend.storedDays.single.apps.single['appName']! as String;
+        expect(name.contains('\u0000'), isFalse);
+        expect(
+          name.codeUnits.any((unit) => unit >= 0xD800 && unit <= 0xDFFF),
+          isFalse,
+        );
+        expect(name.length, lessThanOrEqualTo(200));
+        expect(name, startsWith('BadName'));
+      },
+    );
 
     test('leaves out days the contract cannot accept', () async {
       await repository.createAccount(email: 'a@example.com', password: 'pw');
@@ -588,40 +996,43 @@ void main() {
       expect(await db.query('daily_app_usage'), hasLength(3));
     });
 
-    test('caps a day at 500 apps, keeping the longest, in appKey order', () async {
-      await repository.createAccount(email: 'a@example.com', password: 'pw');
-      await db.insert('usage_snapshot_days', {
-        'day': '2026-09-17',
-        'start_ms': 0,
-        'end_ms': 0,
-        'timezone_id': 'Europe/London',
-        'queried_at_ms': 1000,
-        'covered_until_ms': 0,
-        'status': 'reconciled',
-      });
-      for (var i = 0; i < 600; i++) {
-        await db.insert('daily_app_usage', {
+    test(
+      'caps a day at 500 apps, keeping the longest, in appKey order',
+      () async {
+        await repository.createAccount(email: 'a@example.com', password: 'pw');
+        await db.insert('usage_snapshot_days', {
           'day': '2026-09-17',
-          'app_key': 'com.app${i.toString().padLeft(3, '0')}',
-          'app_name': 'App $i',
-          'duration_seconds': i,
-          'launch_count': 0,
+          'start_ms': 0,
+          'end_ms': 0,
+          'timezone_id': 'Europe/London',
+          'queried_at_ms': 1000,
+          'covered_until_ms': 0,
+          'status': 'reconciled',
         });
-      }
+        for (var i = 0; i < 600; i++) {
+          await db.insert('daily_app_usage', {
+            'day': '2026-09-17',
+            'app_key': 'com.app${i.toString().padLeft(3, '0')}',
+            'app_name': 'App $i',
+            'duration_seconds': i,
+            'launch_count': 0,
+          });
+        }
 
-      await repository.syncNow();
+        await repository.syncNow();
 
-      final apps = backend.storedDays.single.apps;
-      expect(apps, hasLength(500));
-      // The 100 shortest were dropped, not the last 100 by key.
-      expect(apps.first['appKey'], 'com.app100');
-      expect(
-        apps.map((app) => app['appKey'] as String).toList(),
-        orderedEquals(
-          (apps.map((app) => app['appKey'] as String).toList()..sort()),
-        ),
-      );
-    });
+        final apps = backend.storedDays.single.apps;
+        expect(apps, hasLength(500));
+        // The 100 shortest were dropped, not the last 100 by key.
+        expect(apps.first['appKey'], 'com.app100');
+        expect(
+          apps.map((app) => app['appKey'] as String).toList(),
+          orderedEquals(
+            (apps.map((app) => app['appKey'] as String).toList()..sort()),
+          ),
+        );
+      },
+    );
 
     test('clamps an impossible duration instead of failing the day', () async {
       await repository.createAccount(email: 'a@example.com', password: 'pw');
@@ -648,19 +1059,21 @@ void main() {
       }
     });
 
-    test('an expired access token is refreshed once and the request replays',
-        () async {
-      await repository.createAccount(email: 'a@example.com', password: 'pw');
-      await seedDay('2026-09-17', queriedAtMs: 1000);
-      final before = backend.refreshCount;
-      backend.expireAccessTokens();
+    test(
+      'an expired access token is refreshed once and the request replays',
+      () async {
+        await repository.createAccount(email: 'a@example.com', password: 'pw');
+        await seedDay('2026-09-17', queriedAtMs: 1000);
+        final before = backend.refreshCount;
+        backend.expireAccessTokens();
 
-      final result = await repository.syncNow();
+        final result = await repository.syncNow();
 
-      expect(result.succeeded, isTrue);
-      expect(backend.refreshCount, before + 1);
-      expect(backend.storedDays, hasLength(1));
-    });
+        expect(result.succeeded, isTrue);
+        expect(backend.refreshCount, before + 1);
+        expect(backend.storedDays, hasLength(1));
+      },
+    );
 
     test('concurrent requests share a single refresh', () async {
       await repository.createAccount(email: 'a@example.com', password: 'pw');
@@ -686,17 +1099,20 @@ void main() {
       expect(backend.refreshCount, before + 1);
     });
 
-    test('signing out forgets the session and leaves local data alone', () async {
-      await repository.createAccount(email: 'a@example.com', password: 'pw');
-      await seedDay('2026-09-17', queriedAtMs: 1000);
+    test(
+      'signing out forgets the session and leaves local data alone',
+      () async {
+        await repository.createAccount(email: 'a@example.com', password: 'pw');
+        await seedDay('2026-09-17', queriedAtMs: 1000);
 
-      await repository.signOut();
+        await repository.signOut();
 
-      expect(await repository.isSignedIn, isFalse);
-      expect(credentials.refreshToken, isNull);
-      expect((await repository.syncNow()).succeeded, isFalse);
-      expect(await db.query('daily_app_usage'), hasLength(1));
-    });
+        expect(await repository.isSignedIn, isFalse);
+        expect(credentials.refreshToken, isNull);
+        expect((await repository.syncNow()).succeeded, isFalse);
+        expect(await db.query('daily_app_usage'), hasLength(1));
+      },
+    );
   });
 
   group('account deletion', () {
@@ -735,111 +1151,149 @@ void main() {
       schedules.clear();
     }
 
-    test('success deletes the cloud account and resets only account state', () async {
-      await syncedAccount();
-      final before = await settings();
+    test(
+      'success deletes the cloud account and resets only account state',
+      () async {
+        await syncedAccount();
+        final before = await settings();
 
-      await subject.deleteAccount(password: 'pw');
+        await subject.deleteAccount(password: 'pw');
 
-      expect(backend.deleteCount, 1);
-      expect(backend.devices, isEmpty);
-      expect(credentials.refreshToken, isNull);
-      expect(await subject.isSignedIn, isFalse);
-      final after = await settings();
-      // Account-scoped: reset.
-      expect(after[SyncSettingKeys.enabled], 'false');
-      expect(after[SyncSettingKeys.accountEmail], '');
-      expect(await subject.lastSuccessfulSyncAt(), isNull);
-      expect(after[SyncSettingKeys.usageWatermarkMs], '0');
-      // Installation, local-content and unrelated state: untouched.
-      for (final key in [
-        SyncSettingKeys.installationId,
-        SyncSettingKeys.importedVersionMs,
-        'unrelated_local_setting',
-      ]) {
-        expect(after[key], before[key], reason: key);
-      }
-      expect(await db.query('daily_app_usage'), hasLength(2));
-      expect(await db.query('usage_snapshot_days'), hasLength(2));
-      // Scheduling stopped before the request and stays stopped.
-      expect(schedules, [false, false]);
-      backend.requestPaths.clear();
-      expect((await subject.syncNow()).succeeded, isFalse);
-      expect(backend.requestPaths, isEmpty);
-    });
+        expect(backend.deleteCount, 1);
+        expect(backend.devices, isEmpty);
+        expect(credentials.refreshToken, isNull);
+        expect(await subject.isSignedIn, isFalse);
+        final after = await settings();
+        // Account-scoped: reset.
+        expect(after[SyncSettingKeys.enabled], 'false');
+        expect(after[SyncSettingKeys.accountEmail], '');
+        expect(await subject.lastSuccessfulSyncAt(), isNull);
+        expect(after[SyncSettingKeys.usageWatermarkMs], '0');
+        // Installation, local-content and unrelated state: untouched.
+        for (final key in [
+          SyncSettingKeys.installationId,
+          SyncSettingKeys.importedVersionMs,
+          'unrelated_local_setting',
+        ]) {
+          expect(after[key], before[key], reason: key);
+        }
+        expect(await db.query('daily_app_usage'), hasLength(2));
+        expect(await db.query('usage_snapshot_days'), hasLength(2));
+        // Scheduling stopped before the request and stays stopped.
+        expect(schedules, [false, false]);
+        backend.requestPaths.clear();
+        expect((await subject.syncNow()).succeeded, isFalse);
+        expect(backend.requestPaths, isEmpty);
+      },
+    );
 
-    test('a wrong password changes nothing locally and keeps sync scheduled', () async {
-      await syncedAccount();
-      final before = await settings();
+    test(
+      'a wrong password changes nothing locally and keeps sync scheduled',
+      () async {
+        await syncedAccount();
+        final before = await settings();
 
-      await expectLater(
-        subject.deleteAccount(password: 'wrong'),
-        throwsA(isA<SyncAuthException>().having(
-          (e) => e.failure, 'failure', SyncAuthFailure.invalidCredentials,
-        )),
-      );
+        await expectLater(
+          subject.deleteAccount(password: 'wrong'),
+          throwsA(
+            isA<SyncAuthException>().having(
+              (e) => e.failure,
+              'failure',
+              SyncAuthFailure.invalidCredentials,
+            ),
+          ),
+        );
 
-      expect(await settings(), before);
-      expect(credentials.refreshToken, isNotNull);
-      expect(backend.deleteCount, 0);
-      expect(schedules, [false, true]);
-      expect((await subject.syncNow()).succeeded, isTrue);
-    });
+        expect(await settings(), before);
+        expect(credentials.refreshToken, isNotNull);
+        expect(backend.deleteCount, 0);
+        expect(schedules, [false, true]);
+        expect((await subject.syncNow()).succeeded, isTrue);
+      },
+    );
 
-    test('an unreachable server keeps the session and only resets the watermark', () async {
-      await syncedAccount();
-      final before = await settings();
-      await backend.stop();
+    test(
+      'an unreachable server keeps the session and only resets the watermark',
+      () async {
+        await syncedAccount();
+        final before = await settings();
+        await backend.stop();
 
-      await expectLater(
-        subject.deleteAccount(password: 'pw'),
-        throwsA(isA<SyncAuthException>().having(
-          (e) => e.failure, 'failure', SyncAuthFailure.offline,
-        )),
-      );
+        await expectLater(
+          subject.deleteAccount(password: 'pw'),
+          throwsA(
+            isA<SyncAuthException>().having(
+              (e) => e.failure,
+              'failure',
+              SyncAuthFailure.offline,
+            ),
+          ),
+        );
 
-      final after = await settings();
-      expect(after[SyncSettingKeys.usageWatermarkMs], '0',
-          reason: 'the deletion may have committed with its response lost');
-      expect({...after}..remove(SyncSettingKeys.usageWatermarkMs),
-          {...before}..remove(SyncSettingKeys.usageWatermarkMs));
-      expect(credentials.refreshToken, isNotNull);
-      expect(schedules, [false, true]);
-    });
+        final after = await settings();
+        expect(
+          after[SyncSettingKeys.usageWatermarkMs],
+          '0',
+          reason: 'the deletion may have committed with its response lost',
+        );
+        expect(
+          {...after}..remove(SyncSettingKeys.usageWatermarkMs),
+          {...before}..remove(SyncSettingKeys.usageWatermarkMs),
+        );
+        expect(credentials.refreshToken, isNotNull);
+        expect(schedules, [false, true]);
+      },
+    );
 
-    test('a rejected session is reported without clearing account state', () async {
-      await syncedAccount();
-      final fresh = repositoryFor(credentials);
-      await credentials.writeRefreshToken('revoked-test-session');
+    test(
+      'a rejected session is reported without clearing account state',
+      () async {
+        await syncedAccount();
+        final fresh = repositoryFor(credentials);
+        await credentials.writeRefreshToken('revoked-test-session');
 
-      await expectLater(
-        fresh.deleteAccount(password: 'pw'),
-        throwsA(isA<SyncAuthException>().having(
-          (e) => e.failure, 'failure', SyncAuthFailure.sessionExpired,
-        )),
-      );
+        await expectLater(
+          fresh.deleteAccount(password: 'pw'),
+          throwsA(
+            isA<SyncAuthException>().having(
+              (e) => e.failure,
+              'failure',
+              SyncAuthFailure.sessionExpired,
+            ),
+          ),
+        );
 
-      expect(credentials.refreshToken, isNull);
-      expect(backend.deleteCount, 0);
-      expect(await local.readSetting(SyncSettingKeys.accountEmail), 'a@example.com');
-    });
+        expect(credentials.refreshToken, isNull);
+        expect(backend.deleteCount, 0);
+        expect(
+          await local.readSetting(SyncSettingKeys.accountEmail),
+          'a@example.com',
+        );
+      },
+    );
 
-    test('account B after deleting account A uploads the existing local history', () async {
-      await syncedAccount();
-      final installation = await subject.installationId();
-      await subject.deleteAccount(password: 'pw');
+    test(
+      'account B after deleting account A uploads the existing local history',
+      () async {
+        await syncedAccount();
+        final installation = await subject.installationId();
+        await subject.deleteAccount(password: 'pw');
 
-      await subject.signIn(email: 'b@example.com', password: 'pw');
-      await subject.setSyncEnabled(true);
-      final run = await subject.syncNow();
+        await subject.signIn(email: 'b@example.com', password: 'pw');
+        await subject.setSyncEnabled(true);
+        final run = await subject.syncNow();
 
-      expect(run.succeeded, isTrue);
-      expect(run.countOf(SyncDayOutcome.applied), 2,
-          reason: 'B must not inherit A\'s upload watermark');
-      expect(backend.storedDays, hasLength(2));
-      expect(backend.devices.single.deviceId, installation);
-      expect(await subject.installationId(), installation);
-    });
+        expect(run.succeeded, isTrue);
+        expect(
+          run.countOf(SyncDayOutcome.applied),
+          2,
+          reason: 'B must not inherit A\'s upload watermark',
+        );
+        expect(backend.storedDays, hasLength(2));
+        expect(backend.devices.single.deviceId, installation);
+        expect(await subject.installationId(), installation);
+      },
+    );
 
     test('deletion queues on the shared gate behind running work', () async {
       await syncedAccount();
@@ -855,7 +1309,11 @@ void main() {
       final deletion = subject.deleteAccount(password: 'pw');
       await Future<void>.delayed(Duration.zero);
       expect(backend.requestPaths, isEmpty);
-      expect(schedules, isEmpty, reason: 'nothing runs before the gate is granted');
+      expect(
+        schedules,
+        isEmpty,
+        reason: 'nothing runs before the gate is granted',
+      );
 
       blocker.complete();
       await holder;
@@ -863,31 +1321,37 @@ void main() {
       expect(backend.deleteCount, 1);
     });
 
-    test('a background run in flight finishes first and nothing syncs after deletion', () async {
-      await syncedAccount();
-      await seedDay('2026-09-18', queriedAtMs: 3000);
-      backend.hold('/api/v1/sync/usage-days');
-      final background = runBackgroundSync(repositoryFor(credentials));
-      await backend.entered!.future;
+    test(
+      'a background run in flight finishes first and nothing syncs after deletion',
+      () async {
+        await syncedAccount();
+        await seedDay('2026-09-18', queriedAtMs: 3000);
+        backend.hold('/api/v1/sync/usage-days');
+        final background = runBackgroundSync(repositoryFor(credentials));
+        await backend.entered!.future;
 
-      final deletion = subject.deleteAccount(password: 'pw');
-      await Future<void>.delayed(Duration.zero);
-      expect(backend.deleteCount, 0);
-      backend.proceed!.complete();
-      expect(await background, 'success');
-      await deletion;
-      expect(backend.deleteCount, 1);
+        final deletion = subject.deleteAccount(password: 'pw');
+        await Future<void>.delayed(Duration.zero);
+        expect(backend.deleteCount, 0);
+        backend.proceed!.complete();
+        expect(await background, 'success');
+        await deletion;
+        expect(backend.deleteCount, 1);
 
-      // Stale or repeated background callbacks: no credential, no consent.
-      backend.requestPaths.clear();
-      for (var i = 0; i < 2; i++) {
-        expect(await runBackgroundSync(repositoryFor(credentials)), 'success');
-      }
-      expect(backend.requestPaths, isEmpty);
-      expect(await subject.isSyncEnabled(), isFalse);
-      expect(credentials.refreshToken, isNull);
-      expect(schedules.last, isFalse);
-    });
+        // Stale or repeated background callbacks: no credential, no consent.
+        backend.requestPaths.clear();
+        for (var i = 0; i < 2; i++) {
+          expect(
+            await runBackgroundSync(repositoryFor(credentials)),
+            'success',
+          );
+        }
+        expect(backend.requestPaths, isEmpty);
+        expect(await subject.isSyncEnabled(), isFalse);
+        expect(credentials.refreshToken, isNull);
+        expect(schedules.last, isFalse);
+      },
+    );
   });
 
   group('readRemoteHistory', () {
@@ -1033,6 +1497,27 @@ void main() {
   });
 }
 
+/// The never-backed-up marker (`SyncInstallationMarker.kt`), in memory.
+class _MemoryMarker implements InstallationMarkerStore {
+  String? value;
+  int writes = 0;
+  bool failReads = false;
+  bool failWrites = false;
+
+  @override
+  Future<String?> read() async {
+    if (failReads) throw StateError('marker unreadable');
+    return value;
+  }
+
+  @override
+  Future<void> write(String installationId) async {
+    if (failWrites) throw StateError('marker unwritable');
+    writes++;
+    value = installationId;
+  }
+}
+
 class _MemoryCredentialStore implements SyncCredentialStore {
   String? refreshToken;
 
@@ -1102,7 +1587,6 @@ class _FakeBackend {
     proceed = Completer<void>();
   }
 
-
   /// Makes every outstanding access token stale, as expiry would.
   void expireAccessTokens() => _liveAccessTokens.clear();
 
@@ -1113,11 +1597,7 @@ class _FakeBackend {
     final refresh = 'refresh-token-${_issued++}';
     _liveAccessTokens.add(access);
     _liveRefreshTokens.add(refresh);
-    return {
-      'accessToken': access,
-      'expiresIn': 900,
-      'refreshToken': refresh,
-    };
+    return {'accessToken': access, 'expiresIn': 900, 'refreshToken': refresh};
   }
 
   bool _authorized(HttpRequest request) {

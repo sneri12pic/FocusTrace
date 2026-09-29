@@ -2,7 +2,10 @@
 <!-- Auto Backup, API 23-30. Everything else keeps the platform default; only
      the sealed sync refresh token is withheld, as the security baseline
      requires. Its AndroidKeyStore key is never backed up, so a restored copy
-     would be undecryptable anyway - this stops it leaving the device at all. -->
+     would be undecryptable anyway - this stops it leaving the device at all.
+     The installation marker is withheld too: it is what tells a restored copy
+     of the database that its sync identity belongs to another installation. -->
 <full-backup-content>
     <exclude domain="sharedpref" path="focustrace_sync_credentials.xml" />
+    <exclude domain="sharedpref" path="focustrace_sync_installation.xml" />
 </full-backup-content>

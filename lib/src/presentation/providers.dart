@@ -11,6 +11,7 @@ import '../data/datasources/focus_trace_sync_api.dart';
 import '../data/datasources/platform_usage_data_source.dart';
 import '../data/datasources/secure_sync_credential_store.dart';
 import '../data/datasources/sync_execution_gate.dart';
+import '../data/datasources/installation_marker_store.dart';
 import '../data/datasources/sync_scheduler.dart';
 import '../data/repositories/app_language_repository_impl.dart';
 import '../data/repositories/data_transfer_repository_impl.dart';
@@ -201,6 +202,7 @@ final syncRepositoryProvider = Provider<SyncRepository?>((ref) {
   return SyncRepositoryImpl(
     executionGate: const AndroidSyncExecutionGate(),
     reconcileSchedule: const AndroidSyncScheduler().reconcile,
+    installationMarker: const AndroidInstallationMarkerStore(),
     api: api,
     localDataSource: source,
     // Promotion does not survive the interface split, as in portableLocalDataSourceProvider.

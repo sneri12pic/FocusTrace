@@ -221,6 +221,14 @@ Before public release (backend):
   certificates, private-only application port, volumetric limits at the proxy,
   PostgreSQL backups and their retention, log persistence.
 - D18's buckets are in-process: one instance only.
+- ~~Installation identity copied by Android backup or device transfer~~:
+  resolved 2026-09-26 (architecture section 3). Accepted when a restored copy of
+  the database gets its own identity and loses the copied opt-in while keeping
+  local history and the watermark, restart and update keep the identity, a signed-in
+  pre-marker installation keeps its identity, marker failures fail the operation,
+  and both rule files exclude the marker and the credential in every section
+  (`sync_repository_test.dart`, `SyncInstallationMarkerTest`). A real restore and
+  device transfer on hardware is still outstanding.
 
 ## 6. Release blockers outside the backend
 

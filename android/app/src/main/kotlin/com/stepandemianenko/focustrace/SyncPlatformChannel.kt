@@ -42,6 +42,11 @@ internal fun attachSyncChannels(
                         SecureCredentialStore.clear(app)
                         result.success(null)
                     }
+                    "readInstallationMarker" -> result.success(SyncInstallationMarker.read(app))
+                    "writeInstallationMarker" -> {
+                        SyncInstallationMarker.write(app, call.arguments as String)
+                        result.success(null)
+                    }
                     "deviceModel" -> result.success(Build.MODEL)
                     "scheduleSync" -> {
                         val completion = SyncScheduler.reconcile(app, call.arguments == true).result

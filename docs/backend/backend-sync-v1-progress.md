@@ -5,6 +5,118 @@ session reads to continue safely.
 
 ---
 
+## 2026-09-26 — Installation identity survives backup and transfer
+
+Date: 2026-09-26
+Agent: Claude Code
+Goal: Stop Android backup/restore and device-to-device transfer from giving two
+installations one sync device identity.
+
+State before work: HEAD `b2c71de` with the history-query optimisation
+uncommitted (`UsageDays.java`, `UsageHistoryIT.java`, the four stage documents);
+preserved, not reverted or re-run, and saved as a patch under `.local/identity-slice/`.
+Untracked `.agents/`, `skills-lock.json`, `docs/backend/temp.md` untouched.
+
+Root cause (code, plus developer.android.com Auto Backup documentation; not
+observed on a device): `focus_trace.db` is in `getFilesDir()`
+(`path_provider_android` 2.2.19), which Auto Backup includes and restores on every
+install and device-to-device transfer copies; only the refresh-token file was
+excluded. It carries `sync_installation_id` and every `sync_*` setting. A restored
+copy therefore registered as the original device: same account - the two
+installations' days replace each other under one `(device_id, local_date)`; other
+account - a permanent `409`, since the client never regenerates. It also carried
+`sync_enabled = true`, so signing in on the new device resumed sync without an
+opt-in there. The copied watermark is not a defect: the history it covers was
+uploaded by the device that measured it. `allowBackup="false"` would not have
+been sufficient (it does not stop device transfer on some devices, per the same
+documentation), and was not used.
+
+Completed (architecture section 3):
+- `SyncInstallationMarker.kt`: the id in `focustrace_sync_installation.xml`
+  (`commit()`), excluded in `backup_rules.xml` and in both sections of
+  `data_extraction_rules.xml`; `readInstallationMarker` / `writeInstallationMarker`
+  on the existing `focustrace/sync` channel, which foreground and headless
+  engines both attach.
+- `AndroidInstallationMarkerStore` (Dart), passed by `syncRepositoryProvider`, the
+  one provider both paths use. Failures propagate; they are never "absent".
+- `SyncRepositoryImpl._installationId` reconciles inside the shared execution
+  gate at the start of every gated session operation (so before any opt-in
+  check): kept if database and marker agree; new on first use or after Clear
+  Local Data; kept and marked if a pre-marker installation holds a credential
+  (credentials are never backed up); otherwise new. Replacing a copied id resets
+  opt-in, account email and last-success and cancels periodic work, keeps the
+  watermark, imported version and local history. Order: marker, reset, database
+  id (commit point).
+
+Transition for existing installations: sync has not shipped, so only development
+installs have an id. A signed-in one keeps it; a signed-out one - indistinguishable
+from a restored copy - gets a new id once, its old server device ageing out of the
+active-device quota after 90 days. No server deletion, no quota change.
+
+Files materially changed (this slice):
+- Android: new `SyncInstallationMarker.kt`; `SyncPlatformChannel.kt`;
+  `res/xml/backup_rules.xml`, `res/xml/data_extraction_rules.xml`; new test
+  `SyncInstallationMarkerTest.kt`.
+- Dart: new `data/datasources/installation_marker_store.dart`;
+  `sync_repository_impl.dart`, `providers.dart`, `lib/focus_trace.dart` (export);
+  `test/sync_repository_test.dart` (13 tests, marker fake, restore harness).
+- Docs: architecture section 3 and 8.2, security baseline section 8, plan
+  section 5, this entry.
+
+Verification (all run in this session):
+- `flutter test test/sync_repository_test.dart --plain-name "installation
+  identity"`: 15 passed. The restore tests copy the real database file with
+  `VACUUM INTO` and give the copy an empty credential store and marker - the state
+  Android leaves after a restore - then check a new identity, reset opt-in, kept
+  history and watermark, a second server device, and one upload (the new day).
+- `flutter analyze`: no issues. `flutter test`: 243 passed, 0 failed, 1 skipped
+  (real-backend suite). `flutter build apk --debug`: PASS.
+- `android ./gradlew :app:testDebugUnitTest :app:lintDebug
+  :app:compileDebugAndroidTestKotlin`: PASS; 11 suites, 119 tests, 0
+  failures/errors, 1 skipped benchmark (`SyncInstallationMarkerTest` 5/5 parses
+  the real rule resources).
+- Mutations, each restored byte-identically (SHA-256 checked): trusting the
+  database id again failed 5 identity tests; rotating without resetting copied
+  state failed 3; removing the marker exclusion from `<device-transfer>` failed
+  the rules test.
+- Backend untouched and not re-run.
+- `dart format --set-exit-if-changed lib test` fails on 14 files, all already
+  unformatted at HEAD (including the two edited here); the new files are
+  formatted. Pre-existing, not changed in this slice; CI will fail on it when a
+  PR targets develop/master.
+
+Not verified (no device attached): an actual restore or transfer. Procedure on a
+test device (debug build, applicationId suffix `.dev`):
+1. Sign in, opt in, sync once; note the device id (history response or
+   `run-as ... cat shared_prefs/focustrace_sync_installation.xml`).
+2. `adb shell bmgr enable true`, `adb shell bmgr transport
+   com.android.localtransport/.LocalTransport`, `adb shell bmgr backupnow <pkg>`.
+3. `adb uninstall <pkg>`, reinstall (restore runs at install); confirm the
+   marker and credential files are absent and the database present.
+4. Open the app: signed out, sync off. Sign in, opt in, sync: a second device
+   is registered and only new days upload.
+5. Repeat step 2-4 with a device-to-device transfer (Android 12+) or its
+   D2D test transport to exercise the `device-transfer` rules.
+
+Remaining production blockers, in order: privacy, README and Play copy plus the
+web account-deletion page; the staging deployment (proxy, TLS, private port,
+backups, log persistence) and the physical-device pass (now including the
+procedure above); session/token row cleanup before a wide rollout.
+
+Risks / unresolved questions:
+- A reinstall restored from backup on the same phone also gets a new identity:
+  a restore cannot be told apart from a transfer. One extra server device row,
+  inactive after 90 days.
+- A restored copy signed into a different account keeps the copied watermark, so
+  that account receives only new days - the same semantics as signing out and
+  into another account today.
+- Days measured by the original but not yet uploaded when the backup was taken
+  upload from the restored copy under its new identity.
+
+Relevant commit: uncommitted.
+
+---
+
 ## 2026-09-26 — History query work bounded
 
 Date: 2026-09-26

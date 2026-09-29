@@ -434,6 +434,13 @@ be written to:
 - plaintext `SharedPreferences` or plaintext files;
 - Android auto-backup or cloud backup (exclude the credential store explicitly).
 
+The installation identity is not a secret, but it must not be cloned either: the
+database that holds it is backed up and transferred, so a never-backed-up marker
+file (excluded in the same rules, for cloud backup and device transfer alike)
+decides whether the database's id belongs to this installation (architecture
+section 3, 2026-09-26). Both exclusions are asserted by a test that parses the
+real rule files.
+
 The access token may be held in memory for its short lifetime.
 
 The backend does not depend on any of this being done correctly. It assumes any

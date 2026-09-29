@@ -4,6 +4,7 @@ import '../../domain/models/sync_usage.dart';
 import '../../domain/repositories/sync_repository.dart';
 import '../datasources/focus_trace_local_data_source.dart';
 import '../datasources/focus_trace_sync_api.dart';
+import '../datasources/installation_marker_store.dart';
 import '../datasources/sync_execution_gate.dart';
 
 /// Coordinates local selection, sanitization, device registration and upload.
@@ -19,6 +20,7 @@ class SyncRepositoryImpl implements SyncRepository {
     required UsageSyncDataSource usageDataSource,
     required Future<String> Function() deviceName,
     Future<void> Function(bool enabled)? reconcileSchedule,
+    InstallationMarkerStore? installationMarker,
     String platform = 'android',
     Random? random,
     DateTime Function()? now,
@@ -28,6 +30,7 @@ class SyncRepositoryImpl implements SyncRepository {
        _usage = usageDataSource,
        _deviceName = deviceName,
        _reconcileSchedule = reconcileSchedule,
+       _installationMarker = installationMarker,
        _platform = platform,
        _random = random ?? Random.secure(),
        _now = now ?? DateTime.now;
@@ -49,6 +52,10 @@ class SyncRepositoryImpl implements SyncRepository {
   final UsageSyncDataSource _usage;
   final Future<String> Function() _deviceName;
   final Future<void> Function(bool)? _reconcileSchedule;
+
+  /// Null where nothing is backed up behind the app's back (tests, platforms
+  /// without the marker); the database id is then the whole identity.
+  final InstallationMarkerStore? _installationMarker;
   final String _platform;
   final Random _random;
   final DateTime Function() _now;
@@ -57,9 +64,12 @@ class SyncRepositoryImpl implements SyncRepository {
   Future<bool> get isSignedIn => _sessionOperation(() => _api.hasSession);
 
   // This is the ownership boundary. API and credential helpers never reacquire.
+  // The identity is settled before anything else, so a database restored from
+  // another installation has lost its opt-in before any caller reads it.
   Future<T> _sessionOperation<T>(Future<T> Function() operation) =>
       _gate.run(() async {
         await _api.reconcileSession();
+        await _installationId();
         return operation();
       });
 
@@ -207,14 +217,49 @@ class SyncRepositoryImpl implements SyncRepository {
   /// never an advertising id (architecture section 3). Clearing local data
   /// removes it and the installation legitimately becomes a new device.
   @override
-  Future<String> installationId() => _gate.run(_installationId);
+  Future<String> installationId() => _sessionOperation(_installationId);
 
+  /// Architecture section 3. The database value is trusted only when the
+  /// never-backed-up marker holds the same value. Otherwise the database was
+  /// restored or transferred from another installation - or predates the
+  /// marker - and gets a new identity, except for a pre-marker installation
+  /// that holds a session: credentials are never backed up, so that database
+  /// is its own. Always called inside the execution gate.
   Future<String> _installationId() async {
-    final existing = await _local.readSetting(SyncSettingKeys.installationId);
-    if (existing != null && existing.isNotEmpty) {
-      return existing;
+    final stored = await _local.readSetting(SyncSettingKeys.installationId);
+    final hasStored = stored != null && stored.isNotEmpty;
+    final marker = _installationMarker;
+    if (marker == null) {
+      if (hasStored) {
+        return stored;
+      }
+      final generated = _randomUuidV4();
+      await _local.writeSetting(SyncSettingKeys.installationId, generated);
+      return generated;
+    }
+    final bound = await marker.read();
+    if (hasStored && bound == stored) {
+      return stored;
+    }
+    if (hasStored && bound == null && await _api.hasSession) {
+      await marker.write(stored);
+      return stored;
     }
     final generated = _randomUuidV4();
+    // Marker first: if it cannot be written, nothing has changed and nothing
+    // can be registered under an unbound id.
+    await marker.write(generated);
+    if (hasStored) {
+      // Settings copied from another installation: its consent, account and
+      // status are not this one's. The watermark stays - the history it covers
+      // was uploaded by the installation that measured it, and is not
+      // re-attributed to this one.
+      await _local.writeSetting(SyncSettingKeys.enabled, 'false');
+      await _local.writeSetting(SyncSettingKeys.accountEmail, '');
+      await _local.writeSetting(SyncSettingKeys.lastSuccessMs, '');
+      await _reconcileSchedule?.call(false);
+    }
+    // The commit point: until this write, a retry starts the transition again.
     await _local.writeSetting(SyncSettingKeys.installationId, generated);
     return generated;
   }
