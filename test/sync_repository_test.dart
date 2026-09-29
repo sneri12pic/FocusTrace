@@ -1822,9 +1822,10 @@ class _FakeBackend {
         if (!_authorized(request)) return reply(401);
         final deviceId = body['deviceId']! as String;
         final displayName = body['displayName']! as String;
-        final account = _accountOf[request.headers
-            .value(HttpHeaders.authorizationHeader)!
-            .substring(7)];
+        final account =
+            _accountOf[request.headers
+                .value(HttpHeaders.authorizationHeader)!
+                .substring(7)];
         final existing = devices
             .where((device) => device.deviceId == deviceId)
             .firstOrNull;

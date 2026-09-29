@@ -146,7 +146,14 @@ class RemoteUsageDay {
 /// and is never shown to anyone. This is the classification a screen may
 /// present, so it carries no status code, no server text and no transport
 /// detail - only the handful of cases a user can do something about.
-enum SyncFailureReason { notSignedIn, offline, temporary, sessionExpired, refused, unknown }
+enum SyncFailureReason {
+  notSignedIn,
+  offline,
+  temporary,
+  sessionExpired,
+  refused,
+  unknown,
+}
 
 /// Why signing in or creating an account failed.
 ///
@@ -193,10 +200,9 @@ class SyncRunResult {
   const SyncRunResult.failed(
     String this.failure, [
     this.reason = SyncFailureReason.unknown,
-  ])
-    : uploadedDays = 0,
-      results = const <SyncUploadResult>[],
-      rejectedDays = 0;
+  ]) : uploadedDays = 0,
+       results = const <SyncUploadResult>[],
+       rejectedDays = 0;
 
   final int uploadedDays;
   final List<SyncUploadResult> results;

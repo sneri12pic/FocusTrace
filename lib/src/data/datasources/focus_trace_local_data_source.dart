@@ -146,6 +146,7 @@ class SqfliteFocusTraceLocalDataSource
            applicationSupportDirectoryProvider;
 
   final String databaseName;
+
   /// A headless engine owns and closes its own connection, not the UI's handle.
   final bool singleInstance;
   final DatabaseFactory? _databaseFactoryOverride;
@@ -521,7 +522,13 @@ ORDER BY day
     final selected = {for (final day in days) day['day'] as String};
     final apps = await db.query(
       'daily_app_usage',
-      columns: ['day', 'app_key', 'app_name', 'duration_seconds', 'launch_count'],
+      columns: [
+        'day',
+        'app_key',
+        'app_name',
+        'duration_seconds',
+        'launch_count',
+      ],
       where: 'day >= ? AND day <= ?',
       whereArgs: [days.first['day'], days.last['day']],
       orderBy: 'day ASC, app_key ASC',
@@ -532,14 +539,16 @@ ORDER BY day
       if (!selected.contains(day)) {
         continue;
       }
-      byDay.putIfAbsent(day, () => <SyncUsageApp>[]).add(
-        SyncUsageApp(
-          appKey: row['app_key'] as String,
-          appName: row['app_name'] as String,
-          durationSeconds: row['duration_seconds'] as int,
-          launchCount: row['launch_count'] as int? ?? 0,
-        ),
-      );
+      byDay
+          .putIfAbsent(day, () => <SyncUsageApp>[])
+          .add(
+            SyncUsageApp(
+              appKey: row['app_key'] as String,
+              appName: row['app_name'] as String,
+              durationSeconds: row['duration_seconds'] as int,
+              launchCount: row['launch_count'] as int? ?? 0,
+            ),
+          );
     }
 
     return [

@@ -15,7 +15,8 @@ Future<String> runBackgroundSync(SyncRepository? repository) async {
   if (result.succeeded) return 'success';
   return switch (result.reason) {
     SyncFailureReason.offline || SyncFailureReason.temporary => 'retry',
-    SyncFailureReason.notSignedIn || SyncFailureReason.sessionExpired ||
+    SyncFailureReason.notSignedIn ||
+    SyncFailureReason.sessionExpired ||
     SyncFailureReason.refused => 'success',
     _ => 'failure',
   };
@@ -23,11 +24,13 @@ Future<String> runBackgroundSync(SyncRepository? repository) async {
 
 Future<void> backgroundSyncEntrypoint() async {
   WidgetsFlutterBinding.ensureInitialized();
-  final container = ProviderContainer(overrides: [
-    localDataSourceProvider.overrideWithValue(
-      SqfliteFocusTraceLocalDataSource(singleInstance: false),
-    ),
-  ]);
+  final container = ProviderContainer(
+    overrides: [
+      localDataSourceProvider.overrideWithValue(
+        SqfliteFocusTraceLocalDataSource(singleInstance: false),
+      ),
+    ],
+  );
   var outcome = 'failure';
   try {
     final repository = container.read(syncRepositoryProvider);
@@ -36,8 +39,9 @@ Future<void> backgroundSyncEntrypoint() async {
     await getDatabasesPath();
     // READY is not permission to sync. Native may cancel between receiving it
     // and replying. No gate acquisition/session access exists before true.
-    final authorized = await const MethodChannel('focustrace/background_sync')
-        .invokeMethod<bool>('ready');
+    final authorized = await const MethodChannel(
+      'focustrace/background_sync',
+    ).invokeMethod<bool>('ready');
     if (authorized == true) outcome = await runBackgroundSync(repository);
   } on Object {
     // Background failures never emit exception strings or retry unknown bugs.
@@ -51,6 +55,7 @@ Future<void> backgroundSyncEntrypoint() async {
     container.dispose();
   }
   // syncNow has returned through the native gate's release before this signal.
-  await const MethodChannel('focustrace/background_sync')
-      .invokeMethod<void>('complete', outcome);
+  await const MethodChannel(
+    'focustrace/background_sync',
+  ).invokeMethod<void>('complete', outcome);
 }

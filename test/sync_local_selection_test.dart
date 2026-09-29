@@ -82,7 +82,11 @@ void main() {
     });
 
     test('never offers an unavailable day', () async {
-      await insertSnapshot('2026-09-03', queriedAtMs: 900, status: 'unavailable');
+      await insertSnapshot(
+        '2026-09-03',
+        queriedAtMs: 900,
+        status: 'unavailable',
+      );
       await insertApp('2026-09-03', 'com.hidden');
 
       expect(
@@ -123,24 +127,27 @@ void main() {
       expect(days.map((day) => day.localDate), ['2026-08-20', '2026-09-05']);
     });
 
-    test('a versionless day at or below the watermark is not re-offered', () async {
-      await insertApp('2026-08-21', 'com.legacy');
+    test(
+      'a versionless day at or below the watermark is not re-offered',
+      () async {
+        await insertApp('2026-08-21', 'com.legacy');
 
-      expect(
-        await local.readSyncUsageDays(
-          watermarkMs: 5000,
-          importedVersionMs: 5000,
-        ),
-        isEmpty,
-      );
-      expect(
-        await local.readSyncUsageDays(
-          watermarkMs: 5000,
-          importedVersionMs: 5001,
-        ),
-        hasLength(1),
-      );
-    });
+        expect(
+          await local.readSyncUsageDays(
+            watermarkMs: 5000,
+            importedVersionMs: 5000,
+          ),
+          isEmpty,
+        );
+        expect(
+          await local.readSyncUsageDays(
+            watermarkMs: 5000,
+            importedVersionMs: 5001,
+          ),
+          hasLength(1),
+        );
+      },
+    );
 
     test('app rows stay with their own day', () async {
       await insertSnapshot('2026-09-06', queriedAtMs: 10);
@@ -228,17 +235,20 @@ void main() {
       expect(days.single.sourceStatus, 'imported');
     });
 
-    test('import rotates the recovery generation and drops snapshot rows', () async {
-      await insertSnapshot('2026-09-09', queriedAtMs: 10);
-      await local.writeSetting('usage_recovery_generation', 'before');
+    test(
+      'import rotates the recovery generation and drops snapshot rows',
+      () async {
+        await insertSnapshot('2026-09-09', queriedAtMs: 10);
+        await local.writeSetting('usage_recovery_generation', 'before');
 
-      await local.importPortableData(const {});
+        await local.importPortableData(const {});
 
-      expect(await db.query('usage_snapshot_days'), isEmpty);
-      expect(
-        await local.readSetting('usage_recovery_generation'),
-        isNot('before'),
-      );
-    });
+        expect(await db.query('usage_snapshot_days'), isEmpty);
+        expect(
+          await local.readSetting('usage_recovery_generation'),
+          isNot('before'),
+        );
+      },
+    );
   });
 }

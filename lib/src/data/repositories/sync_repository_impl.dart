@@ -83,7 +83,10 @@ class SyncRepositoryImpl implements SyncRepository {
 
   @override
   Future<void> setSyncEnabled(bool enabled) => _gate.run(() async {
-    await _local.writeSetting(SyncSettingKeys.enabled, enabled ? 'true' : 'false');
+    await _local.writeSetting(
+      SyncSettingKeys.enabled,
+      enabled ? 'true' : 'false',
+    );
     await _reconcileSchedule?.call(enabled);
   });
 
@@ -269,7 +272,11 @@ class SyncRepositoryImpl implements SyncRepository {
     try {
       return await _sessionOperation(() async {
         if (requireEnabled && !await isSyncEnabled()) {
-          return const SyncRunResult(uploadedDays: 0, results: [], rejectedDays: 0);
+          return const SyncRunResult(
+            uploadedDays: 0,
+            results: [],
+            rejectedDays: 0,
+          );
         }
         return _syncNow();
       });

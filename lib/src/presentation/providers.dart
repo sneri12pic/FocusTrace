@@ -195,9 +195,9 @@ final syncRepositoryProvider = Provider<SyncRepository?>((ref) {
     throw StateError('The configured local data source cannot sync usage.');
   }
   final api = FocusTraceSyncApi(
-      baseUrl: Uri.parse(syncBaseUrl),
-      credentials: const SecureSyncCredentialStore(),
-    );
+    baseUrl: Uri.parse(syncBaseUrl),
+    credentials: const SecureSyncCredentialStore(),
+  );
   ref.onDispose(api.close);
   return SyncRepositoryImpl(
     executionGate: const AndroidSyncExecutionGate(),
@@ -227,16 +227,17 @@ final syncScheduleBootstrapProvider = FutureProvider<void>((ref) async {
 /// `null` when this build has no sync. Every widget that reads it must handle
 /// that, which is why the account card is only built behind
 /// [syncSupportedProvider].
-final syncViewModelProvider =
-    StateNotifierProvider<SyncViewModel, SyncState>((ref) {
-      final repository = ref.watch(syncRepositoryProvider);
-      if (repository == null) {
-        throw StateError('Sync is not configured in this build.');
-      }
-      final viewModel = SyncViewModel(repository);
-      viewModel.load();
-      return viewModel;
-    });
+final syncViewModelProvider = StateNotifierProvider<SyncViewModel, SyncState>((
+  ref,
+) {
+  final repository = ref.watch(syncRepositoryProvider);
+  if (repository == null) {
+    throw StateError('Sync is not configured in this build.');
+  }
+  final viewModel = SyncViewModel(repository);
+  viewModel.load();
+  return viewModel;
+});
 
 final onboardingViewModelProvider =
     StateNotifierProvider<OnboardingViewModel, OnboardingState>((ref) {

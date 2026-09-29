@@ -197,21 +197,23 @@ void main() {
       expect(afterRestart.state.canSyncNow, isTrue);
     });
 
-    test('a credential the keystore no longer has restores signed out',
-        () async {
-      // What a wiped keystore or a revoked session leaves behind.
-      repository
-        ..signedIn = false
-        ..email = 'a@example.com'
-        ..enabled = true;
+    test(
+      'a credential the keystore no longer has restores signed out',
+      () async {
+        // What a wiped keystore or a revoked session leaves behind.
+        repository
+          ..signedIn = false
+          ..email = 'a@example.com'
+          ..enabled = true;
 
-      await viewModel.load();
+        await viewModel.load();
 
-      expect(viewModel.state.isSignedIn, isFalse);
-      expect(viewModel.state.accountEmail, isNull);
-      expect(viewModel.state.syncEnabled, isFalse);
-      expect(viewModel.state.canSyncNow, isFalse);
-    });
+        expect(viewModel.state.isSignedIn, isFalse);
+        expect(viewModel.state.accountEmail, isNull);
+        expect(viewModel.state.syncEnabled, isFalse);
+        expect(viewModel.state.canSyncNow, isFalse);
+      },
+    );
   });
 
   group('opt in and out', () {
@@ -230,22 +232,24 @@ void main() {
       expect(viewModel.state.canSyncNow, isTrue);
     });
 
-    test('turning it off stops syncing without signing out or deleting',
-        () async {
-      await viewModel.setSyncEnabled(true);
-      await viewModel.syncNow();
-      final runsWhileOn = repository.syncRuns;
+    test(
+      'turning it off stops syncing without signing out or deleting',
+      () async {
+        await viewModel.setSyncEnabled(true);
+        await viewModel.syncNow();
+        final runsWhileOn = repository.syncRuns;
 
-      await viewModel.setSyncEnabled(false);
-      await viewModel.syncNow();
+        await viewModel.setSyncEnabled(false);
+        await viewModel.syncNow();
 
-      expect(repository.syncRuns, runsWhileOn, reason: 'no further uploads');
-      expect(repository.enabled, isFalse);
-      // The account and the server's copy are both untouched.
-      expect(viewModel.state.isSignedIn, isTrue);
-      expect(repository.signedOut, isFalse);
-      expect(viewModel.state.lastSuccessAt, isNotNull);
-    });
+        expect(repository.syncRuns, runsWhileOn, reason: 'no further uploads');
+        expect(repository.enabled, isFalse);
+        // The account and the server's copy are both untouched.
+        expect(viewModel.state.isSignedIn, isTrue);
+        expect(repository.signedOut, isFalse);
+        expect(viewModel.state.lastSuccessAt, isNotNull);
+      },
+    );
   });
 
   group('sync now', () {
@@ -266,17 +270,19 @@ void main() {
       expect(viewModel.state.error, isNull);
     });
 
-    test('a failed run reports a useful reason and keeps the account',
-        () async {
-      repository.syncFailure = SyncFailureReason.offline;
+    test(
+      'a failed run reports a useful reason and keeps the account',
+      () async {
+        repository.syncFailure = SyncFailureReason.offline;
 
-      await viewModel.syncNow();
+        await viewModel.syncNow();
 
-      expect(viewModel.state.phase, SyncPhase.error);
-      expect(viewModel.state.error, SyncErrorKind.offline);
-      expect(viewModel.state.isSignedIn, isTrue);
-      expect(viewModel.state.lastSuccessAt, isNull);
-    });
+        expect(viewModel.state.phase, SyncPhase.error);
+        expect(viewModel.state.error, SyncErrorKind.offline);
+        expect(viewModel.state.isSignedIn, isTrue);
+        expect(viewModel.state.lastSuccessAt, isNull);
+      },
+    );
 
     test('a rejected session returns the app to signed out', () async {
       repository.syncFailure = SyncFailureReason.sessionExpired;
@@ -405,10 +411,7 @@ class _FakeSyncRepository implements SyncRepository {
   Future<DateTime?> lastSuccessfulSyncAt() async => lastSuccess;
 
   @override
-  Future<void> signIn({
-    required String email,
-    required String password,
-  }) async {
+  Future<void> signIn({required String email, required String password}) async {
     if (authFailure != null) {
       throw SyncAuthException(authFailure!);
     }
@@ -443,8 +446,9 @@ class _FakeSyncRepository implements SyncRepository {
   @override
   Future<SyncRunResult> syncNow({bool requireEnabled = false}) async {
     _activeRuns++;
-    maxConcurrentRuns =
-        _activeRuns > maxConcurrentRuns ? _activeRuns : maxConcurrentRuns;
+    maxConcurrentRuns = _activeRuns > maxConcurrentRuns
+        ? _activeRuns
+        : maxConcurrentRuns;
     try {
       final gate = _gate;
       if (gate != null) {

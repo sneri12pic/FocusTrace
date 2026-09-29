@@ -114,12 +114,8 @@ class SyncViewModel extends StateNotifier<SyncState> {
     );
   }
 
-  Future<void> signIn({
-    required String email,
-    required String password,
-  }) => _authenticate(
-    () => _repository.signIn(email: email, password: password),
-  );
+  Future<void> signIn({required String email, required String password}) =>
+      _authenticate(() => _repository.signIn(email: email, password: password));
 
   Future<void> createAccount({
     required String email,

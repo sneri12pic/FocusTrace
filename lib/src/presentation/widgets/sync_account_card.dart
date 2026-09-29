@@ -85,7 +85,10 @@ class _SyncAccountCardState extends ConsumerState<SyncAccountCard> {
     final busy = state.isAuthenticating;
     return [
       if (state.accountDeleted) ...[
-        Text(key: const ValueKey('sync-account-deleted'), l10n.settingsSyncDeleted),
+        Text(
+          key: const ValueKey('sync-account-deleted'),
+          l10n.settingsSyncDeleted,
+        ),
         const SizedBox(height: 12),
       ],
       TextField(
@@ -156,8 +159,9 @@ class _SyncAccountCardState extends ConsumerState<SyncAccountCard> {
         subtitle: Text(l10n.settingsSyncEnabledSubtitle),
         onChanged: state.isSyncing
             ? null
-            : (value) =>
-                  ref.read(syncViewModelProvider.notifier).setSyncEnabled(value),
+            : (value) => ref
+                  .read(syncViewModelProvider.notifier)
+                  .setSyncEnabled(value),
       ),
       const SizedBox(height: 8),
       Row(
@@ -203,15 +207,12 @@ class _SyncAccountCardState extends ConsumerState<SyncAccountCard> {
       ),
       if (state.phase != SyncPhase.idle) ...[
         const SizedBox(height: 8),
-        Text(
-          key: const ValueKey('sync-phase-label'),
-          switch (state.phase) {
-            SyncPhase.syncing => l10n.settingsSyncStateSyncing,
-            SyncPhase.success => l10n.settingsSyncStateSuccess,
-            SyncPhase.error => l10n.settingsSyncStateError,
-            SyncPhase.idle => '',
-          },
-        ),
+        Text(key: const ValueKey('sync-phase-label'), switch (state.phase) {
+          SyncPhase.syncing => l10n.settingsSyncStateSyncing,
+          SyncPhase.success => l10n.settingsSyncStateSuccess,
+          SyncPhase.error => l10n.settingsSyncStateError,
+          SyncPhase.idle => '',
+        }),
       ],
     ];
   }

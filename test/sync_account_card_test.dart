@@ -173,13 +173,14 @@ void main() {
       await tester.ensureVisible(
         find.byKey(const ValueKey('sync-delete-account-button')),
       );
-      await tester.tap(find.byKey(const ValueKey('sync-delete-account-button')));
+      await tester.tap(
+        find.byKey(const ValueKey('sync-delete-account-button')),
+      );
       await tester.pumpAndSettle();
     }
 
-    FilledButton confirmButton(WidgetTester tester) => tester.widget(
-      find.byKey(const ValueKey('sync-delete-confirm-button')),
-    );
+    FilledButton confirmButton(WidgetTester tester) =>
+        tester.widget(find.byKey(const ValueKey('sync-delete-confirm-button')));
 
     Future<void> typePassword(WidgetTester tester, String password) async {
       await tester.enterText(
@@ -199,7 +200,9 @@ void main() {
 
       expect(find.text('Delete your FocusTrace account?'), findsOneWidget);
       expect(
-        find.textContaining('permanently deletes your FocusTrace cloud account'),
+        find.textContaining(
+          'permanently deletes your FocusTrace cloud account',
+        ),
         findsOneWidget,
       );
       expect(find.textContaining('synced to the server'), findsOneWidget);
@@ -238,11 +241,16 @@ void main() {
       await openDialog(tester);
       await typePassword(tester, 'current-password');
 
-      await tester.tap(find.byKey(const ValueKey('sync-delete-confirm-button')));
+      await tester.tap(
+        find.byKey(const ValueKey('sync-delete-confirm-button')),
+      );
       await tester.pumpAndSettle();
 
       expect(repository.deletedWith, 'current-password');
-      expect(find.byKey(const ValueKey('sync-account-deleted')), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('sync-account-deleted')),
+        findsOneWidget,
+      );
       expect(find.byKey(const ValueKey('sync-email-field')), findsOneWidget);
       expect(find.text('a@example.com'), findsNothing);
     });
@@ -256,11 +264,15 @@ void main() {
       await openDialog(tester);
       await typePassword(tester, 'wrong-password');
 
-      await tester.tap(find.byKey(const ValueKey('sync-delete-confirm-button')));
+      await tester.tap(
+        find.byKey(const ValueKey('sync-delete-confirm-button')),
+      );
       await tester.pumpAndSettle();
 
       expect(
-        find.text('That password is not correct. Your account was not deleted.'),
+        find.text(
+          'That password is not correct. Your account was not deleted.',
+        ),
         findsOneWidget,
       );
       expect(find.text('a@example.com'), findsOneWidget);
@@ -300,10 +312,7 @@ class _FakeSyncRepository implements SyncRepository {
   Future<DateTime?> lastSuccessfulSyncAt() async => lastSuccess;
 
   @override
-  Future<void> signIn({
-    required String email,
-    required String password,
-  }) async {
+  Future<void> signIn({required String email, required String password}) async {
     signInCalls++;
     signedIn = true;
     this.email = email;
