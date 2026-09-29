@@ -320,14 +320,33 @@ class SyncRepositoryImpl implements SyncRepository {
       );
     }
 
-    final deviceId = await _installationId();
+    var deviceId = await _installationId();
+    final displayName = await _deviceName();
     // Idempotent: 201 once, 200 for every run after, and it keeps
     // last_seen_at current. It never creates a second device.
-    await _api.registerDevice(
-      deviceId: deviceId,
-      displayName: await _deviceName(),
-      platform: _platform,
-    );
+    try {
+      await _api.registerDevice(
+        deviceId: deviceId,
+        displayName: displayName,
+        platform: _platform,
+      );
+    } on SyncApiException catch (error) {
+      if (error.statusCode != 409) {
+        rethrow;
+      }
+      // D12: another account owns this id - one this installation signed out
+      // of. Ownership never moves, so this installation becomes a new device
+      // for the signed-in account. Marker first, database id as the commit
+      // point, as in _installationId; consent and progress are this account's.
+      deviceId = _randomUuidV4();
+      await _installationMarker?.write(deviceId);
+      await _local.writeSetting(SyncSettingKeys.installationId, deviceId);
+      await _api.registerDevice(
+        deviceId: deviceId,
+        displayName: displayName,
+        platform: _platform,
+      );
+    }
 
     final results = <SyncUploadResult>[];
     var rejected = 0;

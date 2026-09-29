@@ -5,6 +5,81 @@ session reads to continue safely.
 
 ---
 
+## 2026-09-29 — Slices committed; physical-device pass; account-switch 409 fixed
+
+Date: 2026-09-29
+Agent: Claude Code
+Goal: Commit the three 2026-09-26 slices separately, verify them, run the
+physical-device pass, correct stale status lines.
+
+Completed:
+- Commits `1d1a72e` (history query), `b11589d` (installation identity),
+  `9d3a949` (account-scoped watermark), each built from the intermediate
+  snapshot its session saved under `.local/` (blob hashes checked against the
+  working tree); `ae47db8` corrected stale status lines. The identity-only state
+  was verified on its own: `flutter analyze` clean, `flutter test` 243 passed.
+- Physical pass on SM-A366B (Android 16, API 36), debug build
+  `--dart-define=FOCUSTRACE_SYNC_BASE_URL=http://127.0.0.1:18080` over
+  `adb reverse` to `bootRun` on PostgreSQL 16 in Docker, installed with
+  `install -r` over the existing dev app (its local data kept):
+  - Sign-in and opt-in: device registered with `display_name` `SM-A366B`
+    (= `Build.MODEL`), 5 local days uploaded; marker equals the database id.
+  - Opt-in enqueued the periodic work, which ran at once through `SyncWorker`'s
+    headless engine: `SUCCESS`.
+  - Cold headless run: network off (airplane mode), opt out/in, process killed,
+    network on. JobScheduler started a new process for `SystemJobService` only
+    (no activity); `SyncWorker` refreshed the session from the sealed credential
+    and uploaded today's row (server `received_at` matches): `SUCCESS`.
+  - Backend unreachable (`adb reverse --remove`): `RETRY`.
+  - Manual "Sync now" concurrently with a starting worker: both completed,
+    worker `SUCCESS`.
+  - WorkManager database: exactly one `focustrace_periodic_sync_v1`, 6 h; opt-out
+    and logout leave it `CANCELLED`. Logout cleared opt-in, email and the
+    credential value; marker, id, watermark and its owner kept.
+  - Logcat since install (174,000 lines, all processes): no password, JWT or
+    `Authorization` from any FocusTrace process; the `Bearer`/`refreshToken`
+    hits all belong to telephony and Samsung account processes. Server log: no
+    secrets.
+  - A `JobScheduler` force-run cannot bypass WorkManager's own period check
+    ("executed before schedule"); forcing needs `-n androidx.work.systemjobscheduler`
+    and a work that has not completed a period yet.
+  - Plain `http://` worked from `dart:io`: Android's cleartext policy does not
+    constrain it, so refusing insecure transport in release builds must be done
+    in code.
+- **Defect found and fixed:** A, sign out, B on one installation - every run
+  was `POST /devices` `409` (D12: A owns the id), the worker ended `FAILURE`, the
+  card showed "Sync failed" permanently and B received nothing. The client never
+  implemented D12's "regenerate on 409"; the unit fake did not enforce ownership,
+  so the 2026-09-26 watermark tests passed. Fix in `SyncRepositoryImpl._syncNow`:
+  on `409` bind a new id (marker, then database id) and register once more. The
+  fake now returns `409` for another account's id; before the fix the two
+  switch tests failed, after it 75/75. On the phone: B got a new device with all
+  5 days, A's device and its 5 days untouched, marker equal to the new id.
+
+Verification: server `./gradlew test --rerun` 273/273 and `clean build` PASS
+(Testcontainers); `flutter analyze` clean; `flutter test` 248 passed, 1 skipped;
+`test/sync_end_to_end_test.dart` against `bootRun` 3/3; `flutter build apk
+--debug` PASS; `android ./gradlew :app:testDebugUnitTest :app:lintDebug
+:app:compileDebugAndroidTestKotlin` PASS (119 tests, 1 skipped); `git diff
+--check` clean. `connectedDebugAndroidTest` not run: AGP uninstalls the app
+afterwards, which would delete the dev app's data.
+
+Not verified: an actual Android backup restore or device transfer (needs the
+device-wide backup transport switched and the dev app uninstalled; not done
+without the owner's consent).
+
+Remaining: see plan section 5 and 6.
+
+Risks / unresolved questions:
+- Switching back to an earlier account on one installation creates another
+  device for it and duplicates the re-uploaded history across its devices.
+- A stale Flutter build reused the pre-fix kernel once (`flutter clean` fixed
+  it); check `kernel_blob.bin` or behaviour before trusting a device result.
+
+Relevant commit: this entry's commit.
+
+---
+
 ## 2026-09-26 — Upload progress scoped to the account
 
 Date: 2026-09-26
@@ -44,6 +119,9 @@ Completed:
   newer than the copied watermark; restored history stays with the original device.
   Progress recorded before this change (no owner) is discarded once: one
   re-upload answered `DUPLICATE` for the same account.
+  (Corrected 2026-09-29: after a sign-out, not a deletion or restore, the real
+  server refused this installation's identity with `409` and B received nothing;
+  the fake did not enforce device ownership. Fixed that day; see its entry.)
 
 Files materially changed (this slice): `focus_trace_local_data_source.dart` (key),
 `focus_trace_sync_api.dart` (`accountId`), `sync_repository_impl.dart` (check in

@@ -172,8 +172,9 @@ Remaining for Sync v1 correctness, none of it blocking the slice:
   WorkManager execution through the existing repository and process gate.
   The startup/completion lifecycle blocker is closed with bounded pre-admission
   startup and post-release cleanup, preserving safe protected-operation drain.
-  Actual headless-device execution and real-backend background verification
-  remain pending where a connected device/backend are available.
+  Headless execution against the real backend was verified on an SM-A366B on
+  2026-09-29 (progress entry of that date), including a cold process started
+  only for the job.
 - Windows days are out of scope. Every Windows day is Dart-written with no
   snapshot row and the current day mutates within the day, which the single
   imported-version stamp cannot express (architecture 7.2). The Windows shell is
@@ -235,6 +236,15 @@ Before public release (backend):
   re-sends nothing, legacy progress without an owner is discarded once, and an
   interrupted switch completes on retry (`sync_repository_test.dart`, real-backend
   E2E).
+- ~~Account switch on one installation fails permanently~~: resolved 2026-09-29
+  (architecture section 3). Found on a physical device: the installation's id
+  belonged to the first account, so every registration for the second was `409`
+  and sync failed with no recovery; the unit fake had not enforced device
+  ownership. Accepted when the second account's run binds a new id, uploads the
+  whole local history under it, and leaves the first account's device untouched
+  (`sync_repository_test.dart` with an ownership-enforcing fake; SM-A366B against
+  the real backend). Known cost: switching back duplicates history across the
+  first account's two devices.
 
 ## 6. Release blockers outside the backend
 

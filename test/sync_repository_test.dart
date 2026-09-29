@@ -848,6 +848,7 @@ void main() {
       'switching to another account offers it the whole local history',
       () async {
         await syncedAsA(repository);
+        final idOfA = await repository.installationId();
         await repository.signOut();
 
         await repository.signIn(email: 'b@example.com', password: 'pw');
@@ -856,6 +857,19 @@ void main() {
 
         expect(run.succeeded, isTrue);
         expect(receivedBy('b@example.com'), ['2026-09-16', '2026-09-17']);
+        // A owns the old id (D12 409), so B's uploads are under a new one.
+        final idOfB = await repository.installationId();
+        expect(idOfB, isNot(idOfA));
+        expect(
+          backend.uploadLog.where((e) => e.startsWith('b@example.com|')),
+          everyElement(contains('|$idOfB|')),
+        );
+        expect(
+          backend.uploadLog.where((e) => e.contains('|$idOfA|')),
+          everyElement(startsWith('a@example.com|')),
+        );
+        expect((await repository.syncNow()).succeeded, isTrue);
+        expect(await repository.installationId(), idOfB);
       },
     );
 
@@ -1674,10 +1688,11 @@ class _StoredDay {
 }
 
 class _Device {
-  _Device(this.deviceId, this.displayName);
+  _Device(this.deviceId, this.displayName, this.account);
 
   final String deviceId;
   String displayName;
+  final String? account;
 }
 
 /// A minimal stand-in for the Spring backend, answering real HTTP.
@@ -1807,14 +1822,19 @@ class _FakeBackend {
         if (!_authorized(request)) return reply(401);
         final deviceId = body['deviceId']! as String;
         final displayName = body['displayName']! as String;
+        final account = _accountOf[request.headers
+            .value(HttpHeaders.authorizationHeader)!
+            .substring(7)];
         final existing = devices
             .where((device) => device.deviceId == deviceId)
             .firstOrNull;
         if (existing != null) {
+          // D12: ownership never moves; another account's id is a 409.
+          if (existing.account != account) return reply(409);
           existing.displayName = displayName;
           return reply(200, {'deviceId': deviceId});
         }
-        devices.add(_Device(deviceId, displayName));
+        devices.add(_Device(deviceId, displayName, account));
         return reply(201, {'deviceId': deviceId});
       case '/api/v1/sync/usage-days':
         if (!_authorized(request)) return reply(401);

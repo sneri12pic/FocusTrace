@@ -148,6 +148,14 @@ registered under an unbound id. An unreadable or unwritable marker fails the
 operation instead of being treated as absent. The old device row stays on the
 server and ages out of the active-device quota after 90 days (D18).
 
+**Another account's id (implemented 2026-09-29).** An id registered by one
+account stays that account's (D12: ownership never moves), so after signing out
+of A and into B the installation's `POST /devices` is `409`. The client then binds
+a new id - marker, then database id - and registers once more; opt-in and
+progress are left as they are. Returning to A repeats this, so A gains a second
+device and the local history re-uploaded under it duplicates what A's first
+device already holds for those days.
+
 A `display_name` (user-editable, defaults to `Build.MODEL`) and `platform`
 (`android` / `windows`) are stored for UI only.
 
@@ -1549,7 +1557,8 @@ the owner is unknown (progress recorded before this tag), the watermark is reset
 to `0` and the owner rewritten - reset first, owner second, so an interrupted
 switch repeats. Signing out keeps both, so signing back into the same account
 re-sends nothing; any other account - after a sign-out, an account deletion, or a
-restore - receives the whole local history. Until this, signing out of A and into
+restore - receives the whole local history, under a new device id when another
+account owns this one (section 3). Until this, signing out of A and into
 B uploaded nothing of A-era history to B: the watermark carried no owner, and
 `signOut` kept it for the same-account case. The account email is not the owner
 key: after a deletion the same address can belong to a different account.
