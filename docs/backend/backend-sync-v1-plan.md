@@ -207,7 +207,8 @@ Before public release (backend):
   at the bound succeeds, one row past it is `400` with nothing truncated, rows
   spread over devices cannot escape it, the device filter and D16 behaviour are
   unchanged, and the index exists beside V2's partial one (`HistoryBoundIT`,
-  `FlywayBaselineIT`).
+  `FlywayBaselineIT`). The residual full-range sort was removed by ordering
+  candidate days before fetching apps (architecture 9.3, 2026-09-26).
 - The Sync v1 client restarts a failed run from its first batch, so an upload
   larger than the 300-request burst could never finish. The limit is sized above
   realistic full uploads; advancing the watermark per accepted batch would remove

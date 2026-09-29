@@ -3,17 +3,22 @@ package com.stepandemianenko.focustrace.sync.usage;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
 
+import com.stepandemianenko.focustrace.sync.common.SyncLimits;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 
 /**
  * Phase 1 Step 5: {@code GET /api/v1/usage} against PostgreSQL (architecture 9.3).
  * Closes plan criterion 11's history half and criterion 13's usage-read half.
  */
 class UsageHistoryIT extends UsageTestSupport {
+
+    @Autowired
+    SyncLimits limits;
 
     private static final String HISTORY = "/api/v1/usage";
 
@@ -135,6 +140,44 @@ class UsageHistoryIT extends UsageTestSupport {
         // to is exclusive, so to == from asks for nothing. Both are client bugs, not empty results.
         assertThat(read(account, range(DAY_2, DAY_2)).status()).isEqualTo(400);
         assertThat(read(account, range(DAY_3, DAY_1)).status()).isEqualTo(400);
+    }
+
+    /**
+     * Architecture 9.3 at the production default, not a test-sized bound: 40 days of
+     * 500 apps is exactly 20,000 rows and returns whole; one more stored day without
+     * apps is row 20,001, and the request is refused. Rows are inserted directly -
+     * uploading them would take 20 requests and prove nothing more.
+     */
+    @Test
+    @SuppressWarnings("unchecked")
+    void theProductionBoundAccepts20000RowsAndRefusesThe20001st() {
+        assertThat(limits.maxHistoryRows()).isEqualTo(20_000);
+        Account account = newAccount();
+        UUID device = newDevice(account);
+        LocalDate first = TODAY.minusDays(60);
+        jdbc.update("""
+                INSERT INTO usage_days (device_id, local_date, snapshot_version, timezone_id, source_status)
+                SELECT ?, CAST(? AS date) + d, 1, 'Europe/London', 'reconciled' FROM generate_series(0, 39) d""",
+                device, first);
+        jdbc.update("""
+                INSERT INTO usage_day_apps (device_id, local_date, app_key, app_name, duration_seconds, launch_count)
+                SELECT ?, CAST(? AS date) + d, 'app' || lpad(a::text, 3, '0'), 'App', 60, 1
+                  FROM generate_series(0, 39) d, generate_series(1, 500) a""",
+                device, first);
+        String path = range(first, TODAY);
+
+        List<Map<String, Object>> days = daysOf(read(account, path));
+        assertThat(days).hasSize(40);
+        assertThat(days.stream().mapToInt(day -> apps(day).size()).sum()).isEqualTo(20_000);
+
+        jdbc.update("""
+                INSERT INTO usage_days (device_id, local_date, snapshot_version, timezone_id, source_status)
+                VALUES (?, ?, 1, 'Europe/London', 'reconciled')""", device, first.plusDays(40));
+        Response refused = read(account, path);
+
+        assertThat(refused.status()).isEqualTo(400);
+        assertThat(refused.json()).doesNotContainKey("days");
+        assertThat(refused.body()).contains("20000");
     }
 
     @Test

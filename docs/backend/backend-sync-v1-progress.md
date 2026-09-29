@@ -5,6 +5,108 @@ session reads to continue safely.
 
 ---
 
+## 2026-09-26 — History query work bounded
+
+Date: 2026-09-26
+Agent: Claude Code
+Goal: Establish with PostgreSQL evidence whether a bounded history read still
+expands and sorts the account's whole history, and remove that work if a simple
+change does so without touching the contract.
+
+State before work: HEAD `b2c71de`, clean tree except the unrelated untracked
+`.agents/` and `skills-lock.json` (excluded).
+
+Fixture and method (`.local/history-bench/`, gitignored; `setup.sh`,
+`fixture.sql`, `baseline.sql`, `candidate-a.sql`, `equivalence.sh`,
+`extract.py`, raw `EXPLAIN (ANALYZE, BUFFERS)` output): `postgres:16-alpine`
+(PostgreSQL 16.15, the Testcontainers image, defaults: `work_mem` 4 MB,
+`shared_buffers` 128 MB), V1-V4 applied. A D18-consistent maximum account of 14
+devices x 260 days (2026-01-01..2026-09-17, 3,640 stored days, budget 3,650) x
+500 apps = 1,820,000 app rows, a small account (30 days x 60 apps + 2 app-less
+days), and 2,000 background accounts; 3,021,800 app rows in total; `VACUUM
+ANALYZE`. The production SQL as a prepared statement, range 2026-01-01..2026-09-28,
+`LIMIT 20001`, 2-4 runs per case (first run reported separately), custom and
+forced-generic plans.
+
+Cause (original plan, all devices): owner filtering ran first and was cheap (14
+devices, 3,640 candidate days in about 2 ms). A nested loop then probed
+`usage_day_apps_pkey` 3,640 times and produced all 1,820,000 joined rows (about
+1.86 M shared buffers), which a single `Sort` ordered by date, device and app -
+external merge, sort node `Disk: 231560kB`, statement temp 58,016 blocks written
+and 29,431 read - before `LIMIT` took 20,001. The days came device by device, so
+no presorted prefix existed; the planner estimated 442 days and 20,954 rows. With
+one device the days arrive in date order and an incremental sort already stopped
+early - except under a generic plan, which sorted all 130,000 rows on disk.
+
+Alternatives evaluated:
+- Ordered candidate days in a subquery, apps via `LEFT JOIN LATERAL` (chosen):
+  no index, no planner settings, same result and order.
+- An index: rejected - owner filtering and the per-day app lookup already use
+  indexes; the missing piece was row order, and ordering needs `user_id` on
+  `usage_days` (denormalisation), which is out of scope.
+- A `MATERIALIZED` CTE: not adopted - PostgreSQL 16 does not carry a CTE's sort
+  order to the outer query, so the outer `ORDER BY` would sort everything again.
+- `work_mem` or planner settings: excluded by scope.
+
+Completed:
+- `UsageDays.history` now orders the caller's candidate days first and fetches
+  each day's apps with `LEFT JOIN LATERAL`; outer `ORDER BY` and `LIMIT max + 1`
+  unchanged, one statement.
+- Proven identical: hashes of the complete ordered output of old and new SQL
+  matched for 7 parameter sets (217,000 untruncated rows; the production 20,001
+  shape with and without `deviceId`; a device slice; the small account with its
+  app-less days; foreign and unknown `deviceId`).
+
+Before/after (SQL extracted from the Java source at `b2c71de` and in the working
+tree, same fixture, warm):
+
+| Case | Before | After |
+| --- | --- | --- |
+| all devices, custom | 1.71-1.87 s (2.39 s first); 1,820,000 joined rows; merge 231,560 kB; temp w 58,016 / r 29,431 | 19-20 ms (42 ms first); 20,501 rows, 42 days; no temp |
+| all devices, generic | 3.21-3.35 s; same spill | 19-23 ms; no temp |
+| one device, custom | 25 ms; incremental sort | 14-20 ms |
+| one device, generic | 192-208 ms; 130,000 rows; merge 16,600 kB; temp w 2,084 / r 709 | 14 ms; no temp |
+| small account | 1.1 ms (1,802 rows) | 1.0 ms |
+
+`LIMIT` now stops the expensive work: the app fetch runs only for the days that
+produce the first 20,001 rows. What remains per read is selecting and sorting the
+candidate days (at most 3,650 rows, in memory).
+
+Files materially changed: `server/.../usage/UsageDays.java` (history SQL and
+Javadoc); `server/.../usage/UsageHistoryIT.java` (new test: the production default
+is 20,000, exactly 20,000 rows return whole, row 20,001 is the 400);
+architecture 9.3, security baseline section 9, plan section 5, this entry.
+
+Verification (PostgreSQL 16 via Testcontainers, all with `--rerun`):
+- `UsageHistoryIT` 17/17, `HistoryBoundIT` 8/8, `FlywayBaselineIT` 7/7,
+  `PerUserRateLimitIT` 6/6: PASS.
+- `./gradlew test --rerun`: PASS, 26 suites, 273 tests, 0 failures, 0 errors,
+  0 skipped. `./gradlew clean build`: PASS, same 273. `git diff --check`: clean.
+- Mutation (measured): `b2c71de`'s SQL run again on the same fixture restored the
+  full expansion and spill (old-again row above). No production file was
+  mutated; the working-tree `UsageDays.java` matches the recorded candidate hash
+  (`802892a6...c7287`).
+
+Decisions made: history query shape in architecture 9.3 (benchmark figures are
+observations, not guarantees).
+
+Remaining production blockers, in order: installation-ID backup fix; privacy,
+README and Play copy plus the web account-deletion page; the staging deployment
+(proxy, TLS, private port, backups, log persistence) and the physical-device pass;
+session/token row cleanup before a wide rollout.
+
+Risks / unresolved questions:
+- The plan relies on the planner choosing the nested loop with incremental sort.
+  It did so under custom and generic plans despite underestimating rows per day
+  by about 80x; a more accurate estimate only makes the early stop cheaper
+  relative to a full sort. Not guarded by a plan-shape test (by design).
+- Measured on one synthetic distribution and container defaults, not on
+  production hardware or data.
+
+Relevant commit: uncommitted.
+
+---
+
 ## 2026-09-26 — History response bound and refresh-session index
 
 Date: 2026-09-26

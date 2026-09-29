@@ -1902,12 +1902,32 @@ apps a day, or 200 days at 100. A caller needing more narrows the range or asks
 per device - the Sync v1 app currently has no screen that reads history at all.
 Before this, a single read of an account at its D18 budget returned 1,825,000 rows.
 
-Residual, measured on PostgreSQL 16: `LIMIT` bounds what leaves the database,
-not the sort. For an account at its full D18 budget (10 devices x 365 days x 500
-apps) PostgreSQL still sorts every joined row in the range - about 2.4 s and a
-218 MB temporary-file spill - before returning 20,001 rows. That work is bounded
-by the stored-day budget and by the 60-per-hour history limit, not by the response
-bound.
+**Query shape (2026-09-26).** The caller's candidate days - at most the D18
+stored-day budget - are selected and ordered by `(local_date, device_id)` in a
+subquery first, and each day's apps are fetched through `LEFT JOIN LATERAL` on
+`usage_day_apps_pkey`. The join then emits rows already in day order, PostgreSQL
+finishes the order with an incremental sort within each day, and `LIMIT` stops the
+app fetch as soon as the sentinel row exists. The outer `ORDER BY` is unchanged,
+the result is row-for-row identical to the plain three-table join, and it is still
+one statement (one snapshot, no N+1). No index was added.
+
+Observed, not contractual (PostgreSQL 16.15, container defaults, `work_mem`
+4 MB; a D18-consistent account of 14 devices x 260 days x 500 apps = 1,820,000 app
+rows among 3.0 M; full range, warm):
+
+| Request | Plain join (before) | Ordered days + `LATERAL` |
+| --- | --- | --- |
+| all devices | 1.7-1.9 s; all 1,820,000 rows joined, then external-merge sort (sort node 231,560 kB; temp 58,016 blocks written, 29,431 read) | about 20 ms; 42 days / 20,501 rows fetched; in-memory sorts only |
+| all devices, generic plan | 3.2-3.4 s, same spill | about 19-23 ms |
+| one device, generic plan | about 200 ms; 130,000 rows, external merge 16,600 kB | about 14 ms; 20,501 rows |
+| one device, custom plan | about 25 ms (already incremental) | about 14-20 ms |
+| small account (1,802 rows) | about 1.1 ms | about 1.0 ms |
+
+The generic-plan rows matter because the JDBC driver switches to server-side
+prepared statements from the fifth execution. Remaining work per read: selecting
+and sorting the candidate days (at most 3,650, in memory) plus fetching apps for
+the days up to the sentinel - proportional to the response bound, not to the
+account's history.
 
 ### 9.4 Future incremental sync
 

@@ -169,23 +169,33 @@ class UsageDays {
      * so an unowned or unknown {@code deviceId} filters to nothing instead of being
      * resolved and then rejected (D16). {@code deviceId} may be null (no filter).
      *
-     * <p>Bounded: at most {@code maxHistoryRows} result rows. {@code LIMIT} one past
-     * the bound keeps PostgreSQL to a top-N sort of that size, and seeing the extra
-     * row rejects the whole request with 400 - never a truncated history.
+     * <p>Bounded: at most {@code maxHistoryRows} result rows, and seeing row
+     * {@code maxHistoryRows + 1} rejects the whole request with 400 - never a
+     * truncated history.
+     *
+     * <p>The caller's candidate days (at most the D18 stored-day budget) are ordered
+     * first and each day's apps are fetched after, so the join emits rows already in
+     * (local_date, device_id) order and PostgreSQL can stop at the {@code LIMIT}
+     * instead of expanding and sorting every app row in the range (architecture 9.3).
+     * The result and its order are exactly those of the plain three-table join.
      */
     List<HistoryDay> history(UUID userId, LocalDate from, LocalDate to, UUID deviceId) {
         int maxRows = limits.maxHistoryRows();
         return jdbc.sql("""
-                        SELECT d.device_id, dev.display_name, d.local_date, d.timezone_id, d.snapshot_version,
+                        SELECT d.device_id, d.display_name, d.local_date, d.timezone_id, d.snapshot_version,
                                a.app_key, a.app_name, a.duration_seconds, a.launch_count
-                          FROM usage_days d
-                          JOIN devices dev ON dev.id = d.device_id
-                          LEFT JOIN usage_day_apps a
-                                 ON a.device_id = d.device_id AND a.local_date = d.local_date
-                         WHERE dev.user_id = :userId
-                           AND d.local_date >= :from
-                           AND d.local_date < :to
-                           AND (CAST(:deviceId AS uuid) IS NULL OR d.device_id = CAST(:deviceId AS uuid))
+                          FROM (SELECT d.device_id, dev.display_name, d.local_date, d.timezone_id, d.snapshot_version
+                                  FROM usage_days d
+                                  JOIN devices dev ON dev.id = d.device_id
+                                 WHERE dev.user_id = :userId
+                                   AND d.local_date >= :from
+                                   AND d.local_date < :to
+                                   AND (CAST(:deviceId AS uuid) IS NULL OR d.device_id = CAST(:deviceId AS uuid))
+                                 ORDER BY d.local_date, d.device_id) d
+                          LEFT JOIN LATERAL (SELECT a.app_key, a.app_name, a.duration_seconds, a.launch_count
+                                               FROM usage_day_apps a
+                                              WHERE a.device_id = d.device_id
+                                                AND a.local_date = d.local_date) a ON true
                          ORDER BY d.local_date, d.device_id, a.app_key
                          LIMIT :rowLimit""")
                 .param("userId", userId)

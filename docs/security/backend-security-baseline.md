@@ -497,8 +497,10 @@ rows in one transaction.
 No unbounded, client-controlled bulk endpoint is added. The history read is
 bounded by its 400-day range and, since per-device fan-out made that range
 insufficient, by a hard response bound of 20,000 result rows (architecture 9.3).
-The database still sorts every row in the range before the bound applies; that
-work is bounded by the stored-day budget and the per-user history limit (D18).
+The query orders the caller's candidate days first and fetches apps per day, so
+the database stops at the bound instead of expanding and sorting the whole range
+(measured on a budget-sized account: about 20 ms instead of 1.7-3.4 s with a
+231 MB sort spill; architecture 9.3).
 
 ---
 
