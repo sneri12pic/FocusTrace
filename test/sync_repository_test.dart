@@ -828,6 +828,139 @@ void main() {
     );
   });
 
+  group('account-scoped upload progress', () {
+    /// Dates each account has received, in upload order.
+    List<String> receivedBy(String account) => [
+      for (final entry in backend.uploadLog)
+        if (entry.startsWith('$account|')) entry.split('|')[2],
+    ];
+
+    Future<void> syncedAsA(SyncRepositoryImpl repo) async {
+      await repo.signIn(email: 'a@example.com', password: 'pw');
+      await repo.setSyncEnabled(true);
+      await seedDay('2026-09-16', queriedAtMs: 1000);
+      await seedDay('2026-09-17', queriedAtMs: 2000);
+      expect((await repo.syncNow()).countOf(SyncDayOutcome.applied), 2);
+      expect(await watermark(), 2000);
+    }
+
+    test(
+      'switching to another account offers it the whole local history',
+      () async {
+        await syncedAsA(repository);
+        await repository.signOut();
+
+        await repository.signIn(email: 'b@example.com', password: 'pw');
+        await repository.setSyncEnabled(true);
+        final run = await repository.syncNow();
+
+        expect(run.succeeded, isTrue);
+        expect(receivedBy('b@example.com'), ['2026-09-16', '2026-09-17']);
+      },
+    );
+
+    test('signing back into the same account re-sends nothing', () async {
+      await syncedAsA(repository);
+      await repository.signOut();
+
+      await repository.signIn(email: 'a@example.com', password: 'pw');
+      await repository.setSyncEnabled(true);
+      await repository.syncNow();
+
+      expect(receivedBy('a@example.com'), ['2026-09-16', '2026-09-17']);
+    });
+
+    test(
+      'a restored copy signed into another account gives it the whole history',
+      () async {
+        final marker = _MemoryMarker();
+        final original = repositoryFor(credentials, marker: marker);
+        await syncedAsA(original);
+        final originalId = await original.installationId();
+        final target = await Directory.systemTemp.createTemp('sync_restored');
+        addTearDown(() async {
+          if (target.existsSync()) await target.delete(recursive: true);
+        });
+        await db.execute('VACUUM INTO ?', [
+          p.join(target.path, 'focus_trace.db'),
+        ]);
+        final copy = SqfliteFocusTraceLocalDataSource(
+          databaseFactoryOverride: databaseFactoryFfi,
+          applicationSupportDirectoryProvider: () async => target,
+        );
+        addTearDown(copy.close);
+        final store = _MemoryCredentialStore();
+        final ownMarker = _MemoryMarker();
+        SyncRepositoryImpl onNewDevice(int seed) =>
+            repositoryFor(store, seed: seed, marker: ownMarker, source: copy);
+        final restored = onNewDevice(99);
+
+        await restored.signIn(email: 'b@example.com', password: 'pw');
+        // Still an explicit opt-in on this device.
+        expect(await restored.isSyncEnabled(), isFalse);
+        expect(await runBackgroundSync(onNewDevice(100)), 'success');
+        expect(receivedBy('b@example.com'), isEmpty);
+
+        await restored.setSyncEnabled(true);
+        expect(await runBackgroundSync(onNewDevice(101)), 'success');
+
+        final newId = await restored.installationId();
+        expect(newId, isNot(originalId));
+        expect(receivedBy('b@example.com'), ['2026-09-16', '2026-09-17']);
+        expect(
+          backend.uploadLog.where((e) => e.startsWith('b@example.com|')),
+          everyElement(contains('|$newId|')),
+        );
+        // The original device's uploads are untouched and only ever its own.
+        expect(
+          backend.uploadLog.where((e) => e.contains('|$originalId|')),
+          everyElement(startsWith('a@example.com|')),
+        );
+      },
+    );
+
+    test(
+      'progress recorded before accounts were tracked is discarded once',
+      () async {
+        await repository.signIn(email: 'a@example.com', password: 'pw');
+        await repository.setSyncEnabled(true);
+        await seedDay('2026-09-16', queriedAtMs: 1000);
+        await local.writeSetting(SyncSettingKeys.usageWatermarkMs, '5000');
+
+        final first = await repository.syncNow();
+        final second = await repository.syncNow();
+
+        expect(first.countOf(SyncDayOutcome.applied), 1);
+        expect(second.uploadedDays, 0);
+        expect(
+          await local.readSetting(SyncSettingKeys.usageWatermarkAccount),
+          'user-a@example.com',
+        );
+      },
+    );
+
+    test(
+      'an interrupted switch keeps the reset and completes on retry',
+      () async {
+        await syncedAsA(repository);
+        await repository.signOut();
+        await repository.signIn(email: 'b@example.com', password: 'pw');
+        await repository.setSyncEnabled(true);
+        backend.nextUploadStatus = 503;
+
+        expect((await repository.syncNow()).succeeded, isFalse);
+        expect(await watermark(), 0);
+        expect(
+          await local.readSetting(SyncSettingKeys.usageWatermarkAccount),
+          'user-b@example.com',
+        );
+
+        expect((await repository.syncNow()).succeeded, isTrue);
+        expect(receivedBy('b@example.com'), ['2026-09-16', '2026-09-17']);
+      },
+    );
+  });
+
   group('syncNow', () {
     test('does nothing at all when signed out', () async {
       await seedDay('2026-09-17', queriedAtMs: 1000);
@@ -1592,9 +1725,23 @@ class _FakeBackend {
 
   Future<void> stop() => _server.close(force: true);
 
-  Map<String, Object?> _issueSession() {
-    final access = 'access-token-${_issued++}';
+  /// Every upload, as `account|deviceId|localDate`, in order.
+  final List<String> uploadLog = [];
+
+  /// Which account each live token belongs to.
+  final Map<String, String> _accountOf = {};
+
+  /// JWT-shaped like the real server's: the payload carries the account's `sub`.
+  Map<String, Object?> _issueSession(String account) {
+    final payload = base64Url
+        .encode(
+          utf8.encode(jsonEncode({'sub': 'user-$account', 'n': _issued++})),
+        )
+        .replaceAll('=', '');
+    final access = 'eyJhbGciOiJIUzI1NiJ9.$payload.signature';
     final refresh = 'refresh-token-${_issued++}';
+    _accountOf[access] = account;
+    _accountOf[refresh] = account;
     _liveAccessTokens.add(access);
     _liveRefreshTokens.add(refresh);
     return {'accessToken': access, 'expiresIn': 900, 'refreshToken': refresh};
@@ -1630,10 +1777,10 @@ class _FakeBackend {
 
     switch (request.uri.path) {
       case '/api/v1/auth/register':
-        return reply(201, {'userId': 'user-1'});
+        return reply(201, {'userId': 'user-${body['email']}'});
       case '/api/v1/auth/login':
         if (malformedLogin) return reply(200, <String, Object?>{});
-        return reply(200, _issueSession());
+        return reply(200, _issueSession(body['email']! as String));
       case '/api/v1/auth/refresh':
         if (malformedRefresh) return reply(200, <String, Object?>{});
         refreshCount++;
@@ -1641,7 +1788,7 @@ class _FakeBackend {
         if (presented == null || !_liveRefreshTokens.remove(presented)) {
           return reply(401);
         }
-        return reply(200, _issueSession());
+        return reply(200, _issueSession(_accountOf[presented]!));
       case '/api/v1/auth/logout':
         if (!_authorized(request)) return reply(401);
         _liveRefreshTokens.remove(body['refreshToken']);
@@ -1676,6 +1823,13 @@ class _FakeBackend {
         nextUploadStatus = null;
         if (forced != null) return reply(forced);
         if (rejectEveryUpload) return reply(400, {'detail': 'rejected'});
+        final bearer = request.headers.value(HttpHeaders.authorizationHeader)!;
+        for (final day
+            in (body['days']! as List).cast<Map<String, Object?>>()) {
+          uploadLog.add(
+            '${_accountOf[bearer.substring(7)]}|${body['deviceId']}|${day['localDate']}',
+          );
+        }
         return reply(200, {'results': _applyUpload(body)});
       case '/api/v1/usage':
         if (!_authorized(request)) return reply(401);

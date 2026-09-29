@@ -229,6 +229,13 @@ Before public release (backend):
   and both rule files exclude the marker and the credential in every section
   (`sync_repository_test.dart`, `SyncInstallationMarkerTest`). A real restore and
   device transfer on hardware is still outstanding.
+- ~~Upload progress inherited across accounts~~: resolved 2026-09-26
+  (architecture 8.2). Signing out of one account and into another, or a restored
+  copy signing into another account, uploaded none of the earlier history.
+  Accepted when another account receives the whole local history, the same account
+  re-sends nothing, legacy progress without an owner is discarded once, and an
+  interrupted switch completes on retry (`sync_repository_test.dart`, real-backend
+  E2E).
 
 ## 6. Release blockers outside the backend
 

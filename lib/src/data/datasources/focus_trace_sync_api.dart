@@ -163,6 +163,17 @@ class FocusTraceSyncApi {
     await _credentials.clear();
   }
 
+  /// The signed-in account's server id: the `sub` of the current access token,
+  /// fetched or refreshed as needed. Read locally, not verified - the token came
+  /// from the server over TLS and the value only labels local upload progress.
+  Future<String> accountId() async {
+    final payload = (await _validAccessToken()).split('.')[1];
+    final claims = jsonDecode(
+      utf8.decode(base64Url.decode(base64Url.normalize(payload))),
+    );
+    return (claims as Map<String, Object?>)['sub']! as String;
+  }
+
   // --- devices --------------------------------------------------------------
 
   /// Idempotent on [deviceId]: 201 the first time, 200 afterwards. A 409 means

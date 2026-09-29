@@ -5,6 +5,81 @@ session reads to continue safely.
 
 ---
 
+## 2026-09-26 — Upload progress scoped to the account
+
+Date: 2026-09-26
+Agent: Claude Code
+Goal: Decide whether a watermark earned for one account can make another account
+permanently miss local history, and fix it if so.
+
+State before work: HEAD `b2c71de`; the history-query and installation-identity
+slices both uncommitted (saved as `.local/account-watermark/pre-existing-two-slices.patch`)
+and preserved; untracked `.agents/`, `skills-lock.json`, `docs/backend/temp.md`.
+
+Contract (already documented): 8.2 - "the watermark is an optimisation, not a
+correctness mechanism"; D19's settings table classifies `sync_usage_watermark_ms`
+as "account upload progress" that must not be left "for a later account"; logout
+keeps it only so the **same** account is not re-sent everything. Upload progress
+is therefore per account. No new policy was needed.
+
+Confirmed defect (reproduced before any change, through the real repository and
+database with an account-aware fake server): sign in as A, upload two days, sign
+out, sign in as B, opt in, sync - B received nothing. The watermark carried no
+owner and `signOut` kept it. It predates the identity fix; a restored copy signing
+into another account hit the same path. Clearing `sync_account_email` was not the
+cause, and email would be the wrong key: after a deletion the same address can be
+a different account.
+
+Completed:
+- `sync_usage_watermark_account` (device-local `sync_` key, not portable) holds the
+  server id of the account the watermark was earned for: the access token's `sub`,
+  read locally by `FocusTraceSyncApi.accountId()`.
+- `_syncNow`, the only reader of the watermark, compares it with the signed-in
+  account before selecting days; a different or unknown owner resets existing
+  progress to `0` and records the new owner (watermark first, owner second). A null
+  or zero watermark is left as it is, so a failed run still writes no progress.
+- Outcomes: same account after sign-out - nothing re-sent. Another account after
+  sign-out, deletion or restore - the whole local history, under this
+  installation's identity. Restored copy into the original account - only days
+  newer than the copied watermark; restored history stays with the original device.
+  Progress recorded before this change (no owner) is discarded once: one
+  re-upload answered `DUPLICATE` for the same account.
+
+Files materially changed (this slice): `focus_trace_local_data_source.dart` (key),
+`focus_trace_sync_api.dart` (`accountId`), `sync_repository_impl.dart` (check in
+`_syncNow`), `test/sync_repository_test.dart` (account-aware fake with JWT-shaped
+tokens and an upload log; 5 tests); architecture 3, 8.2 and the D19 settings
+table, plan section 5, this entry, and a supersession note on the identity entry.
+
+Verification (this session):
+- Reproduction failed before the fix (`Expected ['2026-09-16', '2026-09-17'],
+  Actual: []`).
+- `flutter test test/sync_repository_test.dart`: 75 passed, including the existing
+  identity (same-account restore), account-deletion and failed-run tests.
+- Mutation: removing the owner check failed 4 of the 5 new tests (the
+  same-account test correctly still passes); restored byte-identically.
+- Real backend (bootRun on PostgreSQL 16 in Docker; working tree, including the
+  uncommitted history-query change): `test/sync_end_to_end_test.dart` 3/3, proving
+  `sub` decoding on real JWTs and that same-account re-runs still send nothing.
+- `flutter analyze`: no issues. `flutter test`: 248 passed, 0 failed, 1 skipped.
+  `flutter build apk --debug`: PASS. No native code changed; Android unit tests
+  not re-run.
+- `dart format` changes none of the lines added here; the files keep their
+  pre-existing formatting debt.
+
+Remaining limitations:
+- Another account receives restored or earlier history attributed to the
+  uploading installation: the local schema has no per-day record of which
+  installation measured a day.
+- The account id is read from the token without verification; it only labels
+  local progress and grants nothing.
+- The physical-device restore procedure in the identity entry is still
+  outstanding.
+
+Relevant commit: uncommitted.
+
+---
+
 ## 2026-09-26 — Installation identity survives backup and transfer
 
 Date: 2026-09-26
@@ -110,6 +185,8 @@ Risks / unresolved questions:
 - A restored copy signed into a different account keeps the copied watermark, so
   that account receives only new days - the same semantics as signing out and
   into another account today.
+  (Superseded the same day: that behaviour was a defect; see "Upload progress
+  scoped to the account".)
 - Days measured by the original but not yet uploaded when the backup was taken
   upload from the restored copy under its new identity.
 

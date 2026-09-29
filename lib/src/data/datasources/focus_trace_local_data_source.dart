@@ -85,6 +85,10 @@ abstract interface class UsageReportSnapshotDataSource {
 abstract final class SyncSettingKeys {
   static const installationId = 'sync_installation_id';
   static const usageWatermarkMs = 'sync_usage_watermark_ms';
+
+  /// The account (server user id) [usageWatermarkMs] was earned for. Upload
+  /// progress is per account: any other account starts from zero.
+  static const usageWatermarkAccount = 'sync_usage_watermark_account';
   static const importedVersionMs = 'sync_imported_version_ms';
 
   /// Opt-in. Absent means off: sync never starts on its own.

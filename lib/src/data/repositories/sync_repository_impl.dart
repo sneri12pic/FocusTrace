@@ -290,6 +290,18 @@ class SyncRepositoryImpl implements SyncRepository {
         SyncFailureReason.notSignedIn,
       );
     }
+    // Upload progress is the account's, not the installation's (architecture
+    // 8.2): progress earned for another account - one signed out of, or copied
+    // in by a restore - or of unknown ownership counts as none. Watermark first,
+    // owner second, so an interrupted switch repeats rather than half-applies.
+    final account = await _api.accountId();
+    if (await _local.readSetting(SyncSettingKeys.usageWatermarkAccount) !=
+        account) {
+      if ((await _readInt(SyncSettingKeys.usageWatermarkMs) ?? 0) != 0) {
+        await _local.writeSetting(SyncSettingKeys.usageWatermarkMs, '0');
+      }
+      await _local.writeSetting(SyncSettingKeys.usageWatermarkAccount, account);
+    }
     final watermark = await _readInt(SyncSettingKeys.usageWatermarkMs) ?? 0;
     final days = _sanitize(
       await _usage.readSyncUsageDays(

@@ -135,9 +135,13 @@ the execution gate, before any gated sync or session operation:
 A new id replacing a copied one also resets the copied installation's opt-in
 (`sync_enabled = false`), `sync_account_email` and `sync_last_success_ms`, and
 cancels periodic work, before the new id is committed. The watermark,
-`sync_imported_version_ms` and all local history are kept: restored history is
-attributed to the installation that measured and uploaded it, not re-uploaded
-under the new identity (only days newer than the copied watermark upload). Writes
+`sync_imported_version_ms` and all local history are kept. The watermark is per
+account (8.2): signed into the **same** account as the original, the copy uploads
+only days newer than the copied watermark, so restored history stays attributed
+to the installation that measured and uploaded it; signed into **another**
+account, that account has received none of it, and the copy uploads the whole
+local history under its new identity - the only device that can, since the local
+schema does not record which installation measured each day. Writes
 are ordered marker, state reset, database id; the database id is the commit
 point, so an interrupted transition repeats on the next operation and nothing is
 registered under an unbound id. An unreadable or unwritable marker fails the
@@ -1074,6 +1078,7 @@ foreground and headless sync and every other session change:
 | `sync_installation_id` | installation | kept |
 | `sync_imported_version_ms` | local content version (7.2) | kept |
 | `sync_usage_watermark_ms` | account upload progress | reset to `0` before the request |
+| `sync_usage_watermark_account` | owner of that progress (8.2) | kept; the next account differs, so its first run starts from `0` anyway |
 | `sync_enabled` | account consent | `false` on success |
 | `sync_account_email` | account, UI | cleared on success |
 | `sync_last_success_ms` | UI status | cleared on success |
@@ -1081,7 +1086,8 @@ foreground and headless sync and every other session change:
 
 Local usage tables, schedules, limits and every non-sync setting are never
 touched. Ordinary logout is unchanged and still keeps the watermark: signing back
-into the **same** account should not resend everything.
+into the **same** account should not resend everything, and since 2026-09-26 a
+**different** account starts from zero (8.2).
 
 **UI.** The signed-in account card has a destructive "Delete account" button. It
 opens a dialog that states the cloud account and synced server data are deleted
@@ -1534,6 +1540,19 @@ lacking a snapshot row that has not been uploaded before), then advances the
 watermark on success. Because the server side is idempotent, an over-broad or
 repeated upload is harmless; the watermark is an optimisation, not a correctness
 mechanism.
+
+**The watermark belongs to one account (2026-09-26).** It records what was sent
+to the account it was earned for, so `sync_usage_watermark_account` stores that
+account's server id - the `sub` of the access token, read locally. Each run
+compares it with the signed-in account before selecting days; if they differ, or
+the owner is unknown (progress recorded before this tag), the watermark is reset
+to `0` and the owner rewritten - reset first, owner second, so an interrupted
+switch repeats. Signing out keeps both, so signing back into the same account
+re-sends nothing; any other account - after a sign-out, an account deletion, or a
+restore - receives the whole local history. Until this, signing out of A and into
+B uploaded nothing of A-era history to B: the watermark carried no owner, and
+`signOut` kept it for the same-account case. The account email is not the owner
+key: after a deletion the same address can belong to a different account.
 
 **Import and clear reset the watermark.** This settles risk 3 in section 14.
 `importPortableData` replaces `daily_app_usage` rows in place and advances no
