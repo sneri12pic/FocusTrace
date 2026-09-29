@@ -76,7 +76,7 @@ Remaining limitations:
 - The physical-device restore procedure in the identity entry is still
   outstanding.
 
-Relevant commit: uncommitted.
+Relevant commit: `9d3a949`.
 
 ---
 
@@ -190,7 +190,7 @@ Risks / unresolved questions:
 - Days measured by the original but not yet uploaded when the backup was taken
   upload from the restored copy under its new identity.
 
-Relevant commit: uncommitted.
+Relevant commit: `b11589d`.
 
 ---
 
@@ -292,7 +292,7 @@ Risks / unresolved questions:
 - Measured on one synthetic distribution and container defaults, not on
   production hardware or data.
 
-Relevant commit: uncommitted.
+Relevant commit: `1d1a72e`.
 
 ---
 

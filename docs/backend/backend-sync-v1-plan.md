@@ -150,8 +150,7 @@ Phase 1 is complete. Bootstrap, authentication (criteria 2-4, 14-18, 16a-16e),
 devices (criterion 5; D16 resolved), usage upload (criteria 6-10 and 12; D13
 resolved) and the history read (criteria 11 and 13 now closed on both halves),
 every one proven by `server/` tests executed against PostgreSQL via Testcontainers.
-Next is Phase 2, the Flutter sync client. See `backend-sync-v1-progress.md` for
-current state.
+See `backend-sync-v1-progress.md` for current state.
 
 Phase 2 is complete as a vertical slice. The version policy for versionless days
 and the watermark/import interaction are resolved (architecture 7.2, 8.2, risk

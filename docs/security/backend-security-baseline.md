@@ -14,9 +14,9 @@ registration/listing, the usage upload (with its JSON document cap) and the
 400-day-bounded history read all exist. Sections 2–3 and the pre-Step-2 status
 language in sections 12 and 17 are historical inventories, not the current
 implementation status. Security requirements remain applicable; use the progress
-document for verification evidence. Auth throttling does not establish
-authenticated endpoint limits: the per-user budgets required in section 11 for
-`PUT /sync/usage-days` and `GET /usage` are still outstanding release work.
+document for verification evidence. The per-user budgets required in section 11
+for `PUT /sync/usage-days` and `GET /usage` landed on 2026-09-24 (architecture
+5.1, D18).
 
 This document states FocusTrace requirements. It does not reproduce OWASP
 material and it does not claim FocusTrace is "OWASP compliant". References used
@@ -421,7 +421,8 @@ installations working.
 
 ## 8. Client-side token handling (cross-component requirement)
 
-Not implemented in this task; stated here so the Android work has a fixed target.
+Implemented 2026-09-20 by `SecureCredentialStore.kt` (AndroidKeyStore-sealed,
+excluded from backup and transfer); the requirements below remain the target.
 
 Refresh tokens and any other long-lived credential on the device must be held in
 OS-backed secure storage (Android Keystore-backed — for example

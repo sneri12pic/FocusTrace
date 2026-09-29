@@ -1,7 +1,7 @@
 # FocusTrace Backend Sync v1 - Architecture
 
-Status: Phase 1 Steps 1-4 implemented (bootstrap, authentication, devices, usage
-upload). History read (Step 5) is designed, not implemented.
+Status: Phase 1 (Steps 1-5, including the history read) and Phase 2 are
+implemented; current state lives in `backend-sync-v1-progress.md`.
 Branch: `feature/backend-sync-v1`.
 Stack decision (final): Java + Spring Boot + PostgreSQL.
 
