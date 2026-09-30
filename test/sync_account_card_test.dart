@@ -32,6 +32,22 @@ void main() {
     expect(container.read(syncRepositoryProvider), isNull);
   });
 
+  test('a release build treats a non-https sync URL as not configured', () {
+    const local = 'http://127.0.0.1:18080';
+    expect(syncBaseUrlUsable(local, releaseMode: true), isFalse);
+    expect(
+      syncBaseUrlUsable('HTTP://sync.example', releaseMode: true),
+      isFalse,
+    );
+    expect(syncBaseUrlUsable('sync.example', releaseMode: true), isFalse);
+    expect(
+      syncBaseUrlUsable('https://sync.example', releaseMode: true),
+      isTrue,
+    );
+    expect(syncBaseUrlUsable(local, releaseMode: false), isTrue);
+    expect(syncBaseUrlUsable('', releaseMode: false), isFalse);
+  });
+
   testWidgets('signed out shows the sign-in form and no sync controls', (
     tester,
   ) async {

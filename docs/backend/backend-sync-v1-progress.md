@@ -5,6 +5,42 @@ session reads to continue safely.
 
 ---
 
+## 2026-09-30 — Release-facing blockers: transport, privacy copy, deletion page
+
+Date: 2026-09-30
+Agent: Claude Code
+Goal: Close plan section 5 item 5: release builds refuse insecure transport,
+the privacy statements are true with sync, and Google Play has a web page for
+account deletion.
+
+Completed:
+- **Transport.** `syncBaseUrlUsable` in `providers.dart`: in a release build a
+  base URL whose scheme is not `https` makes `syncSupportedProvider` false, so
+  `syncRepositoryProvider` is `null` for the UI and the headless worker alike,
+  no `FocusTraceSyncApi` is built and no request can be sent. Debug builds
+  accept any non-empty URL, so `http://127.0.0.1` over `adb reverse` still
+  works. Profile builds count as debug here; they are not shipped.
+
+Files materially changed: `lib/src/presentation/providers.dart`,
+`test/sync_account_card_test.dart`, architecture D20 (mechanism corrected: the
+client refuses cleartext itself; Android's policy never did).
+
+Verification:
+- New test "a release build treats a non-https sync URL as not configured";
+  with the scheme check removed it fails (`Expected: false, Actual: <true>`).
+- `dart format --output=none --set-exit-if-changed lib test` PASS; `flutter
+  analyze` PASS (no issues); `flutter test` PASS (249 passed, 1 skipped);
+  `git diff --check` PASS. No Android or server code touched; those gates not
+  run.
+- Not verified: an actual release APK on a device. The check is a pure function
+  of `kReleaseMode`, exercised through its parameter.
+
+Remaining: see plan sections 5 and 6.
+
+Relevant commit: this entry's commits.
+
+---
+
 ## 2026-09-30 — CI covers every branch
 
 Date: 2026-09-30

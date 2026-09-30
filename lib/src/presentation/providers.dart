@@ -178,9 +178,16 @@ final settingsRepositoryProvider = Provider<SettingsRepository>((ref) {
 /// history and the UI are exactly what they were before.
 const syncBaseUrl = String.fromEnvironment('FOCUSTRACE_SYNC_BASE_URL');
 
+/// Whether [url] may carry sync traffic. A release build accepts `https` only:
+/// `dart:io` ignores Android's cleartext policy, so nothing else would stop a
+/// password or token going out over plain `http://`. Debug builds keep
+/// `http://127.0.0.1` for a local backend.
+bool syncBaseUrlUsable(String url, {bool releaseMode = kReleaseMode}) =>
+    url.isNotEmpty && (!releaseMode || Uri.tryParse(url)?.scheme == 'https');
+
 final syncSupportedProvider = Provider<bool>(
   (ref) =>
-      syncBaseUrl.isNotEmpty &&
+      syncBaseUrlUsable(syncBaseUrl) &&
       ref.watch(usagePlatformProvider) == UsagePlatform.android,
 );
 

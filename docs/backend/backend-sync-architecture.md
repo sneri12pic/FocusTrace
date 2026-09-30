@@ -1125,8 +1125,10 @@ one PostgreSQL instance
 ```
 
 - Public traffic is HTTPS only; Spring has no TLS configuration and speaks plain
-  HTTP to the proxy. Release Android builds refuse cleartext, so a sync base URL
-  must be `https://`. Transport security is not claimed complete until a staging
+  HTTP to the proxy. A release build treats a base URL that is not `https://` as
+  sync not configured (`syncBaseUrlUsable`, 2026-09-30): Android's cleartext
+  policy does not constrain `dart:io`, so the client refuses it itself. Debug
+  builds accept `http://` for a local backend. Transport security is not claimed complete until a staging
   deployment exists.
 - **The Spring port must be reachable only from the proxy** (host firewall,
   security group or private network - deployment infrastructure, not this
