@@ -5,6 +5,40 @@ session reads to continue safely.
 
 ---
 
+## 2026-09-30 — Play release copy describes optional sync
+
+Date: 2026-09-30
+Agent: Codex
+Goal: Replace the pre-sync store listing, permission explanations and Data safety answers.
+
+Completed:
+- Updated `PLAY_RELEASE.md` against the account/sync requests, upload model,
+  Android manifest, release URL gate, security logging and public privacy/deletion copy.
+- Added collection categories/purposes, optional versus account-required flows,
+  deletion URL and paths, INTERNET explanation and the HTTPS build define.
+- Checked Google's official Data safety and account-deletion guidance (linked
+  in the checklist); category mappings are explicitly identified as our interpretation.
+- Plan marks the copy rewrite complete, with Console submission and deployment
+  verification still open. Existing staged and unstaged plan work preserved.
+
+Files materially changed: `PLAY_RELEASE.md`, `docs/backend/backend-sync-v1-plan.md`,
+`docs/backend/backend-sync-v1-progress.md`.
+Verification:
+- `git diff --check`: PASS.
+- `Get-Content PLAY_RELEASE.md` with JavaScript assertions: PASS for description
+  limits (short 76/80, full 1588/4000), absent pre-sync claims and both public URL
+  strings. Corresponding HTML files inspected locally.
+- Documentation only; Flutter, Android and backend suites not rerun. No live
+  Play Console submission, public-page verification or release-device test performed.
+Decisions made: No runtime or architecture changes.
+Remaining: Hardware/server checks in the plan; publish pages and submit Console forms.
+Risks / unresolved questions: Final hosting, log and backup retention must match
+the public deletion promises; manual email deletion needs an operational procedure.
+Relevant commit: This entry's commit; includes the existing plan execution order
+and resolved-blocker edits, committed together on the user's instruction.
+
+---
+
 ## 2026-09-30 — Release-facing blockers: transport, privacy copy, deletion page
 
 Date: 2026-09-30

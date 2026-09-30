@@ -160,6 +160,45 @@ deterministic sanitization are implemented (architecture 9.1); and Device B
 reading Device A's history through the real API is proven by
 `test/sync_end_to_end_test.dart` against the running backend and PostgreSQL.
 
+### Remaining execution order
+
+The remaining work should be executed in this order. This ordering closes the
+current correctness proof before changing the runtime environment, then proves
+the same sync path across the real network before release-facing work.
+
+1. **Physical Android restore/device-transfer verification.** Prove the current
+   installation-identity and credential-backup rules on hardware using the
+   already known-good development backend. This is verification of the existing
+   contract, not a new backup/restore feature.
+2. **Prepare the laptop as a staging host.** Fix its network access, then run the
+   Spring Boot service and PostgreSQL there with persistent storage. Treat this
+   host as staging, not production.
+3. **Add the staging deployment edge.** Put an HTTPS reverse proxy in front of
+   Spring, keep the application port private, configure the trusted-proxy model,
+   add proxy-level volumetric controls, persistent logs, and PostgreSQL backups
+   with an explicit retention policy. Sync v1 remains single-instance because
+   D18 rate-limit buckets are in-process.
+4. **Re-prove sync over the real network.** Point a physical phone at the staging
+   endpoint without `adb reverse` and verify sign-in, manual sync, scheduled
+   background sync, restart/reconnect behaviour, server restart, temporary
+   network loss/recovery, and the local-first invariant.
+5. ~~**Close release-facing blockers.** Update `README.md` and privacy copy for
+   optional cloud sync, provide the Google Play web-accessible account-deletion
+   route/page, and verify release builds refuse insecure `http://` transport.~~
+   Done 2026-09-30, ahead of items 1-4, which wait on a spare phone and the
+   server machine. What is left of it is in section 6: submitting the updated
+   Play Console copy and publishing `docs/` from this branch.
+6. **Do lifecycle/maintenance work after the release path is proven.** Session
+   and refresh-token retention, explicit device retirement/deletion, per-batch
+   watermark advancement, and avoiding the extra device when switching back to
+   an earlier account remain follow-up work unless new evidence promotes one to
+   a correctness or release blocker.
+
+Do not move staging deployment ahead of the restore test unless the restore test
+itself cannot be executed with the current development backend. Doing both at
+once would mix restore failures with Wi-Fi, Docker networking, proxy, TLS and
+host-configuration failures.
+
 Remaining for Sync v1 correctness, none of it blocking the slice:
 
 - Phase 5 reads `Build.MODEL` for cosmetic `display_name`; installation identity
@@ -250,8 +289,27 @@ Before public release (backend):
 
 These are not backend tasks but must be resolved before sync ships to users:
 
-- `README.md:102` and `docs/privacy.html` currently state that FocusTrace never
-  sends tracked data to a server. Both become inaccurate the moment sync ships.
+- ~~`README.md:102` and `docs/privacy.html` currently state that FocusTrace never
+  sends tracked data to a server.~~ Resolved 2026-09-30: both, with
+  `docs/index.html` and `docs/terms.html`, now describe optional cloud sync as
+  the upload DTOs implement it.
+- ~~Google Play web account-deletion page.~~ Resolved 2026-09-30:
+  `docs/delete-account.html`. Users without the app are handled by an email
+  from the account's address and a manual deletion; no endpoint or form exists.
+  The page promises no response time, and the operator needs a procedure for
+  that manual deletion once a deployment exists.
+- ~~Release builds must refuse `http://`.~~ Resolved 2026-09-30: a non-`https`
+  base URL is "sync not configured" in release builds (`syncBaseUrlUsable`).
+  Not yet observed in a release APK on a device.
+- ~~Rewrite the pre-sync `PLAY_RELEASE.md` claims.~~ Resolved 2026-09-30:
+  store listing, permission explanations, Data safety mapping, deletion URL
+  and HTTPS build instructions now describe account + optional sync support.
+  Still required before upload: enter the copy and form answers in Play Console,
+  verify the public URLs, and reconcile hosting, logs and backup retention with
+  the published privacy/deletion promises once the deployment exists.
+- The `docs/` pages are served by GitHub Pages from `master`
+  (`PLAY_RELEASE.md`, not checked here); the new privacy
+  policy and deletion page are not public until this branch is merged.
 - ~~Account deletion must be reachable from the UI.~~ Resolved 2026-09-24
   (architecture 5.1, D19): "Delete account" in the sync card, confirmed with the
   current password; the server deletes the whole account graph; local usage
@@ -259,8 +317,7 @@ These are not backend tasks but must be resolved before sync ships to users:
   access and refresh tokens are dead, deletion races with upload, registration
   and refresh neither deadlock nor resurrect anything, and a new account on the
   same installation uploads the full local history (`AccountDeletionIT`, Flutter
-  repository/view-model/card tests, real-backend E2E). Still open around it: the
-  Google Play web deletion page, and the privacy copy above.
+  repository/view-model/card tests, real-backend E2E).
 - Email addresses are never verified. Registration therefore discloses that an
   account exists (architecture 5.1, D11). Revisit if verification is added.
 - Authentication rate limiting landed in Step 2 (architecture 5.1, D15).
