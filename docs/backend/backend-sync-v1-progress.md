@@ -29,12 +29,16 @@ Completed:
   off; how to delete the account. The INTERNET permission is now listed.
   `docs/index.html` and one sentence of `docs/terms.html` said "no accounts, no
   servers" / "runs entirely on your device"; corrected.
+- **Account deletion page.** `docs/delete-account.html`, linked from the index
+  and the privacy policy, in the privacy page's style: the in-app path, what the
+  server deletes (D19 cascade), what stays on the device, and an email route
+  for users without the app. No endpoint or web form was built.
 
 Files materially changed: `lib/src/presentation/providers.dart`,
 `test/sync_account_card_test.dart`, architecture D20 (mechanism corrected: the
 client refuses cleartext itself; Android's policy never did), architecture 11
 and risk 9 (stale "must be updated" lines), `README.md`, `docs/privacy.html`,
-`docs/index.html`, `docs/terms.html`.
+`docs/index.html`, `docs/terms.html`, `docs/delete-account.html` (new).
 
 Verification:
 - New test "a release build treats a non-https sync URL as not configured";
@@ -45,8 +49,17 @@ Verification:
   run.
 - Not verified: an actual release APK on a device. The check is a pure function
   of `kReleaseMode`, exercised through its parameter.
+- The HTML pages were not rendered in a browser or served from GitHub Pages.
 
-Remaining: see plan sections 5 and 6.
+Remaining: see plan sections 5 and 6. New there: `PLAY_RELEASE.md` (store
+listing, permission declarations, Data safety answers) still describes an app
+with no network access; the pages are public only once merged to `master`.
+
+Risks / unresolved questions:
+- Deletion by email is a manual operator action with no stated response time.
+- The plan edits for this entry are left uncommitted: the plan file already
+  carried a staged section ("Remaining execution order") from another author,
+  and these edits sit on top of it.
 
 Relevant commit: this entry's commits.
 
