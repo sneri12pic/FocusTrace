@@ -5,6 +5,31 @@ session reads to continue safely.
 
 ---
 
+## 2026-09-30 — CI covers every branch
+
+Date: 2026-09-30
+Agent: Claude Code
+Goal: Record the CI change and its first result on this branch.
+
+Completed:
+- `cd86d72`: the workflow's `push` trigger no longer lists branches, so every
+  branch is checked on push; pull requests into `develop` and `master` and
+  manual dispatch are unchanged. Before it, `feature/backend-sync-v1` never ran
+  CI.
+- `c4ed09b`: the formatting gate (`dart format --set-exit-if-changed lib test`)
+  was failing on 15 sync files; formatted, no behaviour change.
+- `README.md` said CI ran on pushes to `master` and `develop` only; corrected.
+
+Verification: GitHub Actions run `36644711782` on `cd86d72` (both commits
+pushed): Flutter quality and tests PASS, Backend build and tests PASS, Android
+tests, lint, and debug APK PASS.
+
+Remaining: see plan sections 5 and 6.
+
+Relevant commit: `cd86d72`, `c4ed09b`; this entry's commit.
+
+---
+
 ## 2026-09-29 — Slices committed; physical-device pass; account-switch 409 fixed
 
 Date: 2026-09-29

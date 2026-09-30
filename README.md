@@ -95,7 +95,7 @@ cd android
 .\gradlew.bat :app:testDebugUnitTest :app:lintDebug :app:assembleDebug --no-daemon
 ```
 
-[CI](.github/workflows/ci.yml) runs the Flutter and Android checks on pushes and pull requests to `master` and `develop`. The [case study](docs/performance/README.md#verification) links the regression coverage; [benchmark instructions](benchmark/README.md) explain how to inspect or repeat the measurements.
+[CI](.github/workflows/ci.yml) runs the Flutter, Android and backend checks on every push and on pull requests to `master` and `develop`. The [case study](docs/performance/README.md#verification) links the regression coverage; [benchmark instructions](benchmark/README.md) explain how to inspect or repeat the measurements.
 
 ## Privacy
 
