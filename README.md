@@ -99,7 +99,17 @@ cd android
 
 ## Privacy
 
-All usage data is stored locally in SQLite on the device. FocusTrace does not send tracked data to a server and does not include sync in the MVP. **Clear Local Data** on the Settings screen removes stored usage sessions and settings from the local database.
+All usage data is stored locally in SQLite on the device, and it stays there unless you create an account and turn on cloud sync. **Clear Local Data** on the Settings screen removes stored usage sessions and settings from the local database.
+
+Cloud sync is optional, off by default, and present only in builds configured with a sync server (`FOCUSTRACE_SYNC_BASE_URL`; release builds accept `https://` only). Tracking, restrictions and blocking never depend on it.
+
+- Creating an account or signing in sends the email address and password to the sync server, which stores the email and an Argon2id hash of the password.
+- With **Sync this device** on, the app uploads per-app daily totals (date, time zone, package name, app name, seconds used, launch count), a device name (the phone model) and a random app-generated installation id, on **Sync now** and about every six hours in the background.
+- Never uploaded: window titles, session-level or interval data, icons, restrictions, schedules, settings, hardware or advertising identifiers.
+- Turn it off with **Settings → Account & sync → Sync this device** or **Log out**; data already synced stays on the server.
+- **Settings → Account & sync → Delete account**, confirmed with the password, deletes the account and everything synced to it. Local history is kept, and **Clear Local Data** does not delete server data.
+
+See the [privacy policy](docs/privacy.html) and the [account deletion page](docs/delete-account.html).
 
 Portable backups can be created and restored from **Settings → Backup and
 restore**. The JSON file remains under the user's control and should be treated
@@ -154,4 +164,3 @@ the local data. Follow the verified diagnosis and recovery procedure in
 - App categories
 - Weekly and monthly reports
 - Optional CSV reporting export
-- Optional encrypted sync later

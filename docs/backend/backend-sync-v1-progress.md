@@ -20,10 +20,21 @@ Completed:
   no `FocusTraceSyncApi` is built and no request can be sent. Debug builds
   accept any non-empty URL, so `http://127.0.0.1` over `adb reverse` still
   works. Profile builds count as debug here; they are not shipped.
+- **Privacy copy.** `README.md` (Privacy section; the "encrypted sync later"
+  roadmap line removed) and `docs/privacy.html` rewritten against the request
+  bodies in `focus_trace_sync_api.dart`, `SyncUsageDay.toJson`, the server DTOs
+  and architecture section 11: local unless the user creates an account and
+  turns sync on; then email and password (stored as a hash), device name,
+  installation id, and per-app daily totals; what is never sent; how to turn it
+  off; how to delete the account. The INTERNET permission is now listed.
+  `docs/index.html` and one sentence of `docs/terms.html` said "no accounts, no
+  servers" / "runs entirely on your device"; corrected.
 
 Files materially changed: `lib/src/presentation/providers.dart`,
 `test/sync_account_card_test.dart`, architecture D20 (mechanism corrected: the
-client refuses cleartext itself; Android's policy never did).
+client refuses cleartext itself; Android's policy never did), architecture 11
+and risk 9 (stale "must be updated" lines), `README.md`, `docs/privacy.html`,
+`docs/index.html`, `docs/terms.html`.
 
 Verification:
 - New test "a release build treats a non-https sync URL as not configured";

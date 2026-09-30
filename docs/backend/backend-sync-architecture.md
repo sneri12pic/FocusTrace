@@ -2080,9 +2080,8 @@ Not stored: window titles, notification contents, page or document contents, raw
 location, contacts, messages, hardware identifiers, advertising identifiers.
 
 Sync is opt-in. An account is required to sync; the app works fully without one.
-`README.md` and `docs/privacy.html` currently state that FocusTrace never sends
-data to a server. **Both must be updated before any sync code ships to users**.
-Account deletion is implemented end to end (D19): the server cascade from
+`README.md` and `docs/privacy.html` describe this since 2026-09-30, and
+`docs/delete-account.html` is the web-accessible deletion page. Account deletion is implemented end to end (D19): the server cascade from
 `users`, and the in-app action that reaches it.
 
 ---
@@ -2167,5 +2166,5 @@ models. The SQLite layer stays authoritative.
    Windows is dropped from scope, the `CHECK` constraint narrows to `android` and
    the `app_key` risk in item 2 disappears.
 
-9. **`README.md` and `docs/privacy.html` are currently inaccurate about sync.**
-   Tracked as a release blocker in section 11, not a backend task.
+9. ~~`README.md` and `docs/privacy.html` are inaccurate about sync.~~ Rewritten
+   2026-09-30 (section 11). They must be kept in step with the upload DTOs.
