@@ -166,10 +166,19 @@ The remaining work should be executed in this order. This ordering closes the
 current correctness proof before changing the runtime environment, then proves
 the same sync path across the real network before release-facing work.
 
-1. **Physical Android restore/device-transfer verification.** Prove the current
+1. ~~**Physical Android restore/device-transfer verification.** Prove the current
    installation-identity and credential-backup rules on hardware using the
    already known-good development backend. This is verification of the existing
-   contract, not a new backup/restore feature.
+   contract, not a new backup/restore feature.~~
+   Done 2026-10-01 on the SM-A366B (debug build of `ea29316`): local-transport
+   backup/uninstall/reinstall and Android's single-device D2D test mode both
+   PASS (progress entry of that date). Both restored the database, withheld the
+   credential and marker, produced a new id, cleared opt-in and kept history
+   and watermark. In both cases the new id was registered as a separate device
+   after sign-in and opt-in. Not verified: a transfer between two physical
+   phones (not run, by the owner's decision), a real Google cloud backup, a
+   release build, API 23-30's `backup_rules.xml` path, and the background
+   worker after a restore.
 2. **Prepare the laptop as a staging host.** Fix its network access, then run the
    Spring Boot service and PostgreSQL there with persistent storage. Treat this
    host as staging, not production.
@@ -266,8 +275,12 @@ Before public release (backend):
   local history and the watermark, restart and update keep the identity, a signed-in
   pre-marker installation keeps its identity, marker failures fail the operation,
   and both rule files exclude the marker and the credential in every section
-  (`sync_repository_test.dart`, `SyncInstallationMarkerTest`). A real restore and
-  device transfer on hardware is still outstanding.
+  (`sync_repository_test.dart`, `SyncInstallationMarkerTest`). On hardware
+  (2026-10-01, SM-A366B): Android's local-transport restore and single-device
+  D2D test mode both restored the database and withheld the marker and the
+  credential, and the copy became a separate device with history kept. A
+  transfer between two physical phones and a real cloud restore remain
+  untested.
 - ~~Upload progress inherited across accounts~~: resolved 2026-09-26
   (architecture 8.2). Signing out of one account and into another, or a restored
   copy signing into another account, uploaded none of the earlier history.

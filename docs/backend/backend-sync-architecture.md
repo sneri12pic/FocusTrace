@@ -110,9 +110,11 @@ existing `settings` table under key `sync_installation_id`.
   a new device. That is correct behaviour, not a bug.
 - The UUID is the primary key of `devices` server-side. No surrogate id.
 
-**Backup and transfer (implemented 2026-09-26).** The database lives in
-`getFilesDir()`, which Android Auto Backup restores on every install (Play,
-device setup, `adb install`) and device-to-device transfer copies; until this
+**Backup and transfer (implemented 2026-09-26).** The database lives at
+`databases/focus_trace.db` (`getDatabasesPath()`, Auto Backup's `database`
+domain; corrected 2026-10-01, it is not in `getFilesDir()`), which Android Auto
+Backup restores on every install (Play, device setup, `adb install`) and
+device-to-device transfer copies; until this
 change nothing excluded it, so a restored or transferred copy re-registered as the
 original device (same account: the two phones' days overwrote each other under one
 device; another account: a permanent `409`) and carried the original's opt-in.
@@ -146,7 +148,11 @@ are ordered marker, state reset, database id; the database id is the commit
 point, so an interrupted transition repeats on the next operation and nothing is
 registered under an unbound id. An unreadable or unwritable marker fails the
 operation instead of being treated as absent. The old device row stays on the
-server and ages out of the active-device quota after 90 days (D18).
+server and ages out of the active-device quota after 90 days (D18). The new id
+reaches the server on the first run that has a day to upload: a run with
+nothing newer than the watermark registers no device (`_syncNow`). Verified on
+hardware for local-transport restore and single-device D2D test mode on
+2026-10-01 (progress entry of that date).
 
 **Data kept on uninstall (2026-10-02).** The manifest sets
 `android:hasFragileUserData="true"` (API 29+): the system uninstall dialog offers

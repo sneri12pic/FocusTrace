@@ -5,6 +5,134 @@ session reads to continue safely.
 
 ---
 
+## 2026-10-01 — Android backup restore and single-device D2D test mode verified on hardware
+
+Date: 2026-10-01
+Agent: Claude Code
+Goal: Plan section 5, remaining-order item 1: prove the installation-identity
+and credential-backup rules (architecture 3) through Android's own backup
+restore and device transfer on a physical phone. Scope as agreed with the
+owner: one phone (the A36) for both a local-transport restore and Android's
+**single-device D2D test mode**. Neither is a transfer between two phones.
+
+Setup: SM-A366B (`RFCY9054RND`), Android 16 / API 36. Debug APK built from
+`ea29316` with `--dart-define=FOCUSTRACE_SYNC_BASE_URL=http://127.0.0.1:18080`
+(kernel checked to contain HEAD code), installed `-r` over the dev app
+(`com.stepandemianenko.focustrace.dev`, versionCode 7); `bootRun` on port 18080
+against `postgres:16-alpine` in Docker, `adb reverse tcp:18080 tcp:18080`; new
+test account. The Play app was not touched. Before anything destructive, the
+installed APK and the app data (`exec-out run-as ... tar`) were saved and
+byte-compared with the earlier copies (DB, marker and APK identical). Procedure
+from developer.android.com/identity/data/testingbackup. Raw evidence, state
+snapshots and scripts are in `.local/restore-verification/`.
+
+Baseline: signed in, opted in, synced: device `4e46cefe-...` with 7 days and
+119 app rows on the server; marker equal to the database id; credential
+present (96-character value, never printed).
+
+Results. Test A restored from the baseline above (`4e46cefe-...`); test B
+(single-device D2D test mode) was run from test A's signed-in, opted-in,
+synced end state (`d0eb9db1-...`). Evidence is the app's own files read with
+`run-as` (snapshots `snap-*`), and the server's `devices`/`usage_days` (`srv-*`).
+
+| Condition | A: local transport | B: single-device D2D test mode |
+| --- | --- | --- |
+| Backup of the package | PASS (after workaround below) | PASS |
+| Before first launch: database restored | PASS, byte-identical to the pre-backup copy | PASS, byte-identical |
+| Before first launch: `focustrace_sync_credentials.xml` and `focustrace_sync_installation.xml` absent | PASS | PASS |
+| Launch: new id, equal to the new marker | PASS: `4e46cefe-...` -> `d0eb9db1-...` | PASS: `d0eb9db1-...` -> `82582851-...` |
+| Launch: signed out; `sync_enabled=false`, `sync_account_email` and `sync_last_success_ms` empty | PASS | PASS |
+| Launch: history kept (7 days, 119 app rows, past-day digest `e138e5e5...` unchanged); watermark and its owner unchanged | PASS | PASS |
+| Same-account sign-in: credential written, switch off, no device registered until opted in | PASS | PASS |
+| After opt-in and sync: the new id registered as a separate device; the earlier devices' days and `received_at` unchanged | PASS: second device, today only | PASS once a day was newer than the watermark: third device, today only (see "Registration is lazy") |
+| Force-stop and relaunch: same id, marker equal, no further device | PASS | PASS |
+| Transfer between two physical phones | NOT RUN (owner's decision) | NOT RUN (owner's decision) |
+
+Commands (as in the official guide):
+- Local: `bmgr enable true`; `bmgr transport com.android.localtransport/.LocalTransport`;
+  `settings put secure backup_local_transport_parameters 'is_encrypted=true'`;
+  `bmgr backupnow <pkg>`; `pm uninstall --user 0 <pkg>`; `install -t --user 0 <apk>`.
+  Logcat: `restoreAtInstall ... restoreSet=1`, `Restore complete`.
+- Single-device D2D test mode: `settings put secure backup_enable_d2d_test_mode 1`; `bmgr transport` and
+  `bmgr init` `com.google.android.gms/.backup.migrate.service.D2dTransport`;
+  `bmgr backupnow`; uninstall; **`bmgr transport
+  com.google.android.gms/.backup.BackupTransportService` before** reinstall.
+  Logcat: `Package eligibility filter is enabled for D2D restore`, `d2d restore
+  finished`.
+
+Observations:
+- **Debug builds exceed the full-backup quota.** The first local backup was
+  `Size quota exceeded` (`PFTBT: Transport quota exceeded`): the debug engine
+  extracts ~60 MB (`kernel_blob.bin` etc.) into `app_flutter/`, which Auto
+  Backup includes, above the 25 MB quota. The Play install's whole data is
+  ~5 MB (`dumpsys diskstats`), so this is debug-only. Workaround for this test:
+  removed `app_flutter/flutter_assets` and its `res_timestamp` (regenerated
+  from the APK on launch) before `backupnow`. The database and preferences were
+  not touched. D2D (2 GB limit) needed no workaround.
+- A force-stopped package is `Backup is not allowed`; `am kill` after a normal
+  launch avoids the stopped state.
+- Reinstalling restored the D2D data only after the GMS transport was selected
+  as in the guide's script; reinstalling with `D2dTransport` still selected logs
+  `Can't restore from D2d Transport` and installs empty.
+- **Registration is lazy.** After the D2D restore, the first "Sync now" reported
+  success but registered no device, because no day was newer than the copied
+  watermark (`_syncNow` returns before `registerDevice`). Usage access is not
+  restored by Android, so the copy tracked nothing new; after re-granting it
+  (`appops set <pkg> GET_USAGE_STATS allow`) the next run registered
+  `82582851-...` and uploaded today only. Existing behaviour, now stated in
+  architecture 3.
+- The copy uploads today's row under its new id, so today exists under both
+  the original and the copy (two independent rows, criterion 11). This is the
+  documented cost of keeping days newer than the copied watermark.
+- Android does not restore usage access or overlay permission; a restored
+  install must be re-granted them (platform behaviour).
+- After signing in to a new account, the card showed the installation's
+  previous "last synced" time until the first run for that account. Cosmetic,
+  not investigated.
+- Server log: no password, token or `Authorization` value.
+
+A second phone (SM-M135F, Android 14) was connected afterwards to try a real
+transfer. The owner decided against both a factory reset and a Smart Switch
+transfer. On the M13 only its dev app's data and APK were copied to
+`.local/restore-verification/m13-pre-reset/`, and the app was force-stopped;
+nothing on it was changed. For that attempt the A36 was briefly signed in and
+synced again (no new device), then logged out.
+
+Cleanup: D2D and local transports re-initialised (test backups wiped),
+`backup_enable_d2d_test_mode` and `backup_local_transport_parameters` deleted,
+GMS transport reselected; final `settings`/`bmgr` output re-checked after the
+last session and identical to the recorded original (`backup_enabled=0`,
+auto-restore enabled). Test account logged out in-app (opt-in off, credential
+cleared); local history kept; `adb reverse` removed; backend stopped, container
+`focustrace-restore-pg` stopped (volume kept). The dev app is now the `ea29316`
+debug build with installation id `82582851-...`, and usage access re-granted.
+Overlay permission was not recorded beforehand and was not re-granted.
+
+Files materially changed: architecture 3 (database path corrected from
+`getFilesDir()`, lazy registration and hardware verification noted), plan
+section 5, this entry. No product code changed.
+Verification: hardware only, as above. No unit, Flutter or server suites rerun;
+no code changed.
+Decisions made: none.
+Not verified:
+- A transfer between two physical phones (Google's setup-wizard copy or
+  Samsung Smart Switch). Single-device D2D test mode exercises the same GMS
+  transport and the `device-transfer` rules, but not a real link, a different
+  target device or a different Android version.
+- A real Google cloud backup and restore (only the local transport, with the
+  `cloud-backup` rules, was used).
+- A release build: tested on a debug build only; the release data size is
+  expected to fit the quota but no release backup was run.
+- Android 12-15 targets and the pre-API-31 `backup_rules.xml` path (the A36 is
+  API 36, so only `data_extraction_rules.xml` was exercised).
+- The background `SyncWorker` after a restore: only manual "Sync now" was used.
+Remaining: plan remaining-order item 2 (staging host) is next.
+Risks / unresolved questions: debug-build cloud backups of the dev app fail on
+quota, so developers cannot rely on Auto Backup for it.
+Relevant commit: none (uncommitted, as instructed). Tested build: `ea29316`.
+
+---
+
 ## 2026-09-30 — Play release copy describes optional sync
 
 Date: 2026-09-30
