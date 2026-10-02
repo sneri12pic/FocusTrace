@@ -884,6 +884,90 @@ class AppLocalizationsEs extends AppLocalizations {
   String get settingsSyncPassword => 'Contraseña';
 
   @override
+  String get settingsSyncPasswordRequirements =>
+      'Usa entre 15 y 128 caracteres. Unas pocas palabras sin relación forman una frase de contraseña segura y fácil de recordar. No se aceptan contraseñas comunes.';
+
+  @override
+  String get settingsSyncShowPassword => 'Mostrar contraseña';
+
+  @override
+  String get settingsSyncHidePassword => 'Ocultar contraseña';
+
+  @override
+  String get settingsSyncSignInHeading => 'Inicia sesión en tu cuenta';
+
+  @override
+  String get settingsSyncCreateHeading => 'Crea una cuenta de sincronización';
+
+  @override
+  String get settingsSyncSwitchToCreate =>
+      '¿Primera vez que sincronizas? Crea una cuenta';
+
+  @override
+  String get settingsSyncSwitchToSignIn =>
+      '¿Ya tienes una cuenta? Inicia sesión';
+
+  @override
+  String get settingsSyncSignInInstead => 'Iniciar sesión en su lugar';
+
+  @override
+  String get settingsSyncSigningIn => 'Iniciando sesión…';
+
+  @override
+  String get settingsSyncCreatingAccount => 'Creando cuenta…';
+
+  @override
+  String get settingsSyncAccountCreated => 'Cuenta creada';
+
+  @override
+  String settingsSyncSignedInAs(String email) {
+    return 'Sesión iniciada como $email';
+  }
+
+  @override
+  String get settingsSyncCreatedNextStep =>
+      'La sincronización sigue desactivada. Actívala cuando quieras copiar los totales diarios de este dispositivo a tu cuenta.';
+
+  @override
+  String get settingsSyncTurnOnSync => 'Activar sincronización';
+
+  @override
+  String get settingsSyncAccountCreatedSignInRequired =>
+      'Tu cuenta se ha creado, pero no se ha podido iniciar sesión automáticamente. Introduce tu contraseña y toca «Iniciar sesión» para continuar.';
+
+  @override
+  String get settingsSyncErrorRegistration =>
+      'No se ha creado la cuenta. Revisa tu correo electrónico y contraseña e inténtalo de nuevo.';
+
+  @override
+  String get settingsSyncErrorEmailRequired =>
+      'Introduce tu dirección de correo electrónico.';
+
+  @override
+  String get settingsSyncErrorEmailInvalid =>
+      'Introduce una dirección de correo electrónico válida, como nombre@example.com.';
+
+  @override
+  String get settingsSyncErrorPasswordRequired => 'Introduce tu contraseña.';
+
+  @override
+  String settingsSyncErrorPasswordTooShort(int count) {
+    return 'Usa al menos 15 caracteres (llevas $count).';
+  }
+
+  @override
+  String get settingsSyncErrorPasswordTooLong =>
+      'Usa como máximo 128 caracteres.';
+
+  @override
+  String get settingsSyncErrorPasswordRejected =>
+      'Esta contraseña es demasiado común o coincide con tu correo electrónico. Elige otra.';
+
+  @override
+  String get settingsSyncErrorThrottled =>
+      'Demasiados intentos desde esta red. Espera un poco y vuelve a intentarlo.';
+
+  @override
   String get settingsSyncSignIn => 'Iniciar sesión';
 
   @override
@@ -961,12 +1045,35 @@ class AppLocalizationsEs extends AppLocalizations {
       'Se eliminó tu cuenta de FocusTrace. El historial de uso de este dispositivo se conservó.';
 
   @override
-  String get settingsSyncErrorWrongPassword =>
-      'La contraseña no es correcta. Tu cuenta no se eliminó.';
+  String get settingsSyncRepeatPassword => 'Repetir contraseña';
 
   @override
-  String get settingsSyncMissingFields =>
-      'Introduce un correo y una contraseña.';
+  String get settingsSyncShowRepeatPassword => 'Mostrar contraseña repetida';
+
+  @override
+  String get settingsSyncHideRepeatPassword => 'Ocultar contraseña repetida';
+
+  @override
+  String get settingsSyncErrorPasswordMismatch =>
+      'Las contraseñas no coinciden.';
+
+  @override
+  String get settingsSyncDangerZone => 'Zona de peligro';
+
+  @override
+  String get settingsSyncDangerZoneBody =>
+      'Eliminar tu cuenta la borra para siempre junto con todos los datos de uso sincronizados con el servidor. El historial de uso de este dispositivo se conserva.';
+
+  @override
+  String get settingsSyncDeleteAcknowledge =>
+      'Entiendo que esto elimina mi cuenta en la nube para siempre.';
+
+  @override
+  String get settingsSyncDeleting => 'Eliminando…';
+
+  @override
+  String get settingsSyncErrorWrongPassword =>
+      'La contraseña no es correcta. Tu cuenta no se eliminó.';
 
   @override
   String get settingsPrivacyBodySync =>

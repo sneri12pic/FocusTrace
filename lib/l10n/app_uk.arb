@@ -557,6 +557,43 @@
   "settingsSyncBody": "Увійдіть, щоб копіювати щоденні підсумки використання до власного облікового запису й бачити їх на іншому пристрої. Вимкнено, доки ви не увімкнете.",
   "settingsSyncEmail": "Електронна пошта",
   "settingsSyncPassword": "Пароль",
+  "settingsSyncPasswordRequirements": "Використовуйте 15–128 символів. Кілька не пов’язаних між собою слів утворюють надійну парольну фразу, яку легко запам’ятати. Поширені паролі не приймаються.",
+  "settingsSyncShowPassword": "Показати пароль",
+  "settingsSyncHidePassword": "Приховати пароль",
+  "settingsSyncSignInHeading": "Увійдіть у свій обліковий запис",
+  "settingsSyncCreateHeading": "Створіть обліковий запис для синхронізації",
+  "settingsSyncSwitchToCreate": "Уперше синхронізуєте? Створіть обліковий запис",
+  "settingsSyncSwitchToSignIn": "Уже маєте обліковий запис? Увійдіть",
+  "settingsSyncSignInInstead": "Натомість увійти",
+  "settingsSyncSigningIn": "Вхід…",
+  "settingsSyncCreatingAccount": "Створення облікового запису…",
+  "settingsSyncAccountCreated": "Обліковий запис створено",
+  "settingsSyncSignedInAs": "Ви ввійшли як {email}",
+  "@settingsSyncSignedInAs": {
+    "placeholders": {
+      "email": {
+        "type": "String"
+      }
+    }
+  },
+  "settingsSyncCreatedNextStep": "Синхронізацію ще вимкнено. Увімкніть її, коли захочете копіювати щоденні підсумки цього пристрою до свого облікового запису.",
+  "settingsSyncTurnOnSync": "Увімкнути синхронізацію",
+  "settingsSyncAccountCreatedSignInRequired": "Обліковий запис створено, але автоматичний вхід не вдався. Введіть пароль і натисніть «Увійти», щоб продовжити.",
+  "settingsSyncErrorRegistration": "Обліковий запис не створено. Перевірте електронну адресу й пароль і спробуйте ще раз.",
+  "settingsSyncErrorEmailRequired": "Введіть свою електронну адресу.",
+  "settingsSyncErrorEmailInvalid": "Введіть дійсну електронну адресу, наприклад name@example.com.",
+  "settingsSyncErrorPasswordRequired": "Введіть свій пароль.",
+  "settingsSyncErrorPasswordTooShort": "Використовуйте щонайменше 15 символів (зараз {count}).",
+  "@settingsSyncErrorPasswordTooShort": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsSyncErrorPasswordTooLong": "Використовуйте не більше 128 символів.",
+  "settingsSyncErrorPasswordRejected": "Цей пароль надто поширений або збігається з вашою електронною адресою. Виберіть інший.",
+  "settingsSyncErrorThrottled": "Забагато спроб із цієї мережі. Зачекайте трохи й спробуйте ще раз.",
   "settingsSyncSignIn": "Увійти",
   "settingsSyncCreateAccount": "Створити обліковий запис",
   "settingsSyncSignOut": "Вийти",
@@ -580,7 +617,14 @@
   "settingsSyncDeletePassword": "Поточний пароль",
   "settingsSyncDeleteConfirm": "Видалити назавжди",
   "settingsSyncDeleted": "Ваш обліковий запис FocusTrace видалено. Історію використання на цьому пристрої збережено.",
+  "settingsSyncRepeatPassword": "Повторіть пароль",
+  "settingsSyncShowRepeatPassword": "Показати повторений пароль",
+  "settingsSyncHideRepeatPassword": "Приховати повторений пароль",
+  "settingsSyncErrorPasswordMismatch": "Паролі не збігаються.",
+  "settingsSyncDangerZone": "Небезпечна зона",
+  "settingsSyncDangerZoneBody": "Видалення облікового запису назавжди вилучає його та всі дані про використання, синхронізовані з сервером. Історія використання на цьому пристрої залишається.",
+  "settingsSyncDeleteAcknowledge": "Я розумію, що це назавжди видаляє мій хмарний обліковий запис.",
+  "settingsSyncDeleting": "Видалення…",
   "settingsSyncErrorWrongPassword": "Пароль неправильний. Обліковий запис не видалено.",
-  "settingsSyncMissingFields": "Введіть пошту та пароль.",
   "settingsPrivacyBodySync": "Історія використання та налаштування залишаються на цьому пристрої, доки ви не експортуєте резервну копію або не ввімкнете хмарну синхронізацію нижче."
 }

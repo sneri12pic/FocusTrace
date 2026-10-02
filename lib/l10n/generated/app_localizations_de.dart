@@ -878,6 +878,87 @@ class AppLocalizationsDe extends AppLocalizations {
   String get settingsSyncPassword => 'Passwort';
 
   @override
+  String get settingsSyncPasswordRequirements =>
+      'Verwende 15–128 Zeichen. Einige Wörter ohne Zusammenhang ergeben eine sichere, leicht merkbare Passphrase. Häufige Passwörter werden nicht akzeptiert.';
+
+  @override
+  String get settingsSyncShowPassword => 'Passwort anzeigen';
+
+  @override
+  String get settingsSyncHidePassword => 'Passwort verbergen';
+
+  @override
+  String get settingsSyncSignInHeading => 'Bei deinem Konto anmelden';
+
+  @override
+  String get settingsSyncCreateHeading => 'Ein Sync-Konto erstellen';
+
+  @override
+  String get settingsSyncSwitchToCreate => 'Neu bei Sync? Konto erstellen';
+
+  @override
+  String get settingsSyncSwitchToSignIn => 'Du hast schon ein Konto? Anmelden';
+
+  @override
+  String get settingsSyncSignInInstead => 'Stattdessen anmelden';
+
+  @override
+  String get settingsSyncSigningIn => 'Anmeldung läuft…';
+
+  @override
+  String get settingsSyncCreatingAccount => 'Konto wird erstellt…';
+
+  @override
+  String get settingsSyncAccountCreated => 'Konto erstellt';
+
+  @override
+  String settingsSyncSignedInAs(String email) {
+    return 'Angemeldet als $email';
+  }
+
+  @override
+  String get settingsSyncCreatedNextStep =>
+      'Sync ist noch aus. Schalte es ein, wenn die täglichen Nutzungswerte dieses Geräts in dein Konto kopiert werden sollen.';
+
+  @override
+  String get settingsSyncTurnOnSync => 'Sync einschalten';
+
+  @override
+  String get settingsSyncAccountCreatedSignInRequired =>
+      'Dein Konto wurde erstellt, aber die automatische Anmeldung ist fehlgeschlagen. Gib dein Passwort ein und tippe auf „Anmelden“, um fortzufahren.';
+
+  @override
+  String get settingsSyncErrorRegistration =>
+      'Konto nicht erstellt. Prüfe deine E-Mail-Adresse und dein Passwort und versuche es erneut.';
+
+  @override
+  String get settingsSyncErrorEmailRequired => 'Gib deine E-Mail-Adresse ein.';
+
+  @override
+  String get settingsSyncErrorEmailInvalid =>
+      'Gib eine gültige E-Mail-Adresse ein, etwa name@example.com.';
+
+  @override
+  String get settingsSyncErrorPasswordRequired => 'Gib dein Passwort ein.';
+
+  @override
+  String settingsSyncErrorPasswordTooShort(int count) {
+    return 'Verwende mindestens 15 Zeichen (bisher $count).';
+  }
+
+  @override
+  String get settingsSyncErrorPasswordTooLong =>
+      'Verwende höchstens 128 Zeichen.';
+
+  @override
+  String get settingsSyncErrorPasswordRejected =>
+      'Dieses Passwort ist zu häufig oder entspricht deiner E-Mail-Adresse. Wähle ein anderes.';
+
+  @override
+  String get settingsSyncErrorThrottled =>
+      'Zu viele Versuche aus diesem Netzwerk. Warte eine Weile und versuche es dann erneut.';
+
+  @override
   String get settingsSyncSignIn => 'Anmelden';
 
   @override
@@ -957,12 +1038,36 @@ class AppLocalizationsDe extends AppLocalizations {
       'Dein FocusTrace-Konto wurde gelöscht. Der Nutzungsverlauf auf diesem Gerät wurde behalten.';
 
   @override
-  String get settingsSyncErrorWrongPassword =>
-      'Das Passwort ist nicht korrekt. Dein Konto wurde nicht gelöscht.';
+  String get settingsSyncRepeatPassword => 'Passwort wiederholen';
 
   @override
-  String get settingsSyncMissingFields =>
-      'Gib eine E-Mail und ein Passwort ein.';
+  String get settingsSyncShowRepeatPassword => 'Wiederholtes Passwort anzeigen';
+
+  @override
+  String get settingsSyncHideRepeatPassword =>
+      'Wiederholtes Passwort verbergen';
+
+  @override
+  String get settingsSyncErrorPasswordMismatch =>
+      'Die Passwörter stimmen nicht überein.';
+
+  @override
+  String get settingsSyncDangerZone => 'Gefahrenbereich';
+
+  @override
+  String get settingsSyncDangerZoneBody =>
+      'Wenn du dein Konto löschst, werden es und alle auf den Server synchronisierten Nutzungsdaten endgültig entfernt. Der Nutzungsverlauf auf diesem Gerät bleibt erhalten.';
+
+  @override
+  String get settingsSyncDeleteAcknowledge =>
+      'Ich verstehe, dass mein Cloud-Konto damit endgültig gelöscht wird.';
+
+  @override
+  String get settingsSyncDeleting => 'Wird gelöscht…';
+
+  @override
+  String get settingsSyncErrorWrongPassword =>
+      'Das Passwort ist nicht korrekt. Dein Konto wurde nicht gelöscht.';
 
   @override
   String get settingsPrivacyBodySync =>

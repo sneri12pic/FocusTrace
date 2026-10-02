@@ -182,15 +182,46 @@ the same sync path across the real network before release-facing work.
 2. **Prepare the laptop as a staging host.** Fix its network access, then run the
    Spring Boot service and PostgreSQL there with persistent storage. Treat this
    host as staging, not production.
+   Private bootstrap complete 2026-10-02 on Ubuntu `192.168.0.69`: Docker
+   deployment, dedicated PostgreSQL volume, server-generated secrets, localhost
+   application port, restart and API smoke checks passed. Host reboot remains
+   unverified; the backup restore check passed during edge setup below.
 3. **Add the staging deployment edge.** Put an HTTPS reverse proxy in front of
    Spring, keep the application port private, configure the trusted-proxy model,
    add proxy-level volumetric controls, persistent logs, and PostgreSQL backups
    with an explicit retention policy. Sync v1 remains single-instance because
    D18 rate-limit buckets are in-process.
+   Reuse the host's existing remotely managed Cloudflare Tunnel for
+   `staging-sync.stepandemianenko.dev`. Leave the apex Vercel portfolio and
+   existing homepage/Caddy route untouched. Route configured through the
+   Cloudflare dashboard; the server has no tunnel-management certificate.
+   Prepared 2026-10-02: loopback Nginx edge on 18081, client-IP normalization,
+   HTTPS redirect, request/connection limits, persistent logs, restricted app DB
+   role and daily seven-day backups. Local API/proxy tests, fresh DB bootstrap
+   and backup restore into a disposable database passed. Route published with
+   user approval: certificate-valid TLS, HTTP redirect, actual visitor IP logs,
+   public API smoke test and blocked direct LAN ports passed. Next: run the
+   physical-phone protocol. Public load testing, off-host backups and
+   privacy/deletion backup reconciliation remain before release.
 4. **Re-prove sync over the real network.** Point a physical phone at the staging
    endpoint without `adb reverse` and verify sign-in, manual sync, scheduled
    background sync, restart/reconnect behaviour, server restart, temporary
    network loss/recovery, and the local-first invariant.
+   Account-flow subset complete 2026-10-02 on the A36: rebuilt staging debug
+   APK, created one disposable account, verified automatic sign-in and the
+   success panel with sync still off, then deleted it through password
+   confirmation. Local history was retained. All 23 new account messages are
+   translated into de, es, fr, ja, pt and uk; full Flutter suite passed (279
+   tests, one intentional live-backend skip). Manual/background staging sync
+   and the restart/network-recovery protocol remain open; this account check
+   does not close item 4.
+   Account safety follow-up 2026-10-02: deletion moved to a danger zone with a
+   password-plus-acknowledgment dialog that shows progress and closes only on
+   server success; registration gained an exact-match repeat-password field.
+   Widget-tested; on the A36 only the no-network dialog checks were run against
+   the developer's real signed-in account. Remaining: on-device registration
+   with the repeat field, and wrong-password/offline/success deletion with a
+   disposable staging account (requires signing the real account out first).
 5. ~~**Close release-facing blockers.** Update `README.md` and privacy copy for
    optional cloud sync, provide the Google Play web-accessible account-deletion
    route/page, and verify release builds refuse insecure `http://` transport.~~

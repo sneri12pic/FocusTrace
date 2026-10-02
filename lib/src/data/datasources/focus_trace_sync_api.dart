@@ -9,11 +9,19 @@ import '../../domain/models/sync_usage.dart';
 /// no credential ever reaches this object, because it is the thing most likely
 /// to be printed.
 class SyncApiException implements Exception {
-  const SyncApiException(this.statusCode, this.message);
+  const SyncApiException(
+    this.statusCode,
+    this.message, {
+    this.invalidFields = const {},
+  });
 
   /// 0 when the request never produced a response (offline, timeout, TLS).
   final int statusCode;
   final String message;
+
+  /// Registration 400 only: which request fields the server rejected, limited
+  /// to the known names `email` and `password`. Never the server's message.
+  final Set<String> invalidFields;
 
   /// The request is wrong, not the moment. Resending it unchanged cannot help.
   bool get isPermanent => statusCode == 400 || statusCode == 404;
@@ -100,7 +108,13 @@ class FocusTraceSyncApi {
       body: {'email': email, 'password': password},
     );
     if (response.status != 201) {
-      throw SyncApiException(response.status, 'Registration was refused.');
+      throw SyncApiException(
+        response.status,
+        'Registration was refused.',
+        invalidFields: response.status == 400
+            ? response.problemFields(const {'email', 'password'})
+            : const {},
+      );
     }
   }
 
@@ -380,4 +394,20 @@ class _Response {
   final String body;
 
   Map<String, Object?> get json => jsonDecode(body) as Map<String, Object?>;
+
+  /// Field names from an RFC 9457 `errors: [{field, message}]` body that are
+  /// in [known]. Anything unparseable yields none.
+  Set<String> problemFields(Set<String> known) {
+    try {
+      return {
+        for (final error in json['errors']! as List<Object?>)
+          if (error case {
+            'field': final String field,
+          } when known.contains(field))
+            field,
+      };
+    } on Object {
+      return const {};
+    }
+  }
 }

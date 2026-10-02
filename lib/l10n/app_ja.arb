@@ -557,6 +557,43 @@
   "settingsSyncBody": "サインインすると、1日の利用時間の合計を自分のアカウントにコピーし、別の端末から確認できます。オンにするまでは無効です。",
   "settingsSyncEmail": "メールアドレス",
   "settingsSyncPassword": "パスワード",
+  "settingsSyncPasswordRequirements": "15～128文字で入力してください。関連のない単語をいくつか組み合わせると、安全で覚えやすいパスフレーズになります。よく使われるパスワードは使用できません。",
+  "settingsSyncShowPassword": "パスワードを表示",
+  "settingsSyncHidePassword": "パスワードを非表示",
+  "settingsSyncSignInHeading": "アカウントにログイン",
+  "settingsSyncCreateHeading": "同期用アカウントを作成",
+  "settingsSyncSwitchToCreate": "同期を初めて使う方：アカウントを作成",
+  "settingsSyncSwitchToSignIn": "アカウントをお持ちの方：ログイン",
+  "settingsSyncSignInInstead": "ログインに切り替える",
+  "settingsSyncSigningIn": "ログイン中…",
+  "settingsSyncCreatingAccount": "アカウントを作成中…",
+  "settingsSyncAccountCreated": "アカウントを作成しました",
+  "settingsSyncSignedInAs": "{email} としてログイン中",
+  "@settingsSyncSignedInAs": {
+    "placeholders": {
+      "email": {
+        "type": "String"
+      }
+    }
+  },
+  "settingsSyncCreatedNextStep": "同期はまだオフです。この端末の1日ごとの合計をアカウントにコピーするには、同期をオンにしてください。",
+  "settingsSyncTurnOnSync": "同期をオンにする",
+  "settingsSyncAccountCreatedSignInRequired": "アカウントは作成されましたが、自動ログインに失敗しました。パスワードを入力し、「ログイン」をタップして続けてください。",
+  "settingsSyncErrorRegistration": "アカウントを作成できませんでした。メールアドレスとパスワードを確認し、もう一度お試しください。",
+  "settingsSyncErrorEmailRequired": "メールアドレスを入力してください。",
+  "settingsSyncErrorEmailInvalid": "name@example.com のような有効なメールアドレスを入力してください。",
+  "settingsSyncErrorPasswordRequired": "パスワードを入力してください。",
+  "settingsSyncErrorPasswordTooShort": "15文字以上で入力してください（現在{count}文字）。",
+  "@settingsSyncErrorPasswordTooShort": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsSyncErrorPasswordTooLong": "128文字以内で入力してください。",
+  "settingsSyncErrorPasswordRejected": "このパスワードはよく使われているか、メールアドレスと一致しています。別のパスワードを選んでください。",
+  "settingsSyncErrorThrottled": "このネットワークからの試行回数が多すぎます。しばらく待ってから、もう一度お試しください。",
   "settingsSyncSignIn": "サインイン",
   "settingsSyncCreateAccount": "アカウントを作成",
   "settingsSyncSignOut": "ログアウト",
@@ -580,7 +617,14 @@
   "settingsSyncDeletePassword": "現在のパスワード",
   "settingsSyncDeleteConfirm": "完全に削除",
   "settingsSyncDeleted": "FocusTrace アカウントを削除しました。この端末の利用履歴は残っています。",
+  "settingsSyncRepeatPassword": "パスワードを再入力",
+  "settingsSyncShowRepeatPassword": "再入力したパスワードを表示",
+  "settingsSyncHideRepeatPassword": "再入力したパスワードを非表示",
+  "settingsSyncErrorPasswordMismatch": "パスワードが一致しません。",
+  "settingsSyncDangerZone": "危険な操作",
+  "settingsSyncDangerZoneBody": "アカウントを削除すると、アカウントとサーバーに同期されたすべての利用データが完全に削除されます。この端末の利用履歴は残ります。",
+  "settingsSyncDeleteAcknowledge": "クラウドアカウントが完全に削除されることを理解しました。",
+  "settingsSyncDeleting": "削除中…",
   "settingsSyncErrorWrongPassword": "パスワードが正しくありません。アカウントは削除されていません。",
-  "settingsSyncMissingFields": "メールアドレスとパスワードを入力してください。",
   "settingsPrivacyBodySync": "利用履歴と設定は、バックアップを書き出すか下のクラウド同期をオンにしない限り、この端末に保存されたままです。"
 }

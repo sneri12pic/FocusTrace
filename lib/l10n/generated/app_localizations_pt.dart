@@ -874,6 +874,91 @@ class AppLocalizationsPt extends AppLocalizations {
   String get settingsSyncPassword => 'Palavra-passe';
 
   @override
+  String get settingsSyncPasswordRequirements =>
+      'Use entre 15 e 128 caracteres. Algumas palavras sem relação formam uma frase-passe segura e fácil de memorizar. Palavras-passe comuns não são aceites.';
+
+  @override
+  String get settingsSyncShowPassword => 'Mostrar palavra-passe';
+
+  @override
+  String get settingsSyncHidePassword => 'Ocultar palavra-passe';
+
+  @override
+  String get settingsSyncSignInHeading => 'Inicie sessão na sua conta';
+
+  @override
+  String get settingsSyncCreateHeading => 'Crie uma conta de sincronização';
+
+  @override
+  String get settingsSyncSwitchToCreate =>
+      'Ainda não usa a sincronização? Crie uma conta';
+
+  @override
+  String get settingsSyncSwitchToSignIn => 'Já tem uma conta? Inicie sessão';
+
+  @override
+  String get settingsSyncSignInInstead =>
+      'Iniciar sessão em vez de criar conta';
+
+  @override
+  String get settingsSyncSigningIn => 'A iniciar sessão…';
+
+  @override
+  String get settingsSyncCreatingAccount => 'A criar conta…';
+
+  @override
+  String get settingsSyncAccountCreated => 'Conta criada';
+
+  @override
+  String settingsSyncSignedInAs(String email) {
+    return 'Sessão iniciada como $email';
+  }
+
+  @override
+  String get settingsSyncCreatedNextStep =>
+      'A sincronização continua desligada. Ative-a quando quiser copiar os totais diários deste dispositivo para a sua conta.';
+
+  @override
+  String get settingsSyncTurnOnSync => 'Ativar sincronização';
+
+  @override
+  String get settingsSyncAccountCreatedSignInRequired =>
+      'A sua conta foi criada, mas não foi possível iniciar sessão automaticamente. Introduza a palavra-passe e toque em «Iniciar sessão» para continuar.';
+
+  @override
+  String get settingsSyncErrorRegistration =>
+      'Conta não criada. Verifique o seu e-mail e a palavra-passe e tente novamente.';
+
+  @override
+  String get settingsSyncErrorEmailRequired =>
+      'Introduza o seu endereço de e-mail.';
+
+  @override
+  String get settingsSyncErrorEmailInvalid =>
+      'Introduza um endereço de e-mail válido, como nome@example.com.';
+
+  @override
+  String get settingsSyncErrorPasswordRequired =>
+      'Introduza a sua palavra-passe.';
+
+  @override
+  String settingsSyncErrorPasswordTooShort(int count) {
+    return 'Use pelo menos 15 caracteres ($count até agora).';
+  }
+
+  @override
+  String get settingsSyncErrorPasswordTooLong =>
+      'Use no máximo 128 caracteres.';
+
+  @override
+  String get settingsSyncErrorPasswordRejected =>
+      'Esta palavra-passe é demasiado comum ou corresponde ao seu e-mail. Escolha outra.';
+
+  @override
+  String get settingsSyncErrorThrottled =>
+      'Demasiadas tentativas a partir desta rede. Aguarde um pouco e tente novamente.';
+
+  @override
   String get settingsSyncSignIn => 'Iniciar sessão';
 
   @override
@@ -951,12 +1036,35 @@ class AppLocalizationsPt extends AppLocalizations {
       'Sua conta do FocusTrace foi excluída. O histórico de uso neste dispositivo foi mantido.';
 
   @override
-  String get settingsSyncErrorWrongPassword =>
-      'Essa senha não está correta. Sua conta não foi excluída.';
+  String get settingsSyncRepeatPassword => 'Repetir palavra-passe';
 
   @override
-  String get settingsSyncMissingFields =>
-      'Introduza um e-mail e uma palavra-passe.';
+  String get settingsSyncShowRepeatPassword => 'Mostrar palavra-passe repetida';
+
+  @override
+  String get settingsSyncHideRepeatPassword => 'Ocultar palavra-passe repetida';
+
+  @override
+  String get settingsSyncErrorPasswordMismatch =>
+      'As palavras-passe não coincidem.';
+
+  @override
+  String get settingsSyncDangerZone => 'Zona de perigo';
+
+  @override
+  String get settingsSyncDangerZoneBody =>
+      'Excluir sua conta a remove permanentemente, junto com todos os dados de uso sincronizados com o servidor. O histórico de uso neste dispositivo é mantido.';
+
+  @override
+  String get settingsSyncDeleteAcknowledge =>
+      'Entendo que isto exclui permanentemente a minha conta na nuvem.';
+
+  @override
+  String get settingsSyncDeleting => 'Excluindo…';
+
+  @override
+  String get settingsSyncErrorWrongPassword =>
+      'Essa senha não está correta. Sua conta não foi excluída.';
 
   @override
   String get settingsPrivacyBodySync =>

@@ -866,6 +866,86 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsSyncPassword => 'Password';
 
   @override
+  String get settingsSyncPasswordRequirements =>
+      'Use 15–128 characters. A few unrelated words make a strong, memorable passphrase. Common passwords are not accepted.';
+
+  @override
+  String get settingsSyncShowPassword => 'Show password';
+
+  @override
+  String get settingsSyncHidePassword => 'Hide password';
+
+  @override
+  String get settingsSyncSignInHeading => 'Sign in to your account';
+
+  @override
+  String get settingsSyncCreateHeading => 'Create a sync account';
+
+  @override
+  String get settingsSyncSwitchToCreate => 'New to sync? Create an account';
+
+  @override
+  String get settingsSyncSwitchToSignIn => 'Already have an account? Sign in';
+
+  @override
+  String get settingsSyncSignInInstead => 'Sign in instead';
+
+  @override
+  String get settingsSyncSigningIn => 'Signing in…';
+
+  @override
+  String get settingsSyncCreatingAccount => 'Creating account…';
+
+  @override
+  String get settingsSyncAccountCreated => 'Account created';
+
+  @override
+  String settingsSyncSignedInAs(String email) {
+    return 'Signed in as $email';
+  }
+
+  @override
+  String get settingsSyncCreatedNextStep =>
+      'Sync is still off. Turn it on when you want this device\'s daily totals copied to your account.';
+
+  @override
+  String get settingsSyncTurnOnSync => 'Turn on sync';
+
+  @override
+  String get settingsSyncAccountCreatedSignInRequired =>
+      'Your account was created, but signing in automatically did not work. Enter your password and tap Sign in to continue.';
+
+  @override
+  String get settingsSyncErrorRegistration =>
+      'Account not created. Check your email and password and try again.';
+
+  @override
+  String get settingsSyncErrorEmailRequired => 'Enter your email address.';
+
+  @override
+  String get settingsSyncErrorEmailInvalid =>
+      'Enter a valid email address, like name@example.com.';
+
+  @override
+  String get settingsSyncErrorPasswordRequired => 'Enter your password.';
+
+  @override
+  String settingsSyncErrorPasswordTooShort(int count) {
+    return 'Use at least 15 characters ($count so far).';
+  }
+
+  @override
+  String get settingsSyncErrorPasswordTooLong => 'Use at most 128 characters.';
+
+  @override
+  String get settingsSyncErrorPasswordRejected =>
+      'This password is too common or matches your email. Choose a different one.';
+
+  @override
+  String get settingsSyncErrorThrottled =>
+      'Too many attempts from this network. Wait a while, then try again.';
+
+  @override
   String get settingsSyncSignIn => 'Sign in';
 
   @override
@@ -944,11 +1024,34 @@ class AppLocalizationsEn extends AppLocalizations {
       'Your FocusTrace account was deleted. Usage history on this device was kept.';
 
   @override
-  String get settingsSyncErrorWrongPassword =>
-      'That password is not correct. Your account was not deleted.';
+  String get settingsSyncRepeatPassword => 'Repeat password';
 
   @override
-  String get settingsSyncMissingFields => 'Enter an email and a password.';
+  String get settingsSyncShowRepeatPassword => 'Show repeated password';
+
+  @override
+  String get settingsSyncHideRepeatPassword => 'Hide repeated password';
+
+  @override
+  String get settingsSyncErrorPasswordMismatch => 'The passwords do not match.';
+
+  @override
+  String get settingsSyncDangerZone => 'Danger zone';
+
+  @override
+  String get settingsSyncDangerZoneBody =>
+      'Deleting your account permanently removes it and all usage data synced to the server. Usage history on this device stays.';
+
+  @override
+  String get settingsSyncDeleteAcknowledge =>
+      'I understand this permanently deletes my cloud account.';
+
+  @override
+  String get settingsSyncDeleting => 'Deleting…';
+
+  @override
+  String get settingsSyncErrorWrongPassword =>
+      'That password is not correct. Your account was not deleted.';
 
   @override
   String get settingsPrivacyBodySync =>

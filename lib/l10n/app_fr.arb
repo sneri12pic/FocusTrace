@@ -557,6 +557,43 @@
   "settingsSyncBody": "Connectez-vous pour copier vos totaux d’utilisation quotidiens vers votre compte et les consulter sur un autre appareil. Désactivée tant que vous ne l’activez pas.",
   "settingsSyncEmail": "E-mail",
   "settingsSyncPassword": "Mot de passe",
+  "settingsSyncPasswordRequirements": "Utilisez entre 15 et 128 caractères. Quelques mots sans rapport forment une phrase de passe sûre et facile à retenir. Les mots de passe courants ne sont pas acceptés.",
+  "settingsSyncShowPassword": "Afficher le mot de passe",
+  "settingsSyncHidePassword": "Masquer le mot de passe",
+  "settingsSyncSignInHeading": "Connectez-vous à votre compte",
+  "settingsSyncCreateHeading": "Créez un compte de synchronisation",
+  "settingsSyncSwitchToCreate": "Première synchronisation ? Créez un compte",
+  "settingsSyncSwitchToSignIn": "Vous avez déjà un compte ? Connectez-vous",
+  "settingsSyncSignInInstead": "Se connecter à la place",
+  "settingsSyncSigningIn": "Connexion en cours…",
+  "settingsSyncCreatingAccount": "Création du compte…",
+  "settingsSyncAccountCreated": "Compte créé",
+  "settingsSyncSignedInAs": "Connecté avec {email}",
+  "@settingsSyncSignedInAs": {
+    "placeholders": {
+      "email": {
+        "type": "String"
+      }
+    }
+  },
+  "settingsSyncCreatedNextStep": "La synchronisation est encore désactivée. Activez-la quand vous souhaitez copier les totaux quotidiens de cet appareil vers votre compte.",
+  "settingsSyncTurnOnSync": "Activer la synchronisation",
+  "settingsSyncAccountCreatedSignInRequired": "Votre compte a été créé, mais la connexion automatique a échoué. Saisissez votre mot de passe et appuyez sur « Se connecter » pour continuer.",
+  "settingsSyncErrorRegistration": "Compte non créé. Vérifiez votre adresse e-mail et votre mot de passe, puis réessayez.",
+  "settingsSyncErrorEmailRequired": "Saisissez votre adresse e-mail.",
+  "settingsSyncErrorEmailInvalid": "Saisissez une adresse e-mail valide, comme nom@example.com.",
+  "settingsSyncErrorPasswordRequired": "Saisissez votre mot de passe.",
+  "settingsSyncErrorPasswordTooShort": "Utilisez au moins 15 caractères ({count} pour le moment).",
+  "@settingsSyncErrorPasswordTooShort": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsSyncErrorPasswordTooLong": "Utilisez au maximum 128 caractères.",
+  "settingsSyncErrorPasswordRejected": "Ce mot de passe est trop courant ou correspond à votre adresse e-mail. Choisissez-en un autre.",
+  "settingsSyncErrorThrottled": "Trop de tentatives depuis ce réseau. Attendez un moment, puis réessayez.",
   "settingsSyncSignIn": "Se connecter",
   "settingsSyncCreateAccount": "Créer un compte",
   "settingsSyncSignOut": "Se déconnecter",
@@ -580,7 +617,14 @@
   "settingsSyncDeletePassword": "Mot de passe actuel",
   "settingsSyncDeleteConfirm": "Supprimer définitivement",
   "settingsSyncDeleted": "Votre compte FocusTrace a été supprimé. L’historique d’utilisation de cet appareil a été conservé.",
+  "settingsSyncRepeatPassword": "Répéter le mot de passe",
+  "settingsSyncShowRepeatPassword": "Afficher le mot de passe répété",
+  "settingsSyncHideRepeatPassword": "Masquer le mot de passe répété",
+  "settingsSyncErrorPasswordMismatch": "Les mots de passe ne correspondent pas.",
+  "settingsSyncDangerZone": "Zone de danger",
+  "settingsSyncDangerZoneBody": "Supprimer votre compte le supprime définitivement, ainsi que toutes les données d’utilisation synchronisées sur le serveur. L’historique d’utilisation de cet appareil est conservé.",
+  "settingsSyncDeleteAcknowledge": "Je comprends que cela supprime définitivement mon compte cloud.",
+  "settingsSyncDeleting": "Suppression…",
   "settingsSyncErrorWrongPassword": "Ce mot de passe est incorrect. Votre compte n’a pas été supprimé.",
-  "settingsSyncMissingFields": "Saisissez un e-mail et un mot de passe.",
   "settingsPrivacyBodySync": "Votre historique d’utilisation et vos réglages restent sur cet appareil, sauf si vous exportez une sauvegarde ou activez la synchronisation cloud ci-dessous."
 }

@@ -557,6 +557,43 @@
   "settingsSyncBody": "Sign in to copy your daily usage totals to your own account, so another device can see them. Off until you turn it on.",
   "settingsSyncEmail": "Email",
   "settingsSyncPassword": "Password",
+  "settingsSyncPasswordRequirements": "Use 15–128 characters. A few unrelated words make a strong, memorable passphrase. Common passwords are not accepted.",
+  "settingsSyncShowPassword": "Show password",
+  "settingsSyncHidePassword": "Hide password",
+  "settingsSyncSignInHeading": "Sign in to your account",
+  "settingsSyncCreateHeading": "Create a sync account",
+  "settingsSyncSwitchToCreate": "New to sync? Create an account",
+  "settingsSyncSwitchToSignIn": "Already have an account? Sign in",
+  "settingsSyncSignInInstead": "Sign in instead",
+  "settingsSyncSigningIn": "Signing in…",
+  "settingsSyncCreatingAccount": "Creating account…",
+  "settingsSyncAccountCreated": "Account created",
+  "settingsSyncSignedInAs": "Signed in as {email}",
+  "@settingsSyncSignedInAs": {
+    "placeholders": {
+      "email": {
+        "type": "String"
+      }
+    }
+  },
+  "settingsSyncCreatedNextStep": "Sync is still off. Turn it on when you want this device's daily totals copied to your account.",
+  "settingsSyncTurnOnSync": "Turn on sync",
+  "settingsSyncAccountCreatedSignInRequired": "Your account was created, but signing in automatically did not work. Enter your password and tap Sign in to continue.",
+  "settingsSyncErrorRegistration": "Account not created. Check your email and password and try again.",
+  "settingsSyncErrorEmailRequired": "Enter your email address.",
+  "settingsSyncErrorEmailInvalid": "Enter a valid email address, like name@example.com.",
+  "settingsSyncErrorPasswordRequired": "Enter your password.",
+  "settingsSyncErrorPasswordTooShort": "Use at least 15 characters ({count} so far).",
+  "@settingsSyncErrorPasswordTooShort": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsSyncErrorPasswordTooLong": "Use at most 128 characters.",
+  "settingsSyncErrorPasswordRejected": "This password is too common or matches your email. Choose a different one.",
+  "settingsSyncErrorThrottled": "Too many attempts from this network. Wait a while, then try again.",
   "settingsSyncSignIn": "Sign in",
   "settingsSyncCreateAccount": "Create account",
   "settingsSyncSignOut": "Log out",
@@ -580,7 +617,14 @@
   "settingsSyncDeletePassword": "Current password",
   "settingsSyncDeleteConfirm": "Delete permanently",
   "settingsSyncDeleted": "Your FocusTrace account was deleted. Usage history on this device was kept.",
+  "settingsSyncRepeatPassword": "Repeat password",
+  "settingsSyncShowRepeatPassword": "Show repeated password",
+  "settingsSyncHideRepeatPassword": "Hide repeated password",
+  "settingsSyncErrorPasswordMismatch": "The passwords do not match.",
+  "settingsSyncDangerZone": "Danger zone",
+  "settingsSyncDangerZoneBody": "Deleting your account permanently removes it and all usage data synced to the server. Usage history on this device stays.",
+  "settingsSyncDeleteAcknowledge": "I understand this permanently deletes my cloud account.",
+  "settingsSyncDeleting": "Deleting…",
   "settingsSyncErrorWrongPassword": "That password is not correct. Your account was not deleted.",
-  "settingsSyncMissingFields": "Enter an email and a password.",
   "settingsPrivacyBodySync": "Your usage history and settings stay on this device unless you export a backup or turn on cloud sync below."
 }

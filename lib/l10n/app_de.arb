@@ -557,6 +557,43 @@
   "settingsSyncBody": "Melde dich an, um deine täglichen Nutzungssummen in dein eigenes Konto zu kopieren und auf einem anderen Gerät zu sehen. Aus, bis du sie einschaltest.",
   "settingsSyncEmail": "E-Mail",
   "settingsSyncPassword": "Passwort",
+  "settingsSyncPasswordRequirements": "Verwende 15–128 Zeichen. Einige Wörter ohne Zusammenhang ergeben eine sichere, leicht merkbare Passphrase. Häufige Passwörter werden nicht akzeptiert.",
+  "settingsSyncShowPassword": "Passwort anzeigen",
+  "settingsSyncHidePassword": "Passwort verbergen",
+  "settingsSyncSignInHeading": "Bei deinem Konto anmelden",
+  "settingsSyncCreateHeading": "Ein Sync-Konto erstellen",
+  "settingsSyncSwitchToCreate": "Neu bei Sync? Konto erstellen",
+  "settingsSyncSwitchToSignIn": "Du hast schon ein Konto? Anmelden",
+  "settingsSyncSignInInstead": "Stattdessen anmelden",
+  "settingsSyncSigningIn": "Anmeldung läuft…",
+  "settingsSyncCreatingAccount": "Konto wird erstellt…",
+  "settingsSyncAccountCreated": "Konto erstellt",
+  "settingsSyncSignedInAs": "Angemeldet als {email}",
+  "@settingsSyncSignedInAs": {
+    "placeholders": {
+      "email": {
+        "type": "String"
+      }
+    }
+  },
+  "settingsSyncCreatedNextStep": "Sync ist noch aus. Schalte es ein, wenn die täglichen Nutzungswerte dieses Geräts in dein Konto kopiert werden sollen.",
+  "settingsSyncTurnOnSync": "Sync einschalten",
+  "settingsSyncAccountCreatedSignInRequired": "Dein Konto wurde erstellt, aber die automatische Anmeldung ist fehlgeschlagen. Gib dein Passwort ein und tippe auf „Anmelden“, um fortzufahren.",
+  "settingsSyncErrorRegistration": "Konto nicht erstellt. Prüfe deine E-Mail-Adresse und dein Passwort und versuche es erneut.",
+  "settingsSyncErrorEmailRequired": "Gib deine E-Mail-Adresse ein.",
+  "settingsSyncErrorEmailInvalid": "Gib eine gültige E-Mail-Adresse ein, etwa name@example.com.",
+  "settingsSyncErrorPasswordRequired": "Gib dein Passwort ein.",
+  "settingsSyncErrorPasswordTooShort": "Verwende mindestens 15 Zeichen (bisher {count}).",
+  "@settingsSyncErrorPasswordTooShort": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsSyncErrorPasswordTooLong": "Verwende höchstens 128 Zeichen.",
+  "settingsSyncErrorPasswordRejected": "Dieses Passwort ist zu häufig oder entspricht deiner E-Mail-Adresse. Wähle ein anderes.",
+  "settingsSyncErrorThrottled": "Zu viele Versuche aus diesem Netzwerk. Warte eine Weile und versuche es dann erneut.",
   "settingsSyncSignIn": "Anmelden",
   "settingsSyncCreateAccount": "Konto erstellen",
   "settingsSyncSignOut": "Abmelden",
@@ -580,7 +617,14 @@
   "settingsSyncDeletePassword": "Aktuelles Passwort",
   "settingsSyncDeleteConfirm": "Endgültig löschen",
   "settingsSyncDeleted": "Dein FocusTrace-Konto wurde gelöscht. Der Nutzungsverlauf auf diesem Gerät wurde behalten.",
+  "settingsSyncRepeatPassword": "Passwort wiederholen",
+  "settingsSyncShowRepeatPassword": "Wiederholtes Passwort anzeigen",
+  "settingsSyncHideRepeatPassword": "Wiederholtes Passwort verbergen",
+  "settingsSyncErrorPasswordMismatch": "Die Passwörter stimmen nicht überein.",
+  "settingsSyncDangerZone": "Gefahrenbereich",
+  "settingsSyncDangerZoneBody": "Wenn du dein Konto löschst, werden es und alle auf den Server synchronisierten Nutzungsdaten endgültig entfernt. Der Nutzungsverlauf auf diesem Gerät bleibt erhalten.",
+  "settingsSyncDeleteAcknowledge": "Ich verstehe, dass mein Cloud-Konto damit endgültig gelöscht wird.",
+  "settingsSyncDeleting": "Wird gelöscht…",
   "settingsSyncErrorWrongPassword": "Das Passwort ist nicht korrekt. Dein Konto wurde nicht gelöscht.",
-  "settingsSyncMissingFields": "Gib eine E-Mail und ein Passwort ein.",
   "settingsPrivacyBodySync": "Dein Nutzungsverlauf und deine Einstellungen bleiben auf diesem Gerät, außer du exportierst eine Sicherung oder aktivierst unten die Cloud-Synchronisierung."
 }

@@ -1126,13 +1126,23 @@ touched. Ordinary logout is unchanged and still keeps the watermark: signing bac
 into the **same** account should not resend everything, and since 2026-09-26 a
 **different** account starts from zero (8.2).
 
-**UI.** The signed-in account card has a destructive "Delete account" button. It
-opens a dialog that states the cloud account and synced server data are deleted
-permanently, that this cannot be undone, that usage history on the device stays,
-and that sync is turned off; "Delete permanently" is disabled until the current
-password is typed. Success returns to the signed-out form with a notice that
-local history was kept. Wrong password: "That password is not correct. Your
-account was not deleted."
+**UI.** "Delete account" sits alone in a bordered "Danger zone" at the bottom of
+the signed-in account card, below sync and sign-out, with a one-line explanation.
+It only opens a dialog that states the cloud account and synced server data are
+deleted permanently, that this cannot be undone, that usage history on the device
+stays, and that sync is turned off. "Delete permanently" stays disabled until the
+current password is typed **and** an initially unchecked "I understand this
+permanently deletes my cloud account." box is ticked. The password field does not
+autofocus, so the keyboard does not cover the explanation. The dialog itself calls
+`SyncViewModel.deleteAccount` and stays open while the request runs: the action
+shows progress, a second tap is ignored, and Cancel, back and the barrier are
+disabled (`PopScope`). It closes only when the account is no longer signed in
+(server 204, or a rejected session). Wrong password: the field shows "That
+password is not correct. Your account was not deleted." and is cleared; other
+failures (offline, throttled, unknown) show an error notice in the dialog and keep
+both inputs for a retry. Dismissing or cancelling sends nothing and clears any
+dialog error from the card. Success returns to the signed-out form with a notice
+that local history was kept.
 
 Verification: `AccountDeletionIT` (PostgreSQL via Testcontainers), repository,
 view-model and card tests, and the real-backend E2E
@@ -1163,8 +1173,84 @@ one PostgreSQL instance
   security group or private network - deployment infrastructure, not this
   repository). Header trust is keyed on the socket peer; if an attacker can reach
   the port directly from an address in the trusted list, nothing here can tell.
-- No proxy product, host or cloud is chosen yet; no Kubernetes, CDN, service mesh
-  or second instance.
+- Staging uses the existing Cloudflare Tunnel and a private Nginx proxy
+  (2026-10-02, below). Production hosting remains undecided; no Kubernetes,
+  service mesh or second Spring instance.
+
+**Private staging bootstrap (2026-10-02).** `server/compose.yml` now runs one
+Java 21 Spring Boot container with the `prod` profile and one PostgreSQL 16
+container on the existing Ubuntu host `ypo@192.168.0.69`, under
+`/home/ypo/focustrace-staging`. PostgreSQL has a dedicated named volume and no
+published port. Spring publishes only `127.0.0.1:18080`, in `direct` network
+mode; this is a private bootstrap, not the public D20 edge. Credentials are
+generated on the server with OpenSSL and stored in a mode-600 `.env`, excluded
+from Git. The app runs as uid 10001 with a read-only filesystem, a temporary
+`/tmp`, no capabilities and a 768 MiB memory limit; PostgreSQL has a 384 MiB
+limit. Both restart unless stopped and retain bounded Docker logs (3 x 10 MiB
+per service, surviving process restarts but not container deletion).
+
+The host already runs a remotely managed Cloudflare Tunnel and a separate Caddy
+homepage on port 3000. Neither was modified. The intended FocusTrace hostname
+is `staging-sync.stepandemianenko.dev`; the apex remains the Vercel portfolio,
+and `sync.stepandemianenko.dev` is reserved for later production. The initial
+private bootstrap had no public route; subsequent edge setup and verification
+are recorded below. The existing tunnel means no second tunnel or public inbound
+application/database port is needed.
+
+**Staging edge published and API-verified (2026-10-02).** The existing
+`home-server` tunnel now routes `staging-sync.stepandemianenko.dev` to
+`http://127.0.0.1:18081`; its existing OpenClaw routes are unchanged. The deployment
+uses `cloudflared -> 127.0.0.1:18081 Nginx -> 127.0.0.1:18080 Spring`.
+Cloudflare terminates external TLS. Nginx uses host networking but listens
+only on loopback; PostgreSQL remains unpublished. Nginx accepts only the
+staging hostname, parses `CF-Connecting-IP` using its native real-IP module
+from the loopback peer, rejects missing/invalid visitor addresses, and redirects
+non-HTTPS forwarding to the fixed HTTPS staging hostname. It overwrites
+`X-Forwarded-For` with the resolved visitor IP and `X-Forwarded-Proto` with
+`https`, removing `Forwarded` and `X-Real-IP` before calling Spring. This
+normalizes the Cloudflare chain into the single trusted hop D20 supports.
+Spring now uses `trusted-proxy` mode, trusting the exact Docker host gateway it
+sees as Nginx's socket peer. The literal lives in the server `.env`; recompute
+it and verify forwarding if the Compose network is removed/recreated. Host-local
+processes are inside this trust boundary; neither port is reachable from the LAN.
+
+Nginx caps bodies at 2 MiB, permits 10 requests/second per client (burst 30) and
+30/second total (burst 60), limits each client to 20 active requests, bounds
+header/body/keepalive/upstream timeouts, and emits `no-store`. Proxy throttling
+returns 429. These are staging operating values, not an API contract; application
+budgets remain in force. Certificate-valid HTTPS, HTTP 308 redirect, real visitor
+IP in proxy logs, public API sync and blocked direct LAN ports were verified.
+The public burst limits and multiple distinct public client addresses have not
+been load-tested; their local proxy checks passed.
+
+Application logs use a persistent bind directory and native Logback rotation:
+10 MiB files, seven days of archives, 100 MiB archive cap. Nginx access logs
+contain time, client IP, method, path without query string, and status; no body
+or authorization header. Its bind-mounted logs rotate daily and retain seven
+days. Container diagnostic logs remain capped at 3 x 10 MiB. Log directories
+are inside the mode-700 deployment directory; app logs are owned by uid 10001.
+The proxy bind directory is mode 711 so worker processes can traverse it when
+reopening rotated logs; the private outer directory prevents other host users
+from reaching it. Mode 700 here caused workers to retain the previous log file
+after rotation; fixed and verified with a public sync writing the new log.
+
+The app connects as `focustrace_app`, an ordinary login/schema owner with no
+superuser, database creation, role creation, replication or RLS bypass. Separate
+`focustrace_admin` handles administration. Fresh volumes use `postgres-init.sh`;
+on the original staging volume, public application tables were transferred from
+bootstrap role `focustrace`, which now has NOLOGIN. PostgreSQL requires that
+original bootstrap role to retain SUPERUSER.
+
+`maintenance.sh` runs daily at 03:17 UTC from the deployment user's crontab,
+preserving existing entries. It serializes with `flock`, writes a compressed
+custom-format `pg_dump` into a private temporary file, atomically renames it
+after success, and retains seven days of dumps. Backups share the host disk:
+host/disk failure recovery is not covered. `verify-backup.sh` restores the
+latest archive into a new disposable database, checks four successful migrations,
+reports usage rows, and removes only that database. Restore of a smoke-test day
+passed. Backups may contain deleted accounts until expiry: reconcile retention
+with public privacy/deletion copy and define deletion reconciliation before any
+recovery to the live database. No live restore or off-host backup performed.
 
 **Two explicit modes** (`focustrace.network.mode`):
 
@@ -1696,6 +1782,31 @@ re-upload after an import loads every selected day into memory at once, which is
 acceptable at this data scale (risk 4).
 
 ---
+
+Account feedback (2026-10-02): the account card opens in sign-in mode and offers
+a separate create-account mode, each with one primary submit action. Creation
+shows 15–128-character guidance and checks email shape and password rune count
+locally; the server remains authoritative, including NFC normalization and the
+common-password blocklist. Both modes offer password visibility and action-specific
+progress. Registration 400 reads only the allowlisted `email`/`password` field
+names into domain failures; raw server messages never reach the UI. Duplicate
+email offers sign-in, and 429 has dedicated wait-and-retry copy. A confirmed
+registration followed by failed automatic login says the account exists and
+switches to sign-in. Success shows the signed-in email and an explicit next-step
+button while sync remains off. Registration (2026-10-02, later) adds a "Repeat
+password" field shown only in create-account mode, with its own show/hide control
+and the same `newPassword` autofill hint. It is compared exactly with the password
+(no trim or normalization); a mismatch is shown inline once submitted, or while
+typing as soon as the repeat is no longer a prefix of the password, and blocks
+submission. Only the original password is sent. Both registration passwords are
+cleared when leaving create-account mode and after every registration attempt,
+successful or not; the sign-in-required copy therefore asks the user to enter the
+password again. Sign-in failures still retain the password in form memory except
+on server password rejection.
+Messages and placeholder metadata are present in en, de, es, fr, ja, pt and uk.
+These additions do not change backend validation, credential storage or consent
+semantics. The creation success panel and password-confirmed deletion were
+verified on the A36 against staging HTTPS, with no `adb reverse` and sync off.
 
 ### 8.5 Android cross-engine execution boundary
 

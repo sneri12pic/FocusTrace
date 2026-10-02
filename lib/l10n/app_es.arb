@@ -557,6 +557,43 @@
   "settingsSyncBody": "Inicia sesión para copiar tus totales de uso diario a tu propia cuenta y verlos en otro dispositivo. Desactivada hasta que la actives.",
   "settingsSyncEmail": "Correo electrónico",
   "settingsSyncPassword": "Contraseña",
+  "settingsSyncPasswordRequirements": "Usa entre 15 y 128 caracteres. Unas pocas palabras sin relación forman una frase de contraseña segura y fácil de recordar. No se aceptan contraseñas comunes.",
+  "settingsSyncShowPassword": "Mostrar contraseña",
+  "settingsSyncHidePassword": "Ocultar contraseña",
+  "settingsSyncSignInHeading": "Inicia sesión en tu cuenta",
+  "settingsSyncCreateHeading": "Crea una cuenta de sincronización",
+  "settingsSyncSwitchToCreate": "¿Primera vez que sincronizas? Crea una cuenta",
+  "settingsSyncSwitchToSignIn": "¿Ya tienes una cuenta? Inicia sesión",
+  "settingsSyncSignInInstead": "Iniciar sesión en su lugar",
+  "settingsSyncSigningIn": "Iniciando sesión…",
+  "settingsSyncCreatingAccount": "Creando cuenta…",
+  "settingsSyncAccountCreated": "Cuenta creada",
+  "settingsSyncSignedInAs": "Sesión iniciada como {email}",
+  "@settingsSyncSignedInAs": {
+    "placeholders": {
+      "email": {
+        "type": "String"
+      }
+    }
+  },
+  "settingsSyncCreatedNextStep": "La sincronización sigue desactivada. Actívala cuando quieras copiar los totales diarios de este dispositivo a tu cuenta.",
+  "settingsSyncTurnOnSync": "Activar sincronización",
+  "settingsSyncAccountCreatedSignInRequired": "Tu cuenta se ha creado, pero no se ha podido iniciar sesión automáticamente. Introduce tu contraseña y toca «Iniciar sesión» para continuar.",
+  "settingsSyncErrorRegistration": "No se ha creado la cuenta. Revisa tu correo electrónico y contraseña e inténtalo de nuevo.",
+  "settingsSyncErrorEmailRequired": "Introduce tu dirección de correo electrónico.",
+  "settingsSyncErrorEmailInvalid": "Introduce una dirección de correo electrónico válida, como nombre@example.com.",
+  "settingsSyncErrorPasswordRequired": "Introduce tu contraseña.",
+  "settingsSyncErrorPasswordTooShort": "Usa al menos 15 caracteres (llevas {count}).",
+  "@settingsSyncErrorPasswordTooShort": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsSyncErrorPasswordTooLong": "Usa como máximo 128 caracteres.",
+  "settingsSyncErrorPasswordRejected": "Esta contraseña es demasiado común o coincide con tu correo electrónico. Elige otra.",
+  "settingsSyncErrorThrottled": "Demasiados intentos desde esta red. Espera un poco y vuelve a intentarlo.",
   "settingsSyncSignIn": "Iniciar sesión",
   "settingsSyncCreateAccount": "Crear cuenta",
   "settingsSyncSignOut": "Cerrar sesión",
@@ -580,7 +617,14 @@
   "settingsSyncDeletePassword": "Contraseña actual",
   "settingsSyncDeleteConfirm": "Eliminar para siempre",
   "settingsSyncDeleted": "Se eliminó tu cuenta de FocusTrace. El historial de uso de este dispositivo se conservó.",
+  "settingsSyncRepeatPassword": "Repetir contraseña",
+  "settingsSyncShowRepeatPassword": "Mostrar contraseña repetida",
+  "settingsSyncHideRepeatPassword": "Ocultar contraseña repetida",
+  "settingsSyncErrorPasswordMismatch": "Las contraseñas no coinciden.",
+  "settingsSyncDangerZone": "Zona de peligro",
+  "settingsSyncDangerZoneBody": "Eliminar tu cuenta la borra para siempre junto con todos los datos de uso sincronizados con el servidor. El historial de uso de este dispositivo se conserva.",
+  "settingsSyncDeleteAcknowledge": "Entiendo que esto elimina mi cuenta en la nube para siempre.",
+  "settingsSyncDeleting": "Eliminando…",
   "settingsSyncErrorWrongPassword": "La contraseña no es correcta. Tu cuenta no se eliminó.",
-  "settingsSyncMissingFields": "Introduce un correo y una contraseña.",
   "settingsPrivacyBodySync": "Tu historial de uso y tus ajustes permanecen en este dispositivo salvo que exportes una copia o actives la sincronización en la nube más abajo."
 }

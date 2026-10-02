@@ -163,8 +163,20 @@ enum SyncFailureReason {
 enum SyncAuthFailure {
   offline,
   invalidCredentials,
+  invalidRegistration,
+
+  /// Registration: the server rejected the email address.
+  invalidEmail,
+
+  /// Registration: the server rejected the password (length, blocklist, or
+  /// equal to the email's local part).
+  passwordRejected,
+  accountCreatedSignInRequired,
   emailTaken,
   weakPassword,
+
+  /// The server's per-network attempt limit was reached (HTTP 429).
+  throttled,
 
   /// The session was rejected. Only account deletion reports it: sign-in and
   /// account creation have no session yet.

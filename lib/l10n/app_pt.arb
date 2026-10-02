@@ -557,6 +557,43 @@
   "settingsSyncBody": "Inicie sessão para copiar os seus totais de uso diário para a sua conta e vê-los noutro dispositivo. Desligada até a ativar.",
   "settingsSyncEmail": "E-mail",
   "settingsSyncPassword": "Palavra-passe",
+  "settingsSyncPasswordRequirements": "Use entre 15 e 128 caracteres. Algumas palavras sem relação formam uma frase-passe segura e fácil de memorizar. Palavras-passe comuns não são aceites.",
+  "settingsSyncShowPassword": "Mostrar palavra-passe",
+  "settingsSyncHidePassword": "Ocultar palavra-passe",
+  "settingsSyncSignInHeading": "Inicie sessão na sua conta",
+  "settingsSyncCreateHeading": "Crie uma conta de sincronização",
+  "settingsSyncSwitchToCreate": "Ainda não usa a sincronização? Crie uma conta",
+  "settingsSyncSwitchToSignIn": "Já tem uma conta? Inicie sessão",
+  "settingsSyncSignInInstead": "Iniciar sessão em vez de criar conta",
+  "settingsSyncSigningIn": "A iniciar sessão…",
+  "settingsSyncCreatingAccount": "A criar conta…",
+  "settingsSyncAccountCreated": "Conta criada",
+  "settingsSyncSignedInAs": "Sessão iniciada como {email}",
+  "@settingsSyncSignedInAs": {
+    "placeholders": {
+      "email": {
+        "type": "String"
+      }
+    }
+  },
+  "settingsSyncCreatedNextStep": "A sincronização continua desligada. Ative-a quando quiser copiar os totais diários deste dispositivo para a sua conta.",
+  "settingsSyncTurnOnSync": "Ativar sincronização",
+  "settingsSyncAccountCreatedSignInRequired": "A sua conta foi criada, mas não foi possível iniciar sessão automaticamente. Introduza a palavra-passe e toque em «Iniciar sessão» para continuar.",
+  "settingsSyncErrorRegistration": "Conta não criada. Verifique o seu e-mail e a palavra-passe e tente novamente.",
+  "settingsSyncErrorEmailRequired": "Introduza o seu endereço de e-mail.",
+  "settingsSyncErrorEmailInvalid": "Introduza um endereço de e-mail válido, como nome@example.com.",
+  "settingsSyncErrorPasswordRequired": "Introduza a sua palavra-passe.",
+  "settingsSyncErrorPasswordTooShort": "Use pelo menos 15 caracteres ({count} até agora).",
+  "@settingsSyncErrorPasswordTooShort": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsSyncErrorPasswordTooLong": "Use no máximo 128 caracteres.",
+  "settingsSyncErrorPasswordRejected": "Esta palavra-passe é demasiado comum ou corresponde ao seu e-mail. Escolha outra.",
+  "settingsSyncErrorThrottled": "Demasiadas tentativas a partir desta rede. Aguarde um pouco e tente novamente.",
   "settingsSyncSignIn": "Iniciar sessão",
   "settingsSyncCreateAccount": "Criar conta",
   "settingsSyncSignOut": "Terminar sessão",
@@ -580,7 +617,14 @@
   "settingsSyncDeletePassword": "Senha atual",
   "settingsSyncDeleteConfirm": "Excluir permanentemente",
   "settingsSyncDeleted": "Sua conta do FocusTrace foi excluída. O histórico de uso neste dispositivo foi mantido.",
+  "settingsSyncRepeatPassword": "Repetir palavra-passe",
+  "settingsSyncShowRepeatPassword": "Mostrar palavra-passe repetida",
+  "settingsSyncHideRepeatPassword": "Ocultar palavra-passe repetida",
+  "settingsSyncErrorPasswordMismatch": "As palavras-passe não coincidem.",
+  "settingsSyncDangerZone": "Zona de perigo",
+  "settingsSyncDangerZoneBody": "Excluir sua conta a remove permanentemente, junto com todos os dados de uso sincronizados com o servidor. O histórico de uso neste dispositivo é mantido.",
+  "settingsSyncDeleteAcknowledge": "Entendo que isto exclui permanentemente a minha conta na nuvem.",
+  "settingsSyncDeleting": "Excluindo…",
   "settingsSyncErrorWrongPassword": "Essa senha não está correta. Sua conta não foi excluída.",
-  "settingsSyncMissingFields": "Introduza um e-mail e uma palavra-passe.",
   "settingsPrivacyBodySync": "O seu histórico de uso e as definições ficam neste dispositivo, a menos que exporte uma cópia ou ative a sincronização na nuvem abaixo."
 }

@@ -14,8 +14,13 @@ enum SyncPhase { idle, syncing, success, error }
 enum SyncErrorKind {
   offline,
   invalidCredentials,
+  invalidRegistration,
+  invalidEmail,
+  passwordRejected,
+  accountCreatedSignInRequired,
   emailTaken,
   weakPassword,
+  throttled,
   sessionExpired,
   refused,
 
@@ -152,6 +157,13 @@ class SyncViewModel extends StateNotifier<SyncState> {
     await load();
   }
 
+  /// The form was edited, so the last failure no longer describes it.
+  void clearError() {
+    if (state.error != null && !state.isAuthenticating) {
+      state = state.copyWith(clearError: true);
+    }
+  }
+
   /// Signing out always ends signed out locally, even if the server could not
   /// be reached: the repository clears the credential either way.
   Future<void> signOut() async {
@@ -247,6 +259,12 @@ class SyncViewModel extends StateNotifier<SyncState> {
     return switch (failure) {
       SyncAuthFailure.offline => SyncErrorKind.offline,
       SyncAuthFailure.invalidCredentials => SyncErrorKind.invalidCredentials,
+      SyncAuthFailure.invalidRegistration => SyncErrorKind.invalidRegistration,
+      SyncAuthFailure.invalidEmail => SyncErrorKind.invalidEmail,
+      SyncAuthFailure.passwordRejected => SyncErrorKind.passwordRejected,
+      SyncAuthFailure.throttled => SyncErrorKind.throttled,
+      SyncAuthFailure.accountCreatedSignInRequired =>
+        SyncErrorKind.accountCreatedSignInRequired,
       SyncAuthFailure.emailTaken => SyncErrorKind.emailTaken,
       SyncAuthFailure.weakPassword => SyncErrorKind.weakPassword,
       SyncAuthFailure.sessionExpired => SyncErrorKind.sessionExpired,

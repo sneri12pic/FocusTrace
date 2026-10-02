@@ -101,10 +101,29 @@ class SyncRepositoryImpl implements SyncRepository {
     required String email,
     required String password,
   }) => _sessionOperation(() async {
-    await _authenticating(() async {
+    try {
       await _api.register(email, password);
+    } on SyncApiException catch (error) {
+      throw SyncAuthException(switch (error) {
+        SyncApiException(statusCode: 400, :final invalidFields)
+            when invalidFields.contains('email') =>
+          SyncAuthFailure.invalidEmail,
+        SyncApiException(statusCode: 400, :final invalidFields)
+            when invalidFields.contains('password') =>
+          SyncAuthFailure.passwordRejected,
+        SyncApiException(statusCode: 400) =>
+          SyncAuthFailure.invalidRegistration,
+        _ => _authFailureFor(error),
+      });
+    }
+    try {
       await _api.signIn(email, password);
-    });
+    } on Object {
+      // Registration succeeded; a failed login must not invite another register.
+      throw const SyncAuthException(
+        SyncAuthFailure.accountCreatedSignInRequired,
+      );
+    }
     await _local.writeSetting(SyncSettingKeys.accountEmail, email);
   });
 
@@ -133,6 +152,7 @@ class SyncRepositoryImpl implements SyncRepository {
       400 || 401 => SyncAuthFailure.invalidCredentials,
       409 => SyncAuthFailure.emailTaken,
       422 => SyncAuthFailure.weakPassword,
+      429 => SyncAuthFailure.throttled,
       _ => SyncAuthFailure.unknown,
     };
   }

@@ -87,6 +87,77 @@ void main() {
     repository = repositoryFor(credentials);
   });
 
+  test('registration validation is not reported as a login failure', () async {
+    backend.registrationStatus = 400;
+    await expectLater(
+      repository.createAccount(email: 'a@example.com', password: 'short'),
+      throwsA(
+        isA<SyncAuthException>().having(
+          (e) => e.failure,
+          'failure',
+          SyncAuthFailure.invalidRegistration,
+        ),
+      ),
+    );
+    expect(backend.requestPaths, ['/api/v1/auth/register']);
+    expect(await repository.isSignedIn, isFalse);
+  });
+
+  for (final (status, fields, expected) in [
+    (400, ['email'], SyncAuthFailure.invalidEmail),
+    (400, ['password'], SyncAuthFailure.passwordRejected),
+    (400, ['unexpected'], SyncAuthFailure.invalidRegistration),
+    (409, <String>[], SyncAuthFailure.emailTaken),
+    (429, <String>[], SyncAuthFailure.throttled),
+    (500, <String>[], SyncAuthFailure.unknown),
+  ]) {
+    test('registration $status $fields is reported as $expected', () async {
+      backend
+        ..registrationStatus = status
+        ..registrationErrorFields = fields;
+      await expectLater(
+        repository.createAccount(
+          email: 'a@example.com',
+          password: 'a unique long passphrase',
+        ),
+        throwsA(
+          isA<SyncAuthException>().having(
+            (e) => e.failure,
+            'failure',
+            expected,
+          ),
+        ),
+      );
+      expect(backend.requestPaths, ['/api/v1/auth/register']);
+      expect(await repository.isSignedIn, isFalse);
+    });
+  }
+
+  test(
+    'successful registration with failed login reports account created',
+    () async {
+      backend.malformedLogin = true;
+      await expectLater(
+        repository.createAccount(
+          email: 'a@example.com',
+          password: 'a unique long passphrase',
+        ),
+        throwsA(
+          isA<SyncAuthException>().having(
+            (e) => e.failure,
+            'failure',
+            SyncAuthFailure.accountCreatedSignInRequired,
+          ),
+        ),
+      );
+      expect(backend.requestPaths, [
+        '/api/v1/auth/register',
+        '/api/v1/auth/login',
+      ]);
+      expect(await repository.isSignedIn, isFalse);
+    },
+  );
+
   Future<void> seedDay(
     String day, {
     required int queriedAtMs,
@@ -1724,6 +1795,8 @@ class _FakeBackend {
   bool rejectEveryUpload = false;
   var _issued = 0;
   bool malformedLogin = false;
+  int registrationStatus = 201;
+  List<String> registrationErrorFields = const [];
   bool malformedRefresh = false;
   String? heldPath;
   Completer<void>? entered;
@@ -1792,6 +1865,15 @@ class _FakeBackend {
 
     switch (request.uri.path) {
       case '/api/v1/auth/register':
+        if (registrationStatus != 201) {
+          return reply(registrationStatus, {
+            'detail': 'Request validation failed.',
+            'errors': [
+              for (final field in registrationErrorFields)
+                {'field': field, 'message': 'server text never shown'},
+            ],
+          });
+        }
         return reply(201, {'userId': 'user-${body['email']}'});
       case '/api/v1/auth/login':
         if (malformedLogin) return reply(200, <String, Object?>{});

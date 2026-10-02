@@ -5,6 +5,322 @@ session reads to continue safely.
 
 ---
 
+## 2026-10-02 — Account deletion danger zone; registration repeat password
+
+Date: 2026-10-02
+Agent: Claude Code
+Goal: Make account deletion hard to trigger accidentally and add a repeat-password
+field to registration, preserving the account-flow redesign and translations.
+Completed: "Delete account" moved into a bordered danger zone at the bottom of
+the signed-in card. The existing `_DeleteAccountDialog` now requires the current
+password plus an unchecked acknowledgment, runs `deleteAccount` itself with
+progress, blocks repeat taps and dismissal while in flight, closes only once
+signed out, shows wrong-password on the field (cleared) and other failures as an
+in-dialog notice. Password field no longer autofocuses (on the A36 the keyboard
+hid the acknowledgment; also the likely cause of the lost first character noted
+in the previous entry). Registration gained an exact-match "Repeat password"
+field with its own show/hide control and `newPassword` autofill; mismatch blocks
+submission. Both passwords clear on leaving registration and after every
+registration attempt; the sign-in-required message in all seven ARBs now asks
+for the password again. Eight new messages in en, de, es, fr, ja, pt, uk.
+Files materially changed: `sync_account_card.dart`, `test/sync_account_card_test.dart`,
+seven ARBs plus generated localizations, this plan/architecture/progress set.
+No view-model, repository or backend change.
+Verification: `flutter analyze` PASS; `test/sync_account_card_test.dart` PASS
+(42, incl. new gating/cancel/barrier/back/progress/offline/wrong-password/success
+and match/mismatch/untrimmed/clearing tests); mutation check (trimmed comparison,
+dropped acknowledgment gate) failed the expected tests; full `flutter test` PASS
+(292, one skip). Staging debug APK: first build was stale (new keys absent from
+`kernel_blob.bin`); `flutter clean` rebuild verified, installed with `adb install -r`
+on SM-A366B. On the A36, signed in to the developer's real account, with no
+network request: danger zone rendering (dark theme), dialog opens without
+keyboard, confirm disabled with password only, enabled with both, Cancel and
+back close it with the account and sync unchanged. Screenshots in
+`.local/a36-danger-zone/`.
+Decisions made: dialog owns the delete call so failures stay in context; clearing
+registration passwords after a failed attempt follows the explicit requirement
+over the earlier keep-for-correction behaviour.
+Remaining: on-device registration with the repeat field and wrong-password,
+offline and successful deletion using a disposable staging account; not run
+because the phone holds the developer's real signed-in account.
+Risks / unresolved questions: light theme and non-English layouts verified only
+through widget tests and the shared color scheme, not on device.
+Relevant commit: none.
+
+---
+
+## 2026-10-02 — Account translations and A36 staging creation/deletion verified
+
+Date: 2026-10-02
+Agent: Codex
+Goal: Complete account UI translations, prove creation success on the A36 and
+delete the disposable account, then update the canonical stage documents.
+Completed: translated all 23 new messages into de, es, fr, ja, pt and uk with
+matching `email`/`count` placeholder metadata; regenerated localizations. Built
+with `FOCUSTRACE_SYNC_BASE_URL=https://staging-sync.stepandemianenko.dev` and
+updated only `com.stepandemianenko.focustrace.dev` using `adb install -r`, without
+clearing app data. On SM-A366B (`RFCY9054RND`), no reverse mappings: one registration
+attempt created the disposable account and signed in automatically. Visually
+verified the account-created panel, email, sync-off guidance and next-step button;
+the switch was off, manual sync disabled, and local `sync_enabled` remained false.
+Cancelled Samsung Pass's save prompt. Password-confirmed account deletion returned
+to the empty sign-in form with the deletion notice (the repository only clears
+account state after HTTP 204). Local database retained all 143 daily usage rows
+and eight snapshot days. Screenshots/XML/database evidence lives in
+`.local/a36-account-check/`, notably `09-success.png` and `15-deleted.png`.
+Files materially changed: six translation ARBs and their generated Dart files;
+canonical backend plan, architecture and progress. Existing UI/repository/server
+and other working-tree changes preserved.
+Verification: `flutter gen-l10n` PASS; focused localization/account/repository/
+view-model tests PASS (139); `flutter test --reporter compact` PASS (279, one
+intentional live-backend skip); after final French wording, localization tests
+PASS (3), `flutter analyze` PASS and staging debug APK build PASS. A36 install,
+creation success and deletion UI PASS. `git diff --check` PASS.
+Decisions made: retained the implemented separate auth modes and field feedback;
+corrected architecture's stale claim that passwords clear after every failure.
+No backend policy, consent, rate-limit or credential-storage changes.
+Remaining: full staging manual/background sync and restart/network-recovery
+protocol in plan item 4. No commit/push requested.
+Risks / unresolved questions: first deletion entry lost its first character while
+the dialog gained focus, producing the expected wrong-password notice; re-entry
+after confirming focus succeeded. One registration request total, two deletion
+requests; no registration budget reset. Independent staging log/database check
+BLOCKED by automatic approval review because it could disclose internal records;
+cleanup is proven through the app's server-success-only deletion path, not an
+independent server row count. Sandboxed Flutter generation stalled; SDK-enabled
+generation passed and only the identified stalled process tree was stopped.
+Relevant commit: none.
+
+---
+
+## 2026-10-02 — Account creation feedback fixes; redesign requested
+
+Date: 2026-10-02
+Agent: Codex
+Goal: Diagnose phone account creation and make failures/success understandable.
+Completed: staging proxy logs show multiple register 400 and login 401 responses;
+the requests reach the server. Registration 400 previously mapped to the login
+"credentials did not match" message. Added registration-specific validation
+feedback, 15–128-character password guidance, show/hide password, progress on
+the action actually tapped, keyboard dismissal and explicit account-created
+confirmation. Registration success followed by login failure now says the account
+exists and asks the user to sign in, rather than inviting duplicate registration.
+Files materially changed: sync repository/domain/view model/account card,
+English ARB and generated localizations, account-card/repository tests, canonical
+architecture and this progress document.
+Verification: public `server/smoke-test.py` PASS (disposable account removed);
+`flutter gen-l10n` PASS; `dart format` PASS;
+`flutter test test/sync_account_card_test.dart test/sync_view_model_test.dart
+test/sync_repository_test.dart` PASS, 117 tests; `git diff --check` PASS.
+First sandboxed Flutter generation stalled; replacement with SDK access passed,
+and only the identified stalled process tree was stopped.
+Decisions made: preserve backend validation and password policy; no raw server
+body or credentials surfaced. Sync remains separately opt-in. No server changes.
+Remaining: user requested a Claude prompt for a full login/registration redesign;
+these focused changes are not built/installed on the phone. New six UI strings
+use English fallback in other locales pending translations. Real-phone account
+creation/manual/background sync still unverified. Registration validation message
+combines email/password guidance; field-specific UX remains redesign work.
+Risks / unresolved questions: logs do not identify which field was invalid;
+password length is a plausible cause, not proven for the user's submitted input.
+Relevant commit: none; no commit/push requested.
+
+---
+
+## 2026-10-02 — Phone connection failure traced to old debug APK
+
+Date: 2026-10-02
+Agent: Codex
+Goal: Diagnose "Could not reach the sync service" during account creation.
+Completed: inspected connected SM-A366B (`RFCY9054RND`). Installed debug APK
+contained `http://127.0.0.1:18080` and no staging HTTPS URL; the newly built
+`build/app/outputs/flutter-apk/app-debug.apk` contained the staging URL and no
+old localhost endpoint. Saved installed APK under
+`.local/sync-connection-check/installed-debug.apk`; replaced only
+`com.stepandemianenko.focustrace.dev` with `adb install -r` and reopened it.
+No clear/uninstall or Play-package operation; no product code changed.
+Files materially changed: this progress document only.
+Verification: staging protected endpoint returned expected 401 with Dart-style
+User-Agent; server containers healthy and recent logs showed no account creation
+request. `aapt dump badging` confirmed the replacement's debug package identity;
+install PASS; SHA-256 of installed APK equals the local staging APK. Device launch
+command completed successfully.
+Decisions made: install the already-built correct APK; no network/security changes
+or rebuild needed. Generated localization working-tree changes preserved.
+Remaining: user retries account creation, then sign-in/opt-in/manual sync; real
+phone API and background/recovery protocol are not yet verified.
+Risks / unresolved questions: the localhost endpoint explains this symptom;
+remaining phone-network behaviour still needs the retry.
+Relevant commit: none.
+
+---
+
+## 2026-10-02 — Staging hostname published; public API sync verified
+
+Date: 2026-10-02
+Agent: Codex
+Goal: Publish the approved staging route and verify the public path.
+
+Completed:
+- After explicit approval, saved the existing `home-server` tunnel's new route:
+  `staging-sync.stepandemianenko.dev -> http://127.0.0.1:18081`. Dashboard shows
+  it beside both unchanged OpenClaw routes and catch-all 404. No apex/Vercel
+  settings changed. Screenshot: `.local/staging-route-published.jpg`.
+- Public HTTPS smoke passed from Windows and Ubuntu: register/login, device
+  registration, APPLIED/DUPLICATE upload, correct history, account deletion,
+  rejected old token. Live database has zero users after cleanup.
+- Fixed proxy log rotation: workers could not traverse mode-700 bind directory
+  to reopen files. Maintenance now sets it to 711, still behind the private
+  mode-700 deployment directory. Public smoke after rotation wrote nine lines
+  into the newly opened access.log. Persistent app log access uses the container
+  uid, not the host user's direct file access.
+- Smoke client sends explicit `FocusTrace-Staging-Smoke/1.0` User-Agent.
+  Default Python-urllib was rejected by Cloudflare with 403/error 1010 before
+  reaching origin; named test client and ordinary Dart-style GET succeeded.
+  Existing Cloudflare security settings were not changed.
+
+Files materially changed: `server/smoke-test.py`, `server/maintenance.sh`,
+canonical stage plan/architecture/progress.
+
+Verification:
+- Windows `curl.exe` HTTPS `/api/v1/devices`, with normal certificate validation:
+  PASS (expected 401 ProblemDetail, no-store, cf-cache-status DYNAMIC).
+- HTTP same path: PASS, 308 Location points to the HTTPS staging hostname.
+- `FOCUSTRACE_SMOKE_URL=https://staging-sync.stepandemianenko.dev` with
+  `server/smoke-test.py`: PASS from Windows and Ubuntu with explicit test UA.
+- Proxy access log records actual visitor WAN address, not host gateway.
+- Direct socket connections from Windows to `192.168.0.69` ports 18080, 18081,
+  5432: PASS, all blocked. `nginx -t` and Compose config: PASS.
+- Maintenance/rotation and a subsequent public API smoke: PASS; current
+  access.log contains fresh traffic and live users count is zero.
+- `docker compose restart app proxy` followed by Windows public smoke: PASS;
+  the API recovers after service restart through the existing tunnel.
+
+Decisions made: retain existing Cloudflare security settings; test client names
+itself instead of using Python's default blocked signature. No backend runtime
+logic changed; full 273-test backend run from the bootstrap remains the relevant
+application test evidence.
+Remaining: real physical-phone sign-in/manual/background sync and recovery
+protocol; host reboot; public multi-client/load checks; off-host backups and
+public privacy/deletion backup reconciliation before release. Scheduled cron
+execution has not yet occurred; manual maintenance and disposable restore passed.
+Risks / unresolved questions: Cloudflare can reject client signatures, so verify
+the real Flutter app on hardware. Backups can hold deleted data for seven days;
+recovery into the live DB must reconcile deletions. No production-readiness claim.
+Relevant commit: none; no commit/push requested.
+
+---
+
+## 2026-10-02 — Cloudflare staging edge prepared; route awaits publication
+
+Date: 2026-10-02
+Agent: Codex
+Goal: Prepare `staging-sync.stepandemianenko.dev` using the existing tunnel.
+
+Completed:
+- Inspected the signed-in Cloudflare dashboard: one healthy `home-server`
+  tunnel, connector `ypodev`, two existing duplicate OpenClaw routes to
+  `http://localhost:18789`, catch-all 404. Preserved all existing routes and the
+  Vercel portfolio. Prepared the unsaved new route to `http://127.0.0.1:18081`.
+- Deployed a separate loopback Nginx proxy with HTTPS redirect, hostname
+  isolation, Cloudflare visitor-IP normalization, spoof-resistant forwarding,
+  body/rate/connection/time limits and no-store responses. App now uses D20
+  trusted-proxy mode with exact host gateway in the private server `.env`.
+- Added persistent app/proxy logs, native app log rotation and daily proxy
+  rotation; daily compressed backups at 03:17 UTC with seven-day retention.
+- Created restricted `focustrace_app` database role and transferred only public
+  application tables to it. PostgreSQL forbids demoting its bootstrap role and
+  reassigning its system objects; that original role now has NOLOGIN. No data
+  discarded. Fresh bootstrap uses separate admin/app roles.
+
+Files materially changed: `server/compose.yml`, `server/nginx.conf`,
+`server/postgres-init.sh`, `server/maintenance.sh`, `server/verify-backup.sh`,
+`server/proxy-test.py`, `server/smoke-test.py`, `server/.gitignore`, canonical
+stage plan/architecture/progress. Transition SQL is scratch in `.local/`.
+
+Verification:
+- `docker compose config --quiet`, deployment and `nginx -t`: PASS.
+- `python3 smoke-test.py` through Nginx: PASS, including restricted DB role.
+- `python3 proxy-test.py`: PASS: missing/invalid visitor address 400, wrong host
+  421, HTTP forwarding 308 to fixed HTTPS hostname, oversized body 413, eleven
+  logins with changing spoofed XFF throttle at 429 while another client gets
+  401, and a burst triggers proxy 429. First run failed because the separate
+  client test omitted JSON Content-Type; corrected, reset staging budgets and
+  reran successfully. No backend implementation changes.
+- `FOCUSTRACE_SMOKE_BACKUP_CHECK=1 python3 smoke-test.py`: PASS; backup/restore
+  of a disposable account with one usage day, four Flyway migrations present;
+  scratch restore DB dropped and live test account deleted.
+- Fresh PostgreSQL bootstrap in `focustrace-initcheck`: PASS; app role has
+  superuser/createdb/createrole all false. Removed only this temporary project
+  and volume. Existing staging volume kept.
+- Crontab entry installed, existing entries preserved. Scheduled execution has
+  not yet occurred; maintenance ran manually. Both ports listen on 127.0.0.1.
+
+Decisions made: staging Cloudflare edge plus a private Nginx proxy normalizes
+visitor IP into the implemented one-hop trust contract; no second tunnel.
+Remaining: user confirmation to SAVE the public route (browser policy requires
+confirmation at public exposure), then public TLS/HTTP redirect, actual client
+IP and phone checks. Seven-day local backups are not off-host disaster recovery;
+privacy/deletion backup retention and deleted-account reconciliation on recovery
+remain release work. Host reboot not tested. No live DB restore performed.
+Risks / unresolved questions: Docker gateway must be recomputed if its network is
+recreated. Proxy/app currently tested with local tunnel-emulation headers only.
+Relevant commit: none; no commit/push requested.
+
+---
+
+## 2026-10-02 — Private Ubuntu staging bootstrap
+
+Date: 2026-10-02
+Agent: Codex
+Goal: Start deploying FocusTrace to `ypo@192.168.0.69`.
+
+Completed:
+- Inspected the existing Ubuntu 26.04 server, Docker services and ports. Kept
+  other applications, the existing Cloudflare Tunnel and Caddy homepage intact.
+- Built the backend from `c7f8c1f`; transferred the executable jar and deployment
+  files to `/home/ypo/focustrace-staging`.
+- Started `focustrace-staging` Compose project: Java 21 app (`prod`), PostgreSQL
+  16, dedicated volume, localhost-only port 18080, bounded logs, memory limits,
+  restart policy and non-root/read-only app. Generated DB/JWT secrets remotely;
+  `.env` mode 600, values not printed or transferred to the repository.
+- Added a runnable disposable API smoke check; it deletes its test account.
+
+Files materially changed: `server/Dockerfile`, `server/.dockerignore`,
+`server/.gitignore`, `server/compose.yml`, `server/smoke-test.py`, canonical plan,
+architecture and progress documents.
+
+Verification:
+- `server/gradlew.bat test bootJar`: PASS (cached tasks).
+- `server/gradlew.bat test --rerun-tasks`: PASS; 273 tests, zero failures/errors,
+  zero skipped, including PostgreSQL Testcontainers tests.
+- Remote `docker compose config --quiet` and `docker compose up -d --build`: PASS.
+- Remote `python3 smoke-test.py`: PASS: unauthenticated 401, registration/login,
+  device registration, upload APPLIED then DUPLICATE, history contents, account
+  deletion and old-token rejection.
+- Remote `docker compose restart`, then `python3 smoke-test.py`: PASS; database
+  still reports four successful Flyway migrations; `.env` permissions are 600.
+
+Decisions made: private staging first; `staging-sync.stepandemianenko.dev` is the
+intended staging hostname, `sync.stepandemianenko.dev` reserved for production.
+Do not change `stepandemianenko.dev` (existing Vercel portfolio). Cloudflared is
+active as a system service with a token-managed tunnel; `cloudflared tunnel list`
+is UNAVAILABLE because no management `cert.pem` exists. Port 3000 is the existing
+  Caddy basic-auth homepage, not FocusTrace.
+
+Remaining: Cloudflare dashboard route inspection/configuration; HTTPS proxy and
+client-IP trust integration; edge resource controls; durable log retention;
+PostgreSQL backup/restore and retention; real-network phone verification. Never
+point the public tunnel at the private direct-mode application until the edge
+configuration and source-address throttling are proven.
+
+Risks / unresolved questions: this is private staging only. No public endpoint,
+host reboot, backup restore or phone-to-server network path verified. Existing
+untracked `.agents/`, `docs/backend/temp.md`, `skills-lock.json` preserved.
+Relevant commit: none; no commit or push requested.
+
+---
+
 ## 2026-10-01 — Android backup restore and single-device D2D test mode verified on hardware
 
 Date: 2026-10-01

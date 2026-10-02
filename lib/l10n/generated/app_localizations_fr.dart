@@ -886,6 +886,91 @@ class AppLocalizationsFr extends AppLocalizations {
   String get settingsSyncPassword => 'Mot de passe';
 
   @override
+  String get settingsSyncPasswordRequirements =>
+      'Utilisez entre 15 et 128 caractères. Quelques mots sans rapport forment une phrase de passe sûre et facile à retenir. Les mots de passe courants ne sont pas acceptés.';
+
+  @override
+  String get settingsSyncShowPassword => 'Afficher le mot de passe';
+
+  @override
+  String get settingsSyncHidePassword => 'Masquer le mot de passe';
+
+  @override
+  String get settingsSyncSignInHeading => 'Connectez-vous à votre compte';
+
+  @override
+  String get settingsSyncCreateHeading => 'Créez un compte de synchronisation';
+
+  @override
+  String get settingsSyncSwitchToCreate =>
+      'Première synchronisation ? Créez un compte';
+
+  @override
+  String get settingsSyncSwitchToSignIn =>
+      'Vous avez déjà un compte ? Connectez-vous';
+
+  @override
+  String get settingsSyncSignInInstead => 'Se connecter à la place';
+
+  @override
+  String get settingsSyncSigningIn => 'Connexion en cours…';
+
+  @override
+  String get settingsSyncCreatingAccount => 'Création du compte…';
+
+  @override
+  String get settingsSyncAccountCreated => 'Compte créé';
+
+  @override
+  String settingsSyncSignedInAs(String email) {
+    return 'Connecté avec $email';
+  }
+
+  @override
+  String get settingsSyncCreatedNextStep =>
+      'La synchronisation est encore désactivée. Activez-la quand vous souhaitez copier les totaux quotidiens de cet appareil vers votre compte.';
+
+  @override
+  String get settingsSyncTurnOnSync => 'Activer la synchronisation';
+
+  @override
+  String get settingsSyncAccountCreatedSignInRequired =>
+      'Votre compte a été créé, mais la connexion automatique a échoué. Saisissez votre mot de passe et appuyez sur « Se connecter » pour continuer.';
+
+  @override
+  String get settingsSyncErrorRegistration =>
+      'Compte non créé. Vérifiez votre adresse e-mail et votre mot de passe, puis réessayez.';
+
+  @override
+  String get settingsSyncErrorEmailRequired =>
+      'Saisissez votre adresse e-mail.';
+
+  @override
+  String get settingsSyncErrorEmailInvalid =>
+      'Saisissez une adresse e-mail valide, comme nom@example.com.';
+
+  @override
+  String get settingsSyncErrorPasswordRequired =>
+      'Saisissez votre mot de passe.';
+
+  @override
+  String settingsSyncErrorPasswordTooShort(int count) {
+    return 'Utilisez au moins 15 caractères ($count pour le moment).';
+  }
+
+  @override
+  String get settingsSyncErrorPasswordTooLong =>
+      'Utilisez au maximum 128 caractères.';
+
+  @override
+  String get settingsSyncErrorPasswordRejected =>
+      'Ce mot de passe est trop courant ou correspond à votre adresse e-mail. Choisissez-en un autre.';
+
+  @override
+  String get settingsSyncErrorThrottled =>
+      'Trop de tentatives depuis ce réseau. Attendez un moment, puis réessayez.';
+
+  @override
   String get settingsSyncSignIn => 'Se connecter';
 
   @override
@@ -963,12 +1048,36 @@ class AppLocalizationsFr extends AppLocalizations {
       'Votre compte FocusTrace a été supprimé. L’historique d’utilisation de cet appareil a été conservé.';
 
   @override
-  String get settingsSyncErrorWrongPassword =>
-      'Ce mot de passe est incorrect. Votre compte n’a pas été supprimé.';
+  String get settingsSyncRepeatPassword => 'Répéter le mot de passe';
 
   @override
-  String get settingsSyncMissingFields =>
-      'Saisissez un e-mail et un mot de passe.';
+  String get settingsSyncShowRepeatPassword =>
+      'Afficher le mot de passe répété';
+
+  @override
+  String get settingsSyncHideRepeatPassword => 'Masquer le mot de passe répété';
+
+  @override
+  String get settingsSyncErrorPasswordMismatch =>
+      'Les mots de passe ne correspondent pas.';
+
+  @override
+  String get settingsSyncDangerZone => 'Zone de danger';
+
+  @override
+  String get settingsSyncDangerZoneBody =>
+      'Supprimer votre compte le supprime définitivement, ainsi que toutes les données d’utilisation synchronisées sur le serveur. L’historique d’utilisation de cet appareil est conservé.';
+
+  @override
+  String get settingsSyncDeleteAcknowledge =>
+      'Je comprends que cela supprime définitivement mon compte cloud.';
+
+  @override
+  String get settingsSyncDeleting => 'Suppression…';
+
+  @override
+  String get settingsSyncErrorWrongPassword =>
+      'Ce mot de passe est incorrect. Votre compte n’a pas été supprimé.';
 
   @override
   String get settingsPrivacyBodySync =>
