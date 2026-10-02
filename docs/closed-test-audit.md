@@ -1507,3 +1507,201 @@ permutations remain unverified. The former history-recovery and enforcement P0
 issue drafts are superseded; seven P1/P2 drafts remain backlog. No GitHub issues
 were created. Publication uses a focused reliability commit on the existing
 feature/closed-test development branch, without a master merge.
+
+## SM-M135F usage display investigation — October 1
+
+Symptom reported: tracked usage no longer shows in FocusTrace on the SM-M135F
+(Android 14). Diagnosis only; no code, permission, setting or data was changed.
+Raw evidence is local and ignored under `.local/m13-investigation/`.
+
+**Affected installation:** `com.stepandemianenko.focustrace.dev` in user 0, the
+only FocusTrace launcher entry there. The production package exists only in the
+work profile (user 10), never launched, as recorded at the start of this audit.
+
+**Finding 1, history deleted by an uninstall (CONFIRMED).** At 21:35:17 BST the
+dev app was uninstalled from the home screen (launcher -> system
+`UninstallerActivity`, no keep-data flag, `ACTION_PACKAGE_FULLY_REMOVED`; no adb
+input at that time). At 21:36-21:37 an adb deploy (`am force-stop`, `package`
+install session, matching an IDE/`flutter run` sequence) installed a newer debug
+build into the empty package. Its database (schema v5) has 0 daily rows and 0
+intervals. A copy taken at 21:18, before the uninstall, is intact under
+`.local/restore-verification/m13-pre-reset/`: schema v4, integrity `ok`, 43 days
+(2026-07-28 to 2026-09-08), 927 daily rows, 5,216 intervals, 4 settings including
+restriction rules. Not restored: that needs the owner's approval.
+
+**Finding 2, Android returns no usage events on this device (CONFIRMED, cause
+of the state UNCERTAIN).** Usage access is granted (`GET_USAGE_STATS: allow`
+since 21:40), yet every `FTUsageRecovery` pass before and after the grant logs
+`events=0` and marks the day `unavailable`. The OS's own
+`dumpsys usagestats` shows the same: its "last 24 hour events" list is empty,
+while per-package `lastTimeUsed` shows use at 21:49. Its current daily and
+weekly buckets begin on 23/10/2026 and its monthly bucket on 08/10/2026 (future
+dates), its daily files are ten near-empty files dated 14-23 Oct 2026, and
+`mDumpInitLastTimeSaved` is 2026-09-08 02:03:53. That is the minute the old
+FocusTrace database last changed, and 2026-09-08 is its last tracked day.
+Queries for real dates therefore match no bucket. The phone was rebooted at about
+21:16 and the state persisted; today's only clock correction was 27 s (NTP), so
+the future dating comes from an earlier event that could not be identified. No
+FocusTrace code defect was found: the app reports Android's empty result
+correctly, and the dashboard re-queries on resume (reproduced at 21:49:58).
+
+Consequences: no usage from 2026-09-08 to now exists in FocusTrace or, as far as
+the OS exposes it, in Android's usage database. New tracking on this phone stays
+empty until Android's usage-stats state recovers; whether it recovers by itself
+once real time passes the future buckets (after 2026-10-24) is an inference, not
+verified. `cmd usagestats` offers no supported reset.
+
+Remaining: owner decision on restoring the 21:18 snapshot into the dev app
+(replaces a database that holds no usage); a supported way to recover Android's
+usage-stats state on this device, or confirmation after 2026-10-24.
+
+### Follow-up — October 2
+
+Re-checked at 15:29-15:31 BST on 2026-10-02, read-only apart from copying app
+data; evidence under `.local/m13-investigation/2026-10-02/`.
+
+- **Installation:** unchanged. User 0 is the active user; the user is opening
+  `com.stepandemianenko.focustrace.dev` (1.0.6-dev, versionCode 7, last
+  installed 2026-10-01 21:37:44, resumed in the foreground). The production
+  package is still installed only in work profile user 10.
+- **History: not restored, still missing (CONFIRMED).** A fresh copy (read
+  twice, identical) has schema v5, integrity `ok`, 0 daily rows, 0 intervals and
+  5 `unavailable` day markers for 2026-09-28 to 2026-10-02. The
+  `m13-pre-reset` backup is unchanged (v4, 927 daily rows, 5,216 intervals,
+  2026-07-28 to 2026-09-08). Nothing is hidden from display: the rows do not
+  exist in the app's storage.
+- **New tracking: still broken (CONFIRMED).** Usage access is `allow`. Every
+  `FTUsageRecovery` query today (09:58, 15:28) returned `events=0`, and the
+  OS's own "last 24 hour events" is empty. No clock change since 2026-10-01
+  21:39:45.
+- **Mechanism narrowed (STRONG INFERENCE).** Android's in-memory daily and
+  weekly buckets show exactly the same range as 18 hours earlier,
+  `23/10/2026, 09:28–15:18`: they are frozen, not advancing with real time.
+  Meanwhile per-package totals in those buckets keep updating with real
+  timestamps (`lastTimeUsed` 2026-10-02 15:28). So Android is still recording
+  usage, but into buckets whose begin time is in the future, and a query for
+  a real date range never overlaps them. This fits AOSP `UserUsageStatsService`
+  reusing the latest stored bucket whenever the current time is before that
+  bucket's end, which happens after a backward clock jump. Samsung's source was
+  not checked. The original jump to about 23 Oct, probably near 2026-09-08,
+  remains unidentified.
+- **Recovery: unverified.** Expected rollover once real time passes the end of
+  the frozen bucket (about 2026-10-24). Usage recorded until then is likely
+  unreachable even after that. Not assumed.
+
+### Product protections from the M13 incident — October 2
+
+Branch `codex/usage-data-protection`, uncommitted. Two changes so that a user
+neither loses history to an uninstall nor sees an unexplained empty dashboard.
+
+**Meaning of `unavailable`, verified in code.** Native recovery
+(`UsageHistoryRecovery.kt`) runs only with Usage Access granted. It marks a day
+`unavailable` when Android's event stream gives no known foreground state at or
+before the day's start, or ends unclosed (`hasCoverage`). For today it does so
+only when that also yields no usage. It also does so when the database write is
+rejected. Rows already stored for the day are never deleted, and a `reconciled`
+day keeps that status. So `unavailable` means "Android's records were
+insufficient to measure this day". It is not proof of a system fault, and an
+idle phone or a short retained history can produce it too.
+
+**1. Dashboard wording.** Three states are now distinct:
+- no Usage Access: permission card plus the existing "No usage recorded" text;
+- a measured empty day: "No usage recorded for today / this day.";
+- no stored rows, access granted, and the day marked `unavailable`: "Usage data
+  is currently unavailable for this day." (all 7 locales).
+
+Stored rows always take precedence, so earlier history stays visible on an
+`unavailable` day. Coverage is read after the live fetch, and a failed read
+falls back to the old wording. Tests: `dashboard_view_model_test.dart` (two
+cases), `usage_history_recovery_test.dart` (marker read and history kept),
+`widget_test.dart` (wording with and without access). Full suite: 254 passed,
+1 skipped (pre-existing).
+
+**2. `android:hasFragileUserData="true"`.** Official reference: added in API 29;
+"If true the user is prompted to keep the app's data on uninstall"; default
+false. It is an optional safeguard. The checkbox is unchecked by default, has no
+effect below Android 10, and is not offered by uninstall paths that bypass the
+system dialog (for example `adb uninstall`). It is not a backup: a factory reset
+or a lost phone still loses local data. Auto Backup and the optional sync remain
+separate, and sync is not a full backup or restore. Sync interaction is described
+in `backend-sync-architecture.md` ("Data kept on uninstall"). The privacy
+policy's deletion paragraph is updated.
+
+**Hardware results, SM-M135F, dev build 1.0.6-dev with both changes.** The dev
+app's data and APK were preserved first under
+`.local/m13-investigation/2026-10-02/protection-test/`.
+- Today was marked `unavailable` (`events=0`): the dashboard shows "Usage data
+  is currently unavailable for this day." (`01-unavailable-today.png`).
+- `am start -a android.intent.action.DELETE` opened the system dialog with an
+  unchecked "Keep 62.46 MB of app data." checkbox. Ticked, then OK: user 0
+  `installed=false`, database still present.
+- Reinstalling the same APK: the database is byte-identical (md5 `a8fbe8b4...`
+  before and after, same data inode), and onboarding stayed complete.
+- **Limitation found:** Usage Access (`GET_USAGE_STATS`) and the overlay
+  permission were reset to default by the reinstall. Kept data does not keep
+  special permissions, so the user must grant them again. With access missing,
+  the dashboard shows the permission card and not the `unavailable` wording
+  (`06-after-reinstall-no-access.png`).
+- Not tested: a signed-in sync installation across a keep-data uninstall
+  (sync is not enabled on this device); the Play Store's own uninstall path.
+
+Remaining limitations: the M13's own Android usage-stats state is unchanged.
+
+### Follow-up checks — October 2
+
+**Unavailable-day header (FIXED).** When a day has no stored rows and the
+`unavailable` dashboard wording applies, the day header now omits
+"Tracked · <duration>". Both use one condition, `showsUsageUnavailable`
+(access granted, and the day marked unavailable with no stored rows), so
+stored history, a measured empty day, and missing access keep the header as
+before. The regression test in `widget_test.dart` covers the three empty-day
+states. Only when access is granted and the day is unavailable does it show the
+unavailable wording and hide the header's duration. The other two keep
+"No usage recorded" and the header. On the
+A36, stored history still shows "Tracked · 2h 38m".
+
+**Keep app data with an authenticated sync session (VERIFIED on one device).**
+Setup: SM-A366B, Android 16, dev app `com.stepandemianenko.focustrace.dev`
+(the M13 cannot upload: every day there is `unavailable`, so sync registers no
+device). Build: this branch with
+`--dart-define=FOCUSTRACE_SYNC_BASE_URL=http://127.0.0.1:18080`, installed `-r`.
+Backend: `bootRun` on PostgreSQL 16.15 (container `focustrace-restore-pg`) over
+`adb reverse`. A new test account was used. Data, APK and permissions were
+preserved first; evidence is in `.local/keep-data-sync-test/`.
+
+- Baseline: signed out, opt-in off, id `82582851-...`, 8 days of history,
+  Usage Access `allow`, overlay default, notifications not granted.
+- Sign-in, opt-in and Sync now: "Sync complete". Server device
+  `1d3bb28b-...` received 7 days. 2026-10-01 is `unavailable` locally, so it was
+  not offered. The id changed because `82582851-...` belongs to the
+  2026-10-01 test account (the documented `409` path). Before the uninstall:
+  credential present (96 characters, never printed), marker equal to the
+  database id, `sync_enabled=true`.
+- System dialog (Android 16 wording "Keep app data", 62.70 MB): ticked, then
+  Uninstall. The user's data inodes were kept; `run-as` reported the package
+  unknown.
+- Reinstall of the same APK, before launch: database md5, marker and credential
+  ciphertext digest identical; Usage Access and overlay reset to default.
+- Launch: history intact (past-day digest `1ebf1295...` unchanged), header and
+  bubbles shown, and the "Usage Access required" card shown below them. Settings
+  showed signed in, with the switch on.
+- Credential usable: the first run presented the refresh token issued before the
+  uninstall (15:06:13Z). The server rotated it at 15:08:41Z in the same session,
+  with no replay rejection and no new session.
+- Same device resumes: after Usage Access was restored to its baseline
+  `allow`, Sync now uploaded under `1d3bb28b-...` (`last_seen_at` and
+  `last_received` 15:09:28Z). No new device was registered.
+
+Expected but not observed: the fail-closed path if a platform drops the
+AndroidKeyStore key, in which case the app would show signed out with the same
+id and could sign in again. The keep-data sync behavior is unverified on other
+OEMs and Android versions.
+
+Cleanup: logged out in-app (back to the baseline: signed out, opt-in off,
+credential empty). Usage Access `allow`, overlay default and notifications not
+granted, all matching the baseline. `adb reverse` removed, backend stopped,
+container stopped (volume kept). Differences from the baseline: the dev app now
+runs this branch's sync-enabled debug build; its installation id is
+`1d3bb28b-...`, a consequence of the account switch that was not reverted; and
+a test account remains on the local dev database. Docker Desktop was started
+for the test and left running.
