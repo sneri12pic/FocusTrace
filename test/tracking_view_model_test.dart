@@ -98,6 +98,9 @@ class _FakeUsageRepository implements UsageRepository {
       const <AppUsageSummary>[];
 
   @override
+  Future<bool> isUsageUnavailable(DateTime day) async => false;
+
+  @override
   Future<List<AppUsageSummary>> getDailySummaries(DateTime day) async =>
       const <AppUsageSummary>[];
 

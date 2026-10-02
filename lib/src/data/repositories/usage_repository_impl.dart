@@ -66,6 +66,13 @@ class UsageRepositoryImpl implements UsageRepository, AppMetadataRepository {
   }
 
   @override
+  Future<bool> isUsageUnavailable(DateTime day) async {
+    final Object local = _localDataSource;
+    return local is UsageRecoveryDatabase &&
+        await local.isUsageUnavailable(day);
+  }
+
+  @override
   Future<List<AppUsageSummary>> hydrateAppMetadata(
     List<AppUsageSummary> summaries,
   ) {

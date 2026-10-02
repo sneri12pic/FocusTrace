@@ -431,6 +431,10 @@ class AppLocalizationsUk extends AppLocalizations {
   String get dashboardNoUsageDay => 'За цей день використання не зафіксовано.';
 
   @override
+  String get dashboardUsageUnavailableDay =>
+      'Дані про використання за цей день наразі недоступні.';
+
+  @override
   String get dashboardAllTimeMostUsedTitle =>
       'Найчастіше використовуваний застосунок';
 

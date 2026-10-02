@@ -426,6 +426,10 @@ class AppLocalizationsPt extends AppLocalizations {
   String get dashboardNoUsageDay => 'Nenhum uso registrado neste dia.';
 
   @override
+  String get dashboardUsageUnavailableDay =>
+      'Os dados de uso não estão disponíveis no momento para este dia.';
+
+  @override
   String get dashboardAllTimeMostUsedTitle =>
       'App mais usado de todos os tempos';
 

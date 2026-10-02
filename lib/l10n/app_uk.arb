@@ -247,6 +247,7 @@
   "dashboardStartTracking": "Почати відстеження",
   "dashboardNoUsageToday": "За сьогодні використання не зафіксовано.",
   "dashboardNoUsageDay": "За цей день використання не зафіксовано.",
+  "dashboardUsageUnavailableDay": "Дані про використання за цей день наразі недоступні.",
   "dashboardAllTimeMostUsedTitle": "Найчастіше використовуваний застосунок",
   "dashboardUnsupportedPlatform": "MVP FocusTrace підтримує Android і Windows. Інші платформи можна додати пізніше через ізольовані платформні джерела даних.",
   "commonRetry": "Повторити",

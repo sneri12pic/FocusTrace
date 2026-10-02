@@ -247,6 +247,7 @@
   "dashboardStartTracking": "Iniciar seguimiento",
   "dashboardNoUsageToday": "No se ha registrado uso hoy.",
   "dashboardNoUsageDay": "No se ha registrado uso este día.",
+  "dashboardUsageUnavailableDay": "Los datos de uso no están disponibles en este momento para este día.",
   "dashboardAllTimeMostUsedTitle": "Más usada de todos los tiempos",
   "dashboardUnsupportedPlatform": "La versión MVP de FocusTrace es compatible con Android y Windows. Se pueden añadir otras plataformas más adelante mediante fuentes de datos específicas para cada plataforma.",
   "commonRetry": "Reintentar",
