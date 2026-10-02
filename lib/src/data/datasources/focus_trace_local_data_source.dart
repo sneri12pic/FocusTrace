@@ -127,6 +127,10 @@ abstract interface class UsageSyncDataSource {
 abstract interface class UsageRecoveryDatabase {
   /// Ensure Flutter-owned migrations finish before the native writer opens it.
   Future<void> prepareUsageRecovery();
+
+  /// Whether native recovery last found [day]'s Android usage records
+  /// insufficient. Stored usage for the day, if any, is kept regardless.
+  Future<bool> isUsageUnavailable(DateTime day);
 }
 
 class SqfliteFocusTraceLocalDataSource
@@ -424,6 +428,18 @@ CREATE TABLE IF NOT EXISTS usage_snapshot_days (
           ),
         )
         .toList();
+  }
+
+  @override
+  Future<bool> isUsageUnavailable(DateTime day) async {
+    final db = await _db;
+    final rows = await db.query(
+      'usage_snapshot_days',
+      columns: ['day'],
+      where: "day = ? AND status = 'unavailable'",
+      whereArgs: [_dayKey(day)],
+    );
+    return rows.isNotEmpty;
   }
 
   @override

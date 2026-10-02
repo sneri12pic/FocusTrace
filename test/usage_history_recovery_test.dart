@@ -126,6 +126,31 @@ void main() {
     );
   }
 
+  test(
+    'an unavailable marker is reported without hiding stored history',
+    () async {
+      await seed(2400);
+      await markManaged();
+      expect(await usage.isUsageUnavailable(day), isFalse);
+      await db.update('usage_snapshot_days', {'status': 'unavailable'});
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(channel, (call) async {
+            if (call.method == 'recoverUsageHistory') {
+              return <Object?, Object?>{};
+            }
+            if (call.method == 'getAppMetadata') return <Object?>[];
+            fail('Unexpected channel call: ${call.method}');
+          });
+
+      expect(await usage.isUsageUnavailable(day), isTrue);
+      expect(await usage.isUsageUnavailable(nextDay), isFalse);
+      expect(
+        (await usage.getDailySummaries(day)).single.totalDurationSeconds,
+        2400,
+      );
+    },
+  );
+
   test('failed native recovery returns the existing history', () async {
     await seed(2400);
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger

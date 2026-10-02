@@ -831,6 +831,12 @@ abstract class AppLocalizations {
   /// **'No usage recorded for this day.'**
   String get dashboardNoUsageDay;
 
+  /// No description provided for @dashboardUsageUnavailableDay.
+  ///
+  /// In en, this message translates to:
+  /// **'Usage data is currently unavailable for this day.'**
+  String get dashboardUsageUnavailableDay;
+
   /// No description provided for @dashboardAllTimeMostUsedTitle.
   ///
   /// In en, this message translates to:

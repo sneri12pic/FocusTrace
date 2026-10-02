@@ -67,6 +67,58 @@ void main() {
     },
   );
 
+  test(
+    'an empty unavailable day is distinct from a measured empty day',
+    () async {
+      final now = DateTime.now();
+      final yesterday = DateTime(now.year, now.month, now.day - 1);
+      final repository = _DashboardUsageRepository()
+        ..unavailableDays = {_dayKey(now)};
+      final viewModel = DashboardViewModel(
+        usageRepository: repository,
+        settingsRepository: _DashboardSettingsRepository(),
+        platform: UsagePlatform.android,
+      );
+
+      await viewModel.loadTodayUsage();
+      expect(viewModel.state.summaries, isEmpty);
+      expect(viewModel.state.isUsageUnavailable, isTrue);
+
+      await viewModel.previousDay();
+      expect(viewModel.state.dayOffset, -1);
+      expect(viewModel.state.isUsageUnavailable, isFalse);
+
+      repository.unavailableDays = {_dayKey(yesterday)};
+      await viewModel.refresh();
+      expect(viewModel.state.isUsageUnavailable, isTrue);
+    },
+  );
+
+  test(
+    'stored usage is shown even when its day is marked unavailable',
+    () async {
+      final repository = _DashboardUsageRepository()
+        ..unavailableDays = {_dayKey(DateTime.now())}
+        ..todayResult = const [
+          AppUsageSummary(
+            appName: 'Kept app',
+            packageName: 'example.kept',
+            totalDurationSeconds: 600,
+            percentageOfTotal: 1,
+          ),
+        ];
+      final viewModel = DashboardViewModel(
+        usageRepository: repository,
+        settingsRepository: _DashboardSettingsRepository(),
+        platform: UsagePlatform.android,
+      );
+
+      await viewModel.loadTodayUsage();
+      expect(viewModel.state.summaries.single.appName, 'Kept app');
+      expect(viewModel.state.isUsageUnavailable, isFalse);
+    },
+  );
+
   test('a slower day load cannot overwrite the latest selected day', () async {
     final firstResult = Completer<List<AppUsageSummary>>();
     final repository = _DashboardUsageRepository()
@@ -559,6 +611,11 @@ class _DashboardUsageRepository implements UsageRepository {
   List<Future<List<AppUsageSummary>>> dailyResults = const [];
   int _dailyCallCount = 0;
   int todayCallCount = 0;
+  Set<String> unavailableDays = {};
+
+  @override
+  Future<bool> isUsageUnavailable(DateTime day) async =>
+      unavailableDays.contains(_dayKey(day));
 
   @override
   Future<bool> hasUsageAccess() async => _hasUsageAccess;

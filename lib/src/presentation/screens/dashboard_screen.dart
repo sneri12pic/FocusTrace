@@ -146,7 +146,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                           dashboardState.summaries.isEmpty)
                         const _LoadingPanel()
                       else if (dashboardState.summaries.isEmpty)
-                        _EmptyPanel(isToday: dashboardState.isToday),
+                        _EmptyPanel(
+                          isToday: dashboardState.isToday,
+                          isUsageUnavailable:
+                              dashboardState.showsUsageUnavailable,
+                        ),
                       if (dashboardState.refreshErrorMessage != null) ...[
                         const SizedBox(height: 12),
                         _ErrorPanel(
@@ -218,14 +222,16 @@ class _DayHeader extends StatelessWidget {
                     fontWeight: FontWeight.w700,
                   ),
                 ),
-                Text(
-                  context.l10n.dashboardDayTracked(
-                    context.l10n.compactDuration(
-                      Duration(seconds: state.totalDurationSeconds),
+                // An unmeasured day has no duration; the panel explains it.
+                if (!state.showsUsageUnavailable)
+                  Text(
+                    context.l10n.dashboardDayTracked(
+                      context.l10n.compactDuration(
+                        Duration(seconds: state.totalDurationSeconds),
+                      ),
                     ),
+                    style: theme.textTheme.bodySmall,
                   ),
-                  style: theme.textTheme.bodySmall,
-                ),
               ],
             ),
           ),
@@ -268,9 +274,10 @@ class _TrackingControls extends StatelessWidget {
 }
 
 class _EmptyPanel extends StatelessWidget {
-  const _EmptyPanel({required this.isToday});
+  const _EmptyPanel({required this.isToday, required this.isUsageUnavailable});
 
   final bool isToday;
+  final bool isUsageUnavailable;
 
   @override
   Widget build(BuildContext context) {
@@ -278,9 +285,12 @@ class _EmptyPanel extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 48),
       child: Center(
         child: Text(
-          isToday
+          isUsageUnavailable
+              ? context.l10n.dashboardUsageUnavailableDay
+              : isToday
               ? context.l10n.dashboardNoUsageToday
               : context.l10n.dashboardNoUsageDay,
+          textAlign: TextAlign.center,
         ),
       ),
     );

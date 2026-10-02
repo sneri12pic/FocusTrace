@@ -424,6 +424,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get dashboardNoUsageDay => 'No usage recorded for this day.';
 
   @override
+  String get dashboardUsageUnavailableDay =>
+      'Usage data is currently unavailable for this day.';
+
+  @override
   String get dashboardAllTimeMostUsedTitle => 'Most used of all time';
 
   @override

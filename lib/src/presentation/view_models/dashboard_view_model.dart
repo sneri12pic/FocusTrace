@@ -17,6 +17,7 @@ class DashboardState {
     required this.summaries,
     required this.totalDurationSeconds,
     required this.hasUsageAccess,
+    this.isUsageUnavailable = false,
     this.allTimeTopApps = const <AppUsageSummary>[],
     this.trendsByAppKey = const <String, UsageTrend>{},
     this.dayOffset = 0,
@@ -40,6 +41,10 @@ class DashboardState {
   final List<AppUsageSummary> summaries;
   final int totalDurationSeconds;
   final bool hasUsageAccess;
+
+  /// Nothing is stored for the day and Android's records were last found
+  /// insufficient for it. Distinct from no access and from a measured empty day.
+  final bool isUsageUnavailable;
   final List<AppUsageSummary> allTimeTopApps;
   final Map<String, UsageTrend> trendsByAppKey;
 
@@ -52,6 +57,9 @@ class DashboardState {
 
   bool get isToday => dayOffset == 0;
 
+  /// Missing access is explained by the permission card instead.
+  bool get showsUsageUnavailable => hasUsageAccess && isUsageUnavailable;
+
   DateTime get selectedDate {
     final now = DateTime.now();
     return DateTime(now.year, now.month, now.day + dayOffset);
@@ -61,6 +69,7 @@ class DashboardState {
     List<AppUsageSummary>? summaries,
     int? totalDurationSeconds,
     bool? hasUsageAccess,
+    bool? isUsageUnavailable,
     List<AppUsageSummary>? allTimeTopApps,
     Map<String, UsageTrend>? trendsByAppKey,
     int? dayOffset,
@@ -76,6 +85,7 @@ class DashboardState {
       summaries: summaries ?? this.summaries,
       totalDurationSeconds: totalDurationSeconds ?? this.totalDurationSeconds,
       hasUsageAccess: hasUsageAccess ?? this.hasUsageAccess,
+      isUsageUnavailable: isUsageUnavailable ?? this.isUsageUnavailable,
       allTimeTopApps: allTimeTopApps ?? this.allTimeTopApps,
       trendsByAppKey: trendsByAppKey ?? this.trendsByAppKey,
       dayOffset: dayOffset ?? this.dayOffset,
@@ -130,6 +140,7 @@ class DashboardViewModel extends StateNotifier<DashboardState> {
       state = state.copyWith(
         summaries: const <AppUsageSummary>[],
         totalDurationSeconds: 0,
+        isUsageUnavailable: false,
         trendsByAppKey: const <String, UsageTrend>{},
         isLoading: true,
         isRefreshing: false,
@@ -245,13 +256,12 @@ class DashboardViewModel extends StateNotifier<DashboardState> {
       isRefreshing: state.summaries.isNotEmpty,
     );
     try {
-      final fresh = _applyFilters(
-        await DashboardPerformance.traceLiveUsageFetch(
-          _usageRepository.getTodaySummaries,
-        ),
-        excludedApps,
-        hiddenApps,
+      final raw = await DashboardPerformance.traceLiveUsageFetch(
+        _usageRepository.getTodaySummaries,
       );
+      final fresh = _applyFilters(raw, excludedApps, hiddenApps);
+      // Read after the live fetch: native recovery records today's coverage.
+      final unavailable = await _isUsageUnavailable(raw, selectedDate);
       if (!_isCurrentRequest(generation, dayOffset, selectedDate)) {
         return;
       }
@@ -260,6 +270,7 @@ class DashboardViewModel extends StateNotifier<DashboardState> {
         dayOffset: dayOffset,
         selectedDate: selectedDate,
         summaries: fresh,
+        isUsageUnavailable: unavailable,
         excludedApps: excludedApps,
         hasUsageAccess: true,
         isRefreshing: false,
@@ -383,6 +394,7 @@ class DashboardViewModel extends StateNotifier<DashboardState> {
       await hiddenAppsFuture,
     );
     final hasAccess = await hasAccessFuture;
+    final unavailable = await _isUsageUnavailable(rawSummaries, selectedDate);
     if (!_isCurrentRequest(generation, dayOffset, selectedDate)) {
       return;
     }
@@ -391,6 +403,7 @@ class DashboardViewModel extends StateNotifier<DashboardState> {
       dayOffset: dayOffset,
       selectedDate: selectedDate,
       summaries: summaries,
+      isUsageUnavailable: unavailable,
       excludedApps: excludedApps,
       hasUsageAccess: hasAccess,
       isRefreshing: false,
@@ -407,6 +420,7 @@ class DashboardViewModel extends StateNotifier<DashboardState> {
     required bool hasUsageAccess,
     required bool isRefreshing,
     required bool loadAuxiliary,
+    bool isUsageUnavailable = false,
   }) {
     if (!_isCurrentRequest(generation, dayOffset, selectedDate)) {
       return;
@@ -416,6 +430,7 @@ class DashboardViewModel extends StateNotifier<DashboardState> {
       summaries: summaries,
       totalDurationSeconds: _aggregationService.totalDurationSeconds(summaries),
       hasUsageAccess: hasUsageAccess,
+      isUsageUnavailable: isUsageUnavailable,
       trendsByAppKey: const <String, UsageTrend>{},
       isLoading: false,
       isRefreshing: isRefreshing,
@@ -435,6 +450,22 @@ class DashboardViewModel extends StateNotifier<DashboardState> {
       excludedApps,
       summaries,
     );
+  }
+
+  /// Stored rows always win: an unavailable day keeps its earlier history.
+  Future<bool> _isUsageUnavailable(
+    List<AppUsageSummary> raw,
+    DateTime day,
+  ) async {
+    if (raw.isNotEmpty) {
+      return false;
+    }
+    try {
+      return await _usageRepository.isUsageUnavailable(day);
+    } catch (_) {
+      // Coverage metadata only refines the empty-state wording.
+      return false;
+    }
   }
 
   void _startAuxiliaryLoads(

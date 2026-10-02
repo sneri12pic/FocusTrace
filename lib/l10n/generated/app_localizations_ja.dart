@@ -413,6 +413,9 @@ class AppLocalizationsJa extends AppLocalizations {
   String get dashboardNoUsageDay => 'この日は使用記録がありません。';
 
   @override
+  String get dashboardUsageUnavailableDay => 'この日の使用データは現在利用できません。';
+
+  @override
   String get dashboardAllTimeMostUsedTitle => '最もよく使うアプリ';
 
   @override
