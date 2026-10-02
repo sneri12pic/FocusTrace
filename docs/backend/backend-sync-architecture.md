@@ -148,6 +148,29 @@ registered under an unbound id. An unreadable or unwritable marker fails the
 operation instead of being treated as absent. The old device row stays on the
 server and ages out of the active-device quota after 90 days (D18).
 
+**Data kept on uninstall (2026-10-02).** The manifest sets
+`android:hasFragileUserData="true"` (API 29+): the system uninstall dialog offers
+an unchecked "Keep app data" option. If the user ticks it, every app file
+survives, so a reinstall hits the "present / equal" row: the same installation,
+with opt-in, account and watermark as the user left them.
+
+Verified on the A36 (Android 16, dev build, dev backend, 2026-10-02), signed in
+and synced before the uninstall:
+- Before first launch after reinstall, the database, the marker and the sealed
+  credential file were byte-identical to before.
+- The AndroidKeyStore key survived. The first run presented the pre-uninstall
+  refresh token, which the server rotated within the same session with no
+  replay rejection.
+- After Usage Access was re-granted, the next upload landed under the same
+  server device. No new device was registered.
+
+Not verified:
+- Other OEMs and Android versions; the M13 (Android 14) was tested only without
+  sync.
+- The fail-closed path. If a platform drops the key,
+  `SecureCredentialStore.read` clears the value and the installation is signed
+  out under the same id. This is expected from code, not observed.
+
 **Another account's id (implemented 2026-09-29).** An id registered by one
 account stays that account's (D12: ownership never moves), so after signing out
 of A and into B the installation's `POST /devices` is `409`. The client then binds

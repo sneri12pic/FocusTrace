@@ -18,7 +18,11 @@
         android:name="android.permission.QUERY_ALL_PACKAGES"
         tools:ignore="QueryAllPackagesPermission" />
 
+    <!-- hasFragileUserData (API 29+): the system uninstall dialog offers to
+         keep app data. Optional for the user, not a backup; kept sync files
+         stay consistent and an unreadable credential fails closed. -->
     <application
+        android:hasFragileUserData="true"
         android:label="@string/app_name"
         android:name="${applicationName}"
         android:fullBackupContent="@xml/backup_rules"
