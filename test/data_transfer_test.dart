@@ -152,6 +152,30 @@ void main() {
     },
   );
 
+  test('carries no authentication credential or device identity', () async {
+    await source.writeSetting('onboarding_completed', 'true');
+    await source.writeSetting(SyncSettingKeys.installationId, 'device-uuid');
+    await source.writeSetting(SyncSettingKeys.usageWatermarkMs, '1000');
+    final documents = _MemoryBackupDocumentDataSource();
+    final repository = DataTransferRepositoryImpl(
+      localDataSource: source,
+      documentDataSource: documents,
+    );
+
+    expect(await repository.exportData(), isTrue);
+
+    final contents = documents.savedContents!;
+    expect(contents, contains('onboarding_completed'));
+    // Device-local sync state is stripped on the way out and refused on the
+    // way in, so a restored backup never claims another installation's
+    // identity or its upload watermark.
+    expect(contents, isNot(contains('device-uuid')));
+    expect(contents, isNot(contains(SyncSettingKeys.prefix)));
+    // The refresh token is not in this database at all - it is in the Android
+    // keystore, which no export path can read - so there is nothing to strip.
+    expect(contents.toLowerCase(), isNot(contains('token')));
+  });
+
   test('rejects another JSON format before touching the database', () async {
     final repository = DataTransferRepositoryImpl(
       localDataSource: source,

@@ -426,6 +426,10 @@ class AppLocalizationsPt extends AppLocalizations {
   String get dashboardNoUsageDay => 'Nenhum uso registrado neste dia.';
 
   @override
+  String get dashboardUsageUnavailableDay =>
+      'Os dados de uso não estão disponíveis no momento para este dia.';
+
+  @override
   String get dashboardAllTimeMostUsedTitle =>
       'App mais usado de todos os tempos';
 
@@ -600,6 +604,19 @@ class AppLocalizationsPt extends AppLocalizations {
   @override
   String usageTrendUnchanged(String period) {
     return '$period: uso sem alteração';
+  }
+
+  @override
+  String get usageTrendNew => 'Novo';
+
+  @override
+  String usageTrendNewLabel(String period) {
+    return '$period: uso novo, sem dados anteriores para comparar';
+  }
+
+  @override
+  String usageTrendIncreaseAboveCap(String period, int percentage) {
+    return '$period: uso aumentou mais de $percentage%';
   }
 
   @override
@@ -839,4 +856,217 @@ class AppLocalizationsPt extends AppLocalizations {
     );
     return '$_temp0';
   }
+
+  @override
+  String get settingsSyncSection => 'Conta e sincronização';
+
+  @override
+  String get settingsSyncTitle => 'Sincronização na nuvem';
+
+  @override
+  String get settingsSyncBody =>
+      'Inicie sessão para copiar os seus totais de uso diário para a sua conta e vê-los noutro dispositivo. Desligada até a ativar.';
+
+  @override
+  String get settingsSyncEmail => 'E-mail';
+
+  @override
+  String get settingsSyncPassword => 'Palavra-passe';
+
+  @override
+  String get settingsSyncPasswordRequirements =>
+      'Use entre 15 e 128 caracteres. Algumas palavras sem relação formam uma frase-passe segura e fácil de memorizar. Palavras-passe comuns não são aceites.';
+
+  @override
+  String get settingsSyncShowPassword => 'Mostrar palavra-passe';
+
+  @override
+  String get settingsSyncHidePassword => 'Ocultar palavra-passe';
+
+  @override
+  String get settingsSyncSignInHeading => 'Inicie sessão na sua conta';
+
+  @override
+  String get settingsSyncCreateHeading => 'Crie uma conta de sincronização';
+
+  @override
+  String get settingsSyncSwitchToCreate =>
+      'Ainda não usa a sincronização? Crie uma conta';
+
+  @override
+  String get settingsSyncSwitchToSignIn => 'Já tem uma conta? Inicie sessão';
+
+  @override
+  String get settingsSyncSignInInstead =>
+      'Iniciar sessão em vez de criar conta';
+
+  @override
+  String get settingsSyncSigningIn => 'A iniciar sessão…';
+
+  @override
+  String get settingsSyncCreatingAccount => 'A criar conta…';
+
+  @override
+  String get settingsSyncAccountCreated => 'Conta criada';
+
+  @override
+  String settingsSyncSignedInAs(String email) {
+    return 'Sessão iniciada como $email';
+  }
+
+  @override
+  String get settingsSyncCreatedNextStep =>
+      'A sincronização continua desligada. Ative-a quando quiser copiar os totais diários deste dispositivo para a sua conta.';
+
+  @override
+  String get settingsSyncTurnOnSync => 'Ativar sincronização';
+
+  @override
+  String get settingsSyncAccountCreatedSignInRequired =>
+      'A sua conta foi criada, mas não foi possível iniciar sessão automaticamente. Introduza a palavra-passe e toque em «Iniciar sessão» para continuar.';
+
+  @override
+  String get settingsSyncErrorRegistration =>
+      'Conta não criada. Verifique o seu e-mail e a palavra-passe e tente novamente.';
+
+  @override
+  String get settingsSyncErrorEmailRequired =>
+      'Introduza o seu endereço de e-mail.';
+
+  @override
+  String get settingsSyncErrorEmailInvalid =>
+      'Introduza um endereço de e-mail válido, como nome@example.com.';
+
+  @override
+  String get settingsSyncErrorPasswordRequired =>
+      'Introduza a sua palavra-passe.';
+
+  @override
+  String settingsSyncErrorPasswordTooShort(int count) {
+    return 'Use pelo menos 15 caracteres ($count até agora).';
+  }
+
+  @override
+  String get settingsSyncErrorPasswordTooLong =>
+      'Use no máximo 128 caracteres.';
+
+  @override
+  String get settingsSyncErrorPasswordRejected =>
+      'Esta palavra-passe é demasiado comum ou corresponde ao seu e-mail. Escolha outra.';
+
+  @override
+  String get settingsSyncErrorThrottled =>
+      'Demasiadas tentativas a partir desta rede. Aguarde um pouco e tente novamente.';
+
+  @override
+  String get settingsSyncSignIn => 'Iniciar sessão';
+
+  @override
+  String get settingsSyncCreateAccount => 'Criar conta';
+
+  @override
+  String get settingsSyncSignOut => 'Terminar sessão';
+
+  @override
+  String get settingsSyncEnabledLabel => 'Sincronizar este dispositivo';
+
+  @override
+  String get settingsSyncEnabledSubtitle =>
+      'Desligar para de enviar dados novos. Nada já sincronizado é apagado.';
+
+  @override
+  String get settingsSyncNow => 'Sincronizar agora';
+
+  @override
+  String get settingsSyncNeverSynced => 'Ainda não sincronizado';
+
+  @override
+  String get settingsSyncStateSyncing => 'A sincronizar...';
+
+  @override
+  String get settingsSyncStateSuccess => 'Sincronização concluída';
+
+  @override
+  String get settingsSyncStateError => 'Falha na sincronização';
+
+  @override
+  String get settingsSyncErrorOffline =>
+      'Não foi possível contactar o serviço. Verifique a ligação e tente novamente.';
+
+  @override
+  String get settingsSyncErrorCredentials =>
+      'Esse e-mail e palavra-passe não correspondem a nenhuma conta.';
+
+  @override
+  String get settingsSyncErrorEmailTaken =>
+      'Já existe uma conta com esse e-mail.';
+
+  @override
+  String get settingsSyncErrorWeakPassword =>
+      'Escolha uma palavra-passe mais longa e menos comum.';
+
+  @override
+  String get settingsSyncErrorSessionExpired =>
+      'A sua sessão terminou. Inicie sessão novamente.';
+
+  @override
+  String get settingsSyncErrorRefused => 'O serviço recusou o pedido.';
+
+  @override
+  String get settingsSyncErrorUnknown => 'Algo correu mal. Tente novamente.';
+
+  @override
+  String get settingsSyncDeleteAccount => 'Excluir conta';
+
+  @override
+  String get settingsSyncDeleteTitle => 'Excluir sua conta do FocusTrace?';
+
+  @override
+  String get settingsSyncDeleteBody =>
+      'Isso exclui permanentemente sua conta na nuvem do FocusTrace e todos os dados de uso sincronizados com o servidor. Não é possível desfazer.\n\nO histórico de uso neste dispositivo é mantido e a sincronização será desativada.';
+
+  @override
+  String get settingsSyncDeletePassword => 'Senha atual';
+
+  @override
+  String get settingsSyncDeleteConfirm => 'Excluir permanentemente';
+
+  @override
+  String get settingsSyncDeleted =>
+      'Sua conta do FocusTrace foi excluída. O histórico de uso neste dispositivo foi mantido.';
+
+  @override
+  String get settingsSyncRepeatPassword => 'Repetir palavra-passe';
+
+  @override
+  String get settingsSyncShowRepeatPassword => 'Mostrar palavra-passe repetida';
+
+  @override
+  String get settingsSyncHideRepeatPassword => 'Ocultar palavra-passe repetida';
+
+  @override
+  String get settingsSyncErrorPasswordMismatch =>
+      'As palavras-passe não coincidem.';
+
+  @override
+  String get settingsSyncDangerZone => 'Zona de perigo';
+
+  @override
+  String get settingsSyncDangerZoneBody =>
+      'Excluir sua conta a remove permanentemente, junto com todos os dados de uso sincronizados com o servidor. O histórico de uso neste dispositivo é mantido.';
+
+  @override
+  String get settingsSyncDeleteAcknowledge =>
+      'Entendo que isto exclui permanentemente a minha conta na nuvem.';
+
+  @override
+  String get settingsSyncDeleting => 'Excluindo…';
+
+  @override
+  String get settingsSyncErrorWrongPassword =>
+      'Essa senha não está correta. Sua conta não foi excluída.';
+
+  @override
+  String get settingsPrivacyBodySync =>
+      'O seu histórico de uso e as definições ficam neste dispositivo, a menos que exporte uma cópia ou ative a sincronização na nuvem abaixo.';
 }

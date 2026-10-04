@@ -413,6 +413,9 @@ class AppLocalizationsJa extends AppLocalizations {
   String get dashboardNoUsageDay => 'この日は使用記録がありません。';
 
   @override
+  String get dashboardUsageUnavailableDay => 'この日の使用データは現在利用できません。';
+
+  @override
   String get dashboardAllTimeMostUsedTitle => '最もよく使うアプリ';
 
   @override
@@ -575,6 +578,19 @@ class AppLocalizationsJa extends AppLocalizations {
   @override
   String usageTrendUnchanged(String period) {
     return '$period: 使用時間に変化なし';
+  }
+
+  @override
+  String get usageTrendNew => '新規';
+
+  @override
+  String usageTrendNewLabel(String period) {
+    return '$period: 新しい使用、比較できる以前のデータなし';
+  }
+
+  @override
+  String usageTrendIncreaseAboveCap(String period, int percentage) {
+    return '$period: 使用時間が$percentage%以上増加';
   }
 
   @override
@@ -807,4 +823,204 @@ class AppLocalizationsJa extends AppLocalizations {
     );
     return '$_temp0';
   }
+
+  @override
+  String get settingsSyncSection => 'アカウントと同期';
+
+  @override
+  String get settingsSyncTitle => 'クラウド同期';
+
+  @override
+  String get settingsSyncBody =>
+      'サインインすると、1日の利用時間の合計を自分のアカウントにコピーし、別の端末から確認できます。オンにするまでは無効です。';
+
+  @override
+  String get settingsSyncEmail => 'メールアドレス';
+
+  @override
+  String get settingsSyncPassword => 'パスワード';
+
+  @override
+  String get settingsSyncPasswordRequirements =>
+      '15～128文字で入力してください。関連のない単語をいくつか組み合わせると、安全で覚えやすいパスフレーズになります。よく使われるパスワードは使用できません。';
+
+  @override
+  String get settingsSyncShowPassword => 'パスワードを表示';
+
+  @override
+  String get settingsSyncHidePassword => 'パスワードを非表示';
+
+  @override
+  String get settingsSyncSignInHeading => 'アカウントにログイン';
+
+  @override
+  String get settingsSyncCreateHeading => '同期用アカウントを作成';
+
+  @override
+  String get settingsSyncSwitchToCreate => '同期を初めて使う方：アカウントを作成';
+
+  @override
+  String get settingsSyncSwitchToSignIn => 'アカウントをお持ちの方：ログイン';
+
+  @override
+  String get settingsSyncSignInInstead => 'ログインに切り替える';
+
+  @override
+  String get settingsSyncSigningIn => 'ログイン中…';
+
+  @override
+  String get settingsSyncCreatingAccount => 'アカウントを作成中…';
+
+  @override
+  String get settingsSyncAccountCreated => 'アカウントを作成しました';
+
+  @override
+  String settingsSyncSignedInAs(String email) {
+    return '$email としてログイン中';
+  }
+
+  @override
+  String get settingsSyncCreatedNextStep =>
+      '同期はまだオフです。この端末の1日ごとの合計をアカウントにコピーするには、同期をオンにしてください。';
+
+  @override
+  String get settingsSyncTurnOnSync => '同期をオンにする';
+
+  @override
+  String get settingsSyncAccountCreatedSignInRequired =>
+      'アカウントは作成されましたが、自動ログインに失敗しました。パスワードを入力し、「ログイン」をタップして続けてください。';
+
+  @override
+  String get settingsSyncErrorRegistration =>
+      'アカウントを作成できませんでした。メールアドレスとパスワードを確認し、もう一度お試しください。';
+
+  @override
+  String get settingsSyncErrorEmailRequired => 'メールアドレスを入力してください。';
+
+  @override
+  String get settingsSyncErrorEmailInvalid =>
+      'name@example.com のような有効なメールアドレスを入力してください。';
+
+  @override
+  String get settingsSyncErrorPasswordRequired => 'パスワードを入力してください。';
+
+  @override
+  String settingsSyncErrorPasswordTooShort(int count) {
+    return '15文字以上で入力してください（現在$count文字）。';
+  }
+
+  @override
+  String get settingsSyncErrorPasswordTooLong => '128文字以内で入力してください。';
+
+  @override
+  String get settingsSyncErrorPasswordRejected =>
+      'このパスワードはよく使われているか、メールアドレスと一致しています。別のパスワードを選んでください。';
+
+  @override
+  String get settingsSyncErrorThrottled =>
+      'このネットワークからの試行回数が多すぎます。しばらく待ってから、もう一度お試しください。';
+
+  @override
+  String get settingsSyncSignIn => 'サインイン';
+
+  @override
+  String get settingsSyncCreateAccount => 'アカウントを作成';
+
+  @override
+  String get settingsSyncSignOut => 'ログアウト';
+
+  @override
+  String get settingsSyncEnabledLabel => 'この端末を同期する';
+
+  @override
+  String get settingsSyncEnabledSubtitle =>
+      'オフにすると新しいデータの送信を停止します。同期済みのデータは削除されません。';
+
+  @override
+  String get settingsSyncNow => '今すぐ同期';
+
+  @override
+  String get settingsSyncNeverSynced => '未同期';
+
+  @override
+  String get settingsSyncStateSyncing => '同期中...';
+
+  @override
+  String get settingsSyncStateSuccess => '同期が完了しました';
+
+  @override
+  String get settingsSyncStateError => '同期に失敗しました';
+
+  @override
+  String get settingsSyncErrorOffline => '同期サービスに接続できませんでした。接続を確認して再試行してください。';
+
+  @override
+  String get settingsSyncErrorCredentials => 'メールアドレスとパスワードが一致するアカウントはありません。';
+
+  @override
+  String get settingsSyncErrorEmailTaken => 'そのメールアドレスのアカウントは既に存在します。';
+
+  @override
+  String get settingsSyncErrorWeakPassword => 'もっと長く、推測されにくいパスワードを選んでください。';
+
+  @override
+  String get settingsSyncErrorSessionExpired => 'セッションが終了しました。もう一度サインインしてください。';
+
+  @override
+  String get settingsSyncErrorRefused => '同期サービスがリクエストを拒否しました。';
+
+  @override
+  String get settingsSyncErrorUnknown => '問題が発生しました。再試行してください。';
+
+  @override
+  String get settingsSyncDeleteAccount => 'アカウントを削除';
+
+  @override
+  String get settingsSyncDeleteTitle => 'FocusTrace アカウントを削除しますか？';
+
+  @override
+  String get settingsSyncDeleteBody =>
+      'FocusTrace のクラウドアカウントと、サーバーに同期されたすべての利用データが完全に削除されます。元に戻すことはできません。\n\nこの端末の利用履歴は残り、同期はオフになります。';
+
+  @override
+  String get settingsSyncDeletePassword => '現在のパスワード';
+
+  @override
+  String get settingsSyncDeleteConfirm => '完全に削除';
+
+  @override
+  String get settingsSyncDeleted => 'FocusTrace アカウントを削除しました。この端末の利用履歴は残っています。';
+
+  @override
+  String get settingsSyncRepeatPassword => 'パスワードを再入力';
+
+  @override
+  String get settingsSyncShowRepeatPassword => '再入力したパスワードを表示';
+
+  @override
+  String get settingsSyncHideRepeatPassword => '再入力したパスワードを非表示';
+
+  @override
+  String get settingsSyncErrorPasswordMismatch => 'パスワードが一致しません。';
+
+  @override
+  String get settingsSyncDangerZone => '危険な操作';
+
+  @override
+  String get settingsSyncDangerZoneBody =>
+      'アカウントを削除すると、アカウントとサーバーに同期されたすべての利用データが完全に削除されます。この端末の利用履歴は残ります。';
+
+  @override
+  String get settingsSyncDeleteAcknowledge => 'クラウドアカウントが完全に削除されることを理解しました。';
+
+  @override
+  String get settingsSyncDeleting => '削除中…';
+
+  @override
+  String get settingsSyncErrorWrongPassword =>
+      'パスワードが正しくありません。アカウントは削除されていません。';
+
+  @override
+  String get settingsPrivacyBodySync =>
+      '利用履歴と設定は、バックアップを書き出すか下のクラウド同期をオンにしない限り、この端末に保存されたままです。';
 }

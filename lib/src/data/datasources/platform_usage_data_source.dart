@@ -55,16 +55,34 @@ abstract interface class UsageIntervalDataSource {
   );
 }
 
+abstract interface class UsageHistoryRecoveryDataSource {
+  /// Native recovery owns paired daily totals, intervals and coverage metadata.
+  Future<void> recoverUsageHistory(
+    DateTime fromInclusive,
+    DateTime toExclusive,
+  );
+}
+
 class AndroidUsageDataSource
     implements
         PlatformUsageDataSource,
         AppMetadataDataSource,
+        UsageHistoryRecoveryDataSource,
         UsageIntervalDataSource {
   AndroidUsageDataSource({
     MethodChannel channel = const MethodChannel('focustrace/usage'),
   }) : _channel = channel;
 
   final MethodChannel _channel;
+
+  @override
+  Future<void> recoverUsageHistory(
+    DateTime fromInclusive,
+    DateTime toExclusive,
+  ) => _channel.invokeMethod<void>('recoverUsageHistory', {
+    'fromMs': fromInclusive.millisecondsSinceEpoch,
+    'toMs': toExclusive.millisecondsSinceEpoch,
+  });
 
   @override
   Future<bool> hasUsageAccess() async {

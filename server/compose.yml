@@ -1,0 +1,68 @@
+name: focustrace-staging
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: focustrace
+      POSTGRES_USER: focustrace_admin
+      POSTGRES_PASSWORD: ${FOCUSTRACE_DB_ADMIN_PASSWORD:?Set database admin password}
+      FOCUSTRACE_DB_PASSWORD: ${FOCUSTRACE_DB_PASSWORD:?Set application database password}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./postgres-init.sh:/docker-entrypoint-initdb.d/10-focustrace.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U focustrace_app -d focustrace"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    mem_limit: 384m
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+  app:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      postgres: { condition: service_healthy }
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      FOCUSTRACE_DB_URL: jdbc:postgresql://postgres:5432/focustrace
+      FOCUSTRACE_DB_USER: focustrace_app
+      FOCUSTRACE_DB_PASSWORD: ${FOCUSTRACE_DB_PASSWORD:?Set database password}
+      FOCUSTRACE_JWT_SECRET: ${FOCUSTRACE_JWT_SECRET:?Set JWT signing secret}
+      FOCUSTRACE_NETWORK_MODE: trusted-proxy
+      FOCUSTRACE_TRUSTED_PROXIES: ${FOCUSTRACE_TRUSTED_PROXIES:?Set the Docker host gateway}
+      LOGGING_FILE_NAME: /logs/app.log
+      LOGGING_LOGBACK_ROLLINGPOLICY_MAX_FILE_SIZE: 10MB
+      LOGGING_LOGBACK_ROLLINGPOLICY_MAX_HISTORY: 7
+      LOGGING_LOGBACK_ROLLINGPOLICY_TOTAL_SIZE_CAP: 100MB
+      LOGGING_LOGBACK_ROLLINGPOLICY_CLEAN_HISTORY_ON_START: "true"
+    volumes:
+      - ./logs/app:/logs
+    ports:
+      - "127.0.0.1:18080:8080"
+    mem_limit: 768m
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+  proxy:
+    image: nginx:stable-alpine
+    restart: unless-stopped
+    # The existing host cloudflared connects over loopback. No LAN/public port.
+    network_mode: host
+    depends_on: [app]
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./logs/proxy:/var/log/nginx
+    mem_limit: 64m
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+volumes:
+  postgres-data:

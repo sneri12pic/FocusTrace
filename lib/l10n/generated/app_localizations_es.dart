@@ -433,6 +433,10 @@ class AppLocalizationsEs extends AppLocalizations {
   String get dashboardNoUsageDay => 'No se ha registrado uso este día.';
 
   @override
+  String get dashboardUsageUnavailableDay =>
+      'Los datos de uso no están disponibles en este momento para este día.';
+
+  @override
   String get dashboardAllTimeMostUsedTitle => 'Más usada de todos los tiempos';
 
   @override
@@ -608,6 +612,19 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String usageTrendUnchanged(String period) {
     return '$period: uso sin cambios';
+  }
+
+  @override
+  String get usageTrendNew => 'Nuevo';
+
+  @override
+  String usageTrendNewLabel(String period) {
+    return '$period: uso nuevo, sin datos anteriores para comparar';
+  }
+
+  @override
+  String usageTrendIncreaseAboveCap(String period, int percentage) {
+    return '$period: el uso aumentó más de un $percentage%';
   }
 
   @override
@@ -849,4 +866,216 @@ class AppLocalizationsEs extends AppLocalizations {
     );
     return '$_temp0';
   }
+
+  @override
+  String get settingsSyncSection => 'Cuenta y sincronización';
+
+  @override
+  String get settingsSyncTitle => 'Sincronización en la nube';
+
+  @override
+  String get settingsSyncBody =>
+      'Inicia sesión para copiar tus totales de uso diario a tu propia cuenta y verlos en otro dispositivo. Desactivada hasta que la actives.';
+
+  @override
+  String get settingsSyncEmail => 'Correo electrónico';
+
+  @override
+  String get settingsSyncPassword => 'Contraseña';
+
+  @override
+  String get settingsSyncPasswordRequirements =>
+      'Usa entre 15 y 128 caracteres. Unas pocas palabras sin relación forman una frase de contraseña segura y fácil de recordar. No se aceptan contraseñas comunes.';
+
+  @override
+  String get settingsSyncShowPassword => 'Mostrar contraseña';
+
+  @override
+  String get settingsSyncHidePassword => 'Ocultar contraseña';
+
+  @override
+  String get settingsSyncSignInHeading => 'Inicia sesión en tu cuenta';
+
+  @override
+  String get settingsSyncCreateHeading => 'Crea una cuenta de sincronización';
+
+  @override
+  String get settingsSyncSwitchToCreate =>
+      '¿Primera vez que sincronizas? Crea una cuenta';
+
+  @override
+  String get settingsSyncSwitchToSignIn =>
+      '¿Ya tienes una cuenta? Inicia sesión';
+
+  @override
+  String get settingsSyncSignInInstead => 'Iniciar sesión en su lugar';
+
+  @override
+  String get settingsSyncSigningIn => 'Iniciando sesión…';
+
+  @override
+  String get settingsSyncCreatingAccount => 'Creando cuenta…';
+
+  @override
+  String get settingsSyncAccountCreated => 'Cuenta creada';
+
+  @override
+  String settingsSyncSignedInAs(String email) {
+    return 'Sesión iniciada como $email';
+  }
+
+  @override
+  String get settingsSyncCreatedNextStep =>
+      'La sincronización sigue desactivada. Actívala cuando quieras copiar los totales diarios de este dispositivo a tu cuenta.';
+
+  @override
+  String get settingsSyncTurnOnSync => 'Activar sincronización';
+
+  @override
+  String get settingsSyncAccountCreatedSignInRequired =>
+      'Tu cuenta se ha creado, pero no se ha podido iniciar sesión automáticamente. Introduce tu contraseña y toca «Iniciar sesión» para continuar.';
+
+  @override
+  String get settingsSyncErrorRegistration =>
+      'No se ha creado la cuenta. Revisa tu correo electrónico y contraseña e inténtalo de nuevo.';
+
+  @override
+  String get settingsSyncErrorEmailRequired =>
+      'Introduce tu dirección de correo electrónico.';
+
+  @override
+  String get settingsSyncErrorEmailInvalid =>
+      'Introduce una dirección de correo electrónico válida, como nombre@example.com.';
+
+  @override
+  String get settingsSyncErrorPasswordRequired => 'Introduce tu contraseña.';
+
+  @override
+  String settingsSyncErrorPasswordTooShort(int count) {
+    return 'Usa al menos 15 caracteres (llevas $count).';
+  }
+
+  @override
+  String get settingsSyncErrorPasswordTooLong =>
+      'Usa como máximo 128 caracteres.';
+
+  @override
+  String get settingsSyncErrorPasswordRejected =>
+      'Esta contraseña es demasiado común o coincide con tu correo electrónico. Elige otra.';
+
+  @override
+  String get settingsSyncErrorThrottled =>
+      'Demasiados intentos desde esta red. Espera un poco y vuelve a intentarlo.';
+
+  @override
+  String get settingsSyncSignIn => 'Iniciar sesión';
+
+  @override
+  String get settingsSyncCreateAccount => 'Crear cuenta';
+
+  @override
+  String get settingsSyncSignOut => 'Cerrar sesión';
+
+  @override
+  String get settingsSyncEnabledLabel => 'Sincronizar este dispositivo';
+
+  @override
+  String get settingsSyncEnabledSubtitle =>
+      'Al desactivarlo se deja de enviar datos nuevos. No se borra nada ya sincronizado.';
+
+  @override
+  String get settingsSyncNow => 'Sincronizar ahora';
+
+  @override
+  String get settingsSyncNeverSynced => 'Aún sin sincronizar';
+
+  @override
+  String get settingsSyncStateSyncing => 'Sincronizando...';
+
+  @override
+  String get settingsSyncStateSuccess => 'Sincronización completada';
+
+  @override
+  String get settingsSyncStateError => 'Error de sincronización';
+
+  @override
+  String get settingsSyncErrorOffline =>
+      'No se pudo contactar con el servicio. Comprueba tu conexión e inténtalo de nuevo.';
+
+  @override
+  String get settingsSyncErrorCredentials =>
+      'Ese correo y esa contraseña no coinciden con ninguna cuenta.';
+
+  @override
+  String get settingsSyncErrorEmailTaken =>
+      'Ya existe una cuenta con ese correo.';
+
+  @override
+  String get settingsSyncErrorWeakPassword =>
+      'Elige una contraseña más larga y menos común.';
+
+  @override
+  String get settingsSyncErrorSessionExpired =>
+      'Tu sesión ha terminado. Vuelve a iniciar sesión.';
+
+  @override
+  String get settingsSyncErrorRefused => 'El servicio rechazó la solicitud.';
+
+  @override
+  String get settingsSyncErrorUnknown => 'Algo salió mal. Inténtalo de nuevo.';
+
+  @override
+  String get settingsSyncDeleteAccount => 'Eliminar cuenta';
+
+  @override
+  String get settingsSyncDeleteTitle => '¿Eliminar tu cuenta de FocusTrace?';
+
+  @override
+  String get settingsSyncDeleteBody =>
+      'Esto elimina de forma permanente tu cuenta en la nube de FocusTrace y todos los datos de uso sincronizados con el servidor. No se puede deshacer.\n\nEl historial de uso de este dispositivo se conserva y la sincronización se desactivará.';
+
+  @override
+  String get settingsSyncDeletePassword => 'Contraseña actual';
+
+  @override
+  String get settingsSyncDeleteConfirm => 'Eliminar para siempre';
+
+  @override
+  String get settingsSyncDeleted =>
+      'Se eliminó tu cuenta de FocusTrace. El historial de uso de este dispositivo se conservó.';
+
+  @override
+  String get settingsSyncRepeatPassword => 'Repetir contraseña';
+
+  @override
+  String get settingsSyncShowRepeatPassword => 'Mostrar contraseña repetida';
+
+  @override
+  String get settingsSyncHideRepeatPassword => 'Ocultar contraseña repetida';
+
+  @override
+  String get settingsSyncErrorPasswordMismatch =>
+      'Las contraseñas no coinciden.';
+
+  @override
+  String get settingsSyncDangerZone => 'Zona de peligro';
+
+  @override
+  String get settingsSyncDangerZoneBody =>
+      'Eliminar tu cuenta la borra para siempre junto con todos los datos de uso sincronizados con el servidor. El historial de uso de este dispositivo se conserva.';
+
+  @override
+  String get settingsSyncDeleteAcknowledge =>
+      'Entiendo que esto elimina mi cuenta en la nube para siempre.';
+
+  @override
+  String get settingsSyncDeleting => 'Eliminando…';
+
+  @override
+  String get settingsSyncErrorWrongPassword =>
+      'La contraseña no es correcta. Tu cuenta no se eliminó.';
+
+  @override
+  String get settingsPrivacyBodySync =>
+      'Tu historial de uso y tus ajustes permanecen en este dispositivo salvo que exportes una copia o actives la sincronización en la nube más abajo.';
 }

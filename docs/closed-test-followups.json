@@ -1,0 +1,47 @@
+[
+  {
+    "key": "history-recovery",
+    "title": "[Superseded] Historical usage recovery reliability work",
+    "body": "Archived draft; do not publish as an open P0. Superseded by docs/closed-test-audit.md and the September 15 final bounded gate: READY WITH DOCUMENTED NON-BLOCKING LIMITATIONS. Shared native recovery, atomic paired persistence, stale-write protection, and reboot continuation are implemented and verified. September 13 recovery passed on-device. September 11 remains incomplete but preserves all existing data; this is a deferred non-blocking P1 limitation. Exhaustive overnight testing was intentionally not completed. No new implementation or investigation is required by this archived draft."
+  },
+  {
+    "key": "enforcement-verification",
+    "title": "[Superseded] Core enforcement and corrected reboot verification",
+    "body": "Archived draft; do not publish as an open P0. Superseded by docs/closed-test-audit.md and the September 15 final bounded gate: READY WITH DOCUMENTED NON-BLOCKING LIMITATIONS. A five-minute Calculator limit blocked ordinary use and one launcher reopen. A normal reboot defect was reproduced, narrowly fixed, and the corrected reboot was device verified with settings/history preservation and resumed current-day persistence. Split-screen/PiP and exhaustive process-lifecycle permutations remain non-blocking verification limitations; they are not passed tests. No new device matrix is required by this archived draft."
+  },
+  {
+    "key": "scheduled-routines",
+    "title": "[P1] Add scheduled app-group routines and clarify shared-limit behavior",
+    "body": "Current BlockRoutine already groups apps into a daily shared allowance (existing #24). Individual app schedules also exist, but group routines have no start/end/day fields. Closed-test users expected automatic grouped schedules; empty-state copy still suggests immediate whole-group blocking. Legacy immediate-block groups currently migrate to disabled statistics groups.\n\nScope:\n- Preserve shared-limit groups and make the distinction from scheduled blocking understandable.\n- Define name, apps, start/end, weekdays, enabled state and automatic activation.\n- Show next activation/current state and explain included/excluded apps.\n- Specify overnight schedules, local timezone/DST behavior, conflicts with individual rules and migration.\n- Test persistence, schedule boundaries and device service restart.\n\nExample acceptance: Morning Focus blocks selected apps 07:00–10:00 Mon–Fri without opening FocusTrace. A user can distinguish this from a shared two-hour daily allowance.\n\nDo not recreate the shared-pool functionality in #24. P1 improvement, not a production blocker."
+  },
+  {
+    "key": "historical-navigation",
+    "title": "[P1] Add date selection and previous-period navigation to usage statistics",
+    "body": "Dashboard previous/next day navigation, per-app 7/14/30-day/year charts (#31), and weekly/monthly/yearly reports (#23) already exist. The remaining closed-test request is quick arbitrary-date selection and movement between report periods.\n\nAcceptance criteria:\n- Select a historical date directly, including a specific September 1, and inspect an app's usage.\n- Navigate previous/next week and month with clearly labeled boundaries.\n- Preserve selected date when opening app detail; prevent future periods where appropriate.\n- Clearly distinguish missing/incomplete data from zero; preserve the completed historical recovery safety rules.\n- Test month/year edges, local calendar/DST, empty history and accessibility.\n\nDo not duplicate existing charts or Android detailed-session issue #29. P1 backlog; the bounded reliability gate is complete."
+  },
+  {
+    "key": "short-video-research",
+    "title": "[P1 Research] Evaluate Reels and Shorts blocking without blocking host apps",
+    "body": "Two closed-test requests asked to keep Instagram Messages and YouTube search/tutorials while blocking Reels/Shorts. Current implementation only knows package-level usage and has no AccessibilityService. Investigation/prototype only; do not add this to the reliability audit implementation.\n\nResearch:\n- Evaluate accessibility window/view signals, activity identity, in-app navigation and deep links.\n- Assess view-ID/localization/custom-rendering changes across host app versions; do not assume stable internal APIs.\n- Treat screen recognition as a separate privacy/consent/performance decision.\n- Review Play declaration, disclosure/consent and listing requirements; do not claim isAccessibilityTool for a general wellbeing feature.\n- Prototype on explicit host versions and measure false blocks of Messages/tutorials, detection misses, latency and update breakage.\n- Decide fail-open behavior and a supported-version policy.\n\nDeliver a verdict: reliable, fragile, infeasible, or further prototype required, with evidence. Current audit verdict: plausible but fragile; requires prototype. No policy approval is claimed.\n\nhttps://support.google.com/googleplay/android-developer/answer/10964491\n\nP1 research, not a production blocker."
+  },
+  {
+    "key": "time-limit-input",
+    "title": "[P2] Make daily-limit input precise and consistent across app and routine editors",
+    "body": "The per-app daily-limit slider is 5–480 minutes with five-minute steps; a two-minute limit cannot be entered. Routine limits already offer hour/minute dropdowns up to 24 hours, still at five-minute resolution. Closed-test feedback found the slider inconvenient.\n\nAcceptance criteria:\n- Choose a consistent, accessible input using the existing routine picker where appropriate.\n- Support deliberate small limits (including two minutes), common presets and large values with explicit maximum.\n- Avoid silently rounding saved values on edit; prevent zero/invalid limits.\n- Localize hour/minute labels, validate TalkBack, text scaling and keyboard input if offered.\n- Update both onboarding and per-app editor if they share the control; preserve rule serialization.\n\nP2 UX improvement, not a production blocker."
+  },
+  {
+    "key": "bubble-details",
+    "title": "[P2] Make detailed app statistics discoverable from usage bubbles",
+    "body": "Summary rows and restriction app rows already open UsageDetailsScreen. Bubble taps currently select a tooltip, while long-press manages restrictions. Closed-test users expected a natural route from a bubble to app details.\n\nAcceptance criteria:\n- Provide an obvious detail action from the selected bubble/tooltip, preserving useful selection and restriction actions.\n- Open the same app/date detail destination as the summary row, including historical days.\n- Cover accessibility semantics and avoid conflict with chart gestures.\n- Test tap/action/back navigation without duplicating existing chart implementation (#31) or Android session work (#29).\n\nP2, not a production blocker."
+  },
+  {
+    "key": "statistical-precision",
+    "title": "[P2] Preserve meaningful precision for small usage percentages",
+    "body": "SummaryTile and BubbleTooltip format percentages with toStringAsFixed(0): 0.4% displays as 0% and 0.7% as 1%. Sub-minute duration already displays <1m, while some detailed views use seconds.\n\nAcceptance criteria:\n- Define one shared, locale-aware precision rule for small nonzero percentages (for example one decimal below 1%, with an explicit threshold for even smaller values).\n- Keep exact zero distinct from small nonzero usage.\n- Apply consistently to summary and tooltip; keep larger values compact.\n- Decide where seconds improve short-duration detail without adding noise to overview cards.\n- Test zero, tiny values, decimal/rounding boundaries and localized separators.\n\nP2 UX improvement, not a production blocker."
+  },
+  {
+    "key": "usage-suggestions",
+    "title": "[P2 Research] Suggest optional limits for heavily used apps without existing limits",
+    "body": "Configured app/routine limits already have near-limit warnings. The closed-test request is different: notice heavy usage of an app with no limit and offer to set one. Coordinate with #30 Excess Usage and #33 Mascot / warnings; do not duplicate those scopes.\n\nInvestigation acceptance:\n- Define what counts as heavy usage and whether the signal is absolute or based on comparable historical days.\n- Exclude incomplete history from baseline decisions; document false-positive risks.\n- Define opt-in/opt-out, notification permission, cooldown, quiet hours and dismissal behavior.\n- Prototype a notification/action that opens a prefilled editor without creating a limit automatically.\n- Confirm exclusions and existing limits suppress inappropriate suggestions.\n\nResearch/design first, no implementation inside the closed-test reliability audit. P2, not a production blocker."
+  }
+]

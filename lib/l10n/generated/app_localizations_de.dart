@@ -429,6 +429,10 @@ class AppLocalizationsDe extends AppLocalizations {
       'Für diesen Tag wurde keine Nutzung erfasst.';
 
   @override
+  String get dashboardUsageUnavailableDay =>
+      'Nutzungsdaten sind für diesen Tag derzeit nicht verfügbar.';
+
+  @override
   String get dashboardAllTimeMostUsedTitle => 'Meistgenutzte App aller Zeiten';
 
   @override
@@ -604,6 +608,19 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String usageTrendUnchanged(String period) {
     return '$period: Nutzung unverändert';
+  }
+
+  @override
+  String get usageTrendNew => 'Neu';
+
+  @override
+  String usageTrendNewLabel(String period) {
+    return '$period: neue Nutzung, kein früherer Vergleichswert';
+  }
+
+  @override
+  String usageTrendIncreaseAboveCap(String period, int percentage) {
+    return '$period: Nutzung um mehr als $percentage % gestiegen';
   }
 
   @override
@@ -843,4 +860,216 @@ class AppLocalizationsDe extends AppLocalizations {
     );
     return '$_temp0';
   }
+
+  @override
+  String get settingsSyncSection => 'Konto und Synchronisierung';
+
+  @override
+  String get settingsSyncTitle => 'Cloud-Synchronisierung';
+
+  @override
+  String get settingsSyncBody =>
+      'Melde dich an, um deine täglichen Nutzungssummen in dein eigenes Konto zu kopieren und auf einem anderen Gerät zu sehen. Aus, bis du sie einschaltest.';
+
+  @override
+  String get settingsSyncEmail => 'E-Mail';
+
+  @override
+  String get settingsSyncPassword => 'Passwort';
+
+  @override
+  String get settingsSyncPasswordRequirements =>
+      'Verwende 15–128 Zeichen. Einige Wörter ohne Zusammenhang ergeben eine sichere, leicht merkbare Passphrase. Häufige Passwörter werden nicht akzeptiert.';
+
+  @override
+  String get settingsSyncShowPassword => 'Passwort anzeigen';
+
+  @override
+  String get settingsSyncHidePassword => 'Passwort verbergen';
+
+  @override
+  String get settingsSyncSignInHeading => 'Bei deinem Konto anmelden';
+
+  @override
+  String get settingsSyncCreateHeading => 'Ein Sync-Konto erstellen';
+
+  @override
+  String get settingsSyncSwitchToCreate => 'Neu bei Sync? Konto erstellen';
+
+  @override
+  String get settingsSyncSwitchToSignIn => 'Du hast schon ein Konto? Anmelden';
+
+  @override
+  String get settingsSyncSignInInstead => 'Stattdessen anmelden';
+
+  @override
+  String get settingsSyncSigningIn => 'Anmeldung läuft…';
+
+  @override
+  String get settingsSyncCreatingAccount => 'Konto wird erstellt…';
+
+  @override
+  String get settingsSyncAccountCreated => 'Konto erstellt';
+
+  @override
+  String settingsSyncSignedInAs(String email) {
+    return 'Angemeldet als $email';
+  }
+
+  @override
+  String get settingsSyncCreatedNextStep =>
+      'Sync ist noch aus. Schalte es ein, wenn die täglichen Nutzungswerte dieses Geräts in dein Konto kopiert werden sollen.';
+
+  @override
+  String get settingsSyncTurnOnSync => 'Sync einschalten';
+
+  @override
+  String get settingsSyncAccountCreatedSignInRequired =>
+      'Dein Konto wurde erstellt, aber die automatische Anmeldung ist fehlgeschlagen. Gib dein Passwort ein und tippe auf „Anmelden“, um fortzufahren.';
+
+  @override
+  String get settingsSyncErrorRegistration =>
+      'Konto nicht erstellt. Prüfe deine E-Mail-Adresse und dein Passwort und versuche es erneut.';
+
+  @override
+  String get settingsSyncErrorEmailRequired => 'Gib deine E-Mail-Adresse ein.';
+
+  @override
+  String get settingsSyncErrorEmailInvalid =>
+      'Gib eine gültige E-Mail-Adresse ein, etwa name@example.com.';
+
+  @override
+  String get settingsSyncErrorPasswordRequired => 'Gib dein Passwort ein.';
+
+  @override
+  String settingsSyncErrorPasswordTooShort(int count) {
+    return 'Verwende mindestens 15 Zeichen (bisher $count).';
+  }
+
+  @override
+  String get settingsSyncErrorPasswordTooLong =>
+      'Verwende höchstens 128 Zeichen.';
+
+  @override
+  String get settingsSyncErrorPasswordRejected =>
+      'Dieses Passwort ist zu häufig oder entspricht deiner E-Mail-Adresse. Wähle ein anderes.';
+
+  @override
+  String get settingsSyncErrorThrottled =>
+      'Zu viele Versuche aus diesem Netzwerk. Warte eine Weile und versuche es dann erneut.';
+
+  @override
+  String get settingsSyncSignIn => 'Anmelden';
+
+  @override
+  String get settingsSyncCreateAccount => 'Konto erstellen';
+
+  @override
+  String get settingsSyncSignOut => 'Abmelden';
+
+  @override
+  String get settingsSyncEnabledLabel => 'Dieses Gerät synchronisieren';
+
+  @override
+  String get settingsSyncEnabledSubtitle =>
+      'Ausschalten stoppt das Senden neuer Daten. Bereits Synchronisiertes wird nicht gelöscht.';
+
+  @override
+  String get settingsSyncNow => 'Jetzt synchronisieren';
+
+  @override
+  String get settingsSyncNeverSynced => 'Noch nicht synchronisiert';
+
+  @override
+  String get settingsSyncStateSyncing => 'Wird synchronisiert...';
+
+  @override
+  String get settingsSyncStateSuccess => 'Synchronisierung abgeschlossen';
+
+  @override
+  String get settingsSyncStateError => 'Synchronisierung fehlgeschlagen';
+
+  @override
+  String get settingsSyncErrorOffline =>
+      'Der Dienst war nicht erreichbar. Prüfe deine Verbindung und versuche es erneut.';
+
+  @override
+  String get settingsSyncErrorCredentials =>
+      'E-Mail und Passwort passen zu keinem Konto.';
+
+  @override
+  String get settingsSyncErrorEmailTaken =>
+      'Für diese E-Mail gibt es bereits ein Konto.';
+
+  @override
+  String get settingsSyncErrorWeakPassword =>
+      'Wähle ein längeres, weniger verbreitetes Passwort.';
+
+  @override
+  String get settingsSyncErrorSessionExpired =>
+      'Deine Sitzung ist abgelaufen. Melde dich erneut an.';
+
+  @override
+  String get settingsSyncErrorRefused =>
+      'Der Dienst hat die Anfrage abgelehnt.';
+
+  @override
+  String get settingsSyncErrorUnknown =>
+      'Etwas ist schiefgelaufen. Versuche es erneut.';
+
+  @override
+  String get settingsSyncDeleteAccount => 'Konto löschen';
+
+  @override
+  String get settingsSyncDeleteTitle => 'FocusTrace-Konto löschen?';
+
+  @override
+  String get settingsSyncDeleteBody =>
+      'Dadurch werden dein FocusTrace-Cloudkonto und alle auf den Server synchronisierten Nutzungsdaten dauerhaft gelöscht. Das kann nicht rückgängig gemacht werden.\n\nDer Nutzungsverlauf auf diesem Gerät bleibt erhalten, und die Synchronisierung wird ausgeschaltet.';
+
+  @override
+  String get settingsSyncDeletePassword => 'Aktuelles Passwort';
+
+  @override
+  String get settingsSyncDeleteConfirm => 'Endgültig löschen';
+
+  @override
+  String get settingsSyncDeleted =>
+      'Dein FocusTrace-Konto wurde gelöscht. Der Nutzungsverlauf auf diesem Gerät wurde behalten.';
+
+  @override
+  String get settingsSyncRepeatPassword => 'Passwort wiederholen';
+
+  @override
+  String get settingsSyncShowRepeatPassword => 'Wiederholtes Passwort anzeigen';
+
+  @override
+  String get settingsSyncHideRepeatPassword =>
+      'Wiederholtes Passwort verbergen';
+
+  @override
+  String get settingsSyncErrorPasswordMismatch =>
+      'Die Passwörter stimmen nicht überein.';
+
+  @override
+  String get settingsSyncDangerZone => 'Gefahrenbereich';
+
+  @override
+  String get settingsSyncDangerZoneBody =>
+      'Wenn du dein Konto löschst, werden es und alle auf den Server synchronisierten Nutzungsdaten endgültig entfernt. Der Nutzungsverlauf auf diesem Gerät bleibt erhalten.';
+
+  @override
+  String get settingsSyncDeleteAcknowledge =>
+      'Ich verstehe, dass mein Cloud-Konto damit endgültig gelöscht wird.';
+
+  @override
+  String get settingsSyncDeleting => 'Wird gelöscht…';
+
+  @override
+  String get settingsSyncErrorWrongPassword =>
+      'Das Passwort ist nicht korrekt. Dein Konto wurde nicht gelöscht.';
+
+  @override
+  String get settingsPrivacyBodySync =>
+      'Dein Nutzungsverlauf und deine Einstellungen bleiben auf diesem Gerät, außer du exportierst eine Sicherung oder aktivierst unten die Cloud-Synchronisierung.';
 }

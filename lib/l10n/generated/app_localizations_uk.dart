@@ -431,6 +431,10 @@ class AppLocalizationsUk extends AppLocalizations {
   String get dashboardNoUsageDay => 'За цей день використання не зафіксовано.';
 
   @override
+  String get dashboardUsageUnavailableDay =>
+      'Дані про використання за цей день наразі недоступні.';
+
+  @override
   String get dashboardAllTimeMostUsedTitle =>
       'Найчастіше використовуваний застосунок';
 
@@ -607,6 +611,19 @@ class AppLocalizationsUk extends AppLocalizations {
   @override
   String usageTrendUnchanged(String period) {
     return '$period: використання без змін';
+  }
+
+  @override
+  String get usageTrendNew => 'Нове';
+
+  @override
+  String usageTrendNewLabel(String period) {
+    return '$period: нове використання, немає попередніх даних для порівняння';
+  }
+
+  @override
+  String usageTrendIncreaseAboveCap(String period, int percentage) {
+    return '$period: використання зросло більш ніж на $percentage%';
   }
 
   @override
@@ -844,4 +861,216 @@ class AppLocalizationsUk extends AppLocalizations {
     );
     return '$_temp0';
   }
+
+  @override
+  String get settingsSyncSection => 'Обліковий запис і синхронізація';
+
+  @override
+  String get settingsSyncTitle => 'Хмарна синхронізація';
+
+  @override
+  String get settingsSyncBody =>
+      'Увійдіть, щоб копіювати щоденні підсумки використання до власного облікового запису й бачити їх на іншому пристрої. Вимкнено, доки ви не увімкнете.';
+
+  @override
+  String get settingsSyncEmail => 'Електронна пошта';
+
+  @override
+  String get settingsSyncPassword => 'Пароль';
+
+  @override
+  String get settingsSyncPasswordRequirements =>
+      'Використовуйте 15–128 символів. Кілька не пов’язаних між собою слів утворюють надійну парольну фразу, яку легко запам’ятати. Поширені паролі не приймаються.';
+
+  @override
+  String get settingsSyncShowPassword => 'Показати пароль';
+
+  @override
+  String get settingsSyncHidePassword => 'Приховати пароль';
+
+  @override
+  String get settingsSyncSignInHeading => 'Увійдіть у свій обліковий запис';
+
+  @override
+  String get settingsSyncCreateHeading =>
+      'Створіть обліковий запис для синхронізації';
+
+  @override
+  String get settingsSyncSwitchToCreate =>
+      'Уперше синхронізуєте? Створіть обліковий запис';
+
+  @override
+  String get settingsSyncSwitchToSignIn =>
+      'Уже маєте обліковий запис? Увійдіть';
+
+  @override
+  String get settingsSyncSignInInstead => 'Натомість увійти';
+
+  @override
+  String get settingsSyncSigningIn => 'Вхід…';
+
+  @override
+  String get settingsSyncCreatingAccount => 'Створення облікового запису…';
+
+  @override
+  String get settingsSyncAccountCreated => 'Обліковий запис створено';
+
+  @override
+  String settingsSyncSignedInAs(String email) {
+    return 'Ви ввійшли як $email';
+  }
+
+  @override
+  String get settingsSyncCreatedNextStep =>
+      'Синхронізацію ще вимкнено. Увімкніть її, коли захочете копіювати щоденні підсумки цього пристрою до свого облікового запису.';
+
+  @override
+  String get settingsSyncTurnOnSync => 'Увімкнути синхронізацію';
+
+  @override
+  String get settingsSyncAccountCreatedSignInRequired =>
+      'Обліковий запис створено, але автоматичний вхід не вдався. Введіть пароль і натисніть «Увійти», щоб продовжити.';
+
+  @override
+  String get settingsSyncErrorRegistration =>
+      'Обліковий запис не створено. Перевірте електронну адресу й пароль і спробуйте ще раз.';
+
+  @override
+  String get settingsSyncErrorEmailRequired =>
+      'Введіть свою електронну адресу.';
+
+  @override
+  String get settingsSyncErrorEmailInvalid =>
+      'Введіть дійсну електронну адресу, наприклад name@example.com.';
+
+  @override
+  String get settingsSyncErrorPasswordRequired => 'Введіть свій пароль.';
+
+  @override
+  String settingsSyncErrorPasswordTooShort(int count) {
+    return 'Використовуйте щонайменше 15 символів (зараз $count).';
+  }
+
+  @override
+  String get settingsSyncErrorPasswordTooLong =>
+      'Використовуйте не більше 128 символів.';
+
+  @override
+  String get settingsSyncErrorPasswordRejected =>
+      'Цей пароль надто поширений або збігається з вашою електронною адресою. Виберіть інший.';
+
+  @override
+  String get settingsSyncErrorThrottled =>
+      'Забагато спроб із цієї мережі. Зачекайте трохи й спробуйте ще раз.';
+
+  @override
+  String get settingsSyncSignIn => 'Увійти';
+
+  @override
+  String get settingsSyncCreateAccount => 'Створити обліковий запис';
+
+  @override
+  String get settingsSyncSignOut => 'Вийти';
+
+  @override
+  String get settingsSyncEnabledLabel => 'Синхронізувати цей пристрій';
+
+  @override
+  String get settingsSyncEnabledSubtitle =>
+      'Вимкнення зупиняє надсилання нових даних. Уже синхронізоване не видаляється.';
+
+  @override
+  String get settingsSyncNow => 'Синхронізувати зараз';
+
+  @override
+  String get settingsSyncNeverSynced => 'Ще не синхронізовано';
+
+  @override
+  String get settingsSyncStateSyncing => 'Синхронізація...';
+
+  @override
+  String get settingsSyncStateSuccess => 'Синхронізацію завершено';
+
+  @override
+  String get settingsSyncStateError => 'Помилка синхронізації';
+
+  @override
+  String get settingsSyncErrorOffline =>
+      'Не вдалося зв’язатися зі службою. Перевірте з’єднання та спробуйте ще раз.';
+
+  @override
+  String get settingsSyncErrorCredentials =>
+      'Ця пошта й пароль не відповідають жодному обліковому запису.';
+
+  @override
+  String get settingsSyncErrorEmailTaken =>
+      'Обліковий запис для цієї пошти вже існує.';
+
+  @override
+  String get settingsSyncErrorWeakPassword =>
+      'Виберіть довший і менш поширений пароль.';
+
+  @override
+  String get settingsSyncErrorSessionExpired =>
+      'Ваш сеанс завершився. Увійдіть знову.';
+
+  @override
+  String get settingsSyncErrorRefused => 'Служба відхилила запит.';
+
+  @override
+  String get settingsSyncErrorUnknown => 'Щось пішло не так. Спробуйте ще раз.';
+
+  @override
+  String get settingsSyncDeleteAccount => 'Видалити обліковий запис';
+
+  @override
+  String get settingsSyncDeleteTitle => 'Видалити обліковий запис FocusTrace?';
+
+  @override
+  String get settingsSyncDeleteBody =>
+      'Це назавжди видалить ваш хмарний обліковий запис FocusTrace і всі дані використання, синхронізовані на сервер. Цю дію не можна скасувати.\n\nІсторія використання на цьому пристрої залишиться, а синхронізацію буде вимкнено.';
+
+  @override
+  String get settingsSyncDeletePassword => 'Поточний пароль';
+
+  @override
+  String get settingsSyncDeleteConfirm => 'Видалити назавжди';
+
+  @override
+  String get settingsSyncDeleted =>
+      'Ваш обліковий запис FocusTrace видалено. Історію використання на цьому пристрої збережено.';
+
+  @override
+  String get settingsSyncRepeatPassword => 'Повторіть пароль';
+
+  @override
+  String get settingsSyncShowRepeatPassword => 'Показати повторений пароль';
+
+  @override
+  String get settingsSyncHideRepeatPassword => 'Приховати повторений пароль';
+
+  @override
+  String get settingsSyncErrorPasswordMismatch => 'Паролі не збігаються.';
+
+  @override
+  String get settingsSyncDangerZone => 'Небезпечна зона';
+
+  @override
+  String get settingsSyncDangerZoneBody =>
+      'Видалення облікового запису назавжди вилучає його та всі дані про використання, синхронізовані з сервером. Історія використання на цьому пристрої залишається.';
+
+  @override
+  String get settingsSyncDeleteAcknowledge =>
+      'Я розумію, що це назавжди видаляє мій хмарний обліковий запис.';
+
+  @override
+  String get settingsSyncDeleting => 'Видалення…';
+
+  @override
+  String get settingsSyncErrorWrongPassword =>
+      'Пароль неправильний. Обліковий запис не видалено.';
+
+  @override
+  String get settingsPrivacyBodySync =>
+      'Історія використання та налаштування залишаються на цьому пристрої, доки ви не експортуєте резервну копію або не ввімкнете хмарну синхронізацію нижче.';
 }

@@ -1,0 +1,11 @@
+-- FocusTrace Backend Sync v1 - refresh-token lookups by session.
+-- Contract: docs/backend/backend-sync-architecture.md section 6 and 5.1 (D08).
+-- V1-V3 have been applied to real PostgreSQL and are not edited.
+--
+-- The only index on session_id is the V2 partial unique index for the current
+-- token (WHERE revoked_at IS NULL). The D08 replay check looks for a newer,
+-- already-revoked token in the same session, which that index cannot serve, so it
+-- scanned the whole table; the ON DELETE CASCADE from auth_sessions also looks up
+-- by session_id. A session holds at most a few hundred tokens, so session_id
+-- alone is selective enough.
+CREATE INDEX refresh_tokens_session_id_idx ON refresh_tokens (session_id);

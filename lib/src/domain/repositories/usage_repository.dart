@@ -16,6 +16,10 @@ abstract class UsageRepository {
   /// fetched), longest first. Empty when nothing was recorded that day.
   Future<List<AppUsageSummary>> getDailySummaries(DateTime day);
 
+  /// Whether the platform's usage records were last found insufficient for
+  /// [day]. False when the platform keeps no such coverage evidence.
+  Future<bool> isUsageUnavailable(DateTime day);
+
   /// Per-app totals aggregated across every locally stored day.
   Future<List<AppUsageSummary>> getAllTimeSummaries();
 

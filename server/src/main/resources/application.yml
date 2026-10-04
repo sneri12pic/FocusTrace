@@ -1,0 +1,98 @@
+spring:
+  application:
+    name: focustrace-sync
+
+  # No credentials are committed. Supply them via the environment; the defaults
+  # only fit a throwaway local database. The prod profile has no defaults (D14).
+  datasource:
+    url: ${FOCUSTRACE_DB_URL:jdbc:postgresql://localhost:5432/focustrace}
+    username: ${FOCUSTRACE_DB_USER:focustrace}
+    password: ${FOCUSTRACE_DB_PASSWORD:}
+
+  flyway:
+    enabled: true
+
+  jpa:
+    open-in-view: false
+    hibernate:
+      # Flyway owns the schema. Entity drift must fail startup, never mutate the
+      # database. This stays 'validate' in every profile, tests included.
+      ddl-auto: validate
+
+  jackson:
+    deserialization:
+      # Request DTOs bind exactly their record components; anything else in the
+      # body is a 400 rather than silently ignored (baseline section 9).
+      fail-on-unknown-properties: true
+    factory:
+      constraints:
+        read:
+          # Jackson parser document-length constraint, in input units (bytes for a
+          # servlet body), enforced at buffer granularity: not an exact HTTP byte
+          # cap. The largest valid usage upload is about 1.4 MiB (architecture 9.1).
+          # Chunked bodies without Content-Length hit the same limit.
+          max-document-length: 2097152
+
+server:
+  # D15/D20: always none. Boot's own forwarded-header support would trust every
+  # private range; a proxy is trusted only through focustrace.network below.
+  forward-headers-strategy: none
+  # Baseline section 13: explicit, not inherited defaults.
+  error:
+    include-stacktrace: never
+    include-message: never
+    include-binding-errors: never
+    include-exception: false
+
+focustrace:
+  network:
+    # D20. direct: the client is the socket peer; forwarding headers are ignored.
+    # trusted-proxy: X-Forwarded-For is honoured only from the exact IP literals in
+    # trusted-proxies (the addresses Spring sees the proxy connect from).
+    mode: direct
+    trusted-proxies: []
+  auth:
+    jwt:
+      # D09: no default in any profile. Base64 of at least 32 CSPRNG bytes:
+      #   openssl rand -base64 32
+      secret: ${FOCUSTRACE_JWT_SECRET}
+      issuer: focustrace-sync
+      audience: focustrace-app
+      access-token-ttl: PT15M
+    session:
+      absolute-lifetime: PT2160H   # D05: 90 days
+      inactivity-lifetime: PT720H  # D06: 30 days
+      reuse-grace: PT10S           # D08: 0 = strict rotation
+    rate-limit:
+      # D15: initial operational defaults, not architecture.
+      max-entries-per-limiter: 10000
+      register-per-source: { capacity: 5, period: PT1H }
+      login-per-source: { capacity: 10, period: PT15M }
+      login-per-account: { capacity: 5, period: PT15M }
+      refresh-per-source: { capacity: 60, period: PT1H }
+      # D18: authenticated, keyed by the token's account id. Sized from the real
+      # client (architecture 5.1, D18): a full-history re-upload must fit the upload
+      # burst, because a run that fails part-way restarts from its first batch.
+      device-register-per-user: { capacity: 30, period: PT1H }
+      upload-per-user: { capacity: 300, period: PT6H }
+      history-per-user: { capacity: 60, period: PT1H }
+      # D19: each attempt verifies a password, so it is throttled like login.
+      account-delete-per-user: { capacity: 5, period: PT15M }
+  # D18: per-account resource bounds; initial operational defaults, not architecture.
+  sync:
+    max-active-devices: 10
+    device-active-window: PT2160H  # 90 days
+    max-stored-days: 3650          # usage days across all the account's devices
+    # Architecture 9.3: rows in one history response (app rows, plus one per
+    # app-less day). Bounds what one read sorts, holds and serialises.
+    max-history-rows: 20000
+
+logging:
+  level:
+    # Hibernate logs every SQL error, including the expected duplicate-email one,
+    # with the offending email in it. Unexpected ones still propagate and are logged,
+    # with a correlation id, by ApiExceptionHandler.
+    org.hibernate.orm.jdbc.error: OFF
+  pattern:
+    # Server-generated request id (RequestIdFilter) on every line.
+    correlation: "[%X{requestId:-}] "

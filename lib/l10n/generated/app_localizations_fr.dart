@@ -437,6 +437,10 @@ class AppLocalizationsFr extends AppLocalizations {
       'Aucune utilisation enregistrée ce jour-là.';
 
   @override
+  String get dashboardUsageUnavailableDay =>
+      'Les données d\'utilisation sont actuellement indisponibles pour ce jour.';
+
+  @override
   String get dashboardAllTimeMostUsedTitle => 'Application la plus utilisée';
 
   @override
@@ -613,6 +617,19 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String usageTrendUnchanged(String period) {
     return '$period : utilisation inchangée';
+  }
+
+  @override
+  String get usageTrendNew => 'Nouveau';
+
+  @override
+  String usageTrendNewLabel(String period) {
+    return '$period : nouvelle utilisation, aucune donnée antérieure à comparer';
+  }
+
+  @override
+  String usageTrendIncreaseAboveCap(String period, int percentage) {
+    return '$period : utilisation en hausse de plus de $percentage %';
   }
 
   @override
@@ -851,4 +868,218 @@ class AppLocalizationsFr extends AppLocalizations {
     );
     return '$_temp0';
   }
+
+  @override
+  String get settingsSyncSection => 'Compte et synchronisation';
+
+  @override
+  String get settingsSyncTitle => 'Synchronisation cloud';
+
+  @override
+  String get settingsSyncBody =>
+      'Connectez-vous pour copier vos totaux d’utilisation quotidiens vers votre compte et les consulter sur un autre appareil. Désactivée tant que vous ne l’activez pas.';
+
+  @override
+  String get settingsSyncEmail => 'E-mail';
+
+  @override
+  String get settingsSyncPassword => 'Mot de passe';
+
+  @override
+  String get settingsSyncPasswordRequirements =>
+      'Utilisez entre 15 et 128 caractères. Quelques mots sans rapport forment une phrase de passe sûre et facile à retenir. Les mots de passe courants ne sont pas acceptés.';
+
+  @override
+  String get settingsSyncShowPassword => 'Afficher le mot de passe';
+
+  @override
+  String get settingsSyncHidePassword => 'Masquer le mot de passe';
+
+  @override
+  String get settingsSyncSignInHeading => 'Connectez-vous à votre compte';
+
+  @override
+  String get settingsSyncCreateHeading => 'Créez un compte de synchronisation';
+
+  @override
+  String get settingsSyncSwitchToCreate =>
+      'Première synchronisation ? Créez un compte';
+
+  @override
+  String get settingsSyncSwitchToSignIn =>
+      'Vous avez déjà un compte ? Connectez-vous';
+
+  @override
+  String get settingsSyncSignInInstead => 'Se connecter à la place';
+
+  @override
+  String get settingsSyncSigningIn => 'Connexion en cours…';
+
+  @override
+  String get settingsSyncCreatingAccount => 'Création du compte…';
+
+  @override
+  String get settingsSyncAccountCreated => 'Compte créé';
+
+  @override
+  String settingsSyncSignedInAs(String email) {
+    return 'Connecté avec $email';
+  }
+
+  @override
+  String get settingsSyncCreatedNextStep =>
+      'La synchronisation est encore désactivée. Activez-la quand vous souhaitez copier les totaux quotidiens de cet appareil vers votre compte.';
+
+  @override
+  String get settingsSyncTurnOnSync => 'Activer la synchronisation';
+
+  @override
+  String get settingsSyncAccountCreatedSignInRequired =>
+      'Votre compte a été créé, mais la connexion automatique a échoué. Saisissez votre mot de passe et appuyez sur « Se connecter » pour continuer.';
+
+  @override
+  String get settingsSyncErrorRegistration =>
+      'Compte non créé. Vérifiez votre adresse e-mail et votre mot de passe, puis réessayez.';
+
+  @override
+  String get settingsSyncErrorEmailRequired =>
+      'Saisissez votre adresse e-mail.';
+
+  @override
+  String get settingsSyncErrorEmailInvalid =>
+      'Saisissez une adresse e-mail valide, comme nom@example.com.';
+
+  @override
+  String get settingsSyncErrorPasswordRequired =>
+      'Saisissez votre mot de passe.';
+
+  @override
+  String settingsSyncErrorPasswordTooShort(int count) {
+    return 'Utilisez au moins 15 caractères ($count pour le moment).';
+  }
+
+  @override
+  String get settingsSyncErrorPasswordTooLong =>
+      'Utilisez au maximum 128 caractères.';
+
+  @override
+  String get settingsSyncErrorPasswordRejected =>
+      'Ce mot de passe est trop courant ou correspond à votre adresse e-mail. Choisissez-en un autre.';
+
+  @override
+  String get settingsSyncErrorThrottled =>
+      'Trop de tentatives depuis ce réseau. Attendez un moment, puis réessayez.';
+
+  @override
+  String get settingsSyncSignIn => 'Se connecter';
+
+  @override
+  String get settingsSyncCreateAccount => 'Créer un compte';
+
+  @override
+  String get settingsSyncSignOut => 'Se déconnecter';
+
+  @override
+  String get settingsSyncEnabledLabel => 'Synchroniser cet appareil';
+
+  @override
+  String get settingsSyncEnabledSubtitle =>
+      'La désactivation arrête l’envoi de nouvelles données. Rien de déjà synchronisé n’est supprimé.';
+
+  @override
+  String get settingsSyncNow => 'Synchroniser maintenant';
+
+  @override
+  String get settingsSyncNeverSynced => 'Pas encore synchronisé';
+
+  @override
+  String get settingsSyncStateSyncing => 'Synchronisation...';
+
+  @override
+  String get settingsSyncStateSuccess => 'Synchronisation terminée';
+
+  @override
+  String get settingsSyncStateError => 'Échec de la synchronisation';
+
+  @override
+  String get settingsSyncErrorOffline =>
+      'Service de synchronisation injoignable. Vérifiez votre connexion et réessayez.';
+
+  @override
+  String get settingsSyncErrorCredentials =>
+      'Cet e-mail et ce mot de passe ne correspondent à aucun compte.';
+
+  @override
+  String get settingsSyncErrorEmailTaken =>
+      'Un compte existe déjà pour cet e-mail.';
+
+  @override
+  String get settingsSyncErrorWeakPassword =>
+      'Choisissez un mot de passe plus long et moins courant.';
+
+  @override
+  String get settingsSyncErrorSessionExpired =>
+      'Votre session a expiré. Reconnectez-vous.';
+
+  @override
+  String get settingsSyncErrorRefused => 'Le service a refusé la requête.';
+
+  @override
+  String get settingsSyncErrorUnknown => 'Une erreur est survenue. Réessayez.';
+
+  @override
+  String get settingsSyncDeleteAccount => 'Supprimer le compte';
+
+  @override
+  String get settingsSyncDeleteTitle => 'Supprimer votre compte FocusTrace ?';
+
+  @override
+  String get settingsSyncDeleteBody =>
+      'Cela supprime définitivement votre compte cloud FocusTrace et toutes les données d’utilisation synchronisées sur le serveur. Cette action est irréversible.\n\nL’historique d’utilisation de cet appareil est conservé et la synchronisation sera désactivée.';
+
+  @override
+  String get settingsSyncDeletePassword => 'Mot de passe actuel';
+
+  @override
+  String get settingsSyncDeleteConfirm => 'Supprimer définitivement';
+
+  @override
+  String get settingsSyncDeleted =>
+      'Votre compte FocusTrace a été supprimé. L’historique d’utilisation de cet appareil a été conservé.';
+
+  @override
+  String get settingsSyncRepeatPassword => 'Répéter le mot de passe';
+
+  @override
+  String get settingsSyncShowRepeatPassword =>
+      'Afficher le mot de passe répété';
+
+  @override
+  String get settingsSyncHideRepeatPassword => 'Masquer le mot de passe répété';
+
+  @override
+  String get settingsSyncErrorPasswordMismatch =>
+      'Les mots de passe ne correspondent pas.';
+
+  @override
+  String get settingsSyncDangerZone => 'Zone de danger';
+
+  @override
+  String get settingsSyncDangerZoneBody =>
+      'Supprimer votre compte le supprime définitivement, ainsi que toutes les données d’utilisation synchronisées sur le serveur. L’historique d’utilisation de cet appareil est conservé.';
+
+  @override
+  String get settingsSyncDeleteAcknowledge =>
+      'Je comprends que cela supprime définitivement mon compte cloud.';
+
+  @override
+  String get settingsSyncDeleting => 'Suppression…';
+
+  @override
+  String get settingsSyncErrorWrongPassword =>
+      'Ce mot de passe est incorrect. Votre compte n’a pas été supprimé.';
+
+  @override
+  String get settingsPrivacyBodySync =>
+      'Votre historique d’utilisation et vos réglages restent sur cet appareil, sauf si vous exportez une sauvegarde ou activez la synchronisation cloud ci-dessous.';
 }

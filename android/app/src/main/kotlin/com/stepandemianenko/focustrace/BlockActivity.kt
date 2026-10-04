@@ -4,8 +4,10 @@ import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.graphics.Color
+import android.os.Build
 import android.os.Bundle
 import android.view.Gravity
+import android.window.OnBackInvokedDispatcher
 import android.view.WindowManager
 import android.widget.Button
 import android.widget.ImageView
@@ -26,7 +28,22 @@ class BlockActivity : Activity() {
         window.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS)
         window.statusBarColor = BACKGROUND_COLOR
         window.navigationBarColor = BACKGROUND_COLOR
+        registerBackHandler()
         render()
+    }
+
+    /**
+     * From API 33 back arrives through the dispatcher, and from targetSdk 36
+     * [onBackPressed] is never called at all. Without this, the system's own
+     * back would run - and from a task of our own, predictive back can animate
+     * straight back into the app being blocked.
+     */
+    private fun registerBackHandler() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            onBackInvokedDispatcher.registerOnBackInvokedCallback(
+                OnBackInvokedDispatcher.PRIORITY_DEFAULT,
+            ) { goHome() }
+        }
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -35,7 +52,8 @@ class BlockActivity : Activity() {
         render()
     }
 
-    // Back must not drop the user straight back into the blocked app.
+    // Back must not drop the user straight back into the blocked app. Still the
+    // only path below API 33; above it, registerBackHandler has already run.
     @Deprecated("Deprecated in Java")
     override fun onBackPressed() = goHome()
 

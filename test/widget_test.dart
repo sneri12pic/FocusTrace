@@ -4,6 +4,112 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:focustrace/focus_trace.dart';
 
 void main() {
+  for (final historical in [false, true]) {
+    testWidgets(
+      'returning to Android dashboard refreshes ${historical ? 'historical' : 'today'} usage without reopening',
+      (tester) async {
+        final usage = _FakeUsageRepository()..serveHistory = historical;
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              usagePlatformProvider.overrideWithValue(UsagePlatform.android),
+              usageRepositoryProvider.overrideWithValue(usage),
+              reportRepositoryProvider.overrideWithValue(
+                _FakeReportRepository(),
+              ),
+              platformDataSourceProvider.overrideWithValue(
+                _FakePlatformDataSource(),
+              ),
+              settingsRepositoryProvider.overrideWithValue(
+                _FakeSettingsRepository(),
+              ),
+              appLanguageRepositoryProvider.overrideWithValue(
+                _FakeAppLanguageRepository(),
+              ),
+            ],
+            child: const FocusTraceApp(),
+          ),
+        );
+        for (var frame = 0; frame < 4; frame++) {
+          await tester.pump(const Duration(seconds: 1));
+        }
+        if (historical) {
+          final container = ProviderScope.containerOf(
+            tester.element(find.byType(DashboardScreen)),
+          );
+          await container
+              .read(dashboardViewModelProvider.notifier)
+              .previousDay();
+          await tester.pump();
+        }
+        expect(find.text('1h 15m'), findsWidgets);
+        tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+        usage.todayDurationSeconds = 9000;
+        tester.binding.handleAppLifecycleStateChanged(
+          AppLifecycleState.resumed,
+        );
+        await tester.pump();
+        await tester.pump(const Duration(seconds: 1));
+        expect(find.text('2h 30m'), findsWidgets);
+        expect(find.text('1h 15m'), findsNothing);
+      },
+    );
+  }
+
+  // (access, unavailable): an empty Android day in each distinct state.
+  for (final (access, unavailable) in [
+    (true, true),
+    (false, true),
+    (true, false),
+  ]) {
+    testWidgets('empty Android day, access=$access unavailable=$unavailable', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            usagePlatformProvider.overrideWithValue(UsagePlatform.android),
+            usageRepositoryProvider.overrideWithValue(
+              _FakeUsageRepository(hasUsageAccessValue: access)
+                ..emptyToday = true
+                ..usageUnavailable = unavailable,
+            ),
+            reportRepositoryProvider.overrideWithValue(_FakeReportRepository()),
+            platformDataSourceProvider.overrideWithValue(
+              _FakePlatformDataSource(),
+            ),
+            settingsRepositoryProvider.overrideWithValue(
+              _FakeSettingsRepository(),
+            ),
+            appLanguageRepositoryProvider.overrideWithValue(
+              _FakeAppLanguageRepository(),
+            ),
+          ],
+          child: const FocusTraceApp(),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+      await tester.pump(const Duration(seconds: 1));
+
+      // Without access the permission card explains the empty day instead.
+      final shown = access && unavailable;
+      expect(
+        find.text('Usage data is currently unavailable for this day.'),
+        shown ? findsOneWidget : findsNothing,
+      );
+      expect(
+        find.text('No usage recorded for today.'),
+        shown ? findsNothing : findsOneWidget,
+      );
+      // An unmeasured day has no duration to report.
+      expect(
+        find.textContaining('Tracked'),
+        shown ? findsNothing : findsOneWidget,
+      );
+    });
+  }
+
   testWidgets('dashboard renders usage summaries', (tester) async {
     await tester.pumpWidget(
       ProviderScope(
@@ -290,17 +396,22 @@ class _FakeUsageRepository implements UsageRepository {
   _FakeUsageRepository({this.hasUsageAccessValue = true});
 
   final bool hasUsageAccessValue;
+  int todayDurationSeconds = 4500;
+  bool serveHistory = false;
+  bool usageUnavailable = false;
+  bool emptyToday = false;
 
   @override
   Future<void> clearAllData() async {}
 
   @override
   Future<List<AppUsageSummary>> getTodaySummaries() async {
+    if (emptyToday) return const [];
     return [
-      const AppUsageSummary(
+      AppUsageSummary(
         appName: 'Editor',
         processName: 'editor.exe',
-        totalDurationSeconds: 4500,
+        totalDurationSeconds: todayDurationSeconds,
         percentageOfTotal: 1,
         launchCount: 3,
       ),
@@ -312,8 +423,11 @@ class _FakeUsageRepository implements UsageRepository {
       const <AppUsageSummary>[];
 
   @override
+  Future<bool> isUsageUnavailable(DateTime day) async => usageUnavailable;
+
+  @override
   Future<List<AppUsageSummary>> getDailySummaries(DateTime day) async =>
-      const <AppUsageSummary>[];
+      serveHistory ? await getTodaySummaries() : const <AppUsageSummary>[];
 
   @override
   Future<List<AppUsageSummary>> getAllTimeSummaries() async => const [

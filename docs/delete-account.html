@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>FocusTrace — Delete your account</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 720px; margin: 0 auto; padding: 24px; line-height: 1.6; color: #1a1a1a; }
+    h1 { font-size: 1.6rem; } h2 { font-size: 1.15rem; margin-top: 2rem; }
+    @media (prefers-color-scheme: dark) { body { background: #121212; color: #e0e0e0; } }
+  </style>
+</head>
+<body>
+  <h1>FocusTrace — Delete your account</h1>
+
+  <p>This page explains how to delete a FocusTrace cloud sync account and the
+  data stored with it. FocusTrace is developed by Stepan Demianenko. An account
+  exists only if you created one for optional cloud sync; without one, nothing
+  is stored on a server and there is nothing to delete here.</p>
+
+  <h2>Delete your account in the app</h2>
+  <ol>
+    <li>Open FocusTrace and go to <em>Settings</em>.</li>
+    <li>In <em>Account &amp; sync</em>, sign in if you are not signed in.</li>
+    <li>Tap <em>Delete account</em>.</li>
+    <li>Enter your current password and tap <em>Delete permanently</em>.</li>
+  </ol>
+  <p>Deletion happens immediately and cannot be undone.</p>
+
+  <h2>What is deleted on the server</h2>
+  <ul>
+    <li>Your account: the email address and the password hash.</li>
+    <li>Every sign-in session for the account, on every device.</li>
+    <li>Every device registered to the account (device name and installation identifier).</li>
+    <li>All synced usage data: the daily per-app totals uploaded from every device.</li>
+  </ul>
+  <p>Nothing from the account is kept in the server database afterwards, and no
+  copy is retained for later restoration. Server security logs may keep an
+  internal account identifier for the deletion event; they contain no email
+  address and no usage data. The email address can be used to create a new,
+  unrelated account.</p>
+
+  <h2>What stays on your device</h2>
+  <p>Deleting the account does not change anything stored on your phone: usage
+  history, restrictions, schedules and settings are kept, and sync is turned
+  off. To erase the local data as well, use <em>Settings → Clear local data</em>
+  or uninstall the app.</p>
+
+  <h2>If you no longer have the app</h2>
+  <p>Reinstalling FocusTrace, signing in and following the steps above is the
+  quickest way. If you cannot do that, send an email <strong>from the address
+  of the account</strong> to
+  <a href="mailto:ypodev.official@gmail.com?subject=FocusTrace%20account%20deletion">ypodev.official@gmail.com</a>
+  asking for the account to be deleted. We will delete the account and all data
+  synced to it and reply to confirm. Requests from a different address cannot
+  be verified and will not be acted on.</p>
+
+  <p>See also the <a href="privacy.html">Privacy Policy</a>.</p>
+</body>
+</html>
