@@ -665,6 +665,14 @@ void main() {
       ),
       findsOneWidget,
     );
+    // With the sync controls, never under the danger zone where it would
+    // read as a deletion failure.
+    expect(
+      tester.getTopLeft(find.textContaining('Could not reach')).dy,
+      lessThan(
+        tester.getTopLeft(find.byKey(const ValueKey('sync-danger-zone'))).dy,
+      ),
+    );
     // The developer string behind the failure must not be on screen.
     expect(find.textContaining('SocketException'), findsNothing);
     expect(find.textContaining(_FakeSyncRepository.rawFailure), findsNothing);

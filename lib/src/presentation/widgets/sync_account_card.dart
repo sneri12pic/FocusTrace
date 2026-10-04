@@ -89,10 +89,6 @@ class _SyncAccountCardState extends ConsumerState<SyncAccountCard> {
               )
             else if (state.isSignedIn) ...[
               ..._signedIn(context, state),
-              if (state.error != null) ...[
-                const SizedBox(height: 8),
-                _error(context, _errorText(context, state.error!)),
-              ],
             ] else
               ..._signedOut(context, state),
           ],
@@ -382,6 +378,11 @@ class _SyncAccountCardState extends ConsumerState<SyncAccountCard> {
           SyncPhase.error => l10n.settingsSyncStateError,
           SyncPhase.idle => '',
         }),
+      ],
+      // Above the danger zone: a sync failure must not read as a deletion one.
+      if (state.error != null) ...[
+        const SizedBox(height: 8),
+        _error(context, _errorText(context, state.error!)),
       ],
       const SizedBox(height: 24),
       _dangerZone(context, state),

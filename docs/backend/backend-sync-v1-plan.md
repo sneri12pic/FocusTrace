@@ -219,9 +219,11 @@ the same sync path across the real network before release-facing work.
    password-plus-acknowledgment dialog that shows progress and closes only on
    server success; registration gained an exact-match repeat-password field.
    Widget-tested; on the A36 only the no-network dialog checks were run against
-   the developer's real signed-in account. Remaining: on-device registration
-   with the repeat field, and wrong-password/offline/success deletion with a
-   disposable staging account (requires signing the real account out first).
+   the developer's real signed-in account. 2026-10-03: disposable-account
+   registration (mismatch blocked, match created), manual sync, offline sync
+   and deletion failures, network recovery, wrong-password and successful
+   deletion all PASS on the A36 over staging HTTPS. Still open for item 4:
+   scheduled background sync, app restart and server restart.
 5. ~~**Close release-facing blockers.** Update `README.md` and privacy copy for
    optional cloud sync, provide the Google Play web-accessible account-deletion
    route/page, and verify release builds refuse insecure `http://` transport.~~
@@ -351,6 +353,11 @@ These are not backend tasks but must be resolved before sync ships to users:
   Still required before upload: enter the copy and form answers in Play Console,
   verify the public URLs, and reconcile hosting, logs and backup retention with
   the published privacy/deletion promises once the deployment exists.
+- Before upload (checked 2026-10-03): the repo is now `FocusTrace`, so Pages
+  URLs are `https://sneri12pic.github.io/FocusTrace/...`; the old
+  `/activityTracker/` URLs are 404. Confirm the Play Console privacy URL. Build
+  the upload AAB with the production HTTPS sync URL at version `1.0.7+8` or
+  later; the 2026-10-03 signed AAB used staging and was for verification only.
 - The `docs/` pages are served by GitHub Pages from `master`
   (`PLAY_RELEASE.md`, not checked here); the new privacy
   policy and deletion page are not public until this branch is merged.

@@ -5,6 +5,80 @@ session reads to continue safely.
 
 ---
 
+## 2026-10-03 — CI Android NDK download failure recovered by retry
+
+Date: 2026-10-03
+Agent: Codex
+Goal: Diagnose the reported CI unit-test failure.
+Completed: inspected Actions run 37074433567 at `d7bad98`. Android configuration
+failed before tests began: download/install of NDK 27.0.12077973 produced
+`Error on ZipFile unknown archive`. Reran only failed jobs on the same commit;
+Android unit tests, lint, debug APK build and artifact upload all passed.
+Files materially changed: this progress document only; existing uncommitted
+release/UI/documentation changes preserved.
+Verification: `gh run view 37074433567 --log-failed` identified the original
+SDK installation error; `gh run rerun 37074433567 --failed` accepted;
+`gh run watch 37074433567 --exit-status --interval 30` PASS, exit 0.
+Flutter quality/tests and backend build/tests also passed in the run.
+Decisions made: transient runner download failure; no product or workflow patch.
+Remaining: existing release checklist; CI checked committed `d7bad98`, not the
+uncommitted error-placement fix/version/Play URL changes.
+Risks / unresolved questions: external SDK downloads can fail again; this
+successful same-commit retry provides no reason to change the pinned NDK.
+Relevant commit: `d7bad98` (verified); no new commit/push.
+
+---
+
+## 2026-10-03 — A36 disposable-account release check; staging files committed
+
+Date: 2026-10-03
+Agent: Claude Code
+Goal: Pre-upload verification of the sync build: registration, deletion, manual
+sync and network recovery with a disposable account; signed AAB, version code,
+published pages. Commit the staging deployment files.
+Completed: staging files and `server/.gitignore` committed and pushed (`d7bad98`);
+reviewed first, secrets only via untracked `.env`. With the developer's approval
+their real account was logged out (not deleted) on SM-A366B. Same verified staging
+debug APK, staging HTTPS, no `adb reverse`. One disposable `@example.com` account:
+mismatched repeat shown live and blocked on submit; matching registration created
+and signed in, sync off. Sync on, manual sync PASS. Airplane mode: sync with
+pending data shows "Sync failed" and the offline reason; deletion shows the offline
+notice in the dialog with inputs kept. Network restored: manual sync PASS (stamp
+advanced). Wrong-password deletion: field error, field cleared, account kept.
+Correct password: deleted, signed-out form with deletion notice; dashboard history
+intact. Credentials existed only in a scratch file, deleted afterwards.
+Regression found and fixed: the signed-in card rendered `state.error` after the
+danger zone, so a sync failure read as a deletion failure. Moved above it; card
+test now asserts the order.
+Release: pubspec bumped to `1.0.7+8` (`1.0.6+7` on master since 2026-08-19, likely
+already uploaded). Signed release AAB built: `jarsigner -verify` PASS, certificate
+SHA-256 equals the upload key in `docs/PLAY_SIGNING_RECOVERY.md`, merged manifest
+versionCode 8 / versionName 1.0.7. Built with the staging URL, so verification
+only, not for upload.
+Pages: the repo is now `FocusTrace`; `PLAY_RELEASE.md` URLs under
+`/activityTracker/` returned 404 and were corrected. Live
+`https://sneri12pic.github.io/FocusTrace/privacy.html` (200) is master's pre-sync
+policy; `delete-account.html` is 404. Pages serve from `master/docs`.
+Files materially changed: `sync_account_card.dart`, `test/sync_account_card_test.dart`,
+`pubspec.yaml`, `PLAY_RELEASE.md`, stage plan and progress.
+Verification: `flutter analyze` PASS; `flutter test` PASS (292, one skip); device
+steps above PASS; AAB checks above PASS. Error-placement fix verified by widget
+test only, not re-run on device.
+Decisions made: a manual sync with nothing new still records success without a
+network call (existing behaviour, `syncNow`), so an offline check needs pending
+data.
+Remaining: production sync URL and its release AAB; merge to master so Pages
+publishes the sync privacy policy and deletion page; confirm the Play Console
+privacy URL (an `/activityTracker/` URL there is currently 404); scheduled
+background sync, app restart and server restart from plan item 4. The developer
+must sign back in on the A36.
+Risks / unresolved questions: shell scripts are committed via a Windows checkout
+with `core.autocrlf`; a copy from a Windows working tree would carry CRLF. No
+`.gitattributes` rule added.
+Relevant commit: `d7bad98` (staging files); app changes uncommitted.
+
+---
+
 ## 2026-10-02 — Account deletion danger zone; registration repeat password
 
 Date: 2026-10-02
@@ -42,10 +116,11 @@ registration passwords after a failed attempt follows the explicit requirement
 over the earlier keep-for-correction behaviour.
 Remaining: on-device registration with the repeat field and wrong-password,
 offline and successful deletion using a disposable staging account; not run
-because the phone holds the developer's real signed-in account.
+because the phone holds the developer's real signed-in account. (Done
+2026-10-03, entry above.)
 Risks / unresolved questions: light theme and non-English layouts verified only
 through widget tests and the shared color scheme, not on device.
-Relevant commit: none.
+Relevant commit: `5d94a7d`.
 
 ---
 

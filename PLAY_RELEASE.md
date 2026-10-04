@@ -45,9 +45,9 @@ Store copy and form answers for the Android release with optional account and cl
 
 ## 3. Privacy policy and account deletion
 
-Privacy policy URL: `https://sneri12pic.github.io/activityTracker/privacy.html`
+Privacy policy URL: `https://sneri12pic.github.io/FocusTrace/privacy.html`
 
-Account-deletion URL (also enter in Data safety): `https://sneri12pic.github.io/activityTracker/delete-account.html`
+Account-deletion URL (also enter in Data safety): `https://sneri12pic.github.io/FocusTrace/delete-account.html`
 
 - In app: **Settings → Account & sync → Delete account**, confirmed with the current password. Successful deletion removes the server account, password hash, sessions/tokens, registered devices and synced usage from every device. Local usage, restrictions and settings remain.
 - Without the app: the deletion page directs users to email `ypodev.official@gmail.com` from their account address. The operator must process these requests and confirm completion; the page does not promise a response time.
