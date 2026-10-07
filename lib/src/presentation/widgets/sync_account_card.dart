@@ -68,11 +68,19 @@ class _SyncAccountCardState extends ConsumerState<SyncAccountCard> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(
-              l10n.settingsSyncTitle,
-              style: Theme.of(
-                context,
-              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    l10n.settingsSyncTitle,
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                if (!state.isLoading && state.isSignedIn)
+                  _accountMenu(context, state),
+              ],
             ),
             const SizedBox(height: 8),
             Text(l10n.settingsSyncBody),
@@ -328,6 +336,19 @@ class _SyncAccountCardState extends ConsumerState<SyncAccountCard> {
         leading: const Icon(Icons.account_circle_outlined),
         title: Text(state.accountEmail ?? ''),
         subtitle: Text(_lastSyncText(context, state)),
+        trailing: IconButton(
+          key: const ValueKey('sync-now-button'),
+          tooltip: l10n.settingsSyncNow,
+          onPressed: state.canSyncNow
+              ? () => ref.read(syncViewModelProvider.notifier).syncNow()
+              : null,
+          icon: state.isSyncing
+              ? const SizedBox.square(
+                  dimension: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.sync),
+        ),
       ),
       SwitchListTile(
         key: const ValueKey('sync-enabled-switch'),
@@ -341,35 +362,6 @@ class _SyncAccountCardState extends ConsumerState<SyncAccountCard> {
                   .read(syncViewModelProvider.notifier)
                   .setSyncEnabled(value),
       ),
-      const SizedBox(height: 8),
-      Row(
-        children: [
-          Expanded(
-            child: FilledButton.tonal(
-              key: const ValueKey('sync-now-button'),
-              onPressed: state.canSyncNow
-                  ? () => ref.read(syncViewModelProvider.notifier).syncNow()
-                  : null,
-              child: state.isSyncing
-                  ? const SizedBox.square(
-                      dimension: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : Text(l10n.settingsSyncNow),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: OutlinedButton(
-              key: const ValueKey('sync-sign-out-button'),
-              onPressed: state.isAuthenticating || state.isSyncing
-                  ? null
-                  : () => ref.read(syncViewModelProvider.notifier).signOut(),
-              child: Text(l10n.settingsSyncSignOut),
-            ),
-          ),
-        ],
-      ),
       if (state.phase != SyncPhase.idle) ...[
         const SizedBox(height: 8),
         Text(key: const ValueKey('sync-phase-label'), switch (state.phase) {
@@ -379,64 +371,49 @@ class _SyncAccountCardState extends ConsumerState<SyncAccountCard> {
           SyncPhase.idle => '',
         }),
       ],
-      // Above the danger zone: a sync failure must not read as a deletion one.
       if (state.error != null) ...[
         const SizedBox(height: 8),
         _error(context, _errorText(context, state.error!)),
       ],
-      const SizedBox(height: 24),
-      _dangerZone(context, state),
     ];
   }
 
-  /// Set apart below everything routine, so it is never the button a thumb
-  /// lands on by habit. It only opens the confirmation dialog.
-  Widget _dangerZone(BuildContext context, SyncState state) {
+  /// Log out and Delete account live behind the menu, so neither is the button
+  /// a thumb lands on by habit. Delete only opens the danger-zone sheet.
+  Widget _accountMenu(BuildContext context, SyncState state) {
     final l10n = context.l10n;
-    final scheme = Theme.of(context).colorScheme;
-    return DecoratedBox(
-      key: const ValueKey('sync-danger-zone'),
-      decoration: BoxDecoration(
-        border: Border.all(color: scheme.error.withValues(alpha: 0.5)),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Semantics(
-              header: true,
-              child: Text(
-                l10n.settingsSyncDangerZone,
-                style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                  color: scheme.error,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(l10n.settingsSyncDangerZoneBody),
-            const SizedBox(height: 12),
-            Align(
-              alignment: AlignmentDirectional.centerStart,
-              child: OutlinedButton.icon(
-                key: const ValueKey('sync-delete-account-button'),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: scheme.error,
-                  side: BorderSide(color: scheme.error),
-                  minimumSize: const Size(0, 48),
-                ),
-                onPressed: state.isAuthenticating || state.isSyncing
-                    ? null
-                    : _confirmDeletion,
-                icon: const Icon(Icons.delete_forever_outlined),
-                label: Text(l10n.settingsSyncDeleteAccount),
-              ),
-            ),
-          ],
+    final error = Theme.of(context).colorScheme.error;
+    return PopupMenuButton<_AccountAction>(
+      key: const ValueKey('sync-more-button'),
+      icon: const Icon(Icons.more_vert),
+      enabled: !state.isAuthenticating && !state.isSyncing,
+      onSelected: (action) => switch (action) {
+        _AccountAction.signOut =>
+          ref.read(syncViewModelProvider.notifier).signOut(),
+        _AccountAction.delete => _confirmDeletion(),
+      },
+      itemBuilder: (context) => [
+        PopupMenuItem(
+          key: const ValueKey('sync-sign-out-button'),
+          value: _AccountAction.signOut,
+          child: ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: const Icon(Icons.logout),
+            title: Text(l10n.settingsSyncSignOut),
+          ),
         ),
-      ),
+        PopupMenuItem(
+          key: const ValueKey('sync-delete-account-button'),
+          value: _AccountAction.delete,
+          child: ListTile(
+            contentPadding: EdgeInsets.zero,
+            iconColor: error,
+            textColor: error,
+            leading: const Icon(Icons.delete_forever_outlined),
+            title: Text(l10n.settingsSyncDeleteAccount),
+          ),
+        ),
+      ],
     );
   }
 
@@ -603,14 +580,18 @@ class _SyncAccountCardState extends ConsumerState<SyncAccountCard> {
     }
   }
 
-  /// The dialog does the deleting, so it can stay open with progress and a
+  /// The sheet does the deleting, so it can stay open with progress and a
   /// wrong-password error. Closing it without success changes nothing.
   Future<void> _confirmDeletion() async {
-    await showDialog<void>(
+    await showModalBottomSheet<void>(
       context: context,
-      builder: (context) => const _DeleteAccountDialog(),
+      isScrollControlled: true,
+      useSafeArea: true,
+      // Dragging down would close it past PopScope, even mid-request.
+      enableDrag: false,
+      builder: (context) => const _DeleteAccountSheet(),
     );
-    // A failure shown in the dialog should not linger on the card behind it.
+    // A failure shown in the sheet should not linger on the card behind it.
     if (mounted && ref.read(syncViewModelProvider).isSignedIn) {
       ref.read(syncViewModelProvider.notifier).clearError();
     }
@@ -660,6 +641,8 @@ class _SyncAccountCardState extends ConsumerState<SyncAccountCard> {
     );
   }
 }
+
+enum _AccountAction { signOut, delete }
 
 enum _Tone { info, success, error }
 
@@ -748,19 +731,19 @@ class _Notice extends StatelessWidget {
   }
 }
 
-/// Explains exactly what is and is not deleted. Deletes only with the current
-/// password typed and the acknowledgment ticked, and closes itself only when
-/// the server confirmed it, or the session ended. The password lives in this
-/// dialog's controller alone and is discarded with it.
-class _DeleteAccountDialog extends ConsumerStatefulWidget {
-  const _DeleteAccountDialog();
+/// The danger zone. Explains exactly what is and is not deleted. Deletes only
+/// with the current password typed and the acknowledgment ticked, and closes
+/// itself only when the server confirmed it, or the session ended. The
+/// password lives in this sheet's controller alone and is discarded with it.
+class _DeleteAccountSheet extends ConsumerStatefulWidget {
+  const _DeleteAccountSheet();
 
   @override
-  ConsumerState<_DeleteAccountDialog> createState() =>
-      _DeleteAccountDialogState();
+  ConsumerState<_DeleteAccountSheet> createState() =>
+      _DeleteAccountSheetState();
 }
 
-class _DeleteAccountDialogState extends ConsumerState<_DeleteAccountDialog> {
+class _DeleteAccountSheetState extends ConsumerState<_DeleteAccountSheet> {
   final _password = TextEditingController();
   bool _acknowledged = false;
   bool _deleting = false;
@@ -799,21 +782,51 @@ class _DeleteAccountDialogState extends ConsumerState<_DeleteAccountDialog> {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final scheme = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
     final error = ref.watch(syncViewModelProvider.select((s) => s.error));
     final busy = _deleting;
     final ready = _password.text.isNotEmpty && _acknowledged && !busy;
     return PopScope(
       // Back and the barrier cannot interrupt a request already sent.
       canPop: !busy,
-      child: AlertDialog(
-        icon: Icon(Icons.warning_amber_rounded, color: scheme.error),
-        title: Text(l10n.settingsSyncDeleteTitle),
-        scrollable: true,
-        content: Column(
+      child: SingleChildScrollView(
+        key: const ValueKey('sync-delete-sheet'),
+        // The keyboard pushes the sheet up rather than covering its buttons.
+        padding: EdgeInsets.fromLTRB(
+          24,
+          24,
+          24,
+          16 + MediaQuery.viewInsetsOf(context).bottom,
+        ),
+        child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            Row(
+              children: [
+                Icon(Icons.warning_amber_rounded, color: scheme.error),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Semantics(
+                    header: true,
+                    child: Text(
+                      l10n.settingsSyncDangerZone,
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        color: scheme.error,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Text(
+              l10n.settingsSyncDeleteTitle,
+              style: theme.textTheme.titleLarge,
+            ),
+            const SizedBox(height: 8),
             Text(l10n.settingsSyncDeleteBody),
             const SizedBox(height: 16),
             AutofillGroup(
@@ -862,41 +875,47 @@ class _DeleteAccountDialogState extends ConsumerState<_DeleteAccountDialog> {
                 message: _SyncAccountCardState._errorText(context, error),
               ),
             ],
+            const SizedBox(height: 16),
+            Wrap(
+              alignment: WrapAlignment.end,
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                TextButton(
+                  key: const ValueKey('sync-delete-cancel-button'),
+                  style: TextButton.styleFrom(minimumSize: const Size(64, 48)),
+                  onPressed: busy ? null : () => Navigator.of(context).pop(),
+                  child: Text(l10n.settingsCancel),
+                ),
+                FilledButton(
+                  key: const ValueKey('sync-delete-confirm-button'),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: scheme.error,
+                    foregroundColor: scheme.onError,
+                    minimumSize: const Size(64, 48),
+                  ),
+                  onPressed: ready ? _delete : null,
+                  child: busy
+                      ? Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            SizedBox.square(
+                              dimension: 18,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: scheme.onError,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Flexible(child: Text(l10n.settingsSyncDeleting)),
+                          ],
+                        )
+                      : Text(l10n.settingsSyncDeleteConfirm),
+                ),
+              ],
+            ),
           ],
         ),
-        actions: [
-          TextButton(
-            key: const ValueKey('sync-delete-cancel-button'),
-            style: TextButton.styleFrom(minimumSize: const Size(64, 48)),
-            onPressed: busy ? null : () => Navigator.of(context).pop(),
-            child: Text(l10n.settingsCancel),
-          ),
-          FilledButton(
-            key: const ValueKey('sync-delete-confirm-button'),
-            style: FilledButton.styleFrom(
-              backgroundColor: scheme.error,
-              foregroundColor: scheme.onError,
-              minimumSize: const Size(64, 48),
-            ),
-            onPressed: ready ? _delete : null,
-            child: busy
-                ? Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      SizedBox.square(
-                        dimension: 18,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: scheme.onError,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Flexible(child: Text(l10n.settingsSyncDeleting)),
-                    ],
-                  )
-                : Text(l10n.settingsSyncDeleteConfirm),
-          ),
-        ],
       ),
     );
   }

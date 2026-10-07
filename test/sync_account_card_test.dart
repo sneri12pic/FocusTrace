@@ -22,6 +22,11 @@ void main() {
     await tester.pumpAndSettle();
   }
 
+  Future<void> openAccountMenu(WidgetTester tester) async {
+    await tester.tap(find.byKey(const ValueKey('sync-more-button')));
+    await tester.pumpAndSettle();
+  }
+
   testWidgets('a build without a sync URL has no sync UI at all', (
     tester,
   ) async {
@@ -612,7 +617,7 @@ void main() {
       ..email = 'a@example.com';
     await pump(tester, repository);
 
-    final button = tester.widget<ButtonStyleButton>(
+    final button = tester.widget<IconButton>(
       find.byKey(const ValueKey('sync-now-button')),
     );
     expect(button.onPressed, isNull, reason: 'off means off');
@@ -623,9 +628,7 @@ void main() {
 
     expect(
       tester
-          .widget<ButtonStyleButton>(
-            find.byKey(const ValueKey('sync-now-button')),
-          )
+          .widget<IconButton>(find.byKey(const ValueKey('sync-now-button')))
           .onPressed,
       isNotNull,
     );
@@ -665,14 +668,6 @@ void main() {
       ),
       findsOneWidget,
     );
-    // With the sync controls, never under the danger zone where it would
-    // read as a deletion failure.
-    expect(
-      tester.getTopLeft(find.textContaining('Could not reach')).dy,
-      lessThan(
-        tester.getTopLeft(find.byKey(const ValueKey('sync-danger-zone'))).dy,
-      ),
-    );
     // The developer string behind the failure must not be on screen.
     expect(find.textContaining('SocketException'), findsNothing);
     expect(find.textContaining(_FakeSyncRepository.rawFailure), findsNothing);
@@ -685,6 +680,7 @@ void main() {
       ..enabled = true;
     await pump(tester, repository);
 
+    await openAccountMenu(tester);
     await tester.tap(find.byKey(const ValueKey('sync-sign-out-button')));
     await tester.pumpAndSettle();
 
@@ -700,9 +696,7 @@ void main() {
       ..enabled = true;
 
     Future<void> openDialog(WidgetTester tester) async {
-      await tester.ensureVisible(
-        find.byKey(const ValueKey('sync-delete-account-button')),
-      );
+      await openAccountMenu(tester);
       await tester.tap(
         find.byKey(const ValueKey('sync-delete-account-button')),
       );
@@ -732,29 +726,62 @@ void main() {
       await tester.pumpAndSettle();
     }
 
-    final dialog = find.byType(AlertDialog);
+    final dialog = find.byKey(const ValueKey('sync-delete-sheet'));
 
-    testWidgets('sits in a separate danger zone below the routine controls', (
+    testWidgets('lives behind the menu and opens a danger-zone sheet', (
       tester,
     ) async {
-      await pump(tester, signedIn());
-      final zone = find.byKey(const ValueKey('sync-danger-zone'));
+      final repository = signedIn();
+      await pump(tester, repository);
+      // Nothing destructive is on the card itself.
       expect(
-        find.descendant(of: zone, matching: find.text('Danger zone')),
+        find.byKey(const ValueKey('sync-delete-account-button')),
+        findsNothing,
+      );
+      expect(find.byKey(const ValueKey('sync-sign-out-button')), findsNothing);
+      expect(find.text('Danger zone'), findsNothing);
+
+      await openAccountMenu(tester);
+      final delete = find.byKey(const ValueKey('sync-delete-account-button'));
+      expect(
+        find.byKey(const ValueKey('sync-sign-out-button')),
         findsOneWidget,
       );
+      final error = Theme.of(tester.element(delete)).colorScheme.error;
       expect(
-        find.descendant(
-          of: zone,
-          matching: find.byKey(const ValueKey('sync-delete-account-button')),
-        ),
+        tester
+            .widget<ListTile>(
+              find.descendant(of: delete, matching: find.byType(ListTile)),
+            )
+            .textColor,
+        error,
+      );
+
+      await tester.tap(delete);
+      await tester.pumpAndSettle();
+      expect(find.byType(BottomSheet), findsOneWidget);
+      expect(
+        find.descendant(of: dialog, matching: find.text('Danger zone')),
         findsOneWidget,
       );
-      final signOut = find.byKey(const ValueKey('sync-sign-out-button'));
+      expect(repository.deleteCalls, 0);
+    });
+
+    testWidgets('the menu is disabled while a sync runs', (tester) async {
+      final repository = signedIn()..syncHold = Completer<void>();
+      await pump(tester, repository);
+      await tester.tap(find.byKey(const ValueKey('sync-now-button')));
+      await tester.pump();
       expect(
-        tester.getTopLeft(zone).dy,
-        greaterThan(tester.getBottomLeft(signOut).dy),
+        tester
+            .widget<PopupMenuButton<Object?>>(
+              find.byKey(const ValueKey('sync-more-button')),
+            )
+            .enabled,
+        isFalse,
       );
+      repository.syncHold!.complete();
+      await tester.pumpAndSettle();
     });
 
     testWidgets('explains what is deleted and needs the password first', (
@@ -1031,6 +1058,9 @@ class _FakeSyncRepository implements SyncRepository {
   /// When set, account deletion waits for it to complete.
   Completer<void>? deleteHold;
 
+  /// When set, a sync run waits for it to complete.
+  Completer<void>? syncHold;
+
   /// When set, sign-in and account creation wait for it to complete.
   Completer<void>? hold;
   String? deletedWith;
@@ -1083,6 +1113,7 @@ class _FakeSyncRepository implements SyncRepository {
   @override
   Future<SyncRunResult> syncNow({bool requireEnabled = false}) async {
     syncRuns++;
+    await syncHold?.future;
     if (syncFailure != null) {
       return SyncRunResult.failed(rawFailure, syncFailure!);
     }

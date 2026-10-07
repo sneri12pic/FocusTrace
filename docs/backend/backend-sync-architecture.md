@@ -1126,22 +1126,25 @@ touched. Ordinary logout is unchanged and still keeps the watermark: signing bac
 into the **same** account should not resend everything, and since 2026-09-26 a
 **different** account starts from zero (8.2).
 
-**UI.** "Delete account" sits alone in a bordered "Danger zone" at the bottom of
-the signed-in account card, below sync and sign-out, with a one-line explanation.
-It only opens a dialog that states the cloud account and synced server data are
+**UI.** The signed-in card keeps only routine controls: the account row with a
+sync icon button ("Sync now") and the "Sync this device" switch. "Log out" and a
+red "Delete account" sit in a ⋮ menu at the top right of the card, disabled
+while a sign-in or sync runs (2026-10-07). "Delete account" only opens a modal
+bottom sheet headed "Danger zone"; dragging it down is disabled, so only Cancel,
+back or the barrier close it. The sheet states the cloud account and synced server data are
 deleted permanently, that this cannot be undone, that usage history on the device
 stays, and that sync is turned off. "Delete permanently" stays disabled until the
 current password is typed **and** an initially unchecked "I understand this
 permanently deletes my cloud account." box is ticked. The password field does not
-autofocus, so the keyboard does not cover the explanation. The dialog itself calls
+autofocus, so the keyboard does not cover the explanation. The sheet itself calls
 `SyncViewModel.deleteAccount` and stays open while the request runs: the action
 shows progress, a second tap is ignored, and Cancel, back and the barrier are
 disabled (`PopScope`). It closes only when the account is no longer signed in
 (server 204, or a rejected session). Wrong password: the field shows "That
 password is not correct. Your account was not deleted." and is cleared; other
-failures (offline, throttled, unknown) show an error notice in the dialog and keep
+failures (offline, throttled, unknown) show an error notice in the sheet and keep
 both inputs for a retry. Dismissing or cancelling sends nothing and clears any
-dialog error from the card. Success returns to the signed-out form with a notice
+sheet error from the card. Success returns to the signed-out form with a notice
 that local history was kept.
 
 Verification: `AccountDeletionIT` (PostgreSQL via Testcontainers), repository,
