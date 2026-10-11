@@ -5,9 +5,16 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 
+/**
+ * Restarts enforcement after the two events that stop it without the user:
+ * a reboot, and an update of this app, which kills the process and does not
+ * restart its services.
+ */
 class BootReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
-        if (intent.action != Intent.ACTION_BOOT_COMPLETED) return
+        if (intent.action != Intent.ACTION_BOOT_COMPLETED &&
+            intent.action != Intent.ACTION_MY_PACKAGE_REPLACED
+        ) return
         UsageSnapshotScheduler.schedule(context)
 
         val json = context
