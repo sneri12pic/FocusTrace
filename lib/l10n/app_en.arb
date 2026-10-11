@@ -1,4 +1,9 @@
 {
+  "appCategoryAll": "All",
+  "appCategoryTitle": "App category",
+  "appCategoryAutomatic": "Automatic",
+  "appCategorySave": "Save category",
+  "appCategorySaveError": "Couldn’t save the category. Please try again.",
   "@@locale": "en",
   "usageDetailsBarChart": "Bar chart",
   "usageDetailsAreaChart": "Usage trend",
@@ -528,6 +533,7 @@
   "settingsImportSuccess": "FocusTrace backup imported.",
   "settingsImportDialogTitle": "Import FocusTrace data?",
   "settingsImportDialogBody": "The backup will be merged with existing local data. Matching records and settings will use the imported values.",
+  "settingsImportDialogDetail": "This includes restrictions, block routines, excluded apps and app categories when the backup has them. Nothing on this device is deleted, and the sync sign-in on this device is not changed.",
   "settingsLanguageTitle": "Language",
   "settingsLanguageSystemDefault": "System default",
   "settingsChooseLanguage": "Choose language",
@@ -540,7 +546,10 @@
   "settingsWindowsTrackingInterval": "Windows tracking interval",
   "settingsWindowsIdleTimeout": "Windows idle timeout",
   "settingsClearDataDialogTitle": "Delete all local data?",
-  "settingsClearDataDialogBody": "This permanently deletes usage history and settings from this device. Your language choice is preserved. Export a backup first if you may need this data.",
+  "settingsClearDataDeletes": "Deletes from this device: usage history and reports, restrictions and block routines, excluded apps, app categories and other settings.",
+  "settingsClearDataKeeps": "Kept: your language choice. Android permissions are not changed. Export a backup first if you may need this data.",
+  "settingsClearDataKeepsSync": "Your cloud account and data already synced are not deleted. Sync turns off on this device.",
+  "settingsClearDataDone": "Local data deleted.",
   "settingsCancel": "Cancel",
   "settingsClear": "Delete",
   "settingsSave": "Save",
@@ -626,5 +635,5 @@
   "settingsSyncDeleteAcknowledge": "I understand this permanently deletes my cloud account.",
   "settingsSyncDeleting": "Deleting…",
   "settingsSyncErrorWrongPassword": "That password is not correct. Your account was not deleted.",
-  "settingsPrivacyBodySync": "Your usage history and settings stay on this device unless you export a backup or turn on cloud sync below."
+  "settingsPrivacyBodySync": "Your usage history and settings stay on this device unless you export a backup or turn on cloud sync."
 }

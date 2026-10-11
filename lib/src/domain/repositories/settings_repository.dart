@@ -1,8 +1,13 @@
 import '../models/block_routine.dart';
 import '../models/restriction_rule.dart';
 import '../models/usage_details_chart.dart';
+import '../models/usage_item.dart';
 
 abstract class SettingsRepository {
+  Future<Map<String, UsageCategory>> appCategoryOverrides();
+
+  Future<void> setAppCategoryOverrides(Map<String, UsageCategory> overrides);
+
   /// Last chart selected across app detail screens, persisted between launches.
   Future<UsageDetailsChart> usageDetailsChart();
 

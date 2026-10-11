@@ -9,6 +9,22 @@ class AppLocalizationsUk extends AppLocalizations {
   AppLocalizationsUk([String locale = 'uk']) : super(locale);
 
   @override
+  String get appCategoryAll => 'Усі';
+
+  @override
+  String get appCategoryTitle => 'Категорія застосунку';
+
+  @override
+  String get appCategoryAutomatic => 'Автоматично';
+
+  @override
+  String get appCategorySave => 'Зберегти категорію';
+
+  @override
+  String get appCategorySaveError =>
+      'Не вдалося зберегти категорію. Спробуйте ще раз.';
+
+  @override
   String get usageDetailsBarChart => 'Стовпчикова діаграма';
 
   @override
@@ -798,6 +814,10 @@ class AppLocalizationsUk extends AppLocalizations {
       'Резервну копію буде об’єднано з наявними локальними даними. Для однакових записів і налаштувань використовуватимуться імпортовані значення.';
 
   @override
+  String get settingsImportDialogDetail =>
+      'Це стосується й обмежень, рутин блокування, виключених застосунків і категорій застосунків, якщо вони є в резервній копії. На цьому пристрої нічого не видаляється, а вхід для синхронізації не змінюється.';
+
+  @override
   String get settingsLanguageTitle => 'Мова';
 
   @override
@@ -837,8 +857,19 @@ class AppLocalizationsUk extends AppLocalizations {
   String get settingsClearDataDialogTitle => 'Видалити всі локальні дані?';
 
   @override
-  String get settingsClearDataDialogBody =>
-      'Це назавжди видалить історію використання та налаштування з цього пристрою. Ваш вибір мови буде збережено. Спочатку експортуйте резервну копію, якщо ці дані можуть вам знадобитися.';
+  String get settingsClearDataDeletes =>
+      'З цього пристрою буде видалено: історію використання та звіти, обмеження й рутини блокування, виключені застосунки, категорії застосунків та інші налаштування.';
+
+  @override
+  String get settingsClearDataKeeps =>
+      'Залишиться: вибрана мова. Дозволи Android не змінюються. Спершу експортуйте резервну копію, якщо ці дані можуть знадобитися.';
+
+  @override
+  String get settingsClearDataKeepsSync =>
+      'Ваш хмарний обліковий запис і вже синхронізовані дані не видаляються. Синхронізацію на цьому пристрої буде вимкнено.';
+
+  @override
+  String get settingsClearDataDone => 'Локальні дані видалено.';
 
   @override
   String get settingsCancel => 'Скасувати';
@@ -1072,5 +1103,5 @@ class AppLocalizationsUk extends AppLocalizations {
 
   @override
   String get settingsPrivacyBodySync =>
-      'Історія використання та налаштування залишаються на цьому пристрої, доки ви не експортуєте резервну копію або не ввімкнете хмарну синхронізацію нижче.';
+      'Історія використання та налаштування залишаються на цьому пристрої, доки ви не експортуєте резервну копію або не ввімкнете хмарну синхронізацію.';
 }

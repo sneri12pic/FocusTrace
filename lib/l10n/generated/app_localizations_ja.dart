@@ -9,6 +9,21 @@ class AppLocalizationsJa extends AppLocalizations {
   AppLocalizationsJa([String locale = 'ja']) : super(locale);
 
   @override
+  String get appCategoryAll => 'すべて';
+
+  @override
+  String get appCategoryTitle => 'アプリのカテゴリ';
+
+  @override
+  String get appCategoryAutomatic => '自動';
+
+  @override
+  String get appCategorySave => 'カテゴリを保存';
+
+  @override
+  String get appCategorySaveError => 'カテゴリを保存できませんでした。もう一度お試しください。';
+
+  @override
   String get usageDetailsBarChart => '棒グラフ';
 
   @override
@@ -765,6 +780,10 @@ class AppLocalizationsJa extends AppLocalizations {
       'バックアップは既存のローカルデータと統合されます。同じレコードと設定には、読み込んだ値が使用されます。';
 
   @override
+  String get settingsImportDialogDetail =>
+      'バックアップに含まれる場合、制限、ブロックルーティン、除外したアプリ、アプリのカテゴリも対象です。この端末のデータは削除されず、同期のサインイン状態も変わりません。';
+
+  @override
   String get settingsLanguageTitle => '言語';
 
   @override
@@ -802,8 +821,19 @@ class AppLocalizationsJa extends AppLocalizations {
   String get settingsClearDataDialogTitle => 'すべてのローカルデータを削除しますか？';
 
   @override
-  String get settingsClearDataDialogBody =>
-      '使用履歴と設定がこの端末から完全に削除されます。言語の選択は保持されます。後でデータが必要になる可能性がある場合は、先にバックアップを書き出してください。';
+  String get settingsClearDataDeletes =>
+      'この端末から削除されるもの：利用履歴とレポート、制限とブロックルーティン、除外したアプリ、アプリのカテゴリ、その他の設定。';
+
+  @override
+  String get settingsClearDataKeeps =>
+      '残るもの：言語の選択。Androidの権限は変更されません。このデータが必要になる可能性がある場合は、先にバックアップを書き出してください。';
+
+  @override
+  String get settingsClearDataKeepsSync =>
+      'クラウドアカウントと同期済みのデータは削除されません。この端末での同期はオフになります。';
+
+  @override
+  String get settingsClearDataDone => 'ローカルデータを削除しました。';
 
   @override
   String get settingsCancel => 'キャンセル';
@@ -1022,5 +1052,5 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get settingsPrivacyBodySync =>
-      '利用履歴と設定は、バックアップを書き出すか下のクラウド同期をオンにしない限り、この端末に保存されたままです。';
+      '利用履歴と設定は、バックアップを書き出すかクラウド同期をオンにしない限り、この端末に保存されたままです。';
 }

@@ -8,6 +8,7 @@ import '../localization/app_localizations_x.dart';
 import '../providers.dart';
 import '../view_models/app_usage_details_view_model.dart';
 import '../widgets/app_icon_avatar.dart';
+import '../widgets/app_category_widgets.dart';
 import '../widgets/trend_color.dart';
 import '../widgets/usage_details_charts.dart';
 
@@ -34,6 +35,7 @@ class UsageDetailsScreen extends ConsumerWidget {
                 padding: const EdgeInsets.all(16),
                 children: [
                   _AppSummaryHeader(request: request),
+                  AppCategoryTag(request.summary),
                   const SizedBox(height: 12),
                   if (request.rank != null) ...[
                     _RankBadge(request: request),

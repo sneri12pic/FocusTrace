@@ -793,23 +793,25 @@ WHERE start_ms < ? AND end_ms > ? LIMIT 1
   ) async {
     final db = await _db;
     return db.transaction((txn) async {
-      var importedRows = 0;
+      // Every row is checked before the first write: a rejected backup changes
+      // nothing, recovery and sync metadata included.
       for (final entry in tables.entries) {
-        final allowedColumns = _portableTableColumns[entry.key];
-        if (allowedColumns == null) {
+        final columns = _portableTableColumns[entry.key];
+        if (columns == null) {
           throw FormatException('Unsupported backup table: ${entry.key}');
         }
         for (final row in entry.value) {
-          if (row.keys.any((column) => !allowedColumns.contains(column))) {
-            throw FormatException(
-              'Backup contains unsupported columns for ${entry.key}.',
-            );
-          }
+          _validatePortableRow(entry.key, columns, row);
+        }
+      }
+      var importedRows = 0;
+      for (final entry in tables.entries) {
+        for (final row in entry.value) {
           // A backup made by this app never carries these, but one hand-made or
           // copied from another installation could. Importing a foreign
           // sync_installation_id would make two installations one device.
           if (entry.key == 'settings' &&
-              SyncSettingKeys.isDeviceLocal(row['key'] as String)) {
+              SyncSettingKeys.isDeviceLocal(row['key']! as String)) {
             continue;
           }
           await txn.insert(
@@ -897,38 +899,122 @@ VALUES ('usage_recovery_generation', lower(hex(randomblob(16))))
     );
   }
 
-  static const _portableTableColumns = <String, Set<String>>{
+  /// Rejects what the schema or a reader would not accept, never coercing:
+  /// readers cast integers with `as int` and parse `day` as a calendar date.
+  static void _validatePortableRow(
+    String table,
+    Map<String, _PortableColumn> columns,
+    Map<String, Object?> row,
+  ) {
+    if (row.keys.any((column) => !columns.containsKey(column))) {
+      throw FormatException('Backup contains unsupported columns for $table.');
+    }
+    for (final MapEntry(key: name, value: column) in columns.entries) {
+      final value = row[name];
+      if (value == null) {
+        if (column.nullable || (column.hasDefault && !row.containsKey(name))) {
+          continue;
+        }
+        throw FormatException('Backup row in $table is missing $name.');
+      }
+      final valid = switch (column.type) {
+        _PortableType.text => value is String,
+        _PortableType.integer => value is int,
+        _PortableType.day => value is String && _isDayKey(value),
+      };
+      if (!valid) {
+        throw FormatException('Backup row in $table has an invalid $name.');
+      }
+    }
+  }
+
+  /// `YYYY-MM-DD` naming a real calendar day, exactly as [_dayKey] writes it.
+  static bool _isDayKey(String value) {
+    final match = RegExp(r'^(\d{4})-(\d{2})-(\d{2})$').firstMatch(value);
+    if (match == null) {
+      return false;
+    }
+    final [year, month, day] = [
+      for (var group = 1; group <= 3; group++) int.parse(match.group(group)!),
+    ];
+    final date = DateTime.utc(year, month, day);
+    return date.year == year && date.month == month && date.day == day;
+  }
+
+  /// Portable tables and their columns, as created in [_db].
+  static const _portableTableColumns = <String, Map<String, _PortableColumn>>{
     'usage_sessions': {
-      'id',
-      'platform',
-      'app_name',
-      'package_name',
-      'process_name',
-      'window_title',
-      'started_at',
-      'ended_at',
-      'duration_seconds',
-      'category',
-      'created_at',
+      'id': _PortableColumn.text,
+      'platform': _PortableColumn.text,
+      'app_name': _PortableColumn.text,
+      'package_name': _PortableColumn.optionalText,
+      'process_name': _PortableColumn.optionalText,
+      'window_title': _PortableColumn.optionalText,
+      'started_at': _PortableColumn.integer,
+      'ended_at': _PortableColumn.optionalInteger,
+      'duration_seconds': _PortableColumn.integer,
+      'category': _PortableColumn.optionalText,
+      'created_at': _PortableColumn.integer,
     },
-    'settings': {'key', 'value'},
+    'settings': {'key': _PortableColumn.text, 'value': _PortableColumn.text},
     'daily_app_usage': {
-      'day',
-      'app_key',
-      'app_name',
-      'package_name',
-      'process_name',
-      'duration_seconds',
-      'launch_count',
+      'day': _PortableColumn.day,
+      'app_key': _PortableColumn.text,
+      'app_name': _PortableColumn.text,
+      'package_name': _PortableColumn.optionalText,
+      'process_name': _PortableColumn.optionalText,
+      'duration_seconds': _PortableColumn.integer,
+      // NOT NULL DEFAULT 0: backups from before v3 have no such column.
+      'launch_count': _PortableColumn.defaultedInteger,
     },
-    'usage_intervals': {'id', 'app_key', 'app_name', 'started_at', 'ended_at'},
+    'usage_intervals': {
+      'id': _PortableColumn.text,
+      'app_key': _PortableColumn.text,
+      'app_name': _PortableColumn.text,
+      'started_at': _PortableColumn.integer,
+      'ended_at': _PortableColumn.integer,
+    },
     'restriction_events': {
-      'id',
-      'app_key',
-      'app_name',
-      'event_type',
-      'reason',
-      'occurred_at',
+      'id': _PortableColumn.text,
+      'app_key': _PortableColumn.text,
+      'app_name': _PortableColumn.text,
+      'event_type': _PortableColumn.text,
+      'reason': _PortableColumn.optionalText,
+      'occurred_at': _PortableColumn.integer,
     },
   };
+}
+
+enum _PortableType { text, integer, day }
+
+class _PortableColumn {
+  const _PortableColumn(
+    this.type, {
+    this.nullable = false,
+    this.hasDefault = false,
+  });
+
+  static const text = _PortableColumn(_PortableType.text);
+  static const optionalText = _PortableColumn(
+    _PortableType.text,
+    nullable: true,
+  );
+  static const integer = _PortableColumn(_PortableType.integer);
+  static const optionalInteger = _PortableColumn(
+    _PortableType.integer,
+    nullable: true,
+  );
+  static const defaultedInteger = _PortableColumn(
+    _PortableType.integer,
+    hasDefault: true,
+  );
+  static const day = _PortableColumn(_PortableType.day);
+
+  final _PortableType type;
+
+  /// May be null or absent.
+  final bool nullable;
+
+  /// May be absent, in which case the schema default applies; never null.
+  final bool hasDefault;
 }

@@ -10,9 +10,10 @@ final usageBubbleViewModelProvider =
     );
 
 class UsageBubbleState {
-  const UsageBubbleState({this.selectedItemId});
+  const UsageBubbleState({this.selectedItemId, this.selectedCategory});
 
   final String? selectedItemId;
+  final UsageCategory? selectedCategory;
 
   UsageBubbleState copyWith({
     String? selectedItemId,
@@ -22,6 +23,7 @@ class UsageBubbleState {
       selectedItemId: clearSelection
           ? null
           : selectedItemId ?? this.selectedItemId,
+      selectedCategory: selectedCategory,
     );
   }
 }
@@ -31,12 +33,24 @@ class UsageBubbleViewModel extends StateNotifier<UsageBubbleState> {
 
   static const nearLimitThreshold = 0.85;
 
-  List<UsageItem> itemsFor(List<AppUsageSummary> summaries) {
-    final items = summaries.map(UsageItem.fromSummary).toList()
-      ..sort(
-        (first, second) =>
-            second.totalDurationSeconds.compareTo(first.totalDurationSeconds),
-      );
+  List<UsageItem> itemsFor(
+    List<AppUsageSummary> summaries, {
+    Map<String, UsageCategory> categoryOverrides = const {},
+  }) {
+    final items =
+        summaries
+            .map(
+              (summary) => UsageItem.fromSummary(
+                summary,
+                categoryOverrides: categoryOverrides,
+              ),
+            )
+            .toList()
+          ..sort(
+            (first, second) => second.totalDurationSeconds.compareTo(
+              first.totalDurationSeconds,
+            ),
+          );
     // ponytail: chart layout has 10 position slots; more bubbles just overlap.
     return items.take(10).toList();
   }
@@ -100,5 +114,12 @@ class UsageBubbleViewModel extends StateNotifier<UsageBubbleState> {
 
   void clearSelection() {
     state = state.copyWith(clearSelection: true);
+  }
+
+  void selectCategory(UsageCategory? category) {
+    state = UsageBubbleState(
+      selectedItemId: state.selectedItemId,
+      selectedCategory: category,
+    );
   }
 }

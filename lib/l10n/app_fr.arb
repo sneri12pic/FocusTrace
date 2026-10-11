@@ -1,4 +1,9 @@
 {
+  "appCategoryAll": "Toutes",
+  "appCategoryTitle": "Catégorie de l’application",
+  "appCategoryAutomatic": "Automatique",
+  "appCategorySave": "Enregistrer la catégorie",
+  "appCategorySaveError": "Impossible d’enregistrer la catégorie. Réessayez.",
   "@@locale": "fr",
   "usageDetailsBarChart": "Graphique en barres",
   "usageDetailsAreaChart": "Évolution de l'utilisation",
@@ -528,6 +533,7 @@
   "settingsImportSuccess": "Sauvegarde FocusTrace importée.",
   "settingsImportDialogTitle": "Importer les données FocusTrace ?",
   "settingsImportDialogBody": "La sauvegarde sera fusionnée avec les données locales existantes. Les enregistrements et réglages correspondants utiliseront les valeurs importées.",
+  "settingsImportDialogDetail": "Cela inclut les restrictions, routines de blocage, applications exclues et catégories d’applications si la sauvegarde en contient. Rien n’est supprimé sur cet appareil et la connexion de synchronisation reste inchangée.",
   "settingsLanguageTitle": "Langue",
   "settingsLanguageSystemDefault": "Langue du système",
   "settingsChooseLanguage": "Choisir la langue",
@@ -540,7 +546,10 @@
   "settingsWindowsTrackingInterval": "Intervalle de suivi Windows",
   "settingsWindowsIdleTimeout": "Délai d’inactivité Windows",
   "settingsClearDataDialogTitle": "Supprimer toutes les données locales ?",
-  "settingsClearDataDialogBody": "Cette action supprime définitivement de cet appareil l’historique d’utilisation et les paramètres. Votre choix de langue est conservé. Exportez d’abord une sauvegarde si vous pourriez avoir besoin de ces données.",
+  "settingsClearDataDeletes": "Supprimé de cet appareil : historique d’utilisation et rapports, restrictions et routines de blocage, applications exclues, catégories d’applications et autres réglages.",
+  "settingsClearDataKeeps": "Conservé : votre choix de langue. Les autorisations Android ne changent pas. Exportez d’abord une sauvegarde si vous pourriez avoir besoin de ces données.",
+  "settingsClearDataKeepsSync": "Votre compte cloud et les données déjà synchronisées ne sont pas supprimés. La synchronisation est désactivée sur cet appareil.",
+  "settingsClearDataDone": "Données locales supprimées.",
   "settingsCancel": "Annuler",
   "settingsClear": "Supprimer",
   "settingsSave": "Enregistrer",
@@ -626,5 +635,5 @@
   "settingsSyncDeleteAcknowledge": "Je comprends que cela supprime définitivement mon compte cloud.",
   "settingsSyncDeleting": "Suppression…",
   "settingsSyncErrorWrongPassword": "Ce mot de passe est incorrect. Votre compte n’a pas été supprimé.",
-  "settingsPrivacyBodySync": "Votre historique d’utilisation et vos réglages restent sur cet appareil, sauf si vous exportez une sauvegarde ou activez la synchronisation cloud ci-dessous."
+  "settingsPrivacyBodySync": "Votre historique d’utilisation et vos réglages restent sur cet appareil, sauf si vous exportez une sauvegarde ou activez la synchronisation cloud."
 }

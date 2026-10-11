@@ -23,14 +23,17 @@ class UsageItem {
     this.iconBytes,
   });
 
-  factory UsageItem.fromSummary(AppUsageSummary summary) {
+  factory UsageItem.fromSummary(
+    AppUsageSummary summary, {
+    Map<String, UsageCategory> categoryOverrides = const {},
+  }) {
     return UsageItem(
       id: summary.appKey,
       name: summary.appName,
       sourceName: summary.processName ?? summary.packageName,
       totalDurationSeconds: summary.totalDurationSeconds,
       percentageOfTotal: summary.percentageOfTotal,
-      category: _categoryFor(summary.appName),
+      category: resolveUsageCategory(summary, categoryOverrides),
       initials: _initialsFor(summary.appName),
       iconBytes: summary.iconBytes,
     );
@@ -66,7 +69,12 @@ String _initialsFor(String name) {
   return parts.take(2).map((part) => part[0]).join().toUpperCase();
 }
 
-UsageCategory _categoryFor(String name) {
+UsageCategory resolveUsageCategory(
+  AppUsageSummary summary,
+  Map<String, UsageCategory> overrides,
+) => overrides[summary.appKey] ?? automaticUsageCategory(summary.appName);
+
+UsageCategory automaticUsageCategory(String name) {
   final normalized = name.toLowerCase();
   if (_containsAny(normalized, const [
     'youtube',

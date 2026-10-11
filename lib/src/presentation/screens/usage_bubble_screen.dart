@@ -9,6 +9,7 @@ import '../localization/app_localizations_x.dart';
 import '../providers.dart';
 import '../view_models/usage_bubble_view_model.dart';
 import '../widgets/bubble_chart.dart';
+import '../widgets/app_category_widgets.dart';
 import '../widgets/summary_tile.dart';
 import 'restriction_editor_sheet.dart';
 
@@ -28,7 +29,23 @@ class UsageBubbleScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(usageBubbleViewModelProvider);
     final viewModel = ref.read(usageBubbleViewModelProvider.notifier);
-    final items = viewModel.itemsFor(summaries);
+    final overrides =
+        ref.watch(appCategoriesViewModelProvider).asData?.value ??
+        const <String, UsageCategory>{};
+    final items = viewModel.itemsFor(summaries, categoryOverrides: overrides);
+    final categorySeconds = <UsageCategory, int>{};
+    for (final summary in summaries) {
+      final category = resolveUsageCategory(summary, overrides);
+      categorySeconds[category] =
+          (categorySeconds[category] ?? 0) + summary.totalDurationSeconds;
+    }
+    final categories = categorySeconds.keys.toSet();
+    // Most time-consuming category first.
+    final rankedCategories = categorySeconds.keys.toList()
+      ..sort((a, b) => categorySeconds[b]!.compareTo(categorySeconds[a]!));
+    final selectedCategory = categories.contains(state.selectedCategory)
+        ? state.selectedCategory
+        : null;
     final selectedItem = viewModel.selectedItemFor(items, state.selectedItemId);
     final restrictionState = ref.watch(restrictionsViewModelProvider);
     final now = DateTime.now();
@@ -111,12 +128,29 @@ class UsageBubbleScreen extends ConsumerWidget {
                     ),
                   ),
                   const SizedBox(height: 10),
+                  _EdgeToEdgeChipRow(
+                    children: [
+                      for (final category in [null, ...rankedCategories])
+                        _CategoryFilterChip(
+                          category: category,
+                          seconds: category == null
+                              ? null
+                              : categorySeconds[category],
+                          selected: selectedCategory == category,
+                          onSelected: () => viewModel.selectCategory(category),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
                   for (final summary in summaries)
-                    SummaryTile(
-                      summary,
-                      isToday: isToday,
-                      trend: trendsByAppKey[summary.appKey],
-                    ),
+                    if (selectedCategory == null ||
+                        resolveUsageCategory(summary, overrides) ==
+                            selectedCategory)
+                      SummaryTile(
+                        summary,
+                        isToday: isToday,
+                        trend: trendsByAppKey[summary.appKey],
+                      ),
                 ],
               ),
             ],
@@ -207,6 +241,116 @@ class UsageBubbleScreen extends ConsumerWidget {
 }
 
 enum _BubbleAction { unblockNow, restrict }
+
+/// Scrolls through the card's side padding to its border and fades out there,
+/// so chips slide away softly instead of being cut at the content edge.
+class _EdgeToEdgeChipRow extends StatelessWidget {
+  const _EdgeToEdgeChipRow({required this.children});
+
+  // Matches _SectionCard's horizontal padding.
+  static const _bleed = 16.0;
+
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, constraints) {
+      final width = constraints.maxWidth + _bleed * 2;
+      return SizedBox(
+        // Fixed so OverflowBox has a bounded height; grows with text size.
+        height: MediaQuery.textScalerOf(context).scale(48),
+        child: OverflowBox(
+          maxWidth: width,
+          minWidth: width,
+          child: ShaderMask(
+            blendMode: BlendMode.dstIn,
+            shaderCallback: (bounds) => LinearGradient(
+              colors: const [
+                Colors.transparent,
+                Colors.black,
+                Colors.black,
+                Colors.transparent,
+              ],
+              stops: [0, _bleed / width, 1 - _bleed / width, 1],
+            ).createShader(bounds),
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: _bleed),
+              child: Row(
+                children: [
+                  for (final child in children)
+                    Padding(
+                      padding: const EdgeInsetsDirectional.only(end: 8),
+                      child: child,
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+    },
+  );
+}
+
+class _CategoryFilterChip extends StatelessWidget {
+  const _CategoryFilterChip({
+    required this.category,
+    required this.seconds,
+    required this.selected,
+    required this.onSelected,
+  });
+
+  final UsageCategory? category;
+  final int? seconds;
+  final bool selected;
+  final VoidCallback onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final category = this.category;
+    final accent = category?.color ?? Colors.white;
+    return ChoiceChip(
+      key: ValueKey('category-filter-${category?.name ?? 'all'}'),
+      selected: selected,
+      showCheckmark: false,
+      shape: const StadiumBorder(),
+      side: BorderSide(
+        color: selected
+            ? accent.withValues(alpha: 0.55)
+            : Colors.white.withValues(alpha: 0.06),
+      ),
+      backgroundColor: Colors.white.withValues(alpha: 0.05),
+      selectedColor: accent.withValues(alpha: 0.18),
+      labelStyle: Theme.of(context).textTheme.labelLarge?.copyWith(
+        color: selected ? accent : Colors.white.withValues(alpha: 0.72),
+        fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+      ),
+      avatar: category == null ? null : CategoryIcon(category),
+      label: Text.rich(
+        TextSpan(
+          text: category == null
+              ? context.l10n.appCategoryAll
+              : context.l10n.usageCategoryLabel(category),
+          children: [
+            if (seconds case final seconds?)
+              TextSpan(
+                text:
+                    '  ${context.l10n.compactDuration(Duration(seconds: seconds))}',
+                style: TextStyle(
+                  color: (selected ? accent : Colors.white).withValues(
+                    alpha: 0.6,
+                  ),
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+          ],
+        ),
+      ),
+      onSelected: (_) => onSelected(),
+    );
+  }
+}
 
 class _SectionCard extends StatelessWidget {
   const _SectionCard({required this.children});
