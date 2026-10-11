@@ -73,6 +73,33 @@ data class RestrictionConfiguration(
     }
 }
 
+/**
+ * The blocker reads the stored rules every tick, but they change only when the
+ * user edits them. Parses only when the stored JSON differs from the last one;
+ * block-now expiry is still decided against [nowMs] on every call, and
+ * schedules and limits stay time-dependent in [RestrictionRules.isBlocked].
+ */
+internal class RestrictionConfigurationCache(
+    private val parse: (String?) -> RestrictionConfiguration = RestrictionRules::parseConfiguration,
+) {
+    private var json: String? = null
+    private var parsed: RestrictionConfiguration? = null
+
+    fun at(json: String?, nowMs: Long): RestrictionConfiguration {
+        val configuration = parsed?.takeIf { json == this.json }
+            ?: parse(json).also {
+                this.json = json
+                parsed = it
+            }
+        return configuration.copy(
+            rules = configuration.rules.filter {
+                it.type != RestrictionRuleType.BlockNow ||
+                    (it.untilMs != null && it.untilMs > nowMs)
+            },
+        )
+    }
+}
+
 object RestrictionRules {
     const val PREFS_NAME = "focustrace_restrictions"
     const val PREFS_RULES_KEY = "rules_json"
