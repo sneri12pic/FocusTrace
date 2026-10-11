@@ -1,4 +1,9 @@
 {
+  "appCategoryAll": "すべて",
+  "appCategoryTitle": "アプリのカテゴリ",
+  "appCategoryAutomatic": "自動",
+  "appCategorySave": "カテゴリを保存",
+  "appCategorySaveError": "カテゴリを保存できませんでした。もう一度お試しください。",
   "@@locale": "ja",
   "usageDetailsBarChart": "棒グラフ",
   "usageDetailsAreaChart": "使用時間の推移",
@@ -528,6 +533,7 @@
   "settingsImportSuccess": "FocusTrace のバックアップを読み込みました。",
   "settingsImportDialogTitle": "FocusTrace のデータを読み込みますか？",
   "settingsImportDialogBody": "バックアップは既存のローカルデータと統合されます。同じレコードと設定には、読み込んだ値が使用されます。",
+  "settingsImportDialogDetail": "バックアップに含まれる場合、制限、ブロックルーティン、除外したアプリ、アプリのカテゴリも対象です。この端末のデータは削除されず、同期のサインイン状態も変わりません。",
   "settingsLanguageTitle": "言語",
   "settingsLanguageSystemDefault": "システムのデフォルト",
   "settingsChooseLanguage": "言語を選択",
@@ -540,7 +546,10 @@
   "settingsWindowsTrackingInterval": "Windowsの追跡間隔",
   "settingsWindowsIdleTimeout": "Windowsのアイドルタイムアウト",
   "settingsClearDataDialogTitle": "すべてのローカルデータを削除しますか？",
-  "settingsClearDataDialogBody": "使用履歴と設定がこの端末から完全に削除されます。言語の選択は保持されます。後でデータが必要になる可能性がある場合は、先にバックアップを書き出してください。",
+  "settingsClearDataDeletes": "この端末から削除されるもの：利用履歴とレポート、制限とブロックルーティン、除外したアプリ、アプリのカテゴリ、その他の設定。",
+  "settingsClearDataKeeps": "残るもの：言語の選択。Androidの権限は変更されません。このデータが必要になる可能性がある場合は、先にバックアップを書き出してください。",
+  "settingsClearDataKeepsSync": "クラウドアカウントと同期済みのデータは削除されません。この端末での同期はオフになります。",
+  "settingsClearDataDone": "ローカルデータを削除しました。",
   "settingsCancel": "キャンセル",
   "settingsClear": "削除",
   "settingsSave": "保存",
@@ -626,5 +635,5 @@
   "settingsSyncDeleteAcknowledge": "クラウドアカウントが完全に削除されることを理解しました。",
   "settingsSyncDeleting": "削除中…",
   "settingsSyncErrorWrongPassword": "パスワードが正しくありません。アカウントは削除されていません。",
-  "settingsPrivacyBodySync": "利用履歴と設定は、バックアップを書き出すか下のクラウド同期をオンにしない限り、この端末に保存されたままです。"
+  "settingsPrivacyBodySync": "利用履歴と設定は、バックアップを書き出すかクラウド同期をオンにしない限り、この端末に保存されたままです。"
 }

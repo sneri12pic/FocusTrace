@@ -9,6 +9,22 @@ class AppLocalizationsEn extends AppLocalizations {
   AppLocalizationsEn([String locale = 'en']) : super(locale);
 
   @override
+  String get appCategoryAll => 'All';
+
+  @override
+  String get appCategoryTitle => 'App category';
+
+  @override
+  String get appCategoryAutomatic => 'Automatic';
+
+  @override
+  String get appCategorySave => 'Save category';
+
+  @override
+  String get appCategorySaveError =>
+      'Couldn’t save the category. Please try again.';
+
+  @override
   String get usageDetailsBarChart => 'Bar chart';
 
   @override
@@ -787,6 +803,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'The backup will be merged with existing local data. Matching records and settings will use the imported values.';
 
   @override
+  String get settingsImportDialogDetail =>
+      'This includes restrictions, block routines, excluded apps and app categories when the backup has them. Nothing on this device is deleted, and the sync sign-in on this device is not changed.';
+
+  @override
   String get settingsLanguageTitle => 'Language';
 
   @override
@@ -826,8 +846,19 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsClearDataDialogTitle => 'Delete all local data?';
 
   @override
-  String get settingsClearDataDialogBody =>
-      'This permanently deletes usage history and settings from this device. Your language choice is preserved. Export a backup first if you may need this data.';
+  String get settingsClearDataDeletes =>
+      'Deletes from this device: usage history and reports, restrictions and block routines, excluded apps, app categories and other settings.';
+
+  @override
+  String get settingsClearDataKeeps =>
+      'Kept: your language choice. Android permissions are not changed. Export a backup first if you may need this data.';
+
+  @override
+  String get settingsClearDataKeepsSync =>
+      'Your cloud account and data already synced are not deleted. Sync turns off on this device.';
+
+  @override
+  String get settingsClearDataDone => 'Local data deleted.';
 
   @override
   String get settingsCancel => 'Cancel';
@@ -1055,5 +1086,5 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsPrivacyBodySync =>
-      'Your usage history and settings stay on this device unless you export a backup or turn on cloud sync below.';
+      'Your usage history and settings stay on this device unless you export a backup or turn on cloud sync.';
 }

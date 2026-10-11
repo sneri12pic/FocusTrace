@@ -9,6 +9,22 @@ class AppLocalizationsEs extends AppLocalizations {
   AppLocalizationsEs([String locale = 'es']) : super(locale);
 
   @override
+  String get appCategoryAll => 'Todas';
+
+  @override
+  String get appCategoryTitle => 'Categoría de la aplicación';
+
+  @override
+  String get appCategoryAutomatic => 'Automática';
+
+  @override
+  String get appCategorySave => 'Guardar categoría';
+
+  @override
+  String get appCategorySaveError =>
+      'No se pudo guardar la categoría. Inténtalo de nuevo.';
+
+  @override
   String get usageDetailsBarChart => 'Gráfico de barras';
 
   @override
@@ -803,6 +819,10 @@ class AppLocalizationsEs extends AppLocalizations {
       'La copia se combinará con los datos locales existentes. Los registros y ajustes coincidentes usarán los valores importados.';
 
   @override
+  String get settingsImportDialogDetail =>
+      'Esto incluye restricciones, rutinas de bloqueo, aplicaciones excluidas y categorías de aplicaciones si la copia las contiene. No se elimina nada de este dispositivo y la sesión de sincronización no cambia.';
+
+  @override
   String get settingsLanguageTitle => 'Idioma';
 
   @override
@@ -844,8 +864,19 @@ class AppLocalizationsEs extends AppLocalizations {
       '¿Eliminar todos los datos locales?';
 
   @override
-  String get settingsClearDataDialogBody =>
-      'Esta acción elimina permanentemente de este dispositivo el historial de uso y los ajustes. Tu elección de idioma se conserva. Exporta antes una copia si puedes necesitar estos datos.';
+  String get settingsClearDataDeletes =>
+      'Se elimina de este dispositivo: historial de uso e informes, restricciones y rutinas de bloqueo, aplicaciones excluidas, categorías de aplicaciones y demás ajustes.';
+
+  @override
+  String get settingsClearDataKeeps =>
+      'Se conserva: tu idioma. Los permisos de Android no cambian. Exporta antes una copia si puedes necesitar estos datos.';
+
+  @override
+  String get settingsClearDataKeepsSync =>
+      'Tu cuenta en la nube y los datos ya sincronizados no se eliminan. La sincronización se desactiva en este dispositivo.';
+
+  @override
+  String get settingsClearDataDone => 'Datos locales eliminados.';
 
   @override
   String get settingsCancel => 'Cancelar';
@@ -1077,5 +1108,5 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get settingsPrivacyBodySync =>
-      'Tu historial de uso y tus ajustes permanecen en este dispositivo salvo que exportes una copia o actives la sincronización en la nube más abajo.';
+      'Tu historial de uso y tus ajustes permanecen en este dispositivo salvo que exportes una copia o actives la sincronización en la nube.';
 }

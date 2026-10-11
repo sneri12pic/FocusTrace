@@ -66,12 +66,42 @@ class SyncRepositoryImpl implements SyncRepository {
   // This is the ownership boundary. API and credential helpers never reacquire.
   // The identity is settled before anything else, so a database restored from
   // another installation has lost its opt-in before any caller reads it.
+  // A session lost before or during the operation is ended on both sides of it.
   Future<T> _sessionOperation<T>(Future<T> Function() operation) =>
       _gate.run(() async {
         await _api.reconcileSession();
         await _installationId();
-        return operation();
+        await _endLostSession();
+        try {
+          return await operation();
+        } finally {
+          await _endLostSession();
+        }
       });
+
+  /// A session that ended without a sign-out - the server rejected its refresh
+  /// (expiry, replay revocation, a deleted account) or the keystore lost the
+  /// credential - ends locally like [signOut]: its consent and account label
+  /// must not carry over to whichever account signs in next. A transport
+  /// failure keeps the credential, so it never gets here. History, watermark
+  /// and installation id are left exactly as [signOut] leaves them.
+  Future<void> _endLostSession() async {
+    if (!await _api.hasSession) {
+      await _endSession();
+    }
+  }
+
+  /// Sign-out's local half. Idempotent, so a session already ended locally is
+  /// not rescheduled again.
+  Future<void> _endSession() async {
+    final email = await accountEmail();
+    if (!await isSyncEnabled() && (email == null || email.isEmpty)) {
+      return;
+    }
+    await _local.writeSetting(SyncSettingKeys.accountEmail, '');
+    await _local.writeSetting(SyncSettingKeys.enabled, 'false');
+    await _reconcileSchedule?.call(false);
+  }
 
   @override
   Future<String?> accountEmail() =>
@@ -164,9 +194,7 @@ class SyncRepositoryImpl implements SyncRepository {
     try {
       await _api.signOut();
     } finally {
-      await _local.writeSetting(SyncSettingKeys.accountEmail, '');
-      await _local.writeSetting(SyncSettingKeys.enabled, 'false');
-      await _reconcileSchedule?.call(false);
+      await _endSession();
     }
   });
 

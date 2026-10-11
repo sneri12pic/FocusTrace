@@ -309,6 +309,30 @@ activity startup/rendering remain mixed into those measurements. The stronger
 causal evidence is the direct reduction in query count, iterated event count,
 and measured query/iteration duration.
 
+## Parsed-rule cache (2026-10-11, not measured)
+
+The post-change tick above had a 32.977 ms median, of which UsageStats query,
+aggregation and decision accounted for about 3.8 ms. Re-reading and re-parsing
+the restriction JSON on every 1-second tick was part of the untimed remainder.
+`RestrictionConfigurationCache` (in `RestrictionRules.kt`) now keeps the last
+stored JSON and its parsed configuration, and `BlockerService` reparses only
+when the stored text changes. The SharedPreferences read still happens every
+tick. Block-now expiry is filtered against the current clock on every tick,
+and schedules and daily limits are still evaluated against the tick's time, so
+an edit, a removal or an expiry takes effect on the next tick. A recreated
+service starts with an empty cache and loads what is stored. Permission checks,
+polling interval, screen-off behaviour, snapshot writes and widget scheduling
+are unchanged.
+
+Effect: repeated parsing of unchanged rules is removed. No device run has
+measured tick time or battery after this change, so no saving is claimed.
+Tests: `RestrictionConfigurationCacheTest` (one parse for unchanged JSON,
+changed and removed rules, block-now expiry, a midnight-crossing schedule, and
+daily-limit rollover on a cached configuration) and
+`BlockerServiceConfigurationTest` (Robolectric: removed rules and an expired
+block-now stop the service on the next tick; a recreated service loads the
+current stored rules).
+
 ## Limitations
 
 - Results are specific to one Samsung SM-A366B, its current event history, its

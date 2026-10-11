@@ -28,6 +28,8 @@ import '../domain/repositories/settings_repository.dart';
 import '../domain/repositories/sync_repository.dart';
 import '../domain/repositories/usage_repository.dart';
 import 'view_models/app_language_view_model.dart';
+import 'view_models/app_categories_view_model.dart';
+import '../domain/models/usage_item.dart';
 import 'view_models/app_usage_details_view_model.dart';
 import 'view_models/dashboard_view_model.dart';
 import 'view_models/onboarding_view_model.dart';
@@ -169,6 +171,18 @@ final reportRepositoryProvider = Provider<ReportRepository>((ref) {
 final settingsRepositoryProvider = Provider<SettingsRepository>((ref) {
   return SettingsRepositoryImpl(ref.watch(localDataSourceProvider));
 });
+
+final appCategoriesViewModelProvider =
+    StateNotifierProvider<
+      AppCategoriesViewModel,
+      AsyncValue<Map<String, UsageCategory>>
+    >((ref) {
+      final viewModel = AppCategoriesViewModel(
+        ref.watch(settingsRepositoryProvider),
+      );
+      viewModel.load();
+      return viewModel;
+    });
 
 /// Empty unless the build supplies
 /// `--dart-define=FOCUSTRACE_SYNC_BASE_URL=https://...`.

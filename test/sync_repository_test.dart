@@ -444,7 +444,10 @@ void main() {
       () async {
         await repository.setSyncEnabled(true);
         expect(await runBackgroundSync(repository), 'success');
+        // Consent without a session is stale and does not survive a run.
+        expect(await repository.isSyncEnabled(), isFalse);
         await credentials.writeRefreshToken('revoked-test-session');
+        await repository.setSyncEnabled(true);
         await seedDay('2026-09-17', queriedAtMs: 1000);
         expect(await runBackgroundSync(repositoryFor(credentials)), 'success');
         expect(credentials.refreshToken, isNull);
@@ -1464,7 +1467,7 @@ void main() {
     );
 
     test(
-      'a rejected session is reported without clearing account state',
+      'a rejected session is reported and ends the session locally',
       () async {
         await syncedAccount();
         final fresh = repositoryFor(credentials);
@@ -1483,10 +1486,9 @@ void main() {
 
         expect(credentials.refreshToken, isNull);
         expect(backend.deleteCount, 0);
-        expect(
-          await local.readSetting(SyncSettingKeys.accountEmail),
-          'a@example.com',
-        );
+        // Not deleted, but signed out: consent must not reach the next account.
+        expect(await local.readSetting(SyncSettingKeys.accountEmail), '');
+        expect(await fresh.isSyncEnabled(), isFalse);
       },
     );
 
@@ -1711,6 +1713,155 @@ void main() {
       await restarted().createAccount(email: 'a@example.com', password: 'pw');
 
       expect(nativeStore, isEmpty);
+    });
+  });
+
+  group('a session the server ended', () {
+    late List<bool> schedules;
+
+    // A fixed seed per instance: B's replacement id must not replay A's draw.
+    SyncRepositoryImpl tracked({int seed = 7}) => repositoryFor(
+      credentials,
+      seed: seed,
+      reconcileSchedule: (enabled) async => schedules.add(enabled),
+    );
+
+    List<String> receivedBy(String account) => [
+      for (final entry in backend.uploadLog)
+        if (entry.startsWith('$account|')) entry.split('|')[2],
+    ];
+
+    /// A synced, opted-in, then revoked by the server (expiry, replay, ...).
+    Future<String> revokedA() async {
+      schedules = [];
+      final a = tracked();
+      await a.signIn(email: 'a@example.com', password: 'pw');
+      await a.setSyncEnabled(true);
+      await seedDay('2026-09-16', queriedAtMs: 1000);
+      expect((await a.syncNow()).succeeded, isTrue);
+      await credentials.writeRefreshToken('revoked-test-session');
+      schedules.clear();
+      return a.installationId();
+    }
+
+    Future<void> expectEndedLocally({required String installation}) async {
+      expect(credentials.refreshToken, isNull);
+      expect(await local.readSetting(SyncSettingKeys.enabled), 'false');
+      expect(await local.readSetting(SyncSettingKeys.accountEmail), '');
+      expect(schedules, [false]);
+      // History, progress and identity are kept, exactly as on sign-out.
+      expect(await watermark(), 1000);
+      expect(
+        await local.readSetting(SyncSettingKeys.installationId),
+        installation,
+      );
+      expect(await db.query('daily_app_usage'), isNotEmpty);
+    }
+
+    test('in the background ends locally and stops scheduling', () async {
+      final installation = await revokedA();
+
+      expect(await runBackgroundSync(tracked()), 'success');
+
+      await expectEndedLocally(installation: installation);
+    });
+
+    test('in a foreground sync ends locally and the UI agrees', () async {
+      final installation = await revokedA();
+      final viewModel = SyncViewModel(tracked());
+      addTearDown(viewModel.dispose);
+      await viewModel.load();
+      expect(viewModel.state.canSyncNow, isTrue);
+
+      await viewModel.syncNow();
+      expect(viewModel.state.error, SyncErrorKind.sessionExpired);
+      await expectEndedLocally(installation: installation);
+
+      await viewModel.load();
+      expect(viewModel.state.isSignedIn, isFalse);
+      expect(viewModel.state.syncEnabled, isFalse);
+      expect(viewModel.state.accountEmail, isNull);
+    });
+
+    test('in a history read ends locally', () async {
+      final installation = await revokedA();
+
+      await expectLater(
+        tracked().readRemoteHistory(
+          from: DateTime(2026, 9, 1),
+          to: DateTime(2026, 10, 1),
+        ),
+        throwsA(isA<SyncApiException>()),
+      );
+
+      await expectEndedLocally(installation: installation);
+    });
+
+    for (final join in ['sign in', 'create account']) {
+      test('then $join as B uploads nothing until B opts in', () async {
+        await revokedA();
+        final viewModel = SyncViewModel(tracked());
+        addTearDown(viewModel.dispose);
+        await viewModel.load();
+        // Still looks signed in until the server is asked.
+        expect(viewModel.state.isSignedIn, isTrue);
+        await viewModel.syncNow();
+        expect(viewModel.state.error, SyncErrorKind.sessionExpired);
+
+        if (join == 'sign in') {
+          await viewModel.signIn(email: 'b@example.com', password: 'pw');
+        } else {
+          await viewModel.createAccount(
+            email: 'b@example.com',
+            password: 'a unique long passphrase',
+          );
+        }
+
+        expect(viewModel.state.isSignedIn, isTrue);
+        expect(viewModel.state.syncEnabled, isFalse);
+        expect(await local.readSetting(SyncSettingKeys.enabled), 'false');
+        expect(await runBackgroundSync(tracked()), 'success');
+        expect(receivedBy('b@example.com'), isEmpty);
+
+        await viewModel.setSyncEnabled(true);
+        expect(await runBackgroundSync(tracked(seed: 99)), 'success');
+        expect(receivedBy('b@example.com'), ['2026-09-16']);
+      });
+    }
+
+    test(
+      'a credential lost without a server answer ends on next use',
+      () async {
+        await revokedA();
+        await credentials.clear(); // e.g. an unreadable keystore entry
+
+        await tracked().signIn(email: 'b@example.com', password: 'pw');
+
+        expect(await local.readSetting(SyncSettingKeys.enabled), 'false');
+        expect(
+          await local.readSetting(SyncSettingKeys.accountEmail),
+          'b@example.com',
+        );
+        expect(schedules, [false]);
+      },
+    );
+
+    test('a transport failure is not a sign-out', () async {
+      schedules = [];
+      final a = tracked();
+      await a.signIn(email: 'a@example.com', password: 'pw');
+      await a.setSyncEnabled(true);
+      await seedDay('2026-09-16', queriedAtMs: 1000);
+      schedules.clear();
+      final background = tracked();
+      await backend.stop();
+
+      expect(await runBackgroundSync(background), 'retry');
+
+      expect(credentials.refreshToken, isNotNull);
+      expect(await a.isSyncEnabled(), isTrue);
+      expect(await a.accountEmail(), 'a@example.com');
+      expect(schedules, isEmpty);
     });
   });
 }

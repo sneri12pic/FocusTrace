@@ -4,12 +4,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../domain/models/app_usage_summary.dart';
 import '../../domain/models/daily_app_usage.dart';
 import '../../domain/models/restriction_rule.dart';
+import '../../domain/models/usage_item.dart';
 import '../localization/app_localizations_x.dart';
 import '../providers.dart';
 import '../screens/restriction_editor_sheet.dart';
 import '../screens/usage_details_screen.dart';
 import '../view_models/app_usage_details_view_model.dart';
 import 'app_icon_avatar.dart';
+import 'app_category_widgets.dart';
 import 'trend_color.dart';
 
 const _sheetColor = Color(0xFF0D111A);
@@ -29,6 +31,10 @@ class SummaryTile extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final category = resolveUsageCategory(
+      summary,
+      ref.watch(appCategoriesViewModelProvider).asData?.value ?? const {},
+    );
     final percentage = (summary.percentageOfTotal * 100).clamp(0, 100);
     final restrictionState = ref.watch(restrictionsViewModelProvider);
     final isBlocked =
@@ -76,6 +82,7 @@ class SummaryTile extends ConsumerWidget {
                           overflow: TextOverflow.ellipsis,
                           style: theme.textTheme.titleMedium,
                         ),
+                        UsageCategoryLabel(category),
                         if (summary.launchCount > 0)
                           Text(
                             context.l10n.summaryLaunchCount(

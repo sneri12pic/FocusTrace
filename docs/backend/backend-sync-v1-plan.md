@@ -29,6 +29,9 @@ JUnit 5, Testcontainers. Backend lives under `server/`.
 - Authenticated retrieval of synchronized history, per device.
 - PostgreSQL-backed integration tests.
 - A Flutter sync client layered behind a repository (Phase 2).
+- Public-launch account readiness: email ownership verification, password
+  recovery, public confirmation/reset pages and transactional email delivery
+  (planned; not implemented).
 
 ### Non-goals for this stage
 
@@ -203,6 +206,12 @@ the same sync path across the real network before release-facing work.
    public API smoke test and blocked direct LAN ports passed. Next: run the
    physical-phone protocol. Public load testing, off-host backups and
    privacy/deletion backup reconciliation remain before release.
+   Re-checked 2026-10-07 (staging only): deployed files match `master`; cron
+   backups ran nightly 2026-10-03..07; newest dump restored into a disposable
+   database; `proxy-test.py` passed. Host not rebooted since 2026-10-01, before
+   deployment, so reboot recovery is still unverified. No off-host copy exists.
+   `delete-account.html` says no copy is retained for restoration, but nightly
+   dumps hold deleted accounts for up to seven days: reconcile before release.
 4. **Re-prove sync over the real network.** Point a physical phone at the staging
    endpoint without `adb reverse` and verify sign-in, manual sync, scheduled
    background sync, restart/reconnect behaviour, server restart, temporary
@@ -240,6 +249,82 @@ Do not move staging deployment ahead of the restore test unless the restore test
 itself cannot be executed with the current development backend. Doing both at
 once would mix restore failures with Wi-Fi, Docker networking, proxy, TLS and
 host-configuration failures.
+
+### Account readiness before public sync launch (open)
+
+Added 2026-10-07. Phases 1 and 2 remain complete as the original vertical slice;
+their completion does not satisfy this new public-launch gate. The current
+account-created UI is success feedback, not email ownership confirmation.
+Password recovery and email verification are not implemented. The security
+baseline section 21 excludes them from Phase 1; they are now required before
+public account/sync release. A local-only release may proceed with account/sync
+hidden and store copy aligned with that build.
+
+Implementation order and acceptance:
+
+1. **Resolve security and delivery decisions before coding.** Select the email
+   provider, sender domain and HTTPS page host; define token lifetimes, resend
+   invalidation, request limits, pending-account expiry and cleanup, and how
+   existing unverified accounts transition. Revisit D11's registration disclosure
+   policy and D10's session/access-token revocation behavior. Record implemented
+   decisions in the canonical architecture and update the security baseline with
+   the implementation; do not describe planned behavior as already shipped.
+2. **Verify email ownership.** Registration shows a pending-confirmation state
+   and sends a confirmation link; provide resend and public confirmation success,
+   expired/invalid-link and recovery states. The backend must reject cloud sync
+   for unverified accounts, including direct API and background-worker requests.
+   Existing local tracking, history and restrictions remain usable offline.
+3. **Recover forgotten passwords.** Add a Forgot password entry in the account
+   UI and a public HTTPS reset page with new/repeated password fields. Request
+   responses must not disclose whether an account exists. Apply the existing
+   password normalization, length bounds and common-password policy. Successful
+   reset invalidates all existing sessions and refresh tokens; define and test
+   when already-issued access tokens stop working. Require a fresh sign-in.
+4. **Protect both token flows.** Use cryptographically random, short-lived,
+   single-use, purpose/account-bound tokens, stored only as hashes. Consumption
+   must be atomic under concurrent requests. Rate-limit requests/resends and
+   token submissions; prevent token/password leakage through logs, page assets,
+   referrers or error messages. Opening an email link alone must not change a
+   password or consume confirmation through an automatic email-scanner request.
+5. **Prove email delivery and failure handling.** Configure sender authentication
+   (SPF/DKIM/DMARC), keep provider credentials outside tracked files, and verify
+   real inbox delivery. Provider failure must leave the UI recoverable without
+   reporting a sent email or verified account incorrectly. Update privacy copy,
+   hosting/provider disclosures, account guidance and Play reviewer access to
+   match the implemented flow.
+6. **Run acceptance checks.** Backend/PostgreSQL and Flutter/page checks cover
+   pending/verified accounts, API sync gating, generic reset responses, throttling,
+   invalid/expired/reused/wrong-purpose tokens, concurrent consumption, resend,
+   password-policy rejection, session revocation and delivery failure. Real email
+   confirmation/reset can be checked without a phone; repeat browser-to-app
+   sign-in and signed-release sync flows on hardware before public launch.
+
+### Physical-device protocol (open)
+
+The remaining hardware checks for item 4, section 6 and the categories stage
+(`docs/categories/app-categories-plan.md`). None has been run. Record results
+in the progress document; automated checks do not substitute for them.
+
+For every case record: device model/Android version, package and versionCode,
+APK/AAB SHA-256, endpoint, time (UTC), and screenshots. Use one disposable
+account with a controlled, deliverable test inbox once email verification is
+implemented; never the developer's real account. Keep credentials in
+a scratch file outside the repository and delete it afterwards. Release-package
+builds (`com.stepandemianenko.focustrace`) are signed with the upload key: never
+install one with `adb` on a phone that receives FocusTrace from Play
+(`docs/releases/PLAY_SIGNING_RECOVERY.md`). Use Play internal testing, or a
+phone with no Play-installed production package. Debug checks use
+`com.stepandemianenko.focustrace.dev` against staging HTTPS, no `adb reverse`.
+
+| # | Setup | Steps | Expected | Evidence |
+| --- | --- | --- | --- | --- |
+| 1 Background sync | Staging debug build; signed in, opt-in on, one manual sync done; then use apps so a new day or changed totals are pending. | Swipe the app from recents. Force the periodic job with `adb shell cmd jobscheduler run -f com.stepandemianenko.focustrace.dev <jobId>` (id from `dumpsys jobscheduler`), or wait past the six-hour period. | Job runs in a process started only for it; pending days upload as `APPLIED`; watermark and "last synced" advance; no UI opened. | `dumpsys jobscheduler` before/after, logcat for the worker, settings "last synced" screenshot, proxy access-log lines for the upload (time + status only). |
+| 2 App restart | After case 1. | Force-stop, relaunch; then reboot the phone and relaunch. | Still signed in without a password prompt; opt-in still on; same installation id; next manual sync uses the same server device (no new device). | Settings screenshots before/after; installation id from the local database before/after; device list or `last_seen_at` for one device id. |
+| 3 Server restart | Needs the owner's explicit approval to interrupt staging. Phone signed in, opt-in on. | On staging: `docker compose restart app` (and, if approved, a host reboot). While down, tap Sync now; after recovery, tap Sync now again. | While down: "Sync failed" with the unreachable reason, local data intact. After: sync succeeds with no new sign-in; all three containers back with `restart=unless-stopped`. | Phone screenshots of both states; `docker compose ps` and `uptime -s` after; app/proxy log lines with status codes. |
+| 4 Signed release, full flow | Signed release build with the verified HTTPS endpoint (production once it exists; a staging build is verification-only); controlled test inbox. | Register (repeat password), verify sync is blocked until email confirmation, confirm email, sign in, turn on opt-in, Sync now; airplane mode with pending data then Sync now; restore network then Sync now; log out, request and complete password reset in the browser, sign in with the new password and sync; delete the account (wrong password, then correct). | Pending account cannot sync; confirmation enables the flow; old password and revoked sessions no longer work after reset under the documented access-token policy; offline failure preserves data, recovery succeeds, deletion returns to the signed-out form with the deletion notice and local history intact. | Screenshots per step without tokens/passwords; AAB/APK SHA-256 and certificate SHA-256; server row count for the disposable account after deletion (operator check). |
+| 5 HTTP-configured release | Release build with `--dart-define=FOCUSTRACE_SYNC_BASE_URL=http://<host>` and a capture point (proxy logs, or `tcpdump`/PCAPdroid on the phone). | Open Settings; use the app for a few minutes; reopen after restart. | No Account & sync card, no sync switch or button; zero requests to that host. Tracking, limits and blocking unaffected. | Settings screenshot; empty capture/log for the host over the window. |
+| 6 Category UI | Debug or release build containing the category stage, a day with apps in several categories. | Dashboard filters and row labels at default and largest font size, dark theme; a long label locale (de or uk); open details, change a category in the picker, scroll the sheet, Save; repeat with TalkBack on. | Chips and Save reachable and at least 48 dp; labels not clipped beyond ellipsis; TalkBack reads the category name on rows, chips and the details tag ("App category" hint) and announces the selected radio; filters change only the list. | Screenshots at both font sizes and in de/uk; TalkBack screen-reader transcript or screen recording; note whether a failed save is announced (the error text is not a live region). |
+
 
 Remaining for Sync v1 correctness, none of it blocking the slice:
 
@@ -360,7 +445,13 @@ These are not backend tasks but must be resolved before sync ships to users:
   later; the 2026-10-03 signed AAB used staging and was for verification only.
 - The `docs/` pages are served by GitHub Pages from `master`
   (`docs/releases/PLAY_RELEASE.md`). The sync privacy policy and deletion page
-  are included in the 2026-10-04 merge; confirm publication after Pages deploys.
+  are included in the 2026-10-04 merge. Published: on 2026-10-07 all four
+  pages returned 200 without sign-in and matched `0176b52`'s `docs/` exactly.
+  The URL entered in Play Console is still unconfirmed (needs Console access).
+- No production sync endpoint or host exists (architecture: production hosting
+  undecided), so the upload AAB cannot be built. Release signing falls back to
+  the debug key when `android/key.properties` is absent
+  (`android/app/build.gradle.kts`); verify the certificate of every upload AAB.
 - ~~Account deletion must be reachable from the UI.~~ Resolved 2026-09-24
   (architecture 5.1, D19): "Delete account" in the sync card, confirmed with the
   current password; the server deletes the whole account graph; local usage
@@ -369,8 +460,19 @@ These are not backend tasks but must be resolved before sync ships to users:
   and refresh neither deadlock nor resurrect anything, and a new account on the
   same installation uploads the full local history (`AccountDeletionIT`, Flutter
   repository/view-model/card tests, real-backend E2E).
-- Email addresses are never verified. Registration therefore discloses that an
-  account exists (architecture 5.1, D11). Revisit if verification is added.
+- **Account readiness remains a public-launch blocker:** current email addresses
+  are unverified and there is no password-reset flow. Complete section 5's
+  account-readiness gate, including public pages, transactional delivery,
+  existing-account transition and D11 review, before shipping public account/sync.
+- Found 2026-10-07 (product readiness review; these apply to any public build,
+  with or without sync): the app has no in-app link to the privacy policy (Play
+  User Data policy requires a link or text in the app as well as in Console); the
+  in-app "Send feedback" mailto (`settings_screen.dart`) goes to a personal
+  address, not the published support mailbox (issue #12); the sync card says
+  "daily usage totals" but not that app names, package names, launch counts and
+  the device model are uploaded, including in the background. Whether Play
+  treats that card as sufficient prominent disclosure is UNCERTAIN; the privacy
+  page lists the fields. Release checklist: `docs/releases/PLAY_RELEASE.md` 7.
 - Authentication rate limiting landed in Step 2 (architecture 5.1, D15).
   Authenticated budgets for device registration, upload and history followed in
   D18 (2026-09-24); device listing is deliberately unthrottled. Deployment

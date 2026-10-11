@@ -3,6 +3,7 @@ import 'dart:convert';
 import '../../domain/models/block_routine.dart';
 import '../../domain/models/restriction_rule.dart';
 import '../../domain/models/usage_details_chart.dart';
+import '../../domain/models/usage_item.dart';
 import '../../domain/repositories/settings_repository.dart';
 import '../datasources/focus_trace_local_data_source.dart';
 
@@ -19,6 +20,36 @@ class SettingsRepositoryImpl implements SettingsRepository {
   static const _usageDetailsChartKey = 'usage_details_chart';
 
   final FocusTraceLocalDataSource _localDataSource;
+
+  @override
+  Future<Map<String, UsageCategory>> appCategoryOverrides() async {
+    final raw = await _localDataSource.readSetting('app_category_overrides');
+    if (raw == null) return {};
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is! Map<String, dynamic>) return {};
+      final categories = {
+        for (final value in UsageCategory.values) value.name: value,
+      };
+      return {
+        for (final entry in decoded.entries)
+          if (entry.key.isNotEmpty && categories.containsKey(entry.value))
+            entry.key: categories[entry.value]!,
+      };
+    } on FormatException {
+      return {};
+    }
+  }
+
+  @override
+  Future<void> setAppCategoryOverrides(Map<String, UsageCategory> overrides) {
+    return _localDataSource.writeSetting(
+      'app_category_overrides',
+      jsonEncode({
+        for (final entry in overrides.entries) entry.key: entry.value.name,
+      }),
+    );
+  }
 
   @override
   Future<UsageDetailsChart> usageDetailsChart() async {

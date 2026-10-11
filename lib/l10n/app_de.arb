@@ -1,4 +1,9 @@
 {
+  "appCategoryAll": "Alle",
+  "appCategoryTitle": "App-Kategorie",
+  "appCategoryAutomatic": "Automatisch",
+  "appCategorySave": "Kategorie speichern",
+  "appCategorySaveError": "Die Kategorie konnte nicht gespeichert werden. Bitte erneut versuchen.",
   "@@locale": "de",
   "usageDetailsBarChart": "Säulendiagramm",
   "usageDetailsAreaChart": "Nutzungsverlauf",
@@ -528,6 +533,7 @@
   "settingsImportSuccess": "FocusTrace-Sicherung importiert.",
   "settingsImportDialogTitle": "FocusTrace-Daten importieren?",
   "settingsImportDialogBody": "Die Sicherung wird mit vorhandenen lokalen Daten zusammengeführt. Übereinstimmende Einträge und Einstellungen verwenden die importierten Werte.",
+  "settingsImportDialogDetail": "Das gilt auch für Einschränkungen, Sperrroutinen, ausgeschlossene Apps und App-Kategorien, sofern die Sicherung sie enthält. Auf diesem Gerät wird nichts gelöscht, und die Synchronisierungsanmeldung bleibt unverändert.",
   "settingsLanguageTitle": "Sprache",
   "settingsLanguageSystemDefault": "Systemeinstellung",
   "settingsChooseLanguage": "Sprache auswählen",
@@ -540,7 +546,10 @@
   "settingsWindowsTrackingInterval": "Erfassungsintervall unter Windows",
   "settingsWindowsIdleTimeout": "Zeitlimit für Inaktivität unter Windows",
   "settingsClearDataDialogTitle": "Alle lokalen Daten löschen?",
-  "settingsClearDataDialogBody": "Dadurch werden Nutzungsverlauf und Einstellungen dauerhaft von diesem Gerät gelöscht. Deine Sprachauswahl bleibt erhalten. Exportiere zuerst eine Sicherung, falls du die Daten später benötigst.",
+  "settingsClearDataDeletes": "Wird von diesem Gerät gelöscht: Nutzungsverlauf und Berichte, Einschränkungen und Sperrroutinen, ausgeschlossene Apps, App-Kategorien und weitere Einstellungen.",
+  "settingsClearDataKeeps": "Bleibt erhalten: deine Spracheinstellung. Android-Berechtigungen werden nicht geändert. Exportiere vorher eine Sicherung, falls du diese Daten noch brauchst.",
+  "settingsClearDataKeepsSync": "Dein Cloud-Konto und bereits synchronisierte Daten werden nicht gelöscht. Die Synchronisierung wird auf diesem Gerät ausgeschaltet.",
+  "settingsClearDataDone": "Lokale Daten gelöscht.",
   "settingsCancel": "Abbrechen",
   "settingsClear": "Löschen",
   "settingsSave": "Speichern",
@@ -626,5 +635,5 @@
   "settingsSyncDeleteAcknowledge": "Ich verstehe, dass mein Cloud-Konto damit endgültig gelöscht wird.",
   "settingsSyncDeleting": "Wird gelöscht…",
   "settingsSyncErrorWrongPassword": "Das Passwort ist nicht korrekt. Dein Konto wurde nicht gelöscht.",
-  "settingsPrivacyBodySync": "Dein Nutzungsverlauf und deine Einstellungen bleiben auf diesem Gerät, außer du exportierst eine Sicherung oder aktivierst unten die Cloud-Synchronisierung."
+  "settingsPrivacyBodySync": "Dein Nutzungsverlauf und deine Einstellungen bleiben auf diesem Gerät, außer du exportierst eine Sicherung oder aktivierst die Cloud-Synchronisierung."
 }

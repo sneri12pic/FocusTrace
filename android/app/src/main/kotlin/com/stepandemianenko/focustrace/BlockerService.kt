@@ -36,6 +36,7 @@ class BlockerService : Service() {
 
     private lateinit var windowManager: WindowManager
     private var configuration = RestrictionConfiguration()
+    private val configurationCache = RestrictionConfigurationCache()
     private var overlayView: View? = null
     private var overlayAppKey: String? = null
     private var lastBlockedAppKey: String? = null
@@ -225,14 +226,7 @@ class BlockerService : Service() {
     private fun loadConfiguration(): RestrictionConfiguration {
         val json = getSharedPreferences(RestrictionRules.PREFS_NAME, Context.MODE_PRIVATE)
             .getString(RestrictionRules.PREFS_RULES_KEY, null)
-        val now = System.currentTimeMillis()
-        val parsed = RestrictionRules.parseConfiguration(json)
-        return parsed.copy(
-            rules = parsed.rules.filter {
-                it.type != RestrictionRuleType.BlockNow ||
-                    (it.untilMs != null && it.untilMs > now)
-            },
-        )
+        return configurationCache.at(json, System.currentTimeMillis())
     }
 
     private fun maybeNotifyDailyLimitWarnings(

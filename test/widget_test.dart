@@ -1,9 +1,171 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:focustrace/focus_trace.dart';
+import 'package:focustrace/src/presentation/widgets/app_category_widgets.dart';
 
 void main() {
+  for (final historical in [false, true]) {
+    testWidgets(
+      'category filter and editor keep usage unchanged ($historical)',
+      (tester) async {
+        tester.view.physicalSize = const Size(430, 1000);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+        final settings = _FakeSettingsRepository();
+        final usage = _FakeUsageRepository()
+          ..serveHistory = historical
+          ..extraSummaries = const [
+            AppUsageSummary(
+              appName: 'YouTube',
+              packageName: 'youtube.app',
+              totalDurationSeconds: 1500,
+              percentageOfTotal: 0.25,
+            ),
+          ];
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              usagePlatformProvider.overrideWithValue(UsagePlatform.windows),
+              usageRepositoryProvider.overrideWithValue(usage),
+              reportRepositoryProvider.overrideWithValue(
+                _FakeReportRepository(),
+              ),
+              platformDataSourceProvider.overrideWithValue(
+                _FakePlatformDataSource(),
+              ),
+              settingsRepositoryProvider.overrideWithValue(settings),
+              appLanguageRepositoryProvider.overrideWithValue(
+                _FakeAppLanguageRepository(),
+              ),
+            ],
+            child: const FocusTraceApp(),
+          ),
+        );
+        for (var i = 0; i < 4; i++) {
+          await tester.pump(const Duration(seconds: 1));
+        }
+        final container = ProviderScope.containerOf(
+          tester.element(find.byType(DashboardScreen)),
+        );
+        if (historical) {
+          await container
+              .read(dashboardViewModelProvider.notifier)
+              .previousDay();
+          await tester.pump();
+        }
+        final before = container.read(dashboardViewModelProvider);
+        expect(before.totalDurationSeconds, 6000);
+        final originalPercentages = before.summaries
+            .map((s) => s.percentageOfTotal)
+            .toList();
+        final originalRules = container
+            .read(restrictionsViewModelProvider)
+            .rules;
+        final filter = find.byKey(
+          const ValueKey('category-filter-entertainment'),
+        );
+        await tester.ensureVisible(filter);
+        await tester.pump(const Duration(milliseconds: 300));
+        await tester.tap(filter);
+        await tester.pump();
+        expect(find.byType(SummaryTile), findsOneWidget);
+        expect(
+          tester.widget<SummaryTile>(find.byType(SummaryTile)).summary.appName,
+          'YouTube',
+        );
+        expect(
+          tester.widget<BubbleChart>(find.byType(BubbleChart)).items,
+          hasLength(2),
+        );
+        final dot = tester.widget<UsageCategoryLabel>(
+          find.byType(UsageCategoryLabel),
+        );
+        expect(dot.category, UsageCategory.entertainment);
+        expect(dot.category.color, const Color(0xFFFFD166));
+
+        await tester.ensureVisible(find.text('YouTube'));
+        await tester.tap(find.text('YouTube'));
+        await tester.pump();
+        await tester.pump(const Duration(seconds: 1));
+        expect(find.byType(UsageDetailsScreen), findsOneWidget);
+        final tag = find.byKey(const ValueKey('app-category-tag'));
+        expect(
+          tester.widget<CategoryPill>(tag).category,
+          UsageCategory.entertainment,
+        );
+        await tester.tap(tag);
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 400));
+        final web = find.widgetWithText(RadioListTile<String>, 'Web');
+        await tester.ensureVisible(web);
+        await tester.pump(const Duration(milliseconds: 300));
+        await tester.tap(web);
+        final save = find.byKey(const ValueKey('save-app-category'));
+        await tester.ensureVisible(save);
+        await tester.pump();
+        settings.failCategoryWrites = true;
+        await tester.tap(save);
+        await tester.pump();
+        expect(
+          find.text('Couldn’t save the category. Please try again.'),
+          findsOneWidget,
+        );
+        expect(settings.categories, isEmpty);
+        expect(
+          tester.widget<CategoryPill>(tag).category,
+          UsageCategory.entertainment,
+        );
+        settings.failCategoryWrites = false;
+        await tester.ensureVisible(save);
+        await tester.tap(save);
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 400));
+        expect(settings.categories, {'youtube.app': UsageCategory.web});
+        expect(tester.widget<CategoryPill>(tag).category, UsageCategory.web);
+        Navigator.of(tester.element(find.byType(UsageDetailsScreen))).pop();
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 400));
+        // The last entertainment app moved: the absent filter falls back to All.
+        expect(
+          find.byKey(const ValueKey('category-filter-entertainment')),
+          findsNothing,
+        );
+        expect(
+          tester
+              .widget<ChoiceChip>(
+                find.byKey(const ValueKey('category-filter-all')),
+              )
+              .selected,
+          isTrue,
+        );
+        expect(find.byType(SummaryTile), findsNWidgets(2));
+        expect(
+          tester
+              .widget<BubbleChart>(find.byType(BubbleChart))
+              .items
+              .singleWhere((item) => item.id == 'youtube.app')
+              .category,
+          UsageCategory.web,
+        );
+        final after = container.read(dashboardViewModelProvider);
+        expect(after.totalDurationSeconds, before.totalDurationSeconds);
+        expect(
+          after.summaries.map((s) => s.percentageOfTotal).toList(),
+          originalPercentages,
+        );
+        expect(
+          container.read(restrictionsViewModelProvider).rules,
+          originalRules,
+        );
+        expect(tester.takeException(), isNull);
+      },
+    );
+  }
+
   for (final historical in [false, true]) {
     testWidgets(
       'returning to Android dashboard refreshes ${historical ? 'historical' : 'today'} usage without reopening',
@@ -220,12 +382,24 @@ void main() {
     await tester.tap(find.byType(UsageBubble));
     await tester.pump(const Duration(milliseconds: 500));
 
-    expect(find.text('Productivity'), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byType(BubbleTooltip),
+        matching: find.text('Productivity'),
+      ),
+      findsOneWidget,
+    );
 
     // Let the tooltip auto-dismiss so no timers are pending at test end.
     await tester.pump(const Duration(seconds: 4));
     await tester.pump(const Duration(seconds: 1));
-    expect(find.text('Productivity'), findsNothing);
+    expect(
+      find.descendant(
+        of: find.byType(BubbleTooltip),
+        matching: find.text('Productivity'),
+      ),
+      findsNothing,
+    );
 
     await tester.ensureVisible(find.text('Editor'));
     await tester.pump(const Duration(milliseconds: 300));
@@ -378,6 +552,251 @@ void main() {
     expect(find.text('Allow'), findsNothing);
     expect(tester.takeException(), isNull);
   });
+
+  group('settings', () {
+    Future<_FakeUsageRepository> openSettings(
+      WidgetTester tester, {
+      _FakeUsageRepository? usage,
+      _FakeSyncRepository? sync,
+      _FakeDataTransferRepository? transfer,
+      double textScale = 1,
+      Size size = const Size(430, 1600),
+    }) async {
+      tester.view.physicalSize = size;
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      final usageRepository = usage ?? _FakeUsageRepository();
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            usagePlatformProvider.overrideWithValue(UsagePlatform.windows),
+            usageRepositoryProvider.overrideWithValue(usageRepository),
+            reportRepositoryProvider.overrideWithValue(_FakeReportRepository()),
+            platformDataSourceProvider.overrideWithValue(
+              _FakePlatformDataSource(),
+            ),
+            settingsRepositoryProvider.overrideWithValue(
+              _FakeSettingsRepository(),
+            ),
+            appLanguageRepositoryProvider.overrideWithValue(
+              _FakeAppLanguageRepository(),
+            ),
+            syncSupportedProvider.overrideWithValue(sync != null),
+            if (sync != null) syncRepositoryProvider.overrideWithValue(sync),
+            dataTransferSupportedProvider.overrideWithValue(transfer != null),
+            if (transfer != null)
+              dataTransferRepositoryProvider.overrideWithValue(transfer),
+          ],
+          child: const FocusTraceApp(),
+        ),
+      );
+      for (var i = 0; i < 3; i++) {
+        await tester.pump(const Duration(seconds: 1));
+      }
+      await tester.tap(find.byIcon(Icons.settings));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+      // Scaled only here: this group checks Settings, not the dashboard.
+      if (textScale != 1) {
+        tester.platformDispatcher.textScaleFactorTestValue = textScale;
+        addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+        await tester.pump();
+      }
+      return usageRepository;
+    }
+
+    double top(WidgetTester tester, String text) =>
+        tester.getTopLeft(find.text(text)).dy;
+
+    Future<void> tapRow(WidgetTester tester, String key) async {
+      // The list builds lazily, so rows far down may not exist yet.
+      await tester.scrollUntilVisible(
+        find.byKey(ValueKey(key)),
+        200,
+        scrollable: find
+            .descendant(
+              of: find.byType(SettingsScreen),
+              matching: find.byType(Scrollable),
+            )
+            .first,
+      );
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.tap(find.byKey(ValueKey(key)));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+    }
+
+    final clearSheet = find.byKey(const ValueKey('settings-clear-data-sheet'));
+    final confirm = find.byKey(const ValueKey('settings-sheet-confirm'));
+
+    testWidgets('a build without sync orders sections by intent', (
+      tester,
+    ) async {
+      await openSettings(tester);
+
+      expect(find.text('Account & sync'), findsNothing);
+      expect(find.byKey(const ValueKey('settings-export-data')), findsNothing);
+      expect(top(tester, 'General'), lessThan(top(tester, 'Activity & data')));
+      expect(
+        top(tester, 'Activity & data'),
+        lessThan(top(tester, 'Data and privacy')),
+      );
+      expect(top(tester, 'Data and privacy'), lessThan(top(tester, 'Support')));
+      final clear = tester.widget<ListTile>(
+        find.byKey(const ValueKey('settings-clear-data')),
+      );
+      final error = Theme.of(
+        tester.element(find.byType(SettingsScreen)),
+      ).colorScheme.error;
+      expect(clear.textColor, error);
+      expect(clear.iconColor, error);
+      // Without sync, the privacy text may say nothing is uploaded.
+      expect(find.textContaining('never uploads'), findsOneWidget);
+    });
+
+    for (final signedIn in [false, true]) {
+      testWidgets('a sync build puts the account before data '
+          '(signed in: $signedIn)', (tester) async {
+        await openSettings(
+          tester,
+          sync: _FakeSyncRepository()..signedIn = signedIn,
+          transfer: _FakeDataTransferRepository(),
+        );
+
+        expect(
+          top(tester, 'Activity & data'),
+          lessThan(top(tester, 'Account & sync')),
+        );
+        expect(
+          top(tester, 'Account & sync'),
+          lessThan(top(tester, 'Data and privacy')),
+        );
+        expect(find.byKey(const ValueKey('settings-export-data')), findsOne);
+        expect(
+          find.byKey(const ValueKey('sync-more-button')),
+          signedIn ? findsOneWidget : findsNothing,
+        );
+        expect(
+          find.byKey(const ValueKey('sync-email-field')),
+          signedIn ? findsNothing : findsOneWidget,
+        );
+        expect(find.textContaining('never uploads'), findsNothing);
+        expect(find.textContaining('turn on cloud sync below'), findsNothing);
+      });
+    }
+
+    testWidgets('cancelling Delete local data deletes nothing', (tester) async {
+      final usage = await openSettings(tester);
+
+      await tapRow(tester, 'settings-clear-data');
+      expect(clearSheet, findsOneWidget);
+      expect(find.textContaining('restrictions and block routines'), findsOne);
+      expect(find.textContaining('language choice'), findsOneWidget);
+      // No sync in this build, so no word about a cloud account.
+      expect(find.textContaining('cloud account'), findsNothing);
+
+      await tester.tap(find.byKey(const ValueKey('settings-sheet-cancel')));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+      expect(clearSheet, findsNothing);
+
+      await tapRow(tester, 'settings-clear-data');
+      final navigator = tester.state<NavigatorState>(find.byType(Navigator));
+      await navigator.maybePop();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+      expect(clearSheet, findsNothing);
+      expect(usage.clearCalls, 0);
+    });
+
+    testWidgets('Delete local data shows progress, cannot be dismissed, '
+        'reports a failure and closes only on success', (tester) async {
+      final usage = _FakeUsageRepository()
+        ..clearHold = Completer<void>()
+        ..clearFailure = StateError('disk');
+      await openSettings(tester, usage: usage, sync: _FakeSyncRepository());
+
+      await tapRow(tester, 'settings-clear-data');
+      expect(find.textContaining('cloud account'), findsOneWidget);
+
+      await tester.tap(confirm);
+      await tester.pump();
+      expect(tester.widget<FilledButton>(confirm).onPressed, isNull);
+      expect(
+        find.descendant(
+          of: clearSheet,
+          matching: find.byType(CircularProgressIndicator),
+        ),
+        findsOneWidget,
+      );
+      await tester.tap(confirm, warnIfMissed: false);
+      final navigator = tester.state<NavigatorState>(find.byType(Navigator));
+      await navigator.maybePop();
+      await tester.pump();
+      expect(clearSheet, findsOneWidget);
+
+      usage.clearHold!.complete();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+      expect(usage.clearCalls, 1);
+      expect(clearSheet, findsOneWidget, reason: 'stays open on failure');
+      expect(find.byKey(const ValueKey('settings-sheet-error')), findsOne);
+      expect(find.text('Local data deleted.'), findsNothing);
+
+      usage
+        ..clearHold = null
+        ..clearFailure = null;
+      await tester.tap(confirm);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+      expect(usage.clearCalls, 2);
+      expect(clearSheet, findsNothing);
+      expect(find.text('Local data deleted.'), findsOneWidget);
+    });
+
+    testWidgets('import asks first and explains what is replaced', (
+      tester,
+    ) async {
+      final transfer = _FakeDataTransferRepository();
+      await openSettings(tester, transfer: transfer);
+      final sheet = find.byKey(const ValueKey('settings-import-sheet'));
+
+      await tapRow(tester, 'settings-import-data');
+      expect(sheet, findsOneWidget);
+      expect(
+        find.textContaining('Nothing on this device is deleted'),
+        findsOne,
+      );
+      await tester.tap(find.byKey(const ValueKey('settings-sheet-cancel')));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+      expect(transfer.importCalls, 0);
+
+      await tapRow(tester, 'settings-import-data');
+      await tester.tap(confirm);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+      expect(sheet, findsNothing);
+      expect(transfer.importCalls, 1);
+    });
+
+    testWidgets('the delete sheet fits a small phone at 200% text', (
+      tester,
+    ) async {
+      await openSettings(
+        tester,
+        sync: _FakeSyncRepository(),
+        textScale: 2,
+        size: const Size(320, 640),
+      );
+      await tapRow(tester, 'settings-clear-data');
+      await tester.ensureVisible(confirm);
+      await tester.pump();
+      expect(tester.takeException(), isNull);
+      expect(confirm.hitTestable(), findsOneWidget);
+      expect(tester.getSize(confirm).height, greaterThanOrEqualTo(48));
+    });
+  });
 }
 
 class _FakeAppLanguageRepository implements AppLanguageRepository {
@@ -400,9 +819,18 @@ class _FakeUsageRepository implements UsageRepository {
   bool serveHistory = false;
   bool usageUnavailable = false;
   bool emptyToday = false;
+  List<AppUsageSummary> extraSummaries = const [];
+
+  int clearCalls = 0;
+  Object? clearFailure;
+  Completer<void>? clearHold;
 
   @override
-  Future<void> clearAllData() async {}
+  Future<void> clearAllData() async {
+    clearCalls++;
+    await clearHold?.future;
+    if (clearFailure != null) throw clearFailure!;
+  }
 
   @override
   Future<List<AppUsageSummary>> getTodaySummaries() async {
@@ -415,6 +843,7 @@ class _FakeUsageRepository implements UsageRepository {
         percentageOfTotal: 1,
         launchCount: 3,
       ),
+      ...extraSummaries,
     ];
   }
 
@@ -577,6 +1006,21 @@ class _FakePlatformDataSource implements PlatformUsageDataSource {
 }
 
 class _FakeSettingsRepository implements SettingsRepository {
+  Map<String, UsageCategory> categories = {};
+  bool failCategoryWrites = false;
+
+  @override
+  Future<Map<String, UsageCategory>> appCategoryOverrides() async =>
+      Map.of(categories);
+
+  @override
+  Future<void> setAppCategoryOverrides(
+    Map<String, UsageCategory> overrides,
+  ) async {
+    if (failCategoryWrites) throw StateError('disk full');
+    categories = Map.of(overrides);
+  }
+
   UsageDetailsChart chart = UsageDetailsChart.bars;
 
   @override
@@ -666,4 +1110,37 @@ class _FakeSettingsRepository implements SettingsRepository {
     String appKey,
     RestrictionRuleType type,
   ) async {}
+}
+
+class _FakeSyncRepository implements SyncRepository {
+  bool signedIn = false;
+
+  @override
+  Future<bool> get isSignedIn async => signedIn;
+
+  @override
+  Future<String?> accountEmail() async => signedIn ? 'a@example.com' : null;
+
+  @override
+  Future<bool> isSyncEnabled() async => false;
+
+  @override
+  Future<DateTime?> lastSuccessfulSyncAt() async => null;
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _FakeDataTransferRepository implements DataTransferRepository {
+  int importCalls = 0;
+
+  @override
+  Future<bool> exportData() async => false;
+
+  // Null: the user closed the file picker, so nothing was imported.
+  @override
+  Future<DataImportResult?> importData() async {
+    importCalls++;
+    return null;
+  }
 }

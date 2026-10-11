@@ -1,4 +1,9 @@
 {
+  "appCategoryAll": "Todas",
+  "appCategoryTitle": "Categoria do aplicativo",
+  "appCategoryAutomatic": "Automática",
+  "appCategorySave": "Salvar categoria",
+  "appCategorySaveError": "Não foi possível salvar a categoria. Tente novamente.",
   "@@locale": "pt",
   "usageDetailsBarChart": "Gráfico de barras",
   "usageDetailsAreaChart": "Tendência de uso",
@@ -528,6 +533,7 @@
   "settingsImportSuccess": "Backup do FocusTrace importado.",
   "settingsImportDialogTitle": "Importar dados do FocusTrace?",
   "settingsImportDialogBody": "O backup será combinado com os dados locais existentes. Registros e configurações correspondentes usarão os valores importados.",
+  "settingsImportDialogDetail": "Isso inclui restrições, rotinas de bloqueio, aplicativos excluídos e categorias de aplicativos, se o backup os tiver. Nada neste dispositivo é excluído e a sessão de sincronização não muda.",
   "settingsLanguageTitle": "Idioma",
   "settingsLanguageSystemDefault": "Padrão do sistema",
   "settingsChooseLanguage": "Escolher idioma",
@@ -540,7 +546,10 @@
   "settingsWindowsTrackingInterval": "Intervalo de rastreamento no Windows",
   "settingsWindowsIdleTimeout": "Tempo limite de inatividade do Windows",
   "settingsClearDataDialogTitle": "Excluir todos os dados locais?",
-  "settingsClearDataDialogBody": "Isso exclui permanentemente deste dispositivo o histórico de uso e as configurações. Sua escolha de idioma será preservada. Exporte um backup primeiro se você puder precisar desses dados.",
+  "settingsClearDataDeletes": "Será excluído deste dispositivo: histórico de uso e relatórios, restrições e rotinas de bloqueio, aplicativos excluídos, categorias de aplicativos e demais configurações.",
+  "settingsClearDataKeeps": "Mantido: sua escolha de idioma. As permissões do Android não mudam. Exporte um backup antes se puder precisar desses dados.",
+  "settingsClearDataKeepsSync": "Sua conta na nuvem e os dados já sincronizados não são excluídos. A sincronização é desativada neste dispositivo.",
+  "settingsClearDataDone": "Dados locais excluídos.",
   "settingsCancel": "Cancelar",
   "settingsClear": "Excluir",
   "settingsSave": "Salvar",
@@ -626,5 +635,5 @@
   "settingsSyncDeleteAcknowledge": "Entendo que isto exclui permanentemente a minha conta na nuvem.",
   "settingsSyncDeleting": "Excluindo…",
   "settingsSyncErrorWrongPassword": "Essa senha não está correta. Sua conta não foi excluída.",
-  "settingsPrivacyBodySync": "O seu histórico de uso e as definições ficam neste dispositivo, a menos que exporte uma cópia ou ative a sincronização na nuvem abaixo."
+  "settingsPrivacyBodySync": "O seu histórico de uso e as definições ficam neste dispositivo, a menos que exporte uma cópia ou ative a sincronização na nuvem."
 }

@@ -6,6 +6,19 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:focustrace/focus_trace.dart';
 
 class _FakeSettingsRepository implements SettingsRepository {
+  Map<String, UsageCategory> categories = {};
+
+  @override
+  Future<Map<String, UsageCategory>> appCategoryOverrides() async =>
+      Map.of(categories);
+
+  @override
+  Future<void> setAppCategoryOverrides(
+    Map<String, UsageCategory> overrides,
+  ) async {
+    categories = Map.of(overrides);
+  }
+
   UsageDetailsChart chart = UsageDetailsChart.bars;
 
   @override

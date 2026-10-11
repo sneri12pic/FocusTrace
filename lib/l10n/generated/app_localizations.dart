@@ -108,6 +108,36 @@ abstract class AppLocalizations {
     Locale('uk'),
   ];
 
+  /// No description provided for @appCategoryAll.
+  ///
+  /// In en, this message translates to:
+  /// **'All'**
+  String get appCategoryAll;
+
+  /// No description provided for @appCategoryTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'App category'**
+  String get appCategoryTitle;
+
+  /// No description provided for @appCategoryAutomatic.
+  ///
+  /// In en, this message translates to:
+  /// **'Automatic'**
+  String get appCategoryAutomatic;
+
+  /// No description provided for @appCategorySave.
+  ///
+  /// In en, this message translates to:
+  /// **'Save category'**
+  String get appCategorySave;
+
+  /// No description provided for @appCategorySaveError.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn’t save the category. Please try again.'**
+  String get appCategorySaveError;
+
   /// No description provided for @usageDetailsBarChart.
   ///
   /// In en, this message translates to:
@@ -1437,6 +1467,12 @@ abstract class AppLocalizations {
   /// **'The backup will be merged with existing local data. Matching records and settings will use the imported values.'**
   String get settingsImportDialogBody;
 
+  /// No description provided for @settingsImportDialogDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'This includes restrictions, block routines, excluded apps and app categories when the backup has them. Nothing on this device is deleted, and the sync sign-in on this device is not changed.'**
+  String get settingsImportDialogDetail;
+
   /// No description provided for @settingsLanguageTitle.
   ///
   /// In en, this message translates to:
@@ -1509,11 +1545,29 @@ abstract class AppLocalizations {
   /// **'Delete all local data?'**
   String get settingsClearDataDialogTitle;
 
-  /// No description provided for @settingsClearDataDialogBody.
+  /// No description provided for @settingsClearDataDeletes.
   ///
   /// In en, this message translates to:
-  /// **'This permanently deletes usage history and settings from this device. Your language choice is preserved. Export a backup first if you may need this data.'**
-  String get settingsClearDataDialogBody;
+  /// **'Deletes from this device: usage history and reports, restrictions and block routines, excluded apps, app categories and other settings.'**
+  String get settingsClearDataDeletes;
+
+  /// No description provided for @settingsClearDataKeeps.
+  ///
+  /// In en, this message translates to:
+  /// **'Kept: your language choice. Android permissions are not changed. Export a backup first if you may need this data.'**
+  String get settingsClearDataKeeps;
+
+  /// No description provided for @settingsClearDataKeepsSync.
+  ///
+  /// In en, this message translates to:
+  /// **'Your cloud account and data already synced are not deleted. Sync turns off on this device.'**
+  String get settingsClearDataKeepsSync;
+
+  /// No description provided for @settingsClearDataDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Local data deleted.'**
+  String get settingsClearDataDone;
 
   /// No description provided for @settingsCancel.
   ///
@@ -1902,7 +1956,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsPrivacyBodySync.
   ///
   /// In en, this message translates to:
-  /// **'Your usage history and settings stay on this device unless you export a backup or turn on cloud sync below.'**
+  /// **'Your usage history and settings stay on this device unless you export a backup or turn on cloud sync.'**
   String get settingsPrivacyBodySync;
 }
 
