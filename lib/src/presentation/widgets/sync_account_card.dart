@@ -61,6 +61,17 @@ class _SyncAccountCardState extends ConsumerState<SyncAccountCard> {
     final state = ref.watch(syncViewModelProvider);
     final l10n = context.l10n;
 
+    // Signed in, the card is a list of rows aligned like the other Settings
+    // cards; the section header already names it, so no title or intro.
+    if (!state.isLoading && state.isSignedIn) {
+      return Card(
+        elevation: 0,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: _signedIn(context, state),
+        ),
+      );
+    }
     return Card(
       elevation: 0,
       child: Padding(
@@ -68,19 +79,11 @@ class _SyncAccountCardState extends ConsumerState<SyncAccountCard> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    l10n.settingsSyncTitle,
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
-                if (!state.isLoading && state.isSignedIn)
-                  _accountMenu(context, state),
-              ],
+            Text(
+              l10n.settingsSyncTitle,
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
             ),
             const SizedBox(height: 8),
             Text(l10n.settingsSyncBody),
@@ -95,9 +98,7 @@ class _SyncAccountCardState extends ConsumerState<SyncAccountCard> {
                   ),
                 ),
               )
-            else if (state.isSignedIn) ...[
-              ..._signedIn(context, state),
-            ] else
+            else
               ..._signedOut(context, state),
           ],
         ),
@@ -307,52 +308,82 @@ class _SyncAccountCardState extends ConsumerState<SyncAccountCard> {
 
   List<Widget> _signedIn(BuildContext context, SyncState state) {
     final l10n = context.l10n;
+    final theme = Theme.of(context);
     return [
-      if (_accountCreated) ...[
-        _Notice(
-          key: const ValueKey('sync-account-created'),
-          tone: _Tone.success,
-          title: l10n.settingsSyncAccountCreated,
-          message: [
-            l10n.settingsSyncSignedInAs(state.accountEmail ?? ''),
-            if (!state.syncEnabled) l10n.settingsSyncCreatedNextStep,
-          ].join('\n'),
-          // The next step is offered, never taken: sync stays opt-in.
-          action: state.syncEnabled
-              ? null
-              : FilledButton.tonal(
-                  key: const ValueKey('sync-turn-on-button'),
-                  onPressed: () => ref
-                      .read(syncViewModelProvider.notifier)
-                      .setSyncEnabled(true),
-                  child: Text(l10n.settingsSyncTurnOnSync),
-                ),
+      if (_accountCreated)
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+          child: _Notice(
+            key: const ValueKey('sync-account-created'),
+            tone: _Tone.success,
+            title: l10n.settingsSyncAccountCreated,
+            message: [
+              l10n.settingsSyncSignedInAs(state.accountEmail ?? ''),
+              if (!state.syncEnabled) l10n.settingsSyncCreatedNextStep,
+            ].join('\n'),
+            // The next step is offered, never taken: sync stays opt-in.
+            action: state.syncEnabled
+                ? null
+                : FilledButton.tonal(
+                    key: const ValueKey('sync-turn-on-button'),
+                    onPressed: () => ref
+                        .read(syncViewModelProvider.notifier)
+                        .setSyncEnabled(true),
+                    child: Text(l10n.settingsSyncTurnOnSync),
+                  ),
+          ),
         ),
-        const SizedBox(height: 8),
-      ],
       ListTile(
         key: const ValueKey('sync-account-tile'),
-        contentPadding: EdgeInsets.zero,
-        leading: const Icon(Icons.account_circle_outlined),
-        title: Text(state.accountEmail ?? ''),
-        subtitle: Text(_lastSyncText(context, state)),
-        trailing: IconButton(
-          key: const ValueKey('sync-now-button'),
-          tooltip: l10n.settingsSyncNow,
-          onPressed: state.canSyncNow
-              ? () => ref.read(syncViewModelProvider.notifier).syncNow()
-              : null,
-          icon: state.isSyncing
-              ? const SizedBox.square(
-                  dimension: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : const Icon(Icons.sync),
+        contentPadding: const EdgeInsetsDirectional.only(start: 16, end: 4),
+        // Shrinks a long address just enough to show it whole on one line.
+        title: FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: AlignmentDirectional.centerStart,
+          child: Text(state.accountEmail ?? '', maxLines: 1),
+        ),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(_lastSyncText(context, state)),
+            if (state.phase != SyncPhase.idle)
+              Text(
+                key: const ValueKey('sync-phase-label'),
+                switch (state.phase) {
+                  SyncPhase.syncing => l10n.settingsSyncStateSyncing,
+                  SyncPhase.success => l10n.settingsSyncStateSuccess,
+                  SyncPhase.error => l10n.settingsSyncStateError,
+                  SyncPhase.idle => '',
+                },
+                style: state.phase == SyncPhase.error
+                    ? TextStyle(color: theme.colorScheme.error)
+                    : null,
+              ),
+          ],
+        ),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            IconButton(
+              key: const ValueKey('sync-now-button'),
+              tooltip: l10n.settingsSyncNow,
+              onPressed: state.canSyncNow
+                  ? () => ref.read(syncViewModelProvider.notifier).syncNow()
+                  : null,
+              icon: state.isSyncing
+                  ? const SizedBox.square(
+                      dimension: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.sync),
+            ),
+            _accountMenu(context, state),
+          ],
         ),
       ),
       SwitchListTile(
         key: const ValueKey('sync-enabled-switch'),
-        contentPadding: EdgeInsets.zero,
         value: state.syncEnabled,
         title: Text(l10n.settingsSyncEnabledLabel),
         subtitle: Text(l10n.settingsSyncEnabledSubtitle),
@@ -362,19 +393,12 @@ class _SyncAccountCardState extends ConsumerState<SyncAccountCard> {
                   .read(syncViewModelProvider.notifier)
                   .setSyncEnabled(value),
       ),
-      if (state.phase != SyncPhase.idle) ...[
-        const SizedBox(height: 8),
-        Text(key: const ValueKey('sync-phase-label'), switch (state.phase) {
-          SyncPhase.syncing => l10n.settingsSyncStateSyncing,
-          SyncPhase.success => l10n.settingsSyncStateSuccess,
-          SyncPhase.error => l10n.settingsSyncStateError,
-          SyncPhase.idle => '',
-        }),
-      ],
-      if (state.error != null) ...[
-        const SizedBox(height: 8),
-        _error(context, _errorText(context, state.error!)),
-      ],
+      if (state.error != null)
+        // Aligned with the row text, under the controls it explains.
+        Padding(
+          padding: const EdgeInsetsDirectional.fromSTEB(16, 0, 16, 16),
+          child: _error(context, _errorText(context, state.error!)),
+        ),
     ];
   }
 
