@@ -90,6 +90,14 @@ android {
     }
 }
 
+// Profile APKs are small enough to sideload; keep them beside the Play app.
+// Set per variant because a profile buildType suffix leaks into plugin libraries.
+androidComponents {
+    onVariants(selector().withBuildType("profile")) { variant ->
+        variant.applicationId.set("com.stepandemianenko.focustrace.dev")
+    }
+}
+
 flutter {
     source = "../.."
 }
