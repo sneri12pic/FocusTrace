@@ -5,6 +5,224 @@ session reads to continue safely.
 
 ---
 
+## 2026-10-11 — Audit fixes: session-loss consent, backup validation, update recovery
+
+Date: 2026-10-11
+Agent: Claude Code
+Goal: Fix audit issues #37, #38 and #36 (in that order); uncommitted, on
+`develop` after `3299be4`, alongside the uncommitted Settings and categories work.
+Completed:
+- #37: `SyncRepositoryImpl._sessionOperation` now ends a lost session (no
+  credential left after a refresh `401`, or one the keystore no longer returns)
+  before and after every gated operation: `sync_enabled=false`, email cleared,
+  periodic work cancelled. `signOut` shares the same idempotent cleanup. Covers
+  foreground and background sync, history reads, account deletion's `401`, and
+  a credential lost while the app was closed. A transport failure keeps the
+  credential and changes nothing. History, watermark and installation id are
+  kept, as on logout. No nested gate acquisition.
+- #38: `importPortableData` validates every row against the portable schema
+  before the first write: integer columns must be JSON integers (no `12.5`,
+  `3.0` or `"600"`), text columns strings, `day` a real `YYYY-MM-DD` date,
+  required columns present and non-null. Nullable columns may be null or absent;
+  `launch_count` may be absent (default 0) but not null. Any violation throws
+  `FormatException` and the transaction writes nothing, so usage data, snapshot
+  metadata and sync settings are unchanged. Device-local settings are still
+  skipped.
+- #36: `BootReceiver` also handles `ACTION_MY_PACKAGE_REPLACED` (manifest and
+  action check), reusing the boot path's rules, overlay and usage-access checks.
+Files materially changed: `sync_repository_impl.dart`,
+`focus_trace_local_data_source.dart`, `BootReceiver.kt`, `AndroidManifest.xml`,
+`test/sync_repository_test.dart` (seven session-loss tests; the deletion `401`
+test now expects local sign-out; the background-revocation test re-enables
+consent because consent without a session no longer survives a run),
+`test/data_transfer_test.dart` (14 tests), new `BootReceiverTest.kt` (six
+Robolectric tests), architecture 8.6 and the deletion steps.
+Verification: focused first: `sync_repository_test` PASS, the new session-loss group fails 6 of 7 with the cleanup disabled; `data_transfer_test` PASS (21); `BootReceiverTest` PASS (6), and 2 fail with the manifest action and check reverted. Then `dart format --set-exit-if-changed lib test` PASS; `flutter analyze` PASS; `flutter test` PASS (325, one live-backend skip); `:app:testDebugUnitTest` PASS (125, 0 failures); `git diff --check` PASS. Android lint and APK build NOT RUN.
+Decisions made: a lost session is a local sign-out (architecture 8.6). Integral
+doubles are rejected rather than coerced.
+Remaining: #36 is NOT device-verified. No phone was attached (`adb devices`
+empty), so an in-place upgrade without reopening FocusTrace was not run. The
+Robolectric tests prove the manifest registration and the receiver's decision,
+not that Android delivers the broadcast after an upgrade. Server ITs not run
+(Docker off; no server code changed).
+Risks / unresolved questions: none known.
+Relevant commit: none; not committed.
+
+---
+
+## 2026-10-07 — Settings order and confirmation cleanup
+
+Date: 2026-10-07
+Agent: Claude Code
+Goal: Make Settings order and destructive actions consistent; uncommitted, on
+`develop` after `3299be4`.
+Completed: sections now run General (language) → Activity & data (reports,
+then tracking exclusions as a list card) → Account & sync → Data and privacy
+(privacy text, export, import, then a red "Delete local data" row below a
+divider) → Support (feedback, external-link icon). Chevrons only on rows that
+open a screen or picker. "Delete local data" and import confirm in a shared
+bottom sheet laid out like account deletion: no drag-to-dismiss, back/barrier
+and buttons disabled while running, error kept in the sheet, closes only on
+success, snackbar after deletion. The clear sheet now states what the code
+deletes (the whole local `settings` table except the restored language: usage
+history and reports, restrictions, routines, exclusions, categories, this
+device's sync opt-in) and that the cloud account is untouched; after clearing,
+the sync card reloads. The import sheet adds that matching restrictions,
+routines, exclusions and categories are replaced and nothing is deleted; sync
+device settings are skipped by import (`SyncSettingKeys.isDeviceLocal`).
+"Turn on cloud sync below" lost "below" in all seven locales. Five new strings
+in all seven locales; `settingsClearDataDialogBody` removed. No persistence,
+sync, tracking or restriction behaviour changed.
+Files materially changed: `settings_screen.dart`, seven ARBs and generated
+localizations, `test/widget_test.dart` (seven tests: section order for no-sync,
+signed-out and signed-in builds; clear cancel/back, progress, no dismissal,
+failure then success; import cancel/confirm; 200% text on 320 px).
+Verification: `flutter analyze` PASS; `flutter test` PASS (304, one
+live-backend skip); `dart format --set-exit-if-changed lib test` PASS;
+`git diff --check` PASS. Widget-test renders with Roboto (not device
+screenshots) in `.local/settings-renders/`.
+Decisions made: Log out stays neutral in the account menu; the language
+picker stays a dialog (a choice, not a confirmation).
+Follow-up, same day: the signed-in sync card dropped its title and intro text
+and became two rows aligned with the other cards (icon column at 16 px, text
+at 72 px). Then, on request, the account and switch icons were removed so both rows start at 16 px and the email shrinks to fit one line: account row with email, last sync and status, sync
+icon and ⋮ menu; then the switch with an icon. Sync errors are indented to
+the text column. Signed-out form unchanged. Tests and analysis still PASS.
+Remaining: on-device look, TalkBack and large-text pass NOT RUN (no phone
+connected). Observed while testing: the dashboard `summary_tile.dart` row
+overflows at 200% text on a 320 px width; cause not investigated, outside this
+change.
+Relevant commit: none; not committed.
+
+---
+
+## 2026-10-07 — Product readiness and competitor review
+
+Date: 2026-10-07
+Agent: Claude Code
+Goal: Find launch requirements and user needs the release plan misses; compare
+with SocialLite and StayFree. Investigation only.
+Completed: traced onboarding, tracking, reports, restrictions, routines,
+blocking, account, sync, backup, deletion, accessibility and support in code,
+tests and audits. Findings that apply to every public build: no in-app privacy
+policy link; "Send feedback" goes to a personal address (issue #12); store copy,
+Data safety and screenshots describe the sync build, which cannot ship yet.
+Product gaps (not launch blockers): schedules apply every day with no weekday
+choice; "Unblock now" and rule deletion take one tap, with no friction or
+lock; no CSV export; battery use unmeasured (issue #35). TalkBack never run.
+Competitors (store listings fetched 2026-10-07): SocialLite (Sociallite LLC,
+`com.sociallite.android`) is a Reels/Shorts-free social client, not a general
+tracker; it uses an Accessibility Service and a VPN for adult-content blocking,
+and its store labels declare identifiers used for tracking. StayFree (Sensor
+Tower, `com.burockgames.timeclocker`) offers per-app and website limits, session
+limits, focus and sleep modes, password-protected settings, CSV export and
+desktop/browser sync; its Play label declares data shared with third parties.
+Full comparison: `.local/product-readiness-2026-10-07.md` (untracked).
+Files materially changed: `backend-sync-v1-plan.md` section 6;
+`docs/releases/PLAY_RELEASE.md` section 7; this entry.
+Verification: code inspection only (`settings_screen.dart` mailto,
+`restriction_rule.dart` schedule fields, `restrictions_screen.dart` unblock and
+delete actions, `BlockerService.kt` 1 s poll and 5 min warning). No tests run;
+no product code changed.
+Decisions made: none. Recommendation: release a local-only build first, with
+sync hidden, and keep sync behind the account-readiness gate.
+Remaining: owner decision on the first public build; checklist in
+`PLAY_RELEASE.md` 7.
+Risks / unresolved questions: whether the sync card counts as Play's prominent
+disclosure is UNCERTAIN. StayFree's paid tier boundaries could not be confirmed
+from an official source.
+Relevant commit: none.
+
+---
+
+## 2026-10-07 — Account readiness added to the public-launch plan
+
+Date: 2026-10-07
+Agent: Codex
+Goal: Include email confirmation and password recovery in production planning.
+Completed: added an explicit public account/sync launch gate with implementation
+order, security decisions to resolve, confirmation/reset pages, transactional
+email delivery, acceptance checks and the local-only release option. Updated
+the signed-release hardware case to exercise verification and recovery with a
+deliverable test inbox. Preserved Claude's earlier checks and category changes.
+Files materially changed: backend-sync-v1-plan.md; this progress document.
+Verification: inspected auth endpoints, account UI references and current
+architecture/security exclusions; documentation-only diff checked with
+`git diff --check` (PASS). No runtime tests run.
+Decisions made: original vertical slice completion remains valid; new account
+requirements block public sync launch. Architecture still describes shipped code.
+Remaining: resolve pending security/delivery decisions, implement and verify the
+new gate; existing deployment and physical-device checks remain open.
+Risks / unresolved questions: email provider/page host, existing-account
+transition, token expiry/limits and access-token invalidation are not yet chosen.
+Relevant commit: none; no commit/push requested.
+
+---
+
+## 2026-10-07 — Production checks that need no phone
+
+Date: 2026-10-07
+Agent: Claude Code
+Goal: Run every remaining release check that does not need a connected phone;
+record what still needs hardware or production infrastructure.
+Completed:
+- CI: run 37200424554 at `0176b52` (current `master` = `origin/master`) PASS,
+  all three jobs; Pages build for the same commit PASS.
+- Public pages: `privacy.html`, `delete-account.html`, `index.html`,
+  `terms.html` on `sneri12pic.github.io/FocusTrace/` return 200 unauthenticated
+  and are byte-identical (LF) to `docs/` at `0176b52`.
+- Staging (not production), read-only except the disposable restore: all eight
+  deployed files hash-equal to `master`; no `server/` source change since the
+  deployed `c7f8c1f` build. Containers up since 2026-10-02 with
+  `restart=unless-stopped`, zero restarts; `docker` and `cloudflared` enabled at
+  boot. Host up since 2026-10-01 19:47, so no reboot since deployment. Ports
+  18080/18081 on loopback only. Cron maintenance ran 2026-10-03..07, five PASS
+  lines; eight local dumps, none old enough yet to exercise pruning. No off-host
+  copy or tooling. HTTPS 401, HTTP 308 to HTTPS, certificate valid.
+- Backup/privacy mismatch found: `delete-account.html` says no copy is retained
+  for restoration; nightly dumps keep deleted accounts up to seven days, and a
+  restore would resurrect them. Proxy access logs keep IP/method/path/status for
+  seven days; app logs seven days or 100 MB. Not changed: policy wording is the
+  owner's decision.
+- Release artifact: no production endpoint exists, so no upload AAB. A
+  verification-only AAB was built with the staging URL from `0176b52` plus the
+  uncommitted category work. The first build reused a stale `app.so`
+  (2026-10-03, category strings absent); `flutter clean` rebuild fixed it.
+- Category stage: tests, analysis, format PASS; temporary guideline probe (deleted
+  after the run) PASS.
+Files materially changed: this entry; `backend-sync-v1-plan.md` (staging
+re-check, Pages/endpoint/signing notes, physical-device protocol); categories
+plan/progress.
+Verification:
+- `gh run list/view` (above) PASS. `curl` of four pages PASS.
+- Staging `sh verify-backup.sh`: PASS, newest dump restored into a disposable
+  database (7 usage days, four migrations), database dropped, none left.
+- Staging `python3 proxy-test.py`: PASS.
+- `server/gradlew.bat test --rerun-tasks` (Docker, Testcontainers): PASS, 273
+  tests, 0 failures/errors/skipped.
+- `flutter test test/sync_account_card_test.dart`: PASS (42), including release
+  HTTP rejection and no sync UI without a URL. Full `flutter test`: PASS (296,
+  one live-backend skip). `flutter analyze`: PASS. `dart format
+  --set-exit-if-changed lib test`: PASS (123 files, 0 changed).
+  `git diff --check`: PASS.
+- AAB `6FCF2496...648CB3`: `jarsigner -verify` PASS; certificate SHA-256
+  `9A:F6:80:86...BD:75:C5` equals the upload key (not debug); package
+  `com.stepandemianenko.focustrace`, versionCode 8, versionName 1.0.7;
+  `libapp.so` holds the staging HTTPS URL and no `http://127.0.0.1:18080`.
+  Verification only: staging endpoint, uncommitted source.
+Decisions made: no live DB restore, remote restart, reboot, account operation
+or Play action. No product code changed.
+Remaining: production endpoint/host and its upload AAB; off-host backups;
+privacy/deletion reconciliation with backup and log retention; host reboot and
+server-restart recovery (need approval); the plan's physical-device protocol
+(cases 1-6); Play Console URL, Data safety, App access test account.
+Risks / unresolved questions: release signing silently falls back to the debug
+key without `key.properties`; stale Flutter build caches can ship old Dart code,
+so check `libapp.so` for a new string before any upload.
+Relevant commit: `0176b52` (+ uncommitted category work); no commit/push.
+
+---
+
 ## 2026-10-04 — Backend sync merged into master
 
 Date: 2026-10-04

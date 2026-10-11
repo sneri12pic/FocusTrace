@@ -114,6 +114,15 @@ Before uploading a build that advertises sync:
 - [ ] Publish and open both URLs in section 3 without signing in. Verify the support mailbox and the manual account-deletion procedure.
 - [ ] Enter the updated store copy, permission explanations, Data safety answers and deletion URL in Play Console. For app review, supply working access instructions and a dedicated test account for the optional signed-in features through **App access**; keep its credentials out of this repository.
 
+Product readiness review, 2026-10-07 (evidence in `docs/backend/backend-sync-v1-progress.md`):
+
+- [ ] Decide the first public build. Sync needs a production host, email verification, password reset, off-host backups and the device protocol (`backend-sync-v1-plan.md` sections 5 and 6), so the shortest path is a local-only build without `FOCUSTRACE_SYNC_BASE_URL`. That build hides account/sync, so it needs local-only store copy, Data safety answers (no data collected) and a privacy page that matches it; sections 2 to 5 above describe the sync build.
+- [ ] Add an in-app link to the privacy policy (Settings, About/Support) for every build.
+- [ ] Point "Send feedback" at the published support mailbox (currently a personal address; issue #12).
+- [ ] Capture store screenshots from the build that will be uploaded.
+- [ ] Confirm the closed-test requirement (12+ testers, 14 days) is met for this developer account; not verifiable from the repository.
+- [ ] Measure battery use on one device before launch (issue #35; the blocker service polls every second while it runs). Unmeasured, not a known defect.
+
 1. Replace the example host with the verified release endpoint, then build: `flutter build appbundle --release --dart-define=FOCUSTRACE_SYNC_BASE_URL=https://sync.example.com`. Upload `build/app/outputs/bundle/release/app-release.aab` to **Closed testing** only after the checks above. Omitting the define hides account/sync UI; an unconfigured build must not be advertised as supporting sync.
 2. Add 12+ tester emails (Google Groups link works well), share the opt-in URL.
 3. After 14 days with 12 testers, apply for production access, then promote the same build.

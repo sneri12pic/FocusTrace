@@ -1107,8 +1107,8 @@ foreground and headless sync and every other session change:
 6. On failure: the watermark is restored only if the server certainly deleted
    nothing (`400`, `403`, `429`); scheduling is reconciled back to the stored
    consent; nothing else changes. `401` means the refresh failed and the API has
-   already dropped the credential (existing rule); the UI shows "session ended",
-   never "deleted".
+   already dropped the credential (existing rule); the repository then ends the
+   session locally as below (8.6); the UI shows "session ended", never "deleted".
 
 | Setting | Scope | On deletion |
 | --- | --- | --- |
@@ -1126,9 +1126,10 @@ touched. Ordinary logout is unchanged and still keeps the watermark: signing bac
 into the **same** account should not resend everything, and since 2026-09-26 a
 **different** account starts from zero (8.2).
 
-**UI.** The signed-in card keeps only routine controls: the account row with a
-sync icon button ("Sync now") and the "Sync this device" switch. "Log out" and a
-red "Delete account" sit in a ⋮ menu at the top right of the card, disabled
+**UI.** Signed in, the card is two Settings-style rows with no title or intro:
+the account row (email, last sync and sync status, a sync icon button "Sync now"
+and a ⋮ menu) and the "Sync this device" switch. "Log out" and a red "Delete
+account" sit in that ⋮ menu, disabled
 while a sign-in or sync runs (2026-10-07). "Delete account" only opens a modal
 bottom sheet headed "Danger zone"; dragging it down is disabled, so only Cancel,
 back or the barrier close it. The sheet states the cloud account and synced server data are
@@ -1870,7 +1871,14 @@ No HTTP client, upload selection or authentication logic is implemented in Kotli
 The unique periodic work `focustrace_periodic_sync_v1` uses KEEP, a six-hour
 implementation-policy interval, and only NetworkType.CONNECTED. Opt-in writes
 and logout reconcile scheduling under the same repository gate; logout retains
-the existing policy of disabling sync. Startup reconciles persisted consent to
+the existing policy of disabling sync. A session lost without a logout - a
+refresh answered `401` (expiry, replay revocation, deleted account) or a
+credential the keystore no longer returns - ends the same way: every gated
+repository operation checks for it before and after its work and then clears
+consent and the account email and cancels the periodic work, so the next
+account signed in starts opted out (2026-10-11, issue #37). History, watermark
+and installation id are kept as on logout; a transport failure keeps the
+credential and is not a lost session. Startup reconciles persisted consent to
 repair interrupted scheduling and enroll previously opted-in installations.
 It never changes consent. Background sync checks consent again inside the whole
 logical run's lease. Existing manual UI eligibility remains unchanged.
