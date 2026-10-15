@@ -260,6 +260,15 @@
   "usageBubblesTitle": "Usage Bubbles",
   "usageBubblesDescription": "Bigger bubbles mean more time spent",
   "usageBubblesCurrentList": "Current list",
+  "usageListShowAll": "{count, plural, =1{Show all (1 more)} other{Show all ({count} more)}}",
+  "@usageListShowAll": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "usageListShowLess": "Show less",
   "actionUnblockNow": "Unblock now",
   "actionUnblockNowDescription": "Remove active blocking rules",
   "actionRestrictApp": "Restrict app...",
@@ -635,5 +644,17 @@
   "settingsSyncDeleteAcknowledge": "I understand this permanently deletes my cloud account.",
   "settingsSyncDeleting": "Deleting…",
   "settingsSyncErrorWrongPassword": "That password is not correct. Your account was not deleted.",
-  "settingsPrivacyBodySync": "Your usage history and settings stay on this device unless you export a backup or turn on cloud sync."
+  "settingsPrivacyBodySync": "Your usage history and settings stay on this device unless you export a backup or turn on cloud sync.",
+  "usageCalendarTotalThisMonth": "Total this month",
+  "usageCalendarAveragePerDay": "Average per day",
+  "usageCalendarAppOpens": "App opens",
+  "usageCalendarLongestSession": "Longest session",
+  "usageCalendarVsLastMonth": "vs. last month",
+  "usageCalendarPreviousMonth": "Previous month",
+  "usageCalendarNextMonth": "Next month",
+  "usageCalendarTotalTime": "Total time",
+  "usageCalendarAverageSession": "Average session",
+  "usageCalendarVsDailyAverage": "vs. your daily average",
+  "usageCalendarTimeline": "Usage timeline",
+  "usageCalendarNoTimeline": "No session details for this day"
 }

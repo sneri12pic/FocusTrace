@@ -260,6 +260,15 @@
   "usageBubblesTitle": "使用状況バブル",
   "usageBubblesDescription": "バブルが大きいほど使用時間が長いことを示します",
   "usageBubblesCurrentList": "現在のリスト",
+  "usageListShowAll": "{count, plural, other{すべて表示（他 {count} 件）}}",
+  "@usageListShowAll": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "usageListShowLess": "表示を減らす",
   "actionUnblockNow": "今すぐブロック解除",
   "actionUnblockNowDescription": "有効なブロックルールを削除",
   "actionRestrictApp": "アプリを制限...",
@@ -635,5 +644,17 @@
   "settingsSyncDeleteAcknowledge": "クラウドアカウントが完全に削除されることを理解しました。",
   "settingsSyncDeleting": "削除中…",
   "settingsSyncErrorWrongPassword": "パスワードが正しくありません。アカウントは削除されていません。",
-  "settingsPrivacyBodySync": "利用履歴と設定は、バックアップを書き出すかクラウド同期をオンにしない限り、この端末に保存されたままです。"
+  "settingsPrivacyBodySync": "利用履歴と設定は、バックアップを書き出すかクラウド同期をオンにしない限り、この端末に保存されたままです。",
+  "usageCalendarTotalThisMonth": "今月の合計",
+  "usageCalendarAveragePerDay": "1日の平均",
+  "usageCalendarAppOpens": "起動回数",
+  "usageCalendarLongestSession": "最長セッション",
+  "usageCalendarVsLastMonth": "先月比",
+  "usageCalendarPreviousMonth": "前の月",
+  "usageCalendarNextMonth": "次の月",
+  "usageCalendarTotalTime": "合計時間",
+  "usageCalendarAverageSession": "平均セッション",
+  "usageCalendarVsDailyAverage": "1日の平均との比較",
+  "usageCalendarTimeline": "利用タイムライン",
+  "usageCalendarNoTimeline": "この日のセッション詳細はありません"
 }

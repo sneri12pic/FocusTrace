@@ -14,6 +14,9 @@ class UsageDetailsCharts extends StatefulWidget {
     required this.period,
     required this.chart,
     required this.onChartChanged,
+    this.isGood = false,
+    this.selector,
+    this.total,
     super.key,
   });
 
@@ -21,6 +24,15 @@ class UsageDetailsCharts extends StatefulWidget {
   final UsageDetailsPeriod period;
   final UsageDetailsChart chart;
   final ValueChanged<UsageDetailsChart> onChartChanged;
+
+  /// Productivity apps: more use is good, so increases are green.
+  final bool isGood;
+
+  /// The range selector, shown at the top left of the card.
+  final Widget? selector;
+
+  /// The range total, shown under the selector.
+  final Widget? total;
 
   @override
   State<UsageDetailsCharts> createState() => _UsageDetailsChartsState();
@@ -54,49 +66,97 @@ class _UsageDetailsChartsState extends State<UsageDetailsCharts> {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        SizedBox(
-          height: 218,
-          child: PageView(
-            key: const ValueKey('usage-chart-pages'),
-            controller: _controller,
-            onPageChanged: (index) =>
-                widget.onChartChanged(UsageDetailsChart.values[index]),
-            children: [
-              _UsageBarChart(points: widget.points, period: widget.period),
-              _UsageAreaChart(points: widget.points, period: widget.period),
-            ],
-          ),
-        ),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
+    final selector = widget.selector;
+    final total = widget.total;
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            for (final chart in UsageDetailsChart.values)
-              Semantics(
-                selected: chart == widget.chart,
-                child: IconButton(
-                  key: ValueKey('usage-chart-dot-${chart.name}'),
-                  tooltip: chart == UsageDetailsChart.bars
-                      ? context.l10n.usageDetailsBarChart
-                      : context.l10n.usageDetailsAreaChart,
-                  onPressed: () => _showChart(chart),
-                  icon: AnimatedContainer(
-                    duration: const Duration(milliseconds: 180),
-                    width: 8,
-                    height: 8,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: Theme.of(context).colorScheme.primary.withValues(
-                        alpha: chart == widget.chart ? 1 : 0.3,
-                      ),
-                    ),
+            // The page dots share the selector's row, top right, so they
+            // never overlap the chart and need no space of their own.
+            Row(
+              children: [
+                if (selector != null) selector,
+                const Spacer(),
+                for (final chart in UsageDetailsChart.values)
+                  _PageDot(
+                    chart: chart,
+                    selected: chart == widget.chart,
+                    onTap: () => _showChart(chart),
                   ),
-                ),
+              ],
+            ),
+            if (total != null) ...[const SizedBox(height: 8), total],
+            const SizedBox(height: 12),
+            SizedBox(
+              height: 176,
+              child: PageView(
+                key: const ValueKey('usage-chart-pages'),
+                controller: _controller,
+                onPageChanged: (index) =>
+                    widget.onChartChanged(UsageDetailsChart.values[index]),
+                children: [
+                  _UsageBarChart(
+                    points: widget.points,
+                    period: widget.period,
+                    isGood: widget.isGood,
+                  ),
+                  _UsageAreaChart(points: widget.points, period: widget.period),
+                ],
               ),
+            ),
           ],
         ),
-      ],
+      ),
+    );
+  }
+}
+
+/// A compact page indicator: the active chart is a short blue pill.
+class _PageDot extends StatelessWidget {
+  const _PageDot({
+    required this.chart,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final UsageDetailsChart chart;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      selected: selected,
+      button: true,
+      child: Tooltip(
+        message: chart == UsageDetailsChart.bars
+            ? context.l10n.usageDetailsBarChart
+            : context.l10n.usageDetailsAreaChart,
+        child: InkWell(
+          key: ValueKey('usage-chart-dot-${chart.name}'),
+          onTap: onTap,
+          customBorder: const StadiumBorder(),
+          // A 32px target around a 6px mark keeps the dots tappable.
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 13),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 180),
+              curve: Curves.easeOutCubic,
+              width: selected ? 18 : 6,
+              height: 6,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(3),
+                color: Theme.of(
+                  context,
+                ).colorScheme.primary.withValues(alpha: selected ? 1 : 0.3),
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
@@ -110,6 +170,8 @@ String _dateLabel(
   return switch (period) {
     UsageDetailsPeriod.year => DateFormat.MMM(locale).format(point.day),
     UsageDetailsPeriod.sevenDays => DateFormat.E(locale).format(point.day),
+    // Month names keep 30-day labels unambiguous across a month change.
+    UsageDetailsPeriod.month => DateFormat.MMMd(locale).format(point.day),
     _ => DateFormat.Md(locale).format(point.day),
   };
 }
@@ -135,49 +197,67 @@ int _maximum(List<DailyUsagePoint> points) => points.fold<int>(
 );
 
 class _UsageBarChart extends StatelessWidget {
-  const _UsageBarChart({required this.points, required this.period});
+  const _UsageBarChart({
+    required this.points,
+    required this.period,
+    required this.isGood,
+  });
 
   static const _maxBarHeight = 120.0;
 
   final List<DailyUsagePoint> points;
   final UsageDetailsPeriod period;
+  final bool isGood;
 
   @override
   Widget build(BuildContext context) {
     final maxSeconds = _maximum(points);
-    return Card(
+    final theme = Theme.of(context);
+    final labelStyle = theme.textTheme.labelSmall?.copyWith(
+      color: theme.colorScheme.onSurfaceVariant,
+    );
+    return KeyedSubtree(
       key: const ValueKey('usage-bar-chart'),
-      elevation: 0,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(12, 16, 12, 12),
+        padding: const EdgeInsets.only(top: 4),
         child: LayoutBuilder(
           builder: (context, constraints) {
             final columnWidth =
                 constraints.maxWidth / math.max(1, points.length);
-            final labelStep = math.max(1, (44 / columnWidth).ceil());
+            final isMonth = period == UsageDetailsPeriod.month;
+            // A month gets one label per week, counted back from the
+            // selected day so the latest bar is always labelled.
+            final labelStep = isMonth
+                ? 7
+                : math.max(1, (44 / columnWidth).ceil());
+            final labelWidth = isMonth ? 56.0 : 44.0;
             // Both charts fit the selected period, leaving horizontal gestures
             // to the pager instead of a competing nested horizontal scroller.
             return CustomPaint(
               key: const ValueKey('usage-trend-line'),
-              foregroundPainter: _UsageTrendLinePainter(
-                points: points,
-                maxSeconds: maxSeconds,
-                increaseColor: trendColor(
-                  Theme.of(context),
-                  isFlat: false,
-                  isIncrease: true,
-                ),
-                decreaseColor: trendColor(
-                  Theme.of(context),
-                  isFlat: false,
-                  isIncrease: false,
-                ),
-                flatColor: trendColor(
-                  Theme.of(context),
-                  isFlat: true,
-                  isIncrease: false,
-                ),
-              ),
+              // Thirty thin columns carry no readable trend line.
+              foregroundPainter: isMonth
+                  ? null
+                  : _UsageTrendLinePainter(
+                      points: points,
+                      maxSeconds: maxSeconds,
+                      // A thinner, softened line keeps the bars primary.
+                      increaseColor: trendColor(
+                        theme,
+                        isFlat: false,
+                        isIncrease: !isGood,
+                      ).withValues(alpha: 0.75),
+                      decreaseColor: trendColor(
+                        theme,
+                        isFlat: false,
+                        isIncrease: isGood,
+                      ).withValues(alpha: 0.75),
+                      flatColor: trendColor(
+                        theme,
+                        isFlat: true,
+                        isIncrease: false,
+                      ).withValues(alpha: 0.75),
+                    ),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
@@ -198,24 +278,27 @@ class _UsageBarChart extends StatelessWidget {
                                     context.l10n.compactDuration(
                                       points[index].duration,
                                     ),
-                                    style: Theme.of(
-                                      context,
-                                    ).textTheme.labelSmall,
+                                    style: labelStyle,
                                   ),
                                 ),
                               const SizedBox(height: 4),
                               AnimatedContainer(
                                 duration: const Duration(milliseconds: 300),
                                 curve: Curves.easeOutCubic,
-                                width: math.min(20, columnWidth * 0.65),
+                                width: math.min(18, columnWidth * 0.55),
                                 height: _barHeight(
                                   points[index].durationSeconds,
                                   maxSeconds,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: Theme.of(context).colorScheme.primary,
+                                  // The selected day (last bar) leads; the
+                                  // rest stay readable but recede.
+                                  color: theme.colorScheme.primary.withValues(
+                                    alpha: index == points.length - 1 ? 1 : 0.8,
+                                  ),
                                   borderRadius: const BorderRadius.vertical(
                                     top: Radius.circular(6),
+                                    bottom: Radius.circular(2),
                                   ),
                                 ),
                               ),
@@ -223,17 +306,25 @@ class _UsageBarChart extends StatelessWidget {
                               SizedBox(
                                 height: 16,
                                 child: OverflowBox(
-                                  maxWidth: math.max(44, columnWidth),
-                                  child: index % labelStep == 0
+                                  maxWidth: math.max(labelWidth, columnWidth),
+                                  // Edge labels grow inward so the card
+                                  // never clips them.
+                                  alignment: index < labelStep ~/ 2
+                                      ? Alignment.centerLeft
+                                      : index == points.length - 1 &&
+                                            columnWidth < labelWidth
+                                      ? Alignment.centerRight
+                                      : Alignment.center,
+                                  child:
+                                      (points.length - 1 - index) % labelStep ==
+                                          0
                                       ? Text(
                                           _dateLabel(
                                             context,
                                             points[index],
                                             period,
                                           ),
-                                          style: Theme.of(
-                                            context,
-                                          ).textTheme.labelSmall,
+                                          style: labelStyle,
                                         )
                                       : const SizedBox.shrink(),
                                 ),
@@ -297,7 +388,7 @@ class _UsageTrendLinePainter extends CustomPainter {
             : next > current
             ? increaseColor
             : decreaseColor
-        ..strokeWidth = 3
+        ..strokeWidth = 2
         ..strokeCap = StrokeCap.round
         ..style = PaintingStyle.stroke;
       canvas.drawPath(
@@ -334,19 +425,22 @@ class _UsageAreaChart extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final maxSeconds = _maximum(points);
-    final color = Theme.of(context).colorScheme.primary;
-    return Card(
+    final theme = Theme.of(context);
+    final color = theme.colorScheme.primary;
+    final labelStyle = theme.textTheme.labelSmall?.copyWith(
+      color: theme.colorScheme.onSurfaceVariant,
+    );
+    return KeyedSubtree(
       key: const ValueKey('usage-area-chart'),
-      elevation: 0,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(12, 16, 12, 12),
+        padding: const EdgeInsets.only(top: 4),
         child: Column(
           children: [
             Align(
               alignment: AlignmentDirectional.centerStart,
               child: Text(
                 context.l10n.compactDuration(Duration(seconds: maxSeconds)),
-                style: Theme.of(context).textTheme.labelSmall,
+                style: labelStyle,
               ),
             ),
             const SizedBox(height: 8),
@@ -382,7 +476,7 @@ class _UsageAreaChart extends StatelessWidget {
                   })
                     Text(
                       _dateLabel(context, points[index], period),
-                      style: Theme.of(context).textTheme.labelSmall,
+                      style: labelStyle,
                     ),
                 ],
               ),
@@ -452,7 +546,7 @@ class _UsageAreaPainter extends CustomPainter {
       Paint()
         ..color = color
         ..style = PaintingStyle.stroke
-        ..strokeWidth = 3
+        ..strokeWidth = 2.5
         ..strokeCap = StrokeCap.round,
     );
     for (final position in positions) {

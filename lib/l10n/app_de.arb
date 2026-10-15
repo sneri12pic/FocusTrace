@@ -260,6 +260,15 @@
   "usageBubblesTitle": "Nutzungsblasen",
   "usageBubblesDescription": "Größere Blasen bedeuten mehr Nutzungszeit",
   "usageBubblesCurrentList": "Aktuelle Liste",
+  "usageListShowAll": "{count, plural, =1{Alle anzeigen (1 weitere)} other{Alle anzeigen ({count} weitere)}}",
+  "@usageListShowAll": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "usageListShowLess": "Weniger anzeigen",
   "actionUnblockNow": "Jetzt entsperren",
   "actionUnblockNowDescription": "Aktive Sperrregeln entfernen",
   "actionRestrictApp": "App einschränken...",
@@ -635,5 +644,17 @@
   "settingsSyncDeleteAcknowledge": "Ich verstehe, dass mein Cloud-Konto damit endgültig gelöscht wird.",
   "settingsSyncDeleting": "Wird gelöscht…",
   "settingsSyncErrorWrongPassword": "Das Passwort ist nicht korrekt. Dein Konto wurde nicht gelöscht.",
-  "settingsPrivacyBodySync": "Dein Nutzungsverlauf und deine Einstellungen bleiben auf diesem Gerät, außer du exportierst eine Sicherung oder aktivierst die Cloud-Synchronisierung."
+  "settingsPrivacyBodySync": "Dein Nutzungsverlauf und deine Einstellungen bleiben auf diesem Gerät, außer du exportierst eine Sicherung oder aktivierst die Cloud-Synchronisierung.",
+  "usageCalendarTotalThisMonth": "Gesamt diesen Monat",
+  "usageCalendarAveragePerDay": "Durchschnitt pro Tag",
+  "usageCalendarAppOpens": "App-Öffnungen",
+  "usageCalendarLongestSession": "Längste Sitzung",
+  "usageCalendarVsLastMonth": "ggü. Vormonat",
+  "usageCalendarPreviousMonth": "Vorheriger Monat",
+  "usageCalendarNextMonth": "Nächster Monat",
+  "usageCalendarTotalTime": "Gesamtzeit",
+  "usageCalendarAverageSession": "Durchschnittliche Sitzung",
+  "usageCalendarVsDailyAverage": "ggü. deinem Tagesdurchschnitt",
+  "usageCalendarTimeline": "Nutzungsverlauf",
+  "usageCalendarNoTimeline": "Keine Sitzungsdetails für diesen Tag"
 }

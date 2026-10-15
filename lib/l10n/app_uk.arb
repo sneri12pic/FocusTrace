@@ -260,6 +260,15 @@
   "usageBubblesTitle": "Бульбашки використання",
   "usageBubblesDescription": "Більші бульбашки означають більше витраченого часу",
   "usageBubblesCurrentList": "Поточний список",
+  "usageListShowAll": "{count, plural, =1{Показати все (ще 1)} few{Показати все (ще {count})} many{Показати все (ще {count})} other{Показати все (ще {count})}}",
+  "@usageListShowAll": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "usageListShowLess": "Показати менше",
   "actionUnblockNow": "Розблокувати зараз",
   "actionUnblockNowDescription": "Видалити активні правила блокування",
   "actionRestrictApp": "Обмежити застосунок...",
@@ -635,5 +644,17 @@
   "settingsSyncDeleteAcknowledge": "Я розумію, що це назавжди видаляє мій хмарний обліковий запис.",
   "settingsSyncDeleting": "Видалення…",
   "settingsSyncErrorWrongPassword": "Пароль неправильний. Обліковий запис не видалено.",
-  "settingsPrivacyBodySync": "Історія використання та налаштування залишаються на цьому пристрої, доки ви не експортуєте резервну копію або не ввімкнете хмарну синхронізацію."
+  "settingsPrivacyBodySync": "Історія використання та налаштування залишаються на цьому пристрої, доки ви не експортуєте резервну копію або не ввімкнете хмарну синхронізацію.",
+  "usageCalendarTotalThisMonth": "Усього цього місяця",
+  "usageCalendarAveragePerDay": "У середньому за день",
+  "usageCalendarAppOpens": "Відкриття",
+  "usageCalendarLongestSession": "Найдовший сеанс",
+  "usageCalendarVsLastMonth": "порівняно з минулим місяцем",
+  "usageCalendarPreviousMonth": "Попередній місяць",
+  "usageCalendarNextMonth": "Наступний місяць",
+  "usageCalendarTotalTime": "Загальний час",
+  "usageCalendarAverageSession": "Середній сеанс",
+  "usageCalendarVsDailyAverage": "порівняно з середнім за день",
+  "usageCalendarTimeline": "Хронологія використання",
+  "usageCalendarNoTimeline": "Немає даних про сеанси за цей день"
 }

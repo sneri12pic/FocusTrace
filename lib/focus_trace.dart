@@ -47,6 +47,7 @@ export 'src/presentation/screens/settings_screen.dart';
 export 'src/presentation/screens/usage_bubble_screen.dart';
 export 'src/presentation/screens/usage_details_screen.dart';
 export 'src/presentation/view_models/app_language_view_model.dart';
+export 'src/presentation/view_models/app_usage_calendar_view_model.dart';
 export 'src/presentation/view_models/app_usage_details_view_model.dart';
 export 'src/presentation/view_models/dashboard_view_model.dart';
 export 'src/presentation/view_models/onboarding_view_model.dart';

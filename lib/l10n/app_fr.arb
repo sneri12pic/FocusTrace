@@ -260,6 +260,15 @@
   "usageBubblesTitle": "Bulles d’utilisation",
   "usageBubblesDescription": "Plus une bulle est grande, plus le temps d’utilisation est long",
   "usageBubblesCurrentList": "Liste actuelle",
+  "usageListShowAll": "{count, plural, =1{Tout afficher (1 de plus)} other{Tout afficher ({count} de plus)}}",
+  "@usageListShowAll": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "usageListShowLess": "Afficher moins",
   "actionUnblockNow": "Débloquer maintenant",
   "actionUnblockNowDescription": "Supprimer les règles de blocage actives",
   "actionRestrictApp": "Restreindre l’application...",
@@ -635,5 +644,17 @@
   "settingsSyncDeleteAcknowledge": "Je comprends que cela supprime définitivement mon compte cloud.",
   "settingsSyncDeleting": "Suppression…",
   "settingsSyncErrorWrongPassword": "Ce mot de passe est incorrect. Votre compte n’a pas été supprimé.",
-  "settingsPrivacyBodySync": "Votre historique d’utilisation et vos réglages restent sur cet appareil, sauf si vous exportez une sauvegarde ou activez la synchronisation cloud."
+  "settingsPrivacyBodySync": "Votre historique d’utilisation et vos réglages restent sur cet appareil, sauf si vous exportez une sauvegarde ou activez la synchronisation cloud.",
+  "usageCalendarTotalThisMonth": "Total ce mois-ci",
+  "usageCalendarAveragePerDay": "Moyenne par jour",
+  "usageCalendarAppOpens": "Ouvertures",
+  "usageCalendarLongestSession": "Session la plus longue",
+  "usageCalendarVsLastMonth": "vs le mois dernier",
+  "usageCalendarPreviousMonth": "Mois précédent",
+  "usageCalendarNextMonth": "Mois suivant",
+  "usageCalendarTotalTime": "Temps total",
+  "usageCalendarAverageSession": "Session moyenne",
+  "usageCalendarVsDailyAverage": "vs votre moyenne quotidienne",
+  "usageCalendarTimeline": "Chronologie d'utilisation",
+  "usageCalendarNoTimeline": "Aucun détail de session pour ce jour"
 }

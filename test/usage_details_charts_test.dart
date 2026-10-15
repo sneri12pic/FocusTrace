@@ -5,6 +5,7 @@ import 'package:focustrace/l10n/generated/app_localizations.dart';
 import 'package:focustrace/src/presentation/widgets/usage_details_charts.dart';
 
 void main() {
+  _monthLabelTest();
   for (final period in UsageDetailsPeriod.values) {
     testWidgets(
       'swipes between charts and updates both dots for ${period.name}',
@@ -67,6 +68,37 @@ void main() {
       findsOneWidget,
     );
     expect(tester.takeException(), isNull);
+  });
+}
+
+void _monthLabelTest() {
+  testWidgets('a month labels each week with its month and drops the line', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(360, 640);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await tester.pumpWidget(_host(period: UsageDetailsPeriod.month));
+    await tester.pumpAndSettle();
+    final bars = find.byKey(const ValueKey('usage-bar-chart'));
+    // Counted back from the last (selected) day: Aug 30, 23, 16, 9, 2.
+    for (final day in [2, 9, 16, 23, 30]) {
+      expect(
+        find.descendant(of: bars, matching: find.text('Aug $day')),
+        findsOneWidget,
+      );
+    }
+    expect(
+      find.descendant(of: bars, matching: find.text('Aug 29')),
+      findsNothing,
+    );
+    expect(
+      tester
+          .widget<CustomPaint>(find.byKey(const ValueKey('usage-trend-line')))
+          .foregroundPainter,
+      isNull,
+    );
   });
 }
 

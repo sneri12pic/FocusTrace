@@ -909,6 +909,18 @@ abstract class AppLocalizations {
   /// **'Current list'**
   String get usageBubblesCurrentList;
 
+  /// No description provided for @usageListShowAll.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{Show all (1 more)} other{Show all ({count} more)}}'**
+  String usageListShowAll(int count);
+
+  /// No description provided for @usageListShowLess.
+  ///
+  /// In en, this message translates to:
+  /// **'Show less'**
+  String get usageListShowLess;
+
   /// No description provided for @actionUnblockNow.
   ///
   /// In en, this message translates to:
@@ -1958,6 +1970,78 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Your usage history and settings stay on this device unless you export a backup or turn on cloud sync.'**
   String get settingsPrivacyBodySync;
+
+  /// No description provided for @usageCalendarTotalThisMonth.
+  ///
+  /// In en, this message translates to:
+  /// **'Total this month'**
+  String get usageCalendarTotalThisMonth;
+
+  /// No description provided for @usageCalendarAveragePerDay.
+  ///
+  /// In en, this message translates to:
+  /// **'Average per day'**
+  String get usageCalendarAveragePerDay;
+
+  /// No description provided for @usageCalendarAppOpens.
+  ///
+  /// In en, this message translates to:
+  /// **'App opens'**
+  String get usageCalendarAppOpens;
+
+  /// No description provided for @usageCalendarLongestSession.
+  ///
+  /// In en, this message translates to:
+  /// **'Longest session'**
+  String get usageCalendarLongestSession;
+
+  /// No description provided for @usageCalendarVsLastMonth.
+  ///
+  /// In en, this message translates to:
+  /// **'vs. last month'**
+  String get usageCalendarVsLastMonth;
+
+  /// No description provided for @usageCalendarPreviousMonth.
+  ///
+  /// In en, this message translates to:
+  /// **'Previous month'**
+  String get usageCalendarPreviousMonth;
+
+  /// No description provided for @usageCalendarNextMonth.
+  ///
+  /// In en, this message translates to:
+  /// **'Next month'**
+  String get usageCalendarNextMonth;
+
+  /// No description provided for @usageCalendarTotalTime.
+  ///
+  /// In en, this message translates to:
+  /// **'Total time'**
+  String get usageCalendarTotalTime;
+
+  /// No description provided for @usageCalendarAverageSession.
+  ///
+  /// In en, this message translates to:
+  /// **'Average session'**
+  String get usageCalendarAverageSession;
+
+  /// No description provided for @usageCalendarVsDailyAverage.
+  ///
+  /// In en, this message translates to:
+  /// **'vs. your daily average'**
+  String get usageCalendarVsDailyAverage;
+
+  /// No description provided for @usageCalendarTimeline.
+  ///
+  /// In en, this message translates to:
+  /// **'Usage timeline'**
+  String get usageCalendarTimeline;
+
+  /// No description provided for @usageCalendarNoTimeline.
+  ///
+  /// In en, this message translates to:
+  /// **'No session details for this day'**
+  String get usageCalendarNoTimeline;
 }
 
 class _AppLocalizationsDelegate

@@ -30,6 +30,7 @@ import '../domain/repositories/usage_repository.dart';
 import 'view_models/app_language_view_model.dart';
 import 'view_models/app_categories_view_model.dart';
 import '../domain/models/usage_item.dart';
+import 'view_models/app_usage_calendar_view_model.dart';
 import 'view_models/app_usage_details_view_model.dart';
 import 'view_models/dashboard_view_model.dart';
 import 'view_models/onboarding_view_model.dart';
@@ -291,6 +292,20 @@ final appUsageDetailsViewModelProvider = StateNotifierProvider.autoDispose
       final viewModel = AppUsageDetailsViewModel(
         usageRepository: ref.watch(usageRepositoryProvider),
         settingsRepository: ref.watch(settingsRepositoryProvider),
+        request: request,
+      );
+      viewModel.load();
+      return viewModel;
+    });
+
+final appUsageCalendarViewModelProvider = StateNotifierProvider.autoDispose
+    .family<
+      AppUsageCalendarViewModel,
+      AppUsageCalendarState,
+      AppUsageDetailsRequest
+    >((ref, request) {
+      final viewModel = AppUsageCalendarViewModel(
+        reportRepository: ref.watch(reportRepositoryProvider),
         request: request,
       );
       viewModel.load();

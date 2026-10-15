@@ -475,6 +475,22 @@ class AppLocalizationsUk extends AppLocalizations {
   String get usageBubblesCurrentList => 'Поточний список';
 
   @override
+  String usageListShowAll(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Показати все (ще $count)',
+      many: 'Показати все (ще $count)',
+      few: 'Показати все (ще $count)',
+      one: 'Показати все (ще 1)',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get usageListShowLess => 'Показати менше';
+
+  @override
   String get actionUnblockNow => 'Розблокувати зараз';
 
   @override
@@ -1104,4 +1120,40 @@ class AppLocalizationsUk extends AppLocalizations {
   @override
   String get settingsPrivacyBodySync =>
       'Історія використання та налаштування залишаються на цьому пристрої, доки ви не експортуєте резервну копію або не ввімкнете хмарну синхронізацію.';
+
+  @override
+  String get usageCalendarTotalThisMonth => 'Усього цього місяця';
+
+  @override
+  String get usageCalendarAveragePerDay => 'У середньому за день';
+
+  @override
+  String get usageCalendarAppOpens => 'Відкриття';
+
+  @override
+  String get usageCalendarLongestSession => 'Найдовший сеанс';
+
+  @override
+  String get usageCalendarVsLastMonth => 'порівняно з минулим місяцем';
+
+  @override
+  String get usageCalendarPreviousMonth => 'Попередній місяць';
+
+  @override
+  String get usageCalendarNextMonth => 'Наступний місяць';
+
+  @override
+  String get usageCalendarTotalTime => 'Загальний час';
+
+  @override
+  String get usageCalendarAverageSession => 'Середній сеанс';
+
+  @override
+  String get usageCalendarVsDailyAverage => 'порівняно з середнім за день';
+
+  @override
+  String get usageCalendarTimeline => 'Хронологія використання';
+
+  @override
+  String get usageCalendarNoTimeline => 'Немає даних про сеанси за цей день';
 }
