@@ -473,6 +473,20 @@ class AppLocalizationsDe extends AppLocalizations {
   String get usageBubblesCurrentList => 'Aktuelle Liste';
 
   @override
+  String usageListShowAll(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Alle anzeigen ($count weitere)',
+      one: 'Alle anzeigen (1 weitere)',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get usageListShowLess => 'Weniger anzeigen';
+
+  @override
   String get actionUnblockNow => 'Jetzt entsperren';
 
   @override
@@ -1103,4 +1117,40 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get settingsPrivacyBodySync =>
       'Dein Nutzungsverlauf und deine Einstellungen bleiben auf diesem Gerät, außer du exportierst eine Sicherung oder aktivierst die Cloud-Synchronisierung.';
+
+  @override
+  String get usageCalendarTotalThisMonth => 'Gesamt diesen Monat';
+
+  @override
+  String get usageCalendarAveragePerDay => 'Durchschnitt pro Tag';
+
+  @override
+  String get usageCalendarAppOpens => 'App-Öffnungen';
+
+  @override
+  String get usageCalendarLongestSession => 'Längste Sitzung';
+
+  @override
+  String get usageCalendarVsLastMonth => 'ggü. Vormonat';
+
+  @override
+  String get usageCalendarPreviousMonth => 'Vorheriger Monat';
+
+  @override
+  String get usageCalendarNextMonth => 'Nächster Monat';
+
+  @override
+  String get usageCalendarTotalTime => 'Gesamtzeit';
+
+  @override
+  String get usageCalendarAverageSession => 'Durchschnittliche Sitzung';
+
+  @override
+  String get usageCalendarVsDailyAverage => 'ggü. deinem Tagesdurchschnitt';
+
+  @override
+  String get usageCalendarTimeline => 'Nutzungsverlauf';
+
+  @override
+  String get usageCalendarNoTimeline => 'Keine Sitzungsdetails für diesen Tag';
 }

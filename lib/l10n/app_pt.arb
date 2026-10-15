@@ -260,6 +260,15 @@
   "usageBubblesTitle": "Bolhas de uso",
   "usageBubblesDescription": "Bolhas maiores indicam mais tempo de uso",
   "usageBubblesCurrentList": "Lista atual",
+  "usageListShowAll": "{count, plural, =1{Mostrar tudo (mais 1)} other{Mostrar tudo (mais {count})}}",
+  "@usageListShowAll": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "usageListShowLess": "Mostrar menos",
   "actionUnblockNow": "Desbloquear agora",
   "actionUnblockNowDescription": "Remover regras de bloqueio ativas",
   "actionRestrictApp": "Restringir app...",
@@ -635,5 +644,17 @@
   "settingsSyncDeleteAcknowledge": "Entendo que isto exclui permanentemente a minha conta na nuvem.",
   "settingsSyncDeleting": "Excluindo…",
   "settingsSyncErrorWrongPassword": "Essa senha não está correta. Sua conta não foi excluída.",
-  "settingsPrivacyBodySync": "O seu histórico de uso e as definições ficam neste dispositivo, a menos que exporte uma cópia ou ative a sincronização na nuvem."
+  "settingsPrivacyBodySync": "O seu histórico de uso e as definições ficam neste dispositivo, a menos que exporte uma cópia ou ative a sincronização na nuvem.",
+  "usageCalendarTotalThisMonth": "Total neste mês",
+  "usageCalendarAveragePerDay": "Média por dia",
+  "usageCalendarAppOpens": "Aberturas",
+  "usageCalendarLongestSession": "Sessão mais longa",
+  "usageCalendarVsLastMonth": "vs. mês passado",
+  "usageCalendarPreviousMonth": "Mês anterior",
+  "usageCalendarNextMonth": "Próximo mês",
+  "usageCalendarTotalTime": "Tempo total",
+  "usageCalendarAverageSession": "Sessão média",
+  "usageCalendarVsDailyAverage": "vs. sua média diária",
+  "usageCalendarTimeline": "Linha do tempo de uso",
+  "usageCalendarNoTimeline": "Sem detalhes de sessão para este dia"
 }

@@ -476,6 +476,20 @@ class AppLocalizationsEs extends AppLocalizations {
   String get usageBubblesCurrentList => 'Lista actual';
 
   @override
+  String usageListShowAll(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Mostrar todo ($count más)',
+      one: 'Mostrar todo (1 más)',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get usageListShowLess => 'Mostrar menos';
+
+  @override
   String get actionUnblockNow => 'Desbloquear ahora';
 
   @override
@@ -1109,4 +1123,41 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get settingsPrivacyBodySync =>
       'Tu historial de uso y tus ajustes permanecen en este dispositivo salvo que exportes una copia o actives la sincronización en la nube.';
+
+  @override
+  String get usageCalendarTotalThisMonth => 'Total este mes';
+
+  @override
+  String get usageCalendarAveragePerDay => 'Promedio por día';
+
+  @override
+  String get usageCalendarAppOpens => 'Aperturas';
+
+  @override
+  String get usageCalendarLongestSession => 'Sesión más larga';
+
+  @override
+  String get usageCalendarVsLastMonth => 'vs. el mes pasado';
+
+  @override
+  String get usageCalendarPreviousMonth => 'Mes anterior';
+
+  @override
+  String get usageCalendarNextMonth => 'Mes siguiente';
+
+  @override
+  String get usageCalendarTotalTime => 'Tiempo total';
+
+  @override
+  String get usageCalendarAverageSession => 'Sesión media';
+
+  @override
+  String get usageCalendarVsDailyAverage => 'vs. tu promedio diario';
+
+  @override
+  String get usageCalendarTimeline => 'Cronología de uso';
+
+  @override
+  String get usageCalendarNoTimeline =>
+      'No hay detalles de sesiones para este día';
 }

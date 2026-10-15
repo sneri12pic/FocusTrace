@@ -453,6 +453,19 @@ class AppLocalizationsJa extends AppLocalizations {
   String get usageBubblesCurrentList => '現在のリスト';
 
   @override
+  String usageListShowAll(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'すべて表示（他 $count 件）',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get usageListShowLess => '表示を減らす';
+
+  @override
   String get actionUnblockNow => '今すぐブロック解除';
 
   @override
@@ -1053,4 +1066,40 @@ class AppLocalizationsJa extends AppLocalizations {
   @override
   String get settingsPrivacyBodySync =>
       '利用履歴と設定は、バックアップを書き出すかクラウド同期をオンにしない限り、この端末に保存されたままです。';
+
+  @override
+  String get usageCalendarTotalThisMonth => '今月の合計';
+
+  @override
+  String get usageCalendarAveragePerDay => '1日の平均';
+
+  @override
+  String get usageCalendarAppOpens => '起動回数';
+
+  @override
+  String get usageCalendarLongestSession => '最長セッション';
+
+  @override
+  String get usageCalendarVsLastMonth => '先月比';
+
+  @override
+  String get usageCalendarPreviousMonth => '前の月';
+
+  @override
+  String get usageCalendarNextMonth => '次の月';
+
+  @override
+  String get usageCalendarTotalTime => '合計時間';
+
+  @override
+  String get usageCalendarAverageSession => '平均セッション';
+
+  @override
+  String get usageCalendarVsDailyAverage => '1日の平均との比較';
+
+  @override
+  String get usageCalendarTimeline => '利用タイムライン';
+
+  @override
+  String get usageCalendarNoTimeline => 'この日のセッション詳細はありません';
 }
