@@ -2,6 +2,27 @@
 
 Date: 2026-10-11
 Agent: Claude Code
+Goal: Limit the dashboard "Current list" to the top apps (user asked for "show 10 ... and add show more button or show all").
+Completed: the list shows the top 10 apps (same `UsageBubbleViewModel.topAppCount`
+the bubble chart uses) after the category filter, with one full-width toggle
+"Show all (N more)" / "Show less" (key `current-list-toggle`, 48dp). The toggle
+is hidden at 10 apps or fewer. Expanded state lives in `UsageBubbleState`; it
+collapses on a category change and on a day change (dashboard listens for
+`dayOffset`), and survives live refreshes. Not persisted. Totals, percentages,
+chart, chips and restriction logic unchanged. Upstream summaries are already
+sorted by time (native query, `summarizeSessions`, `getDailySummaries`), so the
+screen does not re-sort. Strings added to all 7 ARBs with plural count. The filter chip row no longer bleeds into the card padding: it scrolls within the content width, so chips start and end in line with the app rows (user found the old edge-to-edge fade looked off).
+Files materially changed: `usage_bubble_screen.dart`, `usage_bubble_view_model.dart`,
+`dashboard_screen.dart`, `lib/l10n/*`, `test/widget_test.dart` (2 tests).
+Verification: PASS `flutter analyze`; PASS `flutter test` (327, 1 skipped
+live-backend test); PASS `dart format --set-exit-if-changed` on changed Dart
+files; PASS `git diff --check`.
+Remaining: on-device visual and TalkBack check NOT RUN.
+Risks / unresolved questions: none known.
+Relevant commit: see the pull request for this change.
+
+Date: 2026-10-11
+Agent: Claude Code
 Goal: Redesign the category tags (user asked to "redesign the tags").
 Completed: one shared `CategoryPill` (tinted stadium, category icon plus name)
 now renders list-row labels (compact), the details tag (with edit icon, 48dp
@@ -18,7 +39,7 @@ tap-target and text-contrast guidelines PASS.
 Decisions made: icons are Material outlined icons; no new dependency.
 Remaining: on-device visual check; filter chips not probed separately.
 Risks / unresolved questions: none known.
-Relevant commit: None; uncommitted as requested.
+Relevant commit: see the pull request for this change.
 
 Date: 2026-10-07
 Agent: Claude Code

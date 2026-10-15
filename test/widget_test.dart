@@ -272,6 +272,133 @@ void main() {
     });
   }
 
+  testWidgets('current list shows top apps until expanded', (tester) async {
+    tester.view.physicalSize = const Size(430, 1000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    // Editor plus 12 more apps, already sorted by time like real summaries.
+    final usage = _FakeUsageRepository()
+      ..serveHistory = true
+      ..extraSummaries = [
+        for (var i = 0; i < 12; i++)
+          AppUsageSummary(
+            appName: 'App $i',
+            processName: 'app$i.exe',
+            totalDurationSeconds: 1200 - i * 60,
+            percentageOfTotal: 0,
+          ),
+      ];
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          usagePlatformProvider.overrideWithValue(UsagePlatform.windows),
+          usageRepositoryProvider.overrideWithValue(usage),
+          reportRepositoryProvider.overrideWithValue(_FakeReportRepository()),
+          platformDataSourceProvider.overrideWithValue(
+            _FakePlatformDataSource(),
+          ),
+          settingsRepositoryProvider.overrideWithValue(
+            _FakeSettingsRepository(),
+          ),
+          appLanguageRepositoryProvider.overrideWithValue(
+            _FakeAppLanguageRepository(),
+          ),
+        ],
+        child: const FocusTraceApp(),
+      ),
+    );
+    for (var i = 0; i < 4; i++) {
+      await tester.pump(const Duration(seconds: 1));
+    }
+    final container = ProviderScope.containerOf(
+      tester.element(find.byType(DashboardScreen)),
+    );
+    final toggle = find.byKey(const ValueKey('current-list-toggle'));
+    Future<void> tapToggle() async {
+      await tester.ensureVisible(toggle);
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.tap(toggle);
+      await tester.pump();
+    }
+
+    expect(find.byType(SummaryTile, skipOffstage: false), findsNWidgets(10));
+    expect(find.text('Show all (3 more)', skipOffstage: false), findsOneWidget);
+    expect(find.text('App 8', skipOffstage: false), findsOneWidget);
+    expect(find.text('App 9', skipOffstage: false), findsNothing);
+
+    await tapToggle();
+    expect(find.byType(SummaryTile, skipOffstage: false), findsNWidgets(13));
+    expect(find.text('Show less', skipOffstage: false), findsOneWidget);
+
+    // Live refreshes of the same day keep the list open.
+    await container.read(dashboardViewModelProvider.notifier).refreshSilently();
+    await tester.pump();
+    expect(find.byType(SummaryTile, skipOffstage: false), findsNWidgets(13));
+
+    await tapToggle();
+    expect(find.byType(SummaryTile, skipOffstage: false), findsNWidgets(10));
+
+    // Changing the filter collapses the list.
+    await tapToggle();
+    final all = find.byKey(const ValueKey('category-filter-all'));
+    await tester.ensureVisible(all);
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.tap(all);
+    await tester.pump();
+    expect(find.byType(SummaryTile, skipOffstage: false), findsNWidgets(10));
+
+    // So does changing the day.
+    await tapToggle();
+    await container.read(dashboardViewModelProvider.notifier).previousDay();
+    await tester.pump();
+    expect(find.byType(SummaryTile, skipOffstage: false), findsNWidgets(10));
+    expect(find.text('Show all (3 more)', skipOffstage: false), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('current list has no toggle for ten apps or fewer', (
+    tester,
+  ) async {
+    final usage = _FakeUsageRepository()
+      ..extraSummaries = [
+        for (var i = 0; i < 9; i++)
+          AppUsageSummary(
+            appName: 'App $i',
+            processName: 'app$i.exe',
+            totalDurationSeconds: 1200 - i * 60,
+            percentageOfTotal: 0,
+          ),
+      ];
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          usagePlatformProvider.overrideWithValue(UsagePlatform.windows),
+          usageRepositoryProvider.overrideWithValue(usage),
+          reportRepositoryProvider.overrideWithValue(_FakeReportRepository()),
+          platformDataSourceProvider.overrideWithValue(
+            _FakePlatformDataSource(),
+          ),
+          settingsRepositoryProvider.overrideWithValue(
+            _FakeSettingsRepository(),
+          ),
+          appLanguageRepositoryProvider.overrideWithValue(
+            _FakeAppLanguageRepository(),
+          ),
+        ],
+        child: const FocusTraceApp(),
+      ),
+    );
+    for (var i = 0; i < 4; i++) {
+      await tester.pump(const Duration(seconds: 1));
+    }
+    expect(find.byType(SummaryTile, skipOffstage: false), findsNWidgets(10));
+    expect(
+      find.byKey(const ValueKey('current-list-toggle'), skipOffstage: false),
+      findsNothing,
+    );
+  });
+
   testWidgets('dashboard renders usage summaries', (tester) async {
     await tester.pumpWidget(
       ProviderScope(
