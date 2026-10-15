@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart' show listEquals;
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
@@ -126,22 +127,23 @@ class UsageMonthStats extends StatelessWidget {
 
 /// A small tonal circle holding a metric's icon, shared by every metric.
 class _MetricIcon extends StatelessWidget {
-  const _MetricIcon(this.icon);
+  const _MetricIcon(this.icon, {this.size = 32});
 
   final IconData icon;
+  final double size;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     return Container(
-      width: 32,
-      height: 32,
+      width: size,
+      height: size,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         color: scheme.primary.withValues(alpha: 0.14),
       ),
       alignment: Alignment.center,
-      child: Icon(icon, size: 18, color: scheme.primary),
+      child: Icon(icon, size: size * 0.56, color: scheme.primary),
     );
   }
 }
@@ -224,12 +226,16 @@ class UsageChangeLabel extends StatelessWidget {
     required this.change,
     required this.isGood,
     required this.caption,
+    this.large = false,
     super.key,
   });
 
   final UsageTrendChange change;
   final bool isGood;
   final String caption;
+
+  /// Metric-tile size: a title-sized value and a body-sized caption.
+  final bool large;
 
   @override
   Widget build(BuildContext context) {
@@ -261,24 +267,29 @@ class UsageChangeLabel extends StatelessWidget {
                   : isIncrease
                   ? Icons.arrow_upward_rounded
                   : Icons.arrow_downward_rounded,
-              size: 14,
+              size: large ? 18 : 14,
               color: color,
             ),
             const SizedBox(width: 2),
             Text(
               value,
-              style: theme.textTheme.labelMedium?.copyWith(
-                color: color,
-                fontWeight: FontWeight.w700,
-              ),
+              style:
+                  (large
+                          ? theme.textTheme.titleLarge
+                          : theme.textTheme.labelMedium)
+                      ?.copyWith(
+                        color: color,
+                        fontWeight: FontWeight.w700,
+                        height: large ? 1.15 : null,
+                      ),
             ),
           ],
         ),
         Text(
           caption,
-          style: theme.textTheme.labelSmall?.copyWith(
-            color: theme.colorScheme.onSurfaceVariant,
-          ),
+          style:
+              (large ? theme.textTheme.bodySmall : theme.textTheme.labelSmall)
+                  ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
         ),
       ],
     );
@@ -580,10 +591,11 @@ class UsageDayPanel extends StatelessWidget {
     final average = state.averagePerDaySeconds;
     final intervals = state.intervalsOn(day);
     final isApproximate = state.isApproximateDay(day);
+    final approx = isApproximate ? '≈' : '';
     return Card(
       key: const ValueKey('usage-day-panel'),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(16, 18, 16, 16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -594,7 +606,7 @@ class UsageDayPanel extends StatelessWidget {
                 Expanded(
                   child: Text(
                     DateFormat.yMMMEd(locale).format(day),
-                    style: theme.textTheme.titleMedium?.copyWith(
+                    style: theme.textTheme.titleLarge?.copyWith(
                       fontWeight: FontWeight.w700,
                     ),
                   ),
@@ -612,104 +624,96 @@ class UsageDayPanel extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 16),
-            Row(
-              children: [
-                SizedBox.square(
-                  dimension: 112,
-                  child: Stack(
-                    fit: StackFit.expand,
-                    children: [
-                      CircularProgressIndicator(
+            LayoutBuilder(
+              builder: (context, constraints) {
+                // The ring takes about two fifths of the width; the three
+                // metric tiles stack beside it at the ring's height.
+                final ring = math.min(156.0, constraints.maxWidth * 0.42);
+                const gap = 8.0;
+                return Row(
+                  children: [
+                    SizedBox.square(
+                      dimension: ring,
+                      child: _TotalRing(
                         value: busiest == 0
                             ? 0
                             : usage.durationSeconds / busiest,
-                        strokeWidth: 9,
-                        strokeCap: StrokeCap.round,
-                        backgroundColor: theme.colorScheme.surfaceContainerHigh,
+                        total:
+                            approx +
+                            l10n.compactDuration(
+                              Duration(seconds: usage.durationSeconds),
+                            ),
+                        label: l10n.usageCalendarTotalTime,
                       ),
-                      Padding(
-                        padding: const EdgeInsets.all(16),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: SizedBox(
+                        height: math.max(ring, 3 * 52 + 2 * gap),
                         child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            FittedBox(
-                              child: Text(
-                                '${isApproximate ? '≈' : ''}'
-                                '${l10n.compactDuration(Duration(seconds: usage.durationSeconds))}',
-                                style: theme.textTheme.titleLarge?.copyWith(
-                                  fontWeight: FontWeight.w700,
-                                ),
+                            _MetricTile(
+                              icon: Icons.smartphone_rounded,
+                              child: _valueAndLabel(
+                                context,
+                                isApproximate ? '-' : '${usage.launchCount}',
+                                l10n.usageCalendarAppOpens,
                               ),
                             ),
-                            Text(
-                              l10n.usageCalendarTotalTime,
-                              style: theme.textTheme.labelSmall?.copyWith(
-                                color: theme.colorScheme.onSurfaceVariant,
+                            const SizedBox(height: gap),
+                            _MetricTile(
+                              icon: Icons.schedule_rounded,
+                              child: _valueAndLabel(
+                                context,
+                                isApproximate || usage.launchCount == 0
+                                    ? '-'
+                                    : l10n.compactDuration(
+                                        Duration(
+                                          seconds:
+                                              usage.durationSeconds ~/
+                                              usage.launchCount,
+                                        ),
+                                      ),
+                                l10n.usageCalendarAverageSession,
+                              ),
+                            ),
+                            const SizedBox(height: gap),
+                            // Always present, so the panel keeps its height.
+                            _MetricTile(
+                              icon: Icons.insights_rounded,
+                              child: UsageChangeLabel(
+                                change: UsageTrendChange.compare(
+                                  currentSeconds: usage.durationSeconds,
+                                  previousSeconds: average,
+                                  previousWindowCovered: true,
+                                ),
+                                isGood: isGood,
+                                caption: l10n.usageCalendarVsDailyAverage,
+                                large: true,
                               ),
                             ),
                           ],
                         ),
                       ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 20),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _PanelValue(
-                        icon: Icons.smartphone_rounded,
-                        child: _valueAndLabel(
-                          context,
-                          isApproximate ? '-' : '${usage.launchCount}',
-                          l10n.usageCalendarAppOpens,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      _PanelValue(
-                        icon: Icons.schedule_rounded,
-                        child: _valueAndLabel(
-                          context,
-                          isApproximate || usage.launchCount == 0
-                              ? '-'
-                              : l10n.compactDuration(
-                                  Duration(
-                                    seconds:
-                                        usage.durationSeconds ~/
-                                        usage.launchCount,
-                                  ),
-                                ),
-                          l10n.usageCalendarAverageSession,
-                        ),
-                      ),
-                      // Always present, so the panel keeps its height.
-                      const SizedBox(height: 12),
-                      _PanelValue(
-                        icon: Icons.insights_rounded,
-                        child: UsageChangeLabel(
-                          change: UsageTrendChange.compare(
-                            currentSeconds: usage.durationSeconds,
-                            previousSeconds: average,
-                            previousWindowCovered: true,
-                          ),
-                          isGood: isGood,
-                          caption: l10n.usageCalendarVsDailyAverage,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+                    ),
+                  ],
+                );
+              },
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 16),
+            Divider(
+              height: 1,
+              thickness: 1,
+              color: theme.colorScheme.outlineVariant.withValues(alpha: 0.35),
+            ),
+            const SizedBox(height: 16),
             Text(
               l10n.usageCalendarTimeline,
-              style: theme.textTheme.titleSmall?.copyWith(
+              style: theme.textTheme.titleMedium?.copyWith(
                 fontWeight: FontWeight.w700,
               ),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 12),
             UsageDayTimeline(
               day: day,
               intervals: intervals,
@@ -729,14 +733,14 @@ class UsageDayPanel extends StatelessWidget {
       children: [
         Text(
           value,
-          style: theme.textTheme.titleMedium?.copyWith(
+          style: theme.textTheme.titleLarge?.copyWith(
             fontWeight: FontWeight.w700,
-            height: 1.2,
+            height: 1.15,
           ),
         ),
         Text(
           label,
-          style: theme.textTheme.labelSmall?.copyWith(
+          style: theme.textTheme.bodySmall?.copyWith(
             color: theme.colorScheme.onSurfaceVariant,
           ),
         ),
@@ -745,25 +749,98 @@ class UsageDayPanel extends StatelessWidget {
   }
 }
 
-class _PanelValue extends StatelessWidget {
-  const _PanelValue({required this.icon, required this.child});
+/// The day's total inside a thick ring filled relative to the busiest day.
+class _TotalRing extends StatelessWidget {
+  const _TotalRing({
+    required this.value,
+    required this.total,
+    required this.label,
+  });
+
+  final double value;
+  final String total;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(6),
+          child: CircularProgressIndicator(
+            value: value,
+            strokeWidth: 12,
+            strokeCap: StrokeCap.round,
+            backgroundColor: theme.colorScheme.surfaceContainerHigh,
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.all(26),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              FittedBox(
+                child: Text(
+                  total,
+                  style: theme.textTheme.headlineMedium?.copyWith(
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+              FittedBox(
+                child: Text(
+                  label,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// A rounded tile with an icon circle and its metric, one of three stacked.
+class _MetricTile extends StatelessWidget {
+  const _MetricTile({required this.icon, required this.child});
 
   final IconData icon;
   final Widget child;
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        _MetricIcon(icon),
-        const SizedBox(width: 10),
-        Expanded(child: child),
-      ],
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10),
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surfaceContainer,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Row(
+          children: [
+            _MetricIcon(icon, size: 36),
+            const SizedBox(width: 10),
+            // Narrow phones shrink a long label instead of wrapping it.
+            Expanded(
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: child,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
 
-/// A 24-hour strip with a mark for each stretch of use.
+/// The day as 48 half-hour bars; idle half hours are faint dots.
 class UsageDayTimeline extends StatelessWidget {
   const UsageDayTimeline({
     required this.day,
@@ -778,24 +855,45 @@ class UsageDayTimeline extends StatelessWidget {
   /// Shown inside the empty track, which keeps the strip's height.
   final String? emptyLabel;
 
+  static const _slots = 48;
+
+  /// Seconds of use in each half hour of [day].
+  List<int> get slotSeconds {
+    final slots = List<int>.filled(_slots, 0);
+    for (final interval in intervals) {
+      var cursor = interval.startedAt;
+      while (cursor.isBefore(interval.endedAt)) {
+        final slot = (cursor.difference(day).inMinutes ~/ 30).clamp(
+          0,
+          _slots - 1,
+        );
+        final slotEnd = day.add(Duration(minutes: (slot + 1) * 30));
+        final end = interval.endedAt.isBefore(slotEnd)
+            ? interval.endedAt
+            : slotEnd;
+        if (!end.isAfter(cursor)) break;
+        slots[slot] += end.difference(cursor).inSeconds;
+        cursor = end;
+      }
+    }
+    return slots;
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final locale = Localizations.localeOf(context).toString();
-    final hourFormat = MediaQuery.alwaysUse24HourFormatOf(context)
-        ? DateFormat.H(locale)
-        : DateFormat.j(locale);
+    // Two-digit hours, as on a 24-hour clock: 00 06 12 18 00.
+    final hourFormat = DateFormat('HH');
     return Column(
       children: [
         SizedBox(
-          height: 28,
+          height: 52,
           width: double.infinity,
           child: CustomPaint(
             key: const ValueKey('usage-day-timeline'),
             painter: _TimelinePainter(
-              day: day,
-              intervals: intervals,
-              trackColor: theme.colorScheme.surfaceContainerHigh,
+              slots: slotSeconds,
+              trackColor: theme.colorScheme.surfaceContainer,
               gridColor: theme.colorScheme.outlineVariant.withValues(
                 alpha: 0.35,
               ),
@@ -813,7 +911,7 @@ class UsageDayTimeline extends StatelessWidget {
                 : null,
           ),
         ),
-        const SizedBox(height: 6),
+        const SizedBox(height: 8),
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
@@ -833,53 +931,73 @@ class UsageDayTimeline extends StatelessWidget {
 
 class _TimelinePainter extends CustomPainter {
   const _TimelinePainter({
-    required this.day,
-    required this.intervals,
+    required this.slots,
     required this.trackColor,
     required this.gridColor,
     required this.markColor,
   });
 
-  final DateTime day;
-  final List<AppUsageInterval> intervals;
+  final List<int> slots;
   final Color trackColor;
   final Color gridColor;
   final Color markColor;
 
+  static const _slotSeconds = 30 * 60;
+  static const _inset = 10.0;
+
   @override
   void paint(Canvas canvas, Size size) {
     canvas.drawRRect(
-      RRect.fromRectAndRadius(Offset.zero & size, const Radius.circular(10)),
+      RRect.fromRectAndRadius(Offset.zero & size, const Radius.circular(14)),
       Paint()..color = trackColor,
     );
     final grid = Paint()
       ..color = gridColor
       ..strokeWidth = 1;
+    // Bars sit inside the rounded track, clear of its corners.
+    final width = size.width - 2 * _inset;
     for (final hour in const [6, 12, 18]) {
-      final x = size.width * hour / 24;
-      canvas.drawLine(Offset(x, 6), Offset(x, size.height - 6), grid);
+      final x = _inset + width * hour / 24;
+      canvas.drawLine(Offset(x, 8), Offset(x, size.height - 8), grid);
     }
-    final mark = Paint()..color = markColor;
-    const daySeconds = 24 * 60 * 60;
-    for (final interval in intervals) {
-      final start = interval.startedAt.difference(day).inSeconds / daySeconds;
-      final end = interval.endedAt.difference(day).inSeconds / daySeconds;
-      // Keep short sessions visible as at least a thin mark.
-      final width = math.max(4.0, (end - start) * size.width);
+    final slotWidth = width / slots.length;
+    final barWidth = math.min(6.0, slotWidth * 0.6);
+    final baseline = size.height - _inset;
+    final maxHeight = size.height - 2 * _inset;
+    for (var index = 0; index < slots.length; index++) {
+      final centerX = _inset + slotWidth * (index + 0.5);
+      final fraction = (slots[index] / _slotSeconds).clamp(0.0, 1.0);
+      if (fraction == 0) {
+        // Idle time: a faint dot every hour keeps the axis readable.
+        if (index.isOdd) {
+          canvas.drawCircle(
+            Offset(centerX, baseline - 1.5),
+            1.5,
+            Paint()..color = markColor.withValues(alpha: 0.25),
+          );
+        }
+        continue;
+      }
+      // Busier half hours are taller and brighter.
+      final height = math.max(barWidth, fraction * maxHeight);
       canvas.drawRRect(
         RRect.fromRectAndRadius(
-          Rect.fromLTWH(start * size.width, 5, width, size.height - 10),
-          const Radius.circular(3),
+          Rect.fromLTWH(
+            centerX - barWidth / 2,
+            baseline - height,
+            barWidth,
+            height,
+          ),
+          Radius.circular(barWidth / 2),
         ),
-        mark,
+        Paint()..color = markColor.withValues(alpha: 0.45 + 0.55 * fraction),
       );
     }
   }
 
   @override
   bool shouldRepaint(covariant _TimelinePainter oldDelegate) =>
-      oldDelegate.intervals != intervals ||
-      oldDelegate.day != day ||
+      !listEquals(oldDelegate.slots, slots) ||
       oldDelegate.trackColor != trackColor ||
       oldDelegate.gridColor != gridColor ||
       oldDelegate.markColor != markColor;

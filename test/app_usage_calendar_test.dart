@@ -300,6 +300,23 @@ void main() {
     expect(await sizes(), march);
     viewModel.dispose();
   });
+
+  test('timeline splits sessions into half-hour slots', () {
+    final day = DateTime(2025, 3, 18);
+    final slots = UsageDayTimeline(
+      day: day,
+      intervals: [
+        // 00:20-00:50 spans two slots; 23:50-24:00 lands in the last one.
+        _interval(day.add(const Duration(minutes: 20)), 30),
+        _interval(day.add(const Duration(hours: 23, minutes: 50)), 10),
+      ],
+    ).slotSeconds;
+    expect(slots, hasLength(48));
+    expect(slots[0], 10 * 60);
+    expect(slots[1], 20 * 60);
+    expect(slots[47], 10 * 60);
+    expect(slots.fold(0, (a, b) => a + b), 40 * 60);
+  });
 }
 
 extension on DailyAppUsage {
