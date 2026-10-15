@@ -656,5 +656,17 @@
   "usageCalendarAverageSession": "平均セッション",
   "usageCalendarVsDailyAverage": "1日の平均との比較",
   "usageCalendarTimeline": "利用タイムライン",
-  "usageCalendarNoTimeline": "この日のセッション詳細はありません"
+  "usageCalendarNoTimeline": "この日のセッション詳細はありません",
+  "usageApproximateNote": "≈ おおよその値：FocusTrace の記録開始前の Android の利用状況の概要より",
+  "usageApproximateTag": "≈ おおよそ",
+  "onboardingHistoryChecking": "以前の利用状況を確認しています…",
+  "onboardingHistoryNone": "この端末には Android が保存した以前の利用状況がありません",
+  "onboardingHistoryFound": "{date} 以降の利用状況が見つかりました",
+  "@onboardingHistoryFound": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  }
 }

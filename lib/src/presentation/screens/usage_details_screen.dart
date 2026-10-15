@@ -86,11 +86,15 @@ class UsageDetailsScreen extends ConsumerWidget {
                             .selectPeriod(period),
                       ),
                       total: Text(
-                        context.l10n.compactDuration(state.totalDuration),
+                        '${state.hasApproximate ? '≈' : ''}'
+                        '${context.l10n.compactDuration(state.totalDuration)}',
                         key: const ValueKey('usage-period-total'),
                         style: Theme.of(context).textTheme.headlineSmall
                             ?.copyWith(fontWeight: FontWeight.w700),
                       ),
+                      note: state.hasApproximate
+                          ? context.l10n.usageApproximateNote
+                          : null,
                       onChartChanged: (chart) =>
                           _selectChart(context, ref, chart),
                     ),

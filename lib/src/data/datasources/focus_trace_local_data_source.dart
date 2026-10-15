@@ -7,6 +7,7 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import '../../domain/models/app_usage_interval.dart';
 import '../../domain/models/app_usage_summary.dart';
 import '../../domain/models/daily_app_usage.dart';
+import '../../domain/models/os_usage_bucket.dart';
 import '../../domain/models/restriction_event.dart';
 import '../../domain/models/sync_usage.dart';
 import '../../domain/models/usage_session.dart';
@@ -43,6 +44,16 @@ abstract class FocusTraceLocalDataSource {
     DateTime fromInclusive,
     DateTime toExclusive,
   ) async => const <AppUsageInterval>[];
+
+  /// Inserts or refreshes Android's aggregated buckets. Buckets the OS has
+  /// since dropped are kept: they are the only record of that history.
+  Future<void> upsertOsUsageBuckets(List<OsUsageBucket> buckets) async {}
+
+  Future<List<OsUsageBucket>> getOsUsageBuckets(
+    OsUsageInterval interval,
+    DateTime fromInclusive,
+    DateTime toExclusive,
+  ) async => const <OsUsageBucket>[];
 
   Future<void> insertRestrictionEvent(RestrictionEvent event) async {}
 
@@ -229,7 +240,11 @@ CREATE TABLE settings (
           await _createDailyUsageTable(db);
           await _createReportTables(db);
           await _createUsageSnapshotTable(db);
+          await _createOsUsageBucketTable(db);
         },
+        // Created on open rather than by a version bump: native recovery only
+        // accepts schema v5, and this table is additive and Flutter-only.
+        onOpen: _createOsUsageBucketTable,
       ),
     );
 
@@ -286,6 +301,68 @@ CREATE TABLE restriction_events (
 CREATE INDEX idx_restriction_events_occurred_at
 ON restriction_events(occurred_at)
 ''');
+  }
+
+  // Approximate OS history. Device-local: not in portable backups or sync.
+  Future<void> _createOsUsageBucketTable(Database db) => db.execute('''
+CREATE TABLE IF NOT EXISTS os_usage_buckets (
+  interval TEXT NOT NULL,
+  start_ms INTEGER NOT NULL,
+  end_ms INTEGER NOT NULL,
+  app_key TEXT NOT NULL,
+  app_name TEXT NOT NULL,
+  duration_seconds INTEGER NOT NULL,
+  PRIMARY KEY (interval, start_ms, app_key)
+)
+''');
+
+  @override
+  Future<void> upsertOsUsageBuckets(List<OsUsageBucket> buckets) async {
+    if (buckets.isEmpty) return;
+    final db = await _db;
+    await db.transaction((txn) async {
+      final batch = txn.batch();
+      for (final bucket in buckets) {
+        batch.insert('os_usage_buckets', {
+          'interval': bucket.interval.name,
+          'start_ms': bucket.start.millisecondsSinceEpoch,
+          'end_ms': bucket.end.millisecondsSinceEpoch,
+          'app_key': bucket.appKey,
+          'app_name': bucket.appName,
+          'duration_seconds': bucket.durationSeconds,
+        }, conflictAlgorithm: ConflictAlgorithm.replace);
+      }
+      await batch.commit(noResult: true);
+    });
+  }
+
+  @override
+  Future<List<OsUsageBucket>> getOsUsageBuckets(
+    OsUsageInterval interval,
+    DateTime fromInclusive,
+    DateTime toExclusive,
+  ) async {
+    final db = await _db;
+    final rows = await db.query(
+      'os_usage_buckets',
+      where: 'interval = ? AND start_ms < ? AND end_ms > ?',
+      whereArgs: [
+        interval.name,
+        toExclusive.millisecondsSinceEpoch,
+        fromInclusive.millisecondsSinceEpoch,
+      ],
+    );
+    return [
+      for (final row in rows)
+        OsUsageBucket(
+          interval: interval,
+          start: DateTime.fromMillisecondsSinceEpoch(row['start_ms'] as int),
+          end: DateTime.fromMillisecondsSinceEpoch(row['end_ms'] as int),
+          appKey: row['app_key'] as String,
+          appName: row['app_name'] as String,
+          durationSeconds: row['duration_seconds'] as int,
+        ),
+    ];
   }
 
   // Device-local query evidence is deliberately not portable. Imported/legacy
@@ -836,6 +913,7 @@ WHERE start_ms < ? AND end_ms > ? LIMIT 1
       await txn.delete('daily_app_usage');
       await txn.delete('usage_intervals');
       await txn.delete('restriction_events');
+      await txn.delete('os_usage_buckets');
       await _invalidateUsageRecovery(txn);
     });
   }

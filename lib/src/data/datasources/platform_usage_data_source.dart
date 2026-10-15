@@ -2,6 +2,7 @@ import 'package:flutter/services.dart';
 
 import '../../domain/models/app_usage_interval.dart';
 import '../../domain/models/app_usage_summary.dart';
+import '../../domain/models/os_usage_bucket.dart';
 import '../../performance/dashboard_performance.dart';
 
 class ActiveWindowInfo {
@@ -55,6 +56,11 @@ abstract interface class UsageIntervalDataSource {
   );
 }
 
+abstract interface class OsUsageHistoryDataSource {
+  /// Android's aggregated daily and monthly buckets still retained by the OS.
+  Future<List<OsUsageBucket>> getOsUsageHistory();
+}
+
 abstract interface class UsageHistoryRecoveryDataSource {
   /// Native recovery owns paired daily totals, intervals and coverage metadata.
   Future<void> recoverUsageHistory(
@@ -68,6 +74,7 @@ class AndroidUsageDataSource
         PlatformUsageDataSource,
         AppMetadataDataSource,
         UsageHistoryRecoveryDataSource,
+        OsUsageHistoryDataSource,
         UsageIntervalDataSource {
   AndroidUsageDataSource({
     MethodChannel channel = const MethodChannel('focustrace/usage'),
@@ -179,6 +186,31 @@ class AndroidUsageDataSource
         .whereType<Map>()
         .map((row) => _summaryFromAndroidMap(Map<String, Object?>.from(row)))
         .toList();
+  }
+
+  @override
+  Future<List<OsUsageBucket>> getOsUsageHistory() async {
+    if (!await hasUsageAccess()) {
+      return const <OsUsageBucket>[];
+    }
+    final rows = await _channel.invokeListMethod<Object?>('getOsUsageHistory');
+    return [
+      for (final raw in (rows ?? const <Object?>[]).whereType<Map>())
+        if (OsUsageInterval.values.asNameMap()[raw['interval']]
+            case final interval?)
+          OsUsageBucket(
+            interval: interval,
+            start: DateTime.fromMillisecondsSinceEpoch(
+              (raw['startMs'] as num).toInt(),
+            ),
+            end: DateTime.fromMillisecondsSinceEpoch(
+              (raw['endMs'] as num).toInt(),
+            ),
+            appKey: raw['packageName'] as String,
+            appName: raw['appName'] as String? ?? raw['packageName'] as String,
+            durationSeconds: (raw['foregroundMs'] as num).toInt() ~/ 1000,
+          ),
+    ];
   }
 
   @override

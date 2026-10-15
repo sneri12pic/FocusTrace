@@ -1102,4 +1102,22 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get usageCalendarNoTimeline => 'この日のセッション詳細はありません';
+
+  @override
+  String get usageApproximateNote =>
+      '≈ おおよその値：FocusTrace の記録開始前の Android の利用状況の概要より';
+
+  @override
+  String get usageApproximateTag => '≈ おおよそ';
+
+  @override
+  String get onboardingHistoryChecking => '以前の利用状況を確認しています…';
+
+  @override
+  String get onboardingHistoryNone => 'この端末には Android が保存した以前の利用状況がありません';
+
+  @override
+  String onboardingHistoryFound(String date) {
+    return '$date 以降の利用状況が見つかりました';
+  }
 }

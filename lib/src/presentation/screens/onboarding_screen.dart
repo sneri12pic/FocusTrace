@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 
 import '../../domain/models/app_usage_summary.dart';
 import '../../domain/models/usage_session.dart';
@@ -546,6 +547,7 @@ class _AccessPage extends ConsumerWidget {
                 .read(dashboardViewModelProvider.notifier)
                 .openPermissionSettings,
           ),
+          if (dashboardState.hasUsageAccess) const _HistoryImportNote(),
           const SizedBox(height: 12),
           _PermissionTile(
             icon: Icons.picture_in_picture_alt_outlined,
@@ -589,6 +591,46 @@ class _AccessPage extends ConsumerWidget {
           ],
         ),
       ],
+    );
+  }
+}
+
+/// Once usage access is granted, imports what Android kept from before and
+/// says how far back it goes, so new users know their charts aren't empty.
+class _HistoryImportNote extends ConsumerWidget {
+  const _HistoryImportNote();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final result = ref.watch(osUsageHistoryImportProvider);
+    final earliest = result.asData?.value;
+    final text = result.isLoading
+        ? context.l10n.onboardingHistoryChecking
+        : earliest == null
+        ? context.l10n.onboardingHistoryNone
+        : context.l10n.onboardingHistoryFound(
+            DateFormat.yMMMd(
+              Localizations.localeOf(context).toString(),
+            ).format(earliest),
+          );
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+      child: Row(
+        children: [
+          Icon(Icons.history, size: 16, color: theme.colorScheme.primary),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              text,
+              key: const ValueKey('onboarding-history-note'),
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

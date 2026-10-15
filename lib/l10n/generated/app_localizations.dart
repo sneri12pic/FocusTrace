@@ -2042,6 +2042,36 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No session details for this day'**
   String get usageCalendarNoTimeline;
+
+  /// No description provided for @usageApproximateNote.
+  ///
+  /// In en, this message translates to:
+  /// **'≈ Approximate: from Android\'s own usage summary, before FocusTrace was recording'**
+  String get usageApproximateNote;
+
+  /// No description provided for @usageApproximateTag.
+  ///
+  /// In en, this message translates to:
+  /// **'≈ Approximate'**
+  String get usageApproximateTag;
+
+  /// No description provided for @onboardingHistoryChecking.
+  ///
+  /// In en, this message translates to:
+  /// **'Checking for earlier usage…'**
+  String get onboardingHistoryChecking;
+
+  /// No description provided for @onboardingHistoryNone.
+  ///
+  /// In en, this message translates to:
+  /// **'Android has no earlier usage saved on this phone'**
+  String get onboardingHistoryNone;
+
+  /// No description provided for @onboardingHistoryFound.
+  ///
+  /// In en, this message translates to:
+  /// **'Found your earlier usage back to {date}'**
+  String onboardingHistoryFound(String date);
 }
 
 class _AppLocalizationsDelegate

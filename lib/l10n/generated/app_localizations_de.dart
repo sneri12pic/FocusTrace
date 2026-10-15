@@ -1153,4 +1153,23 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get usageCalendarNoTimeline => 'Keine Sitzungsdetails für diesen Tag';
+
+  @override
+  String get usageApproximateNote =>
+      '≈ Ungefähr: aus Androids eigener Nutzungsübersicht, bevor FocusTrace aufgezeichnet hat';
+
+  @override
+  String get usageApproximateTag => '≈ Ungefähr';
+
+  @override
+  String get onboardingHistoryChecking => 'Suche nach früherer Nutzung…';
+
+  @override
+  String get onboardingHistoryNone =>
+      'Android hat auf diesem Telefon keine frühere Nutzung gespeichert';
+
+  @override
+  String onboardingHistoryFound(String date) {
+    return 'Frühere Nutzung bis zum $date gefunden';
+  }
 }

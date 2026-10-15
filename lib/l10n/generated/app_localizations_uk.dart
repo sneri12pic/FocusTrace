@@ -1156,4 +1156,24 @@ class AppLocalizationsUk extends AppLocalizations {
 
   @override
   String get usageCalendarNoTimeline => 'Немає даних про сеанси за цей день';
+
+  @override
+  String get usageApproximateNote =>
+      '≈ Приблизно: зі зведення використання Android, до того як FocusTrace почав записувати';
+
+  @override
+  String get usageApproximateTag => '≈ Приблизно';
+
+  @override
+  String get onboardingHistoryChecking =>
+      'Шукаємо попередні дані про використання…';
+
+  @override
+  String get onboardingHistoryNone =>
+      'Android не зберіг попередніх даних про використання на цьому телефоні';
+
+  @override
+  String onboardingHistoryFound(String date) {
+    return 'Знайдено попередні дані про використання з $date';
+  }
 }
