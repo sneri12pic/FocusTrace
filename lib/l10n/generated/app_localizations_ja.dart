@@ -1120,4 +1120,12 @@ class AppLocalizationsJa extends AppLocalizations {
   String onboardingHistoryFound(String date) {
     return '$date 以降の利用状況が見つかりました';
   }
+
+  @override
+  String restrictionsTimeLeft(String duration) {
+    return '残り $duration';
+  }
+
+  @override
+  String get restrictionsLimitReached => '上限に達しました';
 }

@@ -6,15 +6,46 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../domain/models/app_usage_summary.dart';
 import '../../domain/models/block_routine.dart';
 import '../../domain/models/restriction_rule.dart';
+import '../../domain/models/usage_item.dart';
 import '../../domain/models/usage_session.dart';
 import '../localization/app_localizations_x.dart';
 import '../providers.dart';
 import '../view_models/app_usage_details_view_model.dart';
+import '../widgets/app_category_widgets.dart';
 import '../widgets/app_icon_avatar.dart';
+import '../widgets/trend_color.dart';
 import 'restriction_editor_sheet.dart';
 import 'routine_editor_sheet.dart';
 import 'routine_details_screen.dart';
 import 'usage_details_screen.dart';
+
+/// Rules under their app's category, in category order. An app with no
+/// usage summary is classified from its stored name and key.
+@visibleForTesting
+List<MapEntry<UsageCategory, List<RestrictionRule>>> groupRulesByCategory(
+  List<RestrictionRule> rules,
+  Map<String, AppUsageSummary> appsByKey,
+  Map<String, UsageCategory> overrides,
+) {
+  final groups = <UsageCategory, List<RestrictionRule>>{};
+  for (final rule in rules) {
+    final summary =
+        appsByKey[rule.appKey] ??
+        AppUsageSummary(
+          appName: rule.appName,
+          packageName: rule.appKey,
+          totalDurationSeconds: 0,
+          percentageOfTotal: 0,
+        );
+    groups
+        .putIfAbsent(resolveUsageCategory(summary, overrides), () => [])
+        .add(rule);
+  }
+  return [
+    for (final category in UsageCategory.values)
+      if (groups[category] case final rules?) MapEntry(category, rules),
+  ];
+}
 
 class RestrictionsScreen extends ConsumerWidget {
   const RestrictionsScreen({super.key});
@@ -34,6 +65,9 @@ class RestrictionsScreen extends ConsumerWidget {
       ...appsByKey,
       for (final app in state.todayUsage) app.appKey: app,
     };
+    final categoryOverrides =
+        ref.watch(appCategoriesViewModelProvider).asData?.value ??
+        const <String, UsageCategory>{};
     final todayUsageByKey = {
       for (final app in state.todayUsage) app.appKey: app.totalDurationSeconds,
     };
@@ -165,33 +199,55 @@ class RestrictionsScreen extends ConsumerWidget {
                     ),
                   ),
                 ),
-              for (final rule in state.rules)
-                _RestrictionRuleTile(
-                  rule: rule,
-                  summary: appsByKey[rule.appKey],
-                  isSaving: state.isSaving,
-                  onUnblockNow: () => viewModel.unblockAppNow(
-                    appKey: rule.appKey,
-                    usageSecondsToday:
-                        appsByKey[rule.appKey]?.totalDurationSeconds ?? 0,
+              // Rules grouped under their app's category, in category order.
+              for (final group in groupRulesByCategory(
+                state.rules,
+                appsByKey,
+                categoryOverrides,
+              )) ...[
+                Padding(
+                  padding: const EdgeInsets.only(top: 4, bottom: 8),
+                  child: Align(
+                    alignment: AlignmentDirectional.centerStart,
+                    child: CategoryPill(
+                      group.key,
+                      key: ValueKey('restriction-group-${group.key.name}'),
+                      compact: true,
+                    ),
                   ),
-                  onTap: () async {
-                    final updated = await showRestrictionEditor(
-                      context,
-                      appKey: rule.appKey,
-                      appName: rule.appName,
-                      existing: rule,
-                    );
-                    if (updated == null || !context.mounted) {
-                      return;
-                    }
-                    await viewModel.saveRule(updated);
-                    if (context.mounted) {
-                      await promptRestrictionPermissionsIfNeeded(context, ref);
-                    }
-                  },
-                  onDelete: () => viewModel.deleteRule(rule.appKey, rule.type),
                 ),
+                for (final rule in group.value)
+                  _RestrictionRuleTile(
+                    rule: rule,
+                    summary: appsByKey[rule.appKey],
+                    isSaving: state.isSaving,
+                    onUnblockNow: () => viewModel.unblockAppNow(
+                      appKey: rule.appKey,
+                      usageSecondsToday:
+                          appsByKey[rule.appKey]?.totalDurationSeconds ?? 0,
+                    ),
+                    onTap: () async {
+                      final updated = await showRestrictionEditor(
+                        context,
+                        appKey: rule.appKey,
+                        appName: rule.appName,
+                        existing: rule,
+                      );
+                      if (updated == null || !context.mounted) {
+                        return;
+                      }
+                      await viewModel.saveRule(updated);
+                      if (context.mounted) {
+                        await promptRestrictionPermissionsIfNeeded(
+                          context,
+                          ref,
+                        );
+                      }
+                    },
+                    onDelete: () =>
+                        viewModel.deleteRule(rule.appKey, rule.type),
+                  ),
+              ],
             ],
           ],
         ),
@@ -686,6 +742,12 @@ class _RestrictionRuleTile extends StatelessWidget {
               icon: const Icon(Icons.delete_outline),
             ),
           ),
+          if (rule.type == RestrictionRuleType.dailyLimit &&
+              (rule.limitMinutes ?? 0) > 0)
+            _LimitProgress(
+              usedSeconds: usageSeconds,
+              limitSeconds: rule.limitMinutes! * 60,
+            ),
           if (isBlocked)
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
@@ -753,6 +815,62 @@ class _RestrictionRuleTile extends StatelessWidget {
     return _formatTime(
       context,
       TimeOfDay(hour: minute ~/ 60, minute: minute % 60),
+    );
+  }
+}
+
+/// Today's use against a daily limit: green, then amber past three
+/// quarters, then red once the limit is reached.
+class _LimitProgress extends StatelessWidget {
+  const _LimitProgress({required this.usedSeconds, required this.limitSeconds});
+
+  final int usedSeconds;
+  final int limitSeconds;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final fraction = (usedSeconds / limitSeconds).clamp(0.0, 1.0);
+    final green = trendColor(theme, isFlat: false, isIncrease: false);
+    final red = trendColor(theme, isFlat: false, isIncrease: true);
+    // The amber is the palette's existing yellow (Entertainment's tag).
+    final color = fraction >= 1
+        ? red
+        : fraction >= 0.75
+        ? UsageCategory.entertainment.color
+        : green;
+    final left = limitSeconds - usedSeconds;
+    final label = left <= 0
+        ? context.l10n.restrictionsLimitReached
+        : context.l10n.restrictionsTimeLeft(
+            context.l10n.compactDuration(Duration(seconds: left)),
+          );
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
+      child: Row(
+        children: [
+          Expanded(
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(4),
+              child: LinearProgressIndicator(
+                key: const ValueKey('restriction-limit-progress'),
+                value: fraction,
+                minHeight: 6,
+                color: color,
+                backgroundColor: theme.colorScheme.surfaceContainerHighest,
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Text(
+            label,
+            style: theme.textTheme.labelMedium?.copyWith(
+              color: color,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
