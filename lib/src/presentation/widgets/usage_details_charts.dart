@@ -17,6 +17,7 @@ class UsageDetailsCharts extends StatefulWidget {
     this.isGood = false,
     this.selector,
     this.total,
+    this.note,
     super.key,
   });
 
@@ -33,6 +34,9 @@ class UsageDetailsCharts extends StatefulWidget {
 
   /// The range total, shown under the selector.
   final Widget? total;
+
+  /// A short caption under the charts, e.g. what "≈" means.
+  final String? note;
 
   @override
   State<UsageDetailsCharts> createState() => _UsageDetailsChartsState();
@@ -107,6 +111,15 @@ class _UsageDetailsChartsState extends State<UsageDetailsCharts> {
                 ],
               ),
             ),
+            if (widget.note case final note?) ...[
+              const SizedBox(height: 8),
+              Text(
+                note,
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
           ],
         ),
       ),
@@ -185,10 +198,13 @@ String _pointLabel(
   final date = period == UsageDetailsPeriod.year
       ? DateFormat.yMMM(locale).format(point.day)
       : DateFormat.yMMMd(locale).format(point.day);
-  return context.l10n.usageDetailsDayValue(
-    date,
-    context.l10n.compactDuration(point.duration),
-  );
+  return context.l10n.usageDetailsDayValue(date, _durationText(context, point));
+}
+
+/// Approximate values (Android's aggregated history) carry a leading "≈".
+String _durationText(BuildContext context, DailyUsagePoint point) {
+  final duration = context.l10n.compactDuration(point.duration);
+  return point.isApproximate ? '≈$duration' : duration;
 }
 
 int _maximum(List<DailyUsagePoint> points) => points.fold<int>(
@@ -275,9 +291,7 @@ class _UsageBarChart extends StatelessWidget {
                                   columnWidth >= 32)
                                 FittedBox(
                                   child: Text(
-                                    context.l10n.compactDuration(
-                                      points[index].duration,
-                                    ),
+                                    _durationText(context, points[index]),
                                     style: labelStyle,
                                   ),
                                 ),
@@ -293,8 +307,13 @@ class _UsageBarChart extends StatelessWidget {
                                 decoration: BoxDecoration(
                                   // The selected day (last bar) leads; the
                                   // rest stay readable but recede.
+                                  // Approximate history is a faint bar.
                                   color: theme.colorScheme.primary.withValues(
-                                    alpha: index == points.length - 1 ? 1 : 0.8,
+                                    alpha: points[index].isApproximate
+                                        ? 0.35
+                                        : index == points.length - 1
+                                        ? 1
+                                        : 0.8,
                                   ),
                                   borderRadius: const BorderRadius.vertical(
                                     top: Radius.circular(6),

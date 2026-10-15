@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../domain/models/app_usage_interval.dart';
 import '../../domain/models/daily_app_usage.dart';
 import '../../domain/repositories/report_repository.dart';
+import '../../data/repositories/os_usage_history_repository.dart';
 import 'app_usage_details_view_model.dart';
 
 class CalendarDayUsage {
@@ -27,6 +28,9 @@ class AppUsageCalendarState {
     this.days = const <DateTime, CalendarDayUsage>{},
     this.previousDays = const <DateTime, CalendarDayUsage>{},
     this.intervals = const <AppUsageInterval>[],
+    this.approximateDays = const <DateTime>{},
+    this.approximateMonthSeconds,
+    this.previousApproximateMonthSeconds,
     this.selectedDay,
     this.isLoading = false,
     this.errorMessage,
@@ -42,6 +46,13 @@ class AppUsageCalendarState {
 
   /// This app's foreground intervals that start in [month].
   final List<AppUsageInterval> intervals;
+
+  /// Days in [days] filled from Android's aggregated history.
+  final Set<DateTime> approximateDays;
+
+  /// Android's monthly total, used only when a month has no daily data.
+  final int? approximateMonthSeconds;
+  final int? previousApproximateMonthSeconds;
   final DateTime? selectedDay;
   final bool isLoading;
   final String? errorMessage;
@@ -61,23 +72,50 @@ class AppUsageCalendarState {
   CalendarDayUsage dayUsage(DateTime day) =>
       days[day] ?? const CalendarDayUsage();
 
-  CalendarDayUsage get monthTotal => _sum(days.values);
+  bool isApproximateDay(DateTime day) => approximateDays.contains(day);
+
+  bool get _usesMonthTotal => days.isEmpty && approximateMonthSeconds != null;
+
+  /// True when any month figure leans on Android's aggregated history.
+  bool get isMonthApproximate => approximateDays.isNotEmpty || _usesMonthTotal;
+
+  CalendarDayUsage get monthTotal => _usesMonthTotal
+      ? CalendarDayUsage(durationSeconds: approximateMonthSeconds!)
+      : _sum(days.values);
+
+  int get _previousLength => DateTime(month.year, month.month, 0).day;
 
   /// The previous month's first [elapsedDays] days, so a month in progress
-  /// is compared with the same stretch of the month before.
-  CalendarDayUsage get previousSameSpan => _sum(
-    previousDays.entries
-        .where((entry) => entry.key.day <= elapsedDays)
-        .map((entry) => entry.value),
-  );
+  /// is compared with the same stretch of the month before. A month known
+  /// only as Android's monthly total is prorated.
+  CalendarDayUsage get previousSameSpan {
+    final previousMonthSeconds = previousApproximateMonthSeconds;
+    if (previousDays.isEmpty && previousMonthSeconds != null) {
+      return CalendarDayUsage(
+        durationSeconds:
+            previousMonthSeconds *
+            math.min(elapsedDays, _previousLength) ~/
+            _previousLength,
+      );
+    }
+    return _sum(
+      previousDays.entries
+          .where((entry) => entry.key.day <= elapsedDays)
+          .map((entry) => entry.value),
+    );
+  }
 
-  bool get hasPreviousMonth => previousDays.isNotEmpty;
+  bool get hasPreviousMonth =>
+      previousDays.isNotEmpty || previousApproximateMonthSeconds != null;
 
   int get averagePerDaySeconds => monthTotal.durationSeconds ~/ elapsedDays;
 
   int get previousAveragePerDaySeconds {
-    final previousLength = DateTime(month.year, month.month, 0).day;
-    return _sum(previousDays.values).durationSeconds ~/ previousLength;
+    final previousMonthSeconds = previousApproximateMonthSeconds;
+    final seconds = previousDays.isEmpty && previousMonthSeconds != null
+        ? previousMonthSeconds
+        : _sum(previousDays.values).durationSeconds;
+    return seconds ~/ _previousLength;
   }
 
   int get busiestDaySeconds => days.values.fold(
@@ -119,6 +157,9 @@ class AppUsageCalendarState {
       days: days,
       previousDays: previousDays,
       intervals: intervals,
+      approximateDays: approximateDays,
+      approximateMonthSeconds: approximateMonthSeconds,
+      previousApproximateMonthSeconds: previousApproximateMonthSeconds,
       selectedDay: selectedDay ?? this.selectedDay,
       isLoading: isLoading ?? this.isLoading,
       errorMessage: errorMessage,
@@ -131,19 +172,28 @@ class AppUsageCalendarState {
 
 /// One month of this app's usage, as loaded from the report source.
 class _MonthData {
-  const _MonthData(this.days, this.intervals);
+  const _MonthData(
+    this.days,
+    this.intervals, {
+    this.approximateDays = const <DateTime>{},
+    this.approximateMonthSeconds,
+  });
 
   final Map<DateTime, CalendarDayUsage> days;
   final List<AppUsageInterval> intervals;
+  final Set<DateTime> approximateDays;
+  final int? approximateMonthSeconds;
 }
 
 class AppUsageCalendarViewModel extends StateNotifier<AppUsageCalendarState> {
   AppUsageCalendarViewModel({
     required ReportRepository reportRepository,
     required AppUsageDetailsRequest request,
+    OsUsageHistoryRepository? osHistory,
     DateTime Function() clock = DateTime.now,
   }) : _reportRepository = reportRepository,
        _request = request,
+       _osHistory = osHistory,
        super(
          AppUsageCalendarState(
            month: DateTime(
@@ -158,6 +208,7 @@ class AppUsageCalendarViewModel extends StateNotifier<AppUsageCalendarState> {
 
   final ReportRepository _reportRepository;
   final AppUsageDetailsRequest _request;
+  final OsUsageHistoryRepository? _osHistory;
   int _loadGeneration = 0;
 
   // Each month reconciles history once per screen, which is the slow part.
@@ -248,6 +299,9 @@ class AppUsageCalendarViewModel extends StateNotifier<AppUsageCalendarState> {
       days: current.days,
       previousDays: previous.days,
       intervals: current.intervals,
+      approximateDays: current.approximateDays,
+      approximateMonthSeconds: current.approximateMonthSeconds,
+      previousApproximateMonthSeconds: previous.approximateMonthSeconds,
       selectedDay: _selectionIn(month),
     );
   }
@@ -277,13 +331,40 @@ class AppUsageCalendarViewModel extends StateNotifier<AppUsageCalendarState> {
         launchCount: _request.summary.launchCount,
       );
     }
-    return _MonthData(days, [
+    final intervals = [
       for (final interval in source.intervals)
         if (interval.appKey == appKey &&
             interval.endedAt.isAfter(month) &&
             interval.startedAt.isBefore(nextMonth))
           interval,
-    ]);
+    ];
+    final osHistory = _osHistory;
+    if (osHistory == null) return _MonthData(days, intervals);
+    await osHistory.importOnce();
+    final (approximate, monthly) = await (
+      osHistory.dailySeconds(appKey, month, nextMonth),
+      osHistory.monthlySeconds(appKey, month, nextMonth),
+    ).wait;
+    // A day with no rows for any app was not recorded, so Android's total may
+    // stand in for it. A recorded day without this app really was zero.
+    final recordedDays = {
+      for (final entry in source.dailyUsage) _day(entry.day),
+      if (!requestDay.isBefore(month) && requestDay.isBefore(nextMonth))
+        requestDay,
+    };
+    final approximateDays = <DateTime>{};
+    approximate.forEach((day, seconds) {
+      if (!recordedDays.contains(day)) {
+        days[day] = CalendarDayUsage(durationSeconds: seconds);
+        approximateDays.add(day);
+      }
+    });
+    return _MonthData(
+      days,
+      intervals,
+      approximateDays: approximateDays,
+      approximateMonthSeconds: recordedDays.isEmpty ? monthly[month] : null,
+    );
   }
 
   static Map<DateTime, CalendarDayUsage> _byDay(

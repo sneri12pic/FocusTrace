@@ -52,6 +52,16 @@ class _MemoryLocalDataSource implements FocusTraceLocalDataSource {
   Future<void> insertUsageIntervals(List<AppUsageInterval> intervals) async {}
 
   @override
+  Future<void> upsertOsUsageBuckets(List<OsUsageBucket> buckets) async {}
+
+  @override
+  Future<List<OsUsageBucket>> getOsUsageBuckets(
+    OsUsageInterval interval,
+    DateTime fromInclusive,
+    DateTime toExclusive,
+  ) async => const <OsUsageBucket>[];
+
+  @override
   Future<List<AppUsageInterval>> getUsageIntervals(
     DateTime fromInclusive,
     DateTime toExclusive,

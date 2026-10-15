@@ -150,6 +150,17 @@ class MainActivity : FlutterActivity() {
                             }.start()
                         }
                     }
+                    "getOsUsageHistory" -> {
+                        Thread {
+                            try {
+                                if (!hasUsageAccess()) throw SecurityException("Usage Access required")
+                                val rows = OsUsageHistory.read(applicationContext, System.currentTimeMillis())
+                                runOnUiThread { result.success(rows) }
+                            } catch (e: Exception) {
+                                runOnUiThread { result.error("OS_USAGE_HISTORY_FAILED", e.message, null) }
+                            }
+                        }.start()
+                    }
                     "getUsageIntervals" -> {
                         val arguments = call.arguments as? Map<*, *>
                         val fromMs = (arguments?.get("fromMs") as? Number)?.toLong()

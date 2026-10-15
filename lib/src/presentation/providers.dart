@@ -15,6 +15,7 @@ import '../data/datasources/installation_marker_store.dart';
 import '../data/datasources/sync_scheduler.dart';
 import '../data/repositories/app_language_repository_impl.dart';
 import '../data/repositories/data_transfer_repository_impl.dart';
+import '../data/repositories/os_usage_history_repository.dart';
 import '../data/repositories/report_repository_impl.dart';
 import '../data/repositories/settings_repository_impl.dart';
 import '../data/repositories/sync_repository_impl.dart';
@@ -169,6 +170,22 @@ final reportRepositoryProvider = Provider<ReportRepository>((ref) {
   );
 });
 
+/// Only Android exposes aggregated OS history; elsewhere there is none.
+final osUsageHistoryRepositoryProvider = Provider<OsUsageHistoryRepository?>((
+  ref,
+) {
+  if (ref.watch(usagePlatformProvider) != UsagePlatform.android) return null;
+  return OsUsageHistoryRepository(
+    localDataSource: ref.watch(localDataSourceProvider),
+    platformDataSource: ref.watch(platformDataSourceProvider),
+  );
+});
+
+/// Imports Android's retained history once and reports the earliest day.
+final osUsageHistoryImportProvider = FutureProvider<DateTime?>(
+  (ref) async => ref.watch(osUsageHistoryRepositoryProvider)?.importOnce(),
+);
+
 final settingsRepositoryProvider = Provider<SettingsRepository>((ref) {
   return SettingsRepositoryImpl(ref.watch(localDataSourceProvider));
 });
@@ -293,6 +310,7 @@ final appUsageDetailsViewModelProvider = StateNotifierProvider.autoDispose
         usageRepository: ref.watch(usageRepositoryProvider),
         settingsRepository: ref.watch(settingsRepositoryProvider),
         request: request,
+        osHistory: ref.watch(osUsageHistoryRepositoryProvider),
       );
       viewModel.load();
       return viewModel;
@@ -307,6 +325,7 @@ final appUsageCalendarViewModelProvider = StateNotifierProvider.autoDispose
       final viewModel = AppUsageCalendarViewModel(
         reportRepository: ref.watch(reportRepositoryProvider),
         request: request,
+        osHistory: ref.watch(osUsageHistoryRepositoryProvider),
       );
       viewModel.load();
       return viewModel;

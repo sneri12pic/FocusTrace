@@ -656,5 +656,17 @@
   "usageCalendarAverageSession": "Середній сеанс",
   "usageCalendarVsDailyAverage": "порівняно з середнім за день",
   "usageCalendarTimeline": "Хронологія використання",
-  "usageCalendarNoTimeline": "Немає даних про сеанси за цей день"
+  "usageCalendarNoTimeline": "Немає даних про сеанси за цей день",
+  "usageApproximateNote": "≈ Приблизно: зі зведення використання Android, до того як FocusTrace почав записувати",
+  "usageApproximateTag": "≈ Приблизно",
+  "onboardingHistoryChecking": "Шукаємо попередні дані про використання…",
+  "onboardingHistoryNone": "Android не зберіг попередніх даних про використання на цьому телефоні",
+  "onboardingHistoryFound": "Знайдено попередні дані про використання з {date}",
+  "@onboardingHistoryFound": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  }
 }

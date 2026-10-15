@@ -22,6 +22,8 @@ class UsageMonthStats extends StatelessWidget {
     final total = state.monthTotal;
     final previous = state.previousSameSpan;
     final longest = state.longestInterval;
+    // Figures that include Android's aggregated history read "≈".
+    final approx = state.isMonthApproximate ? '≈' : '';
     UsageTrendChange change(int current, int before) =>
         UsageTrendChange.compare(
           currentSeconds: current,
@@ -47,9 +49,11 @@ class UsageMonthStats extends StatelessWidget {
             children: [
               _StatTile(
                 icon: Icons.schedule_rounded,
-                value: l10n.compactDuration(
-                  Duration(seconds: total.durationSeconds),
-                ),
+                value:
+                    approx +
+                    l10n.compactDuration(
+                      Duration(seconds: total.durationSeconds),
+                    ),
                 label: l10n.usageCalendarTotalThisMonth,
                 footer: _monthChange(
                   context,
@@ -59,9 +63,11 @@ class UsageMonthStats extends StatelessWidget {
               divider,
               _StatTile(
                 icon: Icons.bar_chart_rounded,
-                value: l10n.compactDuration(
-                  Duration(seconds: state.averagePerDaySeconds),
-                ),
+                value:
+                    approx +
+                    l10n.compactDuration(
+                      Duration(seconds: state.averagePerDaySeconds),
+                    ),
                 label: l10n.usageCalendarAveragePerDay,
                 footer: _monthChange(
                   context,
@@ -413,14 +419,25 @@ class UsageCalendar extends StatelessWidget {
     }
     final seconds = state.dayUsage(day).durationSeconds;
     final isSelected = day == state.selectedDay;
+    final isApproximate = state.isApproximateDay(day);
+    final heat = usageHeatColor(
+      theme,
+      usageHeatBucket(seconds),
+      isGood: isGood,
+    );
+    // Approximate days keep their colour but sit back, and read "≈".
     final background = seconds == 0
         ? scheme.surfaceContainerHigh
-        : usageHeatColor(theme, usageHeatBucket(seconds), isGood: isGood);
+        : isApproximate
+        ? Color.lerp(scheme.surfaceContainerHigh, heat, 0.55)!
+        : heat;
     final foreground =
         ThemeData.estimateBrightnessForColor(background) == Brightness.dark
         ? Colors.white
         : Colors.black;
-    final duration = context.l10n.compactDuration(Duration(seconds: seconds));
+    final duration =
+        '${isApproximate ? '≈' : ''}'
+        '${context.l10n.compactDuration(Duration(seconds: seconds))}';
     final locale = Localizations.localeOf(context).toString();
     return Semantics(
       button: true,
@@ -562,6 +579,7 @@ class UsageDayPanel extends StatelessWidget {
     final busiest = state.busiestDaySeconds;
     final average = state.averagePerDaySeconds;
     final intervals = state.intervalsOn(day);
+    final isApproximate = state.isApproximateDay(day);
     return Card(
       key: const ValueKey('usage-day-panel'),
       child: Padding(
@@ -569,11 +587,29 @@ class UsageDayPanel extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              DateFormat.yMMMEd(locale).format(day),
-              style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w700,
-              ),
+            // The approximate tag shares the date's row, so the panel keeps
+            // its height for every day.
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    DateFormat.yMMMEd(locale).format(day),
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                if (isApproximate)
+                  Tooltip(
+                    message: l10n.usageApproximateNote,
+                    child: Text(
+                      l10n.usageApproximateTag,
+                      style: theme.textTheme.labelMedium?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ),
+              ],
             ),
             const SizedBox(height: 16),
             Row(
@@ -598,9 +634,8 @@ class UsageDayPanel extends StatelessWidget {
                           children: [
                             FittedBox(
                               child: Text(
-                                l10n.compactDuration(
-                                  Duration(seconds: usage.durationSeconds),
-                                ),
+                                '${isApproximate ? '≈' : ''}'
+                                '${l10n.compactDuration(Duration(seconds: usage.durationSeconds))}',
                                 style: theme.textTheme.titleLarge?.copyWith(
                                   fontWeight: FontWeight.w700,
                                 ),
@@ -627,7 +662,7 @@ class UsageDayPanel extends StatelessWidget {
                         icon: Icons.smartphone_rounded,
                         child: _valueAndLabel(
                           context,
-                          '${usage.launchCount}',
+                          isApproximate ? '-' : '${usage.launchCount}',
                           l10n.usageCalendarAppOpens,
                         ),
                       ),
@@ -636,7 +671,7 @@ class UsageDayPanel extends StatelessWidget {
                         icon: Icons.schedule_rounded,
                         child: _valueAndLabel(
                           context,
-                          usage.launchCount == 0
+                          isApproximate || usage.launchCount == 0
                               ? '-'
                               : l10n.compactDuration(
                                   Duration(

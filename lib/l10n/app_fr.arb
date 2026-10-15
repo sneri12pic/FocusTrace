@@ -656,5 +656,17 @@
   "usageCalendarAverageSession": "Session moyenne",
   "usageCalendarVsDailyAverage": "vs votre moyenne quotidienne",
   "usageCalendarTimeline": "Chronologie d'utilisation",
-  "usageCalendarNoTimeline": "Aucun détail de session pour ce jour"
+  "usageCalendarNoTimeline": "Aucun détail de session pour ce jour",
+  "usageApproximateNote": "≈ Approximatif : issu du résumé d'utilisation d'Android, avant l'enregistrement par FocusTrace",
+  "usageApproximateTag": "≈ Approximatif",
+  "onboardingHistoryChecking": "Recherche de l'utilisation antérieure…",
+  "onboardingHistoryNone": "Android n'a enregistré aucune utilisation antérieure sur ce téléphone",
+  "onboardingHistoryFound": "Utilisation antérieure trouvée depuis le {date}",
+  "@onboardingHistoryFound": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  }
 }

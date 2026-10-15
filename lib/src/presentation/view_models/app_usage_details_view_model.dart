@@ -5,6 +5,7 @@ import '../../domain/models/usage_session.dart';
 import '../../domain/models/usage_details_chart.dart';
 import '../../domain/repositories/settings_repository.dart';
 import '../../domain/repositories/usage_repository.dart';
+import '../../data/repositories/os_usage_history_repository.dart';
 
 class AppUsageDetailsRequest {
   const AppUsageDetailsRequest({
@@ -50,10 +51,17 @@ class AppUsageDetailsRequest {
 }
 
 class DailyUsagePoint {
-  const DailyUsagePoint({required this.day, required this.durationSeconds});
+  const DailyUsagePoint({
+    required this.day,
+    required this.durationSeconds,
+    this.isApproximate = false,
+  });
 
   final DateTime day;
   final int durationSeconds;
+
+  /// Filled from Android's aggregated history, not precisely recorded.
+  final bool isApproximate;
 
   Duration get duration => Duration(seconds: durationSeconds);
 }
@@ -102,6 +110,8 @@ class AppUsageDetailsState {
   final bool isLoading;
   final String? errorMessage;
 
+  bool get hasApproximate => points.any((point) => point.isApproximate);
+
   int get totalDurationSeconds =>
       points.fold(0, (total, point) => total + point.durationSeconds);
 
@@ -125,14 +135,17 @@ class AppUsageDetailsViewModel extends StateNotifier<AppUsageDetailsState> {
     required UsageRepository usageRepository,
     required SettingsRepository settingsRepository,
     required AppUsageDetailsRequest request,
+    OsUsageHistoryRepository? osHistory,
   }) : _usageRepository = usageRepository,
        _settingsRepository = settingsRepository,
        _request = request,
+       _osHistory = osHistory,
        super(const AppUsageDetailsState(isLoading: true));
 
   final UsageRepository _usageRepository;
   final SettingsRepository _settingsRepository;
   final AppUsageDetailsRequest _request;
+  final OsUsageHistoryRepository? _osHistory;
   bool _chartLoaded = false;
   int _loadGeneration = 0;
   Future<void> _pendingChartSave = Future<void>.value();
@@ -183,10 +196,11 @@ class AppUsageDetailsViewModel extends StateNotifier<AppUsageDetailsState> {
           : _settingsRepository.usageDetailsChart().catchError(
               (Object _) => UsageDetailsChart.bars,
             );
-      final (history, sessions, savedChart) = await (
+      final (history, sessions, savedChart, approximate) = await (
         historyFuture,
         sessionsFuture,
         preferenceFuture,
+        _approximateHistory(selectedPeriod, selectedDay),
       ).wait;
       if (!mounted || generation != _loadGeneration) return;
       final chart = _chartLoaded ? state.chart : savedChart;
@@ -207,14 +221,32 @@ class AppUsageDetailsViewModel extends StateNotifier<AppUsageDetailsState> {
       // best-effort SQLite snapshot.
       totalsByDay[selectedDay] = _request.summary.totalDurationSeconds;
 
+      // Yesterday's comparison uses recorded usage only.
+      final current = totalsByDay[selectedDay] ?? 0;
+      final previous =
+          totalsByDay[selectedDay.subtract(const Duration(days: 1))] ?? 0;
+      // A day with no rows for any app was not recorded, so Android's
+      // aggregated total may stand in for it. A recorded day where this app
+      // has no row really was zero.
+      final recordedDays = {
+        for (final entry in history) _day(entry.day),
+        selectedDay,
+      };
+      final approximateDays = <DateTime>{};
+      approximate.days.forEach((day, seconds) {
+        if (!recordedDays.contains(day)) {
+          totalsByDay[day] = seconds;
+          approximateDays.add(day);
+        }
+      });
       final points = _pointsFor(
         period: selectedPeriod,
         selectedDay: selectedDay,
         totalsByDay: totalsByDay,
+        recordedDays: recordedDays,
+        approximateDays: approximateDays,
+        approximateMonths: approximate.months,
       );
-      final current = totalsByDay[selectedDay] ?? 0;
-      final previous =
-          totalsByDay[selectedDay.subtract(const Duration(days: 1))] ?? 0;
       state = AppUsageDetailsState(
         points: points,
         sessions: sessions,
@@ -232,32 +264,45 @@ class AppUsageDetailsViewModel extends StateNotifier<AppUsageDetailsState> {
     }
   }
 
+  /// Android's aggregated totals for this app over [period], empty when no
+  /// history repository is available. Monthly buckets matter only for a year.
+  Future<({Map<DateTime, int> days, Map<DateTime, int> months})>
+  _approximateHistory(UsageDetailsPeriod period, DateTime selectedDay) async {
+    final osHistory = _osHistory;
+    if (osHistory == null) {
+      return (days: <DateTime, int>{}, months: <DateTime, int>{});
+    }
+    await osHistory.importOnce();
+    final from = period.startDate(selectedDay);
+    final to = selectedDay.add(const Duration(days: 1));
+    final appKey = _request.summary.appKey;
+    final (days, months) = await (
+      osHistory.dailySeconds(appKey, from, to),
+      period == UsageDetailsPeriod.year
+          ? osHistory.monthlySeconds(appKey, from, to)
+          : Future.value(<DateTime, int>{}),
+    ).wait;
+    return (days: days, months: months);
+  }
+
   List<DailyUsagePoint> _pointsFor({
     required UsageDetailsPeriod period,
     required DateTime selectedDay,
     required Map<DateTime, int> totalsByDay,
+    required Set<DateTime> recordedDays,
+    required Set<DateTime> approximateDays,
+    required Map<DateTime, int> approximateMonths,
   }) {
     final startDate = period.startDate(selectedDay);
     if (period == UsageDetailsPeriod.year) {
       return [
         for (var monthOffset = 0; monthOffset < 12; monthOffset++)
-          DailyUsagePoint(
-            day: DateTime(startDate.year, startDate.month + monthOffset),
-            durationSeconds: totalsByDay.entries
-                .where(
-                  (entry) =>
-                      entry.key.year ==
-                          DateTime(
-                            startDate.year,
-                            startDate.month + monthOffset,
-                          ).year &&
-                      entry.key.month ==
-                          DateTime(
-                            startDate.year,
-                            startDate.month + monthOffset,
-                          ).month,
-                )
-                .fold(0, (total, entry) => total + entry.value),
+          _monthPoint(
+            DateTime(startDate.year, startDate.month + monthOffset),
+            totalsByDay: totalsByDay,
+            recordedDays: recordedDays,
+            approximateDays: approximateDays,
+            approximateMonths: approximateMonths,
           ),
       ];
     }
@@ -269,8 +314,43 @@ class AppUsageDetailsViewModel extends StateNotifier<AppUsageDetailsState> {
           day: startDate.add(Duration(days: dayOffset)),
           durationSeconds:
               totalsByDay[startDate.add(Duration(days: dayOffset))] ?? 0,
+          isApproximate: approximateDays.contains(
+            startDate.add(Duration(days: dayOffset)),
+          ),
         ),
     ];
+  }
+
+  DailyUsagePoint _monthPoint(
+    DateTime month, {
+    required Map<DateTime, int> totalsByDay,
+    required Set<DateTime> recordedDays,
+    required Set<DateTime> approximateDays,
+    required Map<DateTime, int> approximateMonths,
+  }) {
+    bool inMonth(DateTime day) =>
+        day.year == month.year && day.month == month.month;
+    final seconds = totalsByDay.entries
+        .where((entry) => inMonth(entry.key))
+        .fold(0, (total, entry) => total + entry.value);
+    final monthSeconds = approximateMonths[month];
+    // A month with no recorded or daily-approximated days falls back to
+    // Android's monthly total; partial months are never topped up with it.
+    if (seconds == 0 &&
+        monthSeconds != null &&
+        !recordedDays.any(inMonth) &&
+        !approximateDays.any(inMonth)) {
+      return DailyUsagePoint(
+        day: month,
+        durationSeconds: monthSeconds,
+        isApproximate: true,
+      );
+    }
+    return DailyUsagePoint(
+      day: month,
+      durationSeconds: seconds,
+      isApproximate: approximateDays.any(inMonth),
+    );
   }
 
   double? _changePercent(int current, int previous) {
