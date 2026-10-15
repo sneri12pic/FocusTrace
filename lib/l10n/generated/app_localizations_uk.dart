@@ -1176,4 +1176,12 @@ class AppLocalizationsUk extends AppLocalizations {
   String onboardingHistoryFound(String date) {
     return 'Знайдено попередні дані про використання з $date';
   }
+
+  @override
+  String restrictionsTimeLeft(String duration) {
+    return 'Залишилося $duration';
+  }
+
+  @override
+  String get restrictionsLimitReached => 'Ліміт вичерпано';
 }

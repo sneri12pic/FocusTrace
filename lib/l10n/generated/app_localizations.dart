@@ -2072,6 +2072,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Found your earlier usage back to {date}'**
   String onboardingHistoryFound(String date);
+
+  /// No description provided for @restrictionsTimeLeft.
+  ///
+  /// In en, this message translates to:
+  /// **'{duration} left'**
+  String restrictionsTimeLeft(String duration);
+
+  /// No description provided for @restrictionsLimitReached.
+  ///
+  /// In en, this message translates to:
+  /// **'Limit reached'**
+  String get restrictionsLimitReached;
 }
 
 class _AppLocalizationsDelegate

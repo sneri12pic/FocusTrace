@@ -668,5 +668,14 @@
         "type": "String"
       }
     }
-  }
+  },
+  "restrictionsTimeLeft": "Quedan {duration}",
+  "@restrictionsTimeLeft": {
+    "placeholders": {
+      "duration": {
+        "type": "String"
+      }
+    }
+  },
+  "restrictionsLimitReached": "Límite alcanzado"
 }

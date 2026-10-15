@@ -1156,4 +1156,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String onboardingHistoryFound(String date) {
     return 'Found your earlier usage back to $date';
   }
+
+  @override
+  String restrictionsTimeLeft(String duration) {
+    return '$duration left';
+  }
+
+  @override
+  String get restrictionsLimitReached => 'Limit reached';
 }
