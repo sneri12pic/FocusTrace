@@ -46,6 +46,16 @@ class UsageBubbleScreen extends ConsumerWidget {
     final selectedCategory = categories.contains(state.selectedCategory)
         ? state.selectedCategory
         : null;
+    final listed = [
+      for (final summary in summaries)
+        if (selectedCategory == null ||
+            resolveUsageCategory(summary, overrides) == selectedCategory)
+          summary,
+    ];
+    // Summaries arrive sorted by time (repository and native queries).
+    final hiddenCount = state.listExpanded
+        ? 0
+        : listed.length - UsageBubbleViewModel.topAppCount;
     final selectedItem = viewModel.selectedItemFor(items, state.selectedItemId);
     final restrictionState = ref.watch(restrictionsViewModelProvider);
     final now = DateTime.now();
@@ -128,7 +138,7 @@ class UsageBubbleScreen extends ConsumerWidget {
                     ),
                   ),
                   const SizedBox(height: 10),
-                  _EdgeToEdgeChipRow(
+                  _ChipRow(
                     children: [
                       for (final category in [null, ...rankedCategories])
                         _CategoryFilterChip(
@@ -142,15 +152,38 @@ class UsageBubbleScreen extends ConsumerWidget {
                     ],
                   ),
                   const SizedBox(height: 10),
-                  for (final summary in summaries)
-                    if (selectedCategory == null ||
-                        resolveUsageCategory(summary, overrides) ==
-                            selectedCategory)
-                      SummaryTile(
-                        summary,
-                        isToday: isToday,
-                        trend: trendsByAppKey[summary.appKey],
+                  for (final summary
+                      in hiddenCount > 0
+                          ? listed.take(UsageBubbleViewModel.topAppCount)
+                          : listed)
+                    SummaryTile(
+                      summary,
+                      isToday: isToday,
+                      trend: trendsByAppKey[summary.appKey],
+                    ),
+                  if (listed.length > UsageBubbleViewModel.topAppCount)
+                    SizedBox(
+                      width: double.infinity,
+                      child: TextButton.icon(
+                        key: const ValueKey('current-list-toggle'),
+                        onPressed: viewModel.toggleListExpanded,
+                        style: TextButton.styleFrom(
+                          minimumSize: const Size.fromHeight(48),
+                          foregroundColor: Colors.white.withValues(alpha: 0.8),
+                          textStyle: theme.textTheme.labelLarge,
+                        ),
+                        icon: Icon(
+                          state.listExpanded
+                              ? Icons.expand_less
+                              : Icons.expand_more,
+                        ),
+                        label: Text(
+                          state.listExpanded
+                              ? context.l10n.usageListShowLess
+                              : context.l10n.usageListShowAll(hiddenCount),
+                        ),
                       ),
+                    ),
                 ],
               ),
             ],
@@ -242,54 +275,27 @@ class UsageBubbleScreen extends ConsumerWidget {
 
 enum _BubbleAction { unblockNow, restrict }
 
-/// Scrolls through the card's side padding to its border and fades out there,
-/// so chips slide away softly instead of being cut at the content edge.
-class _EdgeToEdgeChipRow extends StatelessWidget {
-  const _EdgeToEdgeChipRow({required this.children});
-
-  // Matches _SectionCard's horizontal padding.
-  static const _bleed = 16.0;
+/// Scrolls horizontally within the card's content width, so the chips start
+/// and end where the app rows below do.
+class _ChipRow extends StatelessWidget {
+  const _ChipRow({required this.children});
 
   final List<Widget> children;
 
   @override
-  Widget build(BuildContext context) => LayoutBuilder(
-    builder: (context, constraints) {
-      final width = constraints.maxWidth + _bleed * 2;
-      return SizedBox(
-        // Fixed so OverflowBox has a bounded height; grows with text size.
-        height: MediaQuery.textScalerOf(context).scale(48),
-        child: OverflowBox(
-          maxWidth: width,
-          minWidth: width,
-          child: ShaderMask(
-            blendMode: BlendMode.dstIn,
-            shaderCallback: (bounds) => LinearGradient(
-              colors: const [
-                Colors.transparent,
-                Colors.black,
-                Colors.black,
-                Colors.transparent,
-              ],
-              stops: [0, _bleed / width, 1 - _bleed / width, 1],
-            ).createShader(bounds),
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: _bleed),
-              child: Row(
-                children: [
-                  for (final child in children)
-                    Padding(
-                      padding: const EdgeInsetsDirectional.only(end: 8),
-                      child: child,
-                    ),
-                ],
-              ),
+  Widget build(BuildContext context) => SingleChildScrollView(
+    scrollDirection: Axis.horizontal,
+    child: Row(
+      children: [
+        for (final (index, child) in children.indexed)
+          Padding(
+            padding: EdgeInsetsDirectional.only(
+              end: index == children.length - 1 ? 0 : 8,
             ),
+            child: child,
           ),
-        ),
-      );
-    },
+      ],
+    ),
   );
 }
 

@@ -10,10 +10,15 @@ final usageBubbleViewModelProvider =
     );
 
 class UsageBubbleState {
-  const UsageBubbleState({this.selectedItemId, this.selectedCategory});
+  const UsageBubbleState({
+    this.selectedItemId,
+    this.selectedCategory,
+    this.listExpanded = false,
+  });
 
   final String? selectedItemId;
   final UsageCategory? selectedCategory;
+  final bool listExpanded;
 
   UsageBubbleState copyWith({
     String? selectedItemId,
@@ -24,6 +29,7 @@ class UsageBubbleState {
           ? null
           : selectedItemId ?? this.selectedItemId,
       selectedCategory: selectedCategory,
+      listExpanded: listExpanded,
     );
   }
 }
@@ -32,6 +38,9 @@ class UsageBubbleViewModel extends StateNotifier<UsageBubbleState> {
   UsageBubbleViewModel() : super(const UsageBubbleState());
 
   static const nearLimitThreshold = 0.85;
+
+  /// Apps shown in the chart and, until expanded, in the current list.
+  static const topAppCount = 10;
 
   List<UsageItem> itemsFor(
     List<AppUsageSummary> summaries, {
@@ -52,7 +61,7 @@ class UsageBubbleViewModel extends StateNotifier<UsageBubbleState> {
             ),
           );
     // ponytail: chart layout has 10 position slots; more bubbles just overlap.
-    return items.take(10).toList();
+    return items.take(topAppCount).toList();
   }
 
   UsageItem? selectedItemFor(List<UsageItem> items, String? selectedItemId) {
@@ -121,5 +130,17 @@ class UsageBubbleViewModel extends StateNotifier<UsageBubbleState> {
       selectedItemId: state.selectedItemId,
       selectedCategory: category,
     );
+  }
+
+  void toggleListExpanded() {
+    state = UsageBubbleState(
+      selectedItemId: state.selectedItemId,
+      selectedCategory: state.selectedCategory,
+      listExpanded: !state.listExpanded,
+    );
+  }
+
+  void collapseList() {
+    if (state.listExpanded) toggleListExpanded();
   }
 }

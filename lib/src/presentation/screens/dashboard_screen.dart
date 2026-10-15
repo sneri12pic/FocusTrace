@@ -7,6 +7,7 @@ import '../../performance/dashboard_performance.dart';
 import '../localization/app_localizations_x.dart';
 import '../providers.dart';
 import '../view_models/dashboard_view_model.dart';
+import '../view_models/usage_bubble_view_model.dart';
 import '../widgets/permission_card.dart';
 import '../widgets/tracking_status_banner.dart';
 import 'usage_bubble_screen.dart';
@@ -55,6 +56,12 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
     ref.listen(trackingViewModelProvider, (previous, next) {
       if (next.status.lastUpdatedAt != previous?.status.lastUpdatedAt) {
         dashboardViewModel.refreshSilently();
+      }
+    });
+    // A new day starts with the current list collapsed again.
+    ref.listen(dashboardViewModelProvider, (previous, next) {
+      if (previous != null && next.dayOffset != previous.dayOffset) {
+        ref.read(usageBubbleViewModelProvider.notifier).collapseList();
       }
     });
 
