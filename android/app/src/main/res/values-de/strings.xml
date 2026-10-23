@@ -24,4 +24,9 @@
     <string name="widget_no_access">Tippen, um Nutzungszugriff zu erteilen</string>
     <string name="widget_hours_minutes">%1$d Std. %2$d Min.</string>
     <string name="widget_minutes">%1$d Min.</string>
+    <string name="restriction_reason_daily_app_limit">Tageslimit der App erreicht</string>
+    <string name="restriction_reason_schedule_until">Durch Zeitplan gesperrt bis %1$s</string>
+    <string name="restriction_reason_block_now_until">Vorübergehend gesperrt bis %1$s</string>
+    <string name="restriction_reason_routine_shared">%1$s: gemeinsames Kontingent aufgebraucht</string>
+    <string name="restriction_reason_routine_app">%1$s: App-Limit erreicht</string>
 </resources>

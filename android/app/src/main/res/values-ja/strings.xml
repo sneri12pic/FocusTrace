@@ -23,4 +23,9 @@
     <string name="widget_no_access">タップして使用状況へのアクセスを許可</string>
     <string name="widget_hours_minutes">%1$d時間%2$d分</string>
     <string name="widget_minutes">%1$d分</string>
+    <string name="restriction_reason_daily_app_limit">アプリの1日の上限に達しました</string>
+    <string name="restriction_reason_schedule_until">スケジュールにより %1$s までブロック</string>
+    <string name="restriction_reason_block_now_until">%1$s まで一時ブロック</string>
+    <string name="restriction_reason_routine_shared">%1$s：共有の時間を使い切りました</string>
+    <string name="restriction_reason_routine_app">%1$s：アプリの上限に達しました</string>
 </resources>

@@ -1128,4 +1128,337 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get restrictionsLimitReached => '上限に達しました';
+
+  @override
+  String get rxWeek => '今週';
+
+  @override
+  String get rxTopApps => 'よく使うアプリ';
+
+  @override
+  String rxAverage(int days) {
+    return '1日の平均 · 記録日数 $days日';
+  }
+
+  @override
+  String get rxBusiest => 'よく使う時間帯';
+
+  @override
+  String rxPeak(String start, String end) {
+    return '記録された利用が最も多いのは$start〜$endです。';
+  }
+
+  @override
+  String get rxNoInsights => '時間帯を提案するための利用記録がまだ不足しています。';
+
+  @override
+  String get rxPlanBlock => 'スケジュールを作成';
+
+  @override
+  String get rxYourRules => '設定した制限';
+
+  @override
+  String get rxLimit => '制限';
+
+  @override
+  String get rxEdit => '編集';
+
+  @override
+  String rxRestrict(String app) {
+    return '$appを制限';
+  }
+
+  @override
+  String rxAverageApp(String duration) {
+    return '平均 $duration / 日';
+  }
+
+  @override
+  String get rxType => '制限の種類';
+
+  @override
+  String get rxDailyLimit => '1日の上限';
+
+  @override
+  String get rxBlockNow => '今すぐブロック';
+
+  @override
+  String get rxDifficulty => '解除の難しさ';
+
+  @override
+  String get rxEasy => '簡単';
+
+  @override
+  String get rxModerate => '普通';
+
+  @override
+  String get rxHard => '厳しい';
+
+  @override
+  String get rxEasyHint => '確認して解除';
+
+  @override
+  String get rxModerateHint => '解除まで5分待つ';
+
+  @override
+  String get rxHardHint => 'FocusTraceでの早期解除は不可';
+
+  @override
+  String get rxProtectionNote => '有効なルールの変更や削除にも適用されます。';
+
+  @override
+  String get rxSetLimit => '1日の上限を設定';
+
+  @override
+  String get rxSetSchedule => 'スケジュールを設定';
+
+  @override
+  String get rxStartBlock => 'ブロック開始';
+
+  @override
+  String rxBelowAverage(String duration) {
+    return '1日の平均より$duration短い';
+  }
+
+  @override
+  String get rxRepeat => '繰り返し';
+
+  @override
+  String get rxNextDay => '翌日に終了';
+
+  @override
+  String rxEndsAt(String time) {
+    return '$timeに終了';
+  }
+
+  @override
+  String get rxHardConfirm =>
+      'このルールでアプリをブロックしている間は、FocusTraceで早期解除、ルールの編集、削除はできません。';
+
+  @override
+  String get rxConfirm => '確認';
+
+  @override
+  String get rxChangeTitle => '制限を変更しますか？';
+
+  @override
+  String get rxChangeBody =>
+      '簡単なルールはすぐ変更できます。普通のルールは5分待つ必要があります。厳しいルールは現在のブロックが終了するまで変更できません。';
+
+  @override
+  String get rxCooldown => '5分の待機を開始しました。終了後に再試行してください。再確認するまでアプリはブロックされたままです。';
+
+  @override
+  String get rxHardLocked => '現在のブロックが終了するまでこのルールは変更できません。';
+
+  @override
+  String get rxUnavailable => 'この制限を確認できません。使用状況へのアクセスを確認して再試行してください。';
+
+  @override
+  String get rxMinutes => '時間（分）';
+
+  @override
+  String get rxRetry => '再試行';
+
+  @override
+  String get rxScheduleInvalid => '異なる開始・終了時刻と、少なくとも1つの曜日を選んでください。';
+
+  @override
+  String get rxNoUsage => 'この期間の利用記録はありません。制限するアプリは選択できます。';
+
+  @override
+  String rxNextBlock(String time) {
+    return '次回: $time';
+  }
+
+  @override
+  String rxPerDay(String duration) {
+    return '1日 $duration';
+  }
+
+  @override
+  String rxUntil(String time) {
+    return '$time まで';
+  }
+
+  @override
+  String rxLeftToday(String duration) {
+    return '今日の残り $duration';
+  }
+
+  @override
+  String rxStarts(String time) {
+    return '$time に開始';
+  }
+
+  @override
+  String get rxStartLabel => '開始';
+
+  @override
+  String get rxEndLabel => '終了';
+
+  @override
+  String get rxHoursField => '時間';
+
+  @override
+  String get rxMinutesField => '分';
+
+  @override
+  String get rxAdd => '追加';
+
+  @override
+  String get rxNoRulesYet => '制限はまだありません。下のアプリを選ぶか、「追加」をタップしてください。';
+
+  @override
+  String get rxChooseApps => '制限するアプリを選ぶ';
+
+  @override
+  String get rxSearchAll => 'すべてのアプリを検索';
+
+  @override
+  String get rxTodayUsage => '今日のここまでの使用時間';
+
+  @override
+  String get rxCreate => '作成';
+
+  @override
+  String rxSharedLimit(String duration) {
+    return '共有の1日の上限 · $duration';
+  }
+
+  @override
+  String rxMoreApps(String names, int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count個のアプリ',
+    );
+    return '$names + $_temp0';
+  }
+
+  @override
+  String get rxPaused => '一時停止中';
+
+  @override
+  String rxUsed(String duration) {
+    return '$duration 使用';
+  }
+
+  @override
+  String rxLeft(String duration) {
+    return '残り $duration';
+  }
+
+  @override
+  String get rxEveryDay => '毎日';
+
+  @override
+  String get rxUnblockAfterWait => '5分待ってからブロック解除';
+
+  @override
+  String rxLockedUntil(String time) {
+    return '$time までロック中';
+  }
+
+  @override
+  String get rxEditDuration => '時間を編集';
+
+  @override
+  String get rxSaveChanges => '変更を保存';
+
+  @override
+  String get rxEasyExplain =>
+      '確認すると早めにブロックを解除できます。ブロック中にこのルールを編集・削除するときも確認が必要です。';
+
+  @override
+  String get rxModerateExplain =>
+      '早めの解除や、ブロック中のルールの編集・削除をすると5分間の待機が始まります。その間アプリはブロックされたままです。待機後にもう一度操作して確認してください。自動では解除されません。';
+
+  @override
+  String get rxHardExplain =>
+      'このルールがブロック中の間、FocusTraceは早めに解除せず、ブロックが終わるまで編集・削除もできません。ブロック時間外は通常どおり変更できます。';
+
+  @override
+  String get rxModerateUnblockBody =>
+      '5分間の待機が始まります。終わるまでアプリはブロックされたままです。その後もう一度「ブロック解除」を選んで確認してください。';
+
+  @override
+  String get routineLastAppPrompt => 'このルーティンにはアプリが残っていません。ルーティンを削除しますか？';
+
+  @override
+  String get routineKeepRoutine => 'ルーティンを残す';
+
+  @override
+  String get routineNamePrompt => 'ルーティン名を追加';
+
+  @override
+  String get routineEmpty => 'このルーティンにはまだアプリがありません。上限を使うにはアプリを追加してください。';
+
+  @override
+  String get routineNoAppsShort => 'アプリはまだありません';
+
+  @override
+  String get routinePickerAll => 'すべて';
+
+  @override
+  String routinePickerSelectCategory(String category) {
+    return '$category をすべて選択';
+  }
+
+  @override
+  String get routineAddApps => 'アプリを追加';
+
+  @override
+  String routineAddSelected(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count個のアプリを追加',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String routineAppLimit(String duration) {
+    return 'アプリ上限 $duration';
+  }
+
+  @override
+  String get routineNoAppLimit => 'アプリ上限なし';
+
+  @override
+  String routineAppLimitTitle(String app) {
+    return '$app の1日の上限';
+  }
+
+  @override
+  String get routineAppLimitHint => 'このアプリだけを制限します。使用時間は共有の時間にも含まれます。';
+
+  @override
+  String routineReasonShared(String routine) {
+    return '$routine：共有の時間を使い切りました';
+  }
+
+  @override
+  String routineReasonApp(String routine) {
+    return '$routine：アプリの上限に達しました';
+  }
+
+  @override
+  String get reasonDailyAppLimit => 'アプリの1日の上限に達しました';
+
+  @override
+  String reasonScheduleUntil(String time) {
+    return 'スケジュールにより $time までブロック';
+  }
+
+  @override
+  String reasonTemporaryUntil(String time) {
+    return '$time まで一時ブロック';
+  }
+
+  @override
+  String routineOpenDetails(String app) {
+    return '$app の詳細を開く';
+  }
 }

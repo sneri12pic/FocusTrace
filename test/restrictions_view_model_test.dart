@@ -157,6 +157,7 @@ class _FakeReportRepository implements ReportRepository {
 }
 
 void main() {
+  difficultyTests();
   late _FakeSettingsRepository repository;
   late _FakePlatformDataSource dataSource;
   late _FakeReportRepository reportRepository;
@@ -327,4 +328,120 @@ void main() {
     expect(reportRepository.events.single.type, RestrictionEventType.unblocked);
     expect(reportRepository.events.single.occurredAt, now);
   });
+}
+
+class _GuardPlatform extends _FakePlatformDataSource
+    implements RestrictionChangeDataSource {
+  String status = 'allowed';
+  String? accepted;
+  bool rejectSync = false;
+  @override
+  Future<String?> readRestrictionConfiguration() async => accepted;
+  @override
+  Future<String> requestRestrictionChange(String key, String type) async =>
+      status;
+  @override
+  Future<void> syncRestrictions(String json) async {
+    if (rejectSync) throw StateError('restriction:hard');
+    await super.syncRestrictions(json);
+    accepted = json;
+  }
+}
+
+void difficultyTests() {
+  test(
+    'native denial protects edit, type change, delete and unblock',
+    () async {
+      final settings = _FakeSettingsRepository();
+      final platform = _GuardPlatform();
+      final original = RestrictionRule.blockNow(
+        appKey: 'a',
+        appName: 'A',
+        until: DateTime.now().add(const Duration(hours: 1)),
+      ).copyWith(difficulty: RestrictionDifficulty.hard);
+      settings.rules.add(original);
+      final vm = RestrictionsViewModel(
+        settingsRepository: settings,
+        platformDataSource: platform,
+        platform: UsagePlatform.android,
+      );
+      await vm.load();
+      platform.status = 'hard';
+      await vm.saveRule(
+        RestrictionRule.dailyLimit(appKey: 'a', appName: 'A', limitMinutes: 1),
+        replacing: original,
+      );
+      expect(settings.rules.single, original);
+      await vm.deleteRule('a', RestrictionRuleType.blockNow);
+      expect(settings.rules.single, original);
+      await vm.unblockAppNow(appKey: 'a', usageSecondsToday: 0);
+      expect(settings.rules.single, original);
+      expect(vm.state.errorMessage, contains('restriction:hard'));
+      expect(platform.syncedPayloads, hasLength(1));
+      vm.dispose();
+    },
+  );
+
+  test(
+    'cooldown leaves rule intact until subsequent approved action',
+    () async {
+      final settings = _FakeSettingsRepository();
+      final platform = _GuardPlatform();
+      final rule = RestrictionRule.blockNow(
+        appKey: 'a',
+        appName: 'A',
+        until: DateTime.now().add(const Duration(hours: 1)),
+      ).copyWith(difficulty: RestrictionDifficulty.moderate);
+      settings.rules.add(rule);
+      final vm = RestrictionsViewModel(
+        settingsRepository: settings,
+        platformDataSource: platform,
+        platform: UsagePlatform.android,
+      );
+      await vm.load();
+      platform.status = 'cooldown';
+      await vm.deleteRule('a', RestrictionRuleType.blockNow);
+      expect(settings.rules.single, rule);
+      platform.status = 'allowed';
+      await vm.deleteRule('a', RestrictionRuleType.blockNow);
+      expect(settings.rules, isEmpty);
+      expect(vm.state.rules, isEmpty);
+      vm.dispose();
+    },
+  );
+
+  test(
+    'accepted native config recovers local mirror and type edits replace',
+    () async {
+      final settings = _FakeSettingsRepository();
+      final platform = _GuardPlatform();
+      final original = RestrictionRule.dailyLimit(
+        appKey: 'a',
+        appName: 'A',
+        limitMinutes: 30,
+      );
+      platform.accepted = encodeRestrictionConfiguration([original], []);
+      platform.rejectSync = true;
+      final vm = RestrictionsViewModel(
+        settingsRepository: settings,
+        platformDataSource: platform,
+        platform: UsagePlatform.android,
+      );
+      await vm.load();
+      expect(settings.rules.single.type, RestrictionRuleType.dailyLimit);
+      platform.rejectSync = false;
+      await vm.saveRule(
+        RestrictionRule.schedule(
+          appKey: 'a',
+          appName: 'A',
+          startMinute: 540,
+          endMinute: 1020,
+        ),
+        replacing: original,
+      );
+      expect(settings.rules, hasLength(1));
+      expect(settings.rules.single.type, RestrictionRuleType.schedule);
+      vm.dispose();
+    },
+  );
 }

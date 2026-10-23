@@ -1184,4 +1184,353 @@ class AppLocalizationsUk extends AppLocalizations {
 
   @override
   String get restrictionsLimitReached => 'Ліміт вичерпано';
+
+  @override
+  String get rxWeek => 'Цього тижня';
+
+  @override
+  String get rxTopApps => 'Найуживаніші застосунки';
+
+  @override
+  String rxAverage(int days) {
+    return 'Середнє за день · $days днів із записами';
+  }
+
+  @override
+  String get rxBusiest => 'Найактивніші години';
+
+  @override
+  String rxPeak(String start, String end) {
+    return 'Найбільше записаного використання — з $start до $end.';
+  }
+
+  @override
+  String get rxNoInsights => 'Ще недостатньо записів, щоб запропонувати час.';
+
+  @override
+  String get rxPlanBlock => 'Запланувати розклад';
+
+  @override
+  String get rxYourRules => 'Ваші обмеження';
+
+  @override
+  String get rxLimit => 'Ліміт';
+
+  @override
+  String get rxEdit => 'Змінити';
+
+  @override
+  String rxRestrict(String app) {
+    return 'Обмежити $app';
+  }
+
+  @override
+  String rxAverageApp(String duration) {
+    return 'У середньому $duration / день';
+  }
+
+  @override
+  String get rxType => 'Тип обмеження';
+
+  @override
+  String get rxDailyLimit => 'Денний ліміт';
+
+  @override
+  String get rxBlockNow => 'Заблокувати зараз';
+
+  @override
+  String get rxDifficulty => 'Складність розблокування';
+
+  @override
+  String get rxEasy => 'Легко';
+
+  @override
+  String get rxModerate => 'Помірно';
+
+  @override
+  String get rxHard => 'Складно';
+
+  @override
+  String get rxEasyHint => 'Підтвердьте розблокування';
+
+  @override
+  String get rxModerateHint => 'Зачекайте 5 хвилин для розблокування';
+
+  @override
+  String get rxHardHint => 'Без дострокового розблокування у FocusTrace';
+
+  @override
+  String get rxProtectionNote =>
+      'Це також стосується зміни або видалення активного правила.';
+
+  @override
+  String get rxSetLimit => 'Установити денний ліміт';
+
+  @override
+  String get rxSetSchedule => 'Установити розклад';
+
+  @override
+  String get rxStartBlock => 'Почати блокування';
+
+  @override
+  String rxBelowAverage(String duration) {
+    return 'На $duration менше за денне середнє';
+  }
+
+  @override
+  String get rxRepeat => 'Повторювати';
+
+  @override
+  String get rxNextDay => 'Закінчується наступного дня';
+
+  @override
+  String rxEndsAt(String time) {
+    return 'Закінчується о $time';
+  }
+
+  @override
+  String get rxHardConfirm =>
+      'Поки це правило блокує застосунок, ви не можете достроково розблокувати його, змінити чи видалити правило у FocusTrace.';
+
+  @override
+  String get rxConfirm => 'Підтвердити';
+
+  @override
+  String get rxChangeTitle => 'Змінити обмеження?';
+
+  @override
+  String get rxChangeBody =>
+      'Легкі правила можна змінити одразу. Помірні потребують п’яти хвилин очікування. Складні заблоковані до кінця поточного блокування.';
+
+  @override
+  String get rxCooldown =>
+      'Почалося п’ятихвилинне очікування. Спробуйте після його завершення; застосунок залишається заблокованим до повторного підтвердження.';
+
+  @override
+  String get rxHardLocked =>
+      'Це правило заблоковане до завершення поточного блокування.';
+
+  @override
+  String get rxUnavailable =>
+      'Не вдалося перевірити обмеження. Перевірте доступ до статистики використання та повторіть спробу.';
+
+  @override
+  String get rxMinutes => 'Тривалість у хвилинах';
+
+  @override
+  String get rxRetry => 'Повторити';
+
+  @override
+  String get rxScheduleInvalid =>
+      'Виберіть різний час початку й завершення та принаймні один день.';
+
+  @override
+  String get rxNoUsage =>
+      'За цей період немає записів. Ви все одно можете вибрати застосунок для обмеження.';
+
+  @override
+  String rxNextBlock(String time) {
+    return 'Наступне: $time';
+  }
+
+  @override
+  String rxPerDay(String duration) {
+    return '$duration / день';
+  }
+
+  @override
+  String rxUntil(String time) {
+    return 'До $time';
+  }
+
+  @override
+  String rxLeftToday(String duration) {
+    return 'Сьогодні залишилося $duration';
+  }
+
+  @override
+  String rxStarts(String time) {
+    return 'Почнеться о $time';
+  }
+
+  @override
+  String get rxStartLabel => 'Початок';
+
+  @override
+  String get rxEndLabel => 'Кінець';
+
+  @override
+  String get rxHoursField => 'Години';
+
+  @override
+  String get rxMinutesField => 'Хвилини';
+
+  @override
+  String get rxAdd => 'Додати';
+
+  @override
+  String get rxNoRulesYet =>
+      'Обмежень ще немає. Виберіть застосунок нижче або натисніть «Додати».';
+
+  @override
+  String get rxChooseApps => 'Виберіть застосунки для обмеження';
+
+  @override
+  String get rxSearchAll => 'Шукати серед усіх застосунків';
+
+  @override
+  String get rxTodayUsage => 'Використання за сьогодні';
+
+  @override
+  String get rxCreate => 'Створити';
+
+  @override
+  String rxSharedLimit(String duration) {
+    return 'Спільний денний ліміт · $duration';
+  }
+
+  @override
+  String rxMoreApps(String names, int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count застосунку',
+      many: '$count застосунків',
+      few: '$count застосунки',
+      one: '1 застосунок',
+    );
+    return '$names + $_temp0';
+  }
+
+  @override
+  String get rxPaused => 'Призупинено';
+
+  @override
+  String rxUsed(String duration) {
+    return 'Використано $duration';
+  }
+
+  @override
+  String rxLeft(String duration) {
+    return 'Залишилось $duration';
+  }
+
+  @override
+  String get rxEveryDay => 'Щодня';
+
+  @override
+  String get rxUnblockAfterWait => 'Розблокувати після 5 хвилин очікування';
+
+  @override
+  String rxLockedUntil(String time) {
+    return 'Заблоковано до $time';
+  }
+
+  @override
+  String get rxEditDuration => 'Змінити тривалість';
+
+  @override
+  String get rxSaveChanges => 'Зберегти зміни';
+
+  @override
+  String get rxEasyExplain =>
+      'Можна розблокувати раніше після підтвердження. Зміна або видалення правила під час блокування теж потребує підтвердження.';
+
+  @override
+  String get rxModerateExplain =>
+      'Дострокове розблокування, зміна чи видалення правила під час блокування запускає п’ятихвилинне очікування. Увесь цей час застосунок лишається заблокованим. Після очікування повторіть дію й підтвердьте ще раз. Нічого не розблоковується само.';
+
+  @override
+  String get rxHardExplain =>
+      'Поки це правило блокує, FocusTrace не розблокує застосунок раніше, а змінити чи видалити правило можна лише після завершення блокування. Поза блокуванням його можна змінювати як зазвичай.';
+
+  @override
+  String get rxModerateUnblockBody =>
+      'Почнеться п’ятихвилинне очікування. До його завершення застосунок лишається заблокованим. Потім знову виберіть «Розблокувати» і підтвердьте.';
+
+  @override
+  String get routineLastAppPrompt =>
+      'У цій рутині не лишилося застосунків. Видалити рутину?';
+
+  @override
+  String get routineKeepRoutine => 'Залишити рутину';
+
+  @override
+  String get routineNamePrompt => 'Додайте назву рутини';
+
+  @override
+  String get routineEmpty =>
+      'У цій рутині ще немає застосунків. Додайте їх, щоб знову користуватися лімітами.';
+
+  @override
+  String get routineNoAppsShort => 'Ще немає застосунків';
+
+  @override
+  String get routinePickerAll => 'Усі';
+
+  @override
+  String routinePickerSelectCategory(String category) {
+    return 'Вибрати все в категорії $category';
+  }
+
+  @override
+  String get routineAddApps => 'Додати застосунки';
+
+  @override
+  String routineAddSelected(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Додати $count застосунку',
+      many: 'Додати $count застосунків',
+      few: 'Додати $count застосунки',
+      one: 'Додати $count застосунок',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String routineAppLimit(String duration) {
+    return 'Ліміт застосунку $duration';
+  }
+
+  @override
+  String get routineNoAppLimit => 'Без ліміту застосунку';
+
+  @override
+  String routineAppLimitTitle(String app) {
+    return 'Денний ліміт для $app';
+  }
+
+  @override
+  String get routineAppLimitHint =>
+      'Обмежує лише цей застосунок. Його час і далі враховується у спільному часі.';
+
+  @override
+  String routineReasonShared(String routine) {
+    return '$routine: спільний час вичерпано';
+  }
+
+  @override
+  String routineReasonApp(String routine) {
+    return '$routine: ліміт застосунку вичерпано';
+  }
+
+  @override
+  String get reasonDailyAppLimit => 'Денний ліміт застосунку вичерпано';
+
+  @override
+  String reasonScheduleUntil(String time) {
+    return 'Заблоковано розкладом до $time';
+  }
+
+  @override
+  String reasonTemporaryUntil(String time) {
+    return 'Тимчасове блокування до $time';
+  }
+
+  @override
+  String routineOpenDetails(String app) {
+    return 'Відкрити подробиці $app';
+  }
 }

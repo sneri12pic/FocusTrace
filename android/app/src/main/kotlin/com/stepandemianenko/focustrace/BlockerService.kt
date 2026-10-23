@@ -138,51 +138,30 @@ class BlockerService : Service() {
             return
         }
 
-        var blockingRule: RestrictionRule? = null
-        var blockingRoutine: RoutineLimit? = null
+        var reasons = emptyList<BlockReason>()
         val decide = {
-            blockingRule = configuration.rules.firstOrNull {
-                it.appKey == foregroundPackage &&
-                    RestrictionRules.isBlocked(
-                        it,
-                        now,
-                        usageSeconds[it.appKey] ?: 0L,
-                    )
-            }
-            blockingRoutine = configuration.blockingRoutine(
-                foregroundPackage,
-                usageSeconds,
-            )
+            reasons = configuration.blockReasons(foregroundPackage, now, usageSeconds)
         }
         if (performance == null) {
             decide()
         } else {
             performance.measureDecision(queryMetrics?.latestForegroundEventMs, decide)
         }
-        if (blockingRule == null && blockingRoutine == null) {
+        if (reasons.isEmpty()) {
             lastBlockedAppKey = null
             removeOverlay()
             return
         }
 
-        val routineMember = blockingRoutine?.includedApps
-            ?.firstOrNull { it.appKey == foregroundPackage }
-        val blockedAppName = blockingRule?.appName ?: routineMember?.appName ?: foregroundPackage
-        val eventReason = blockingRule?.type?.jsonName
-            ?: "routineLimit:${blockingRoutine?.id}"
-        val reason = blockingRule?.let(::reasonFor)
-            ?: FocusTraceLocale.getString(
-                this,
-                R.string.restriction_reason_routine_limit,
-                blockingRoutine?.name ?: "",
-            )
-        val untilMs = blockingRule?.let {
-            RestrictionRules.blockedUntilMs(
-                it,
-                now,
-                usageSeconds[it.appKey] ?: 0L,
-            )
-        } ?: RestrictionRules.startOfTomorrowMs(now)
+        val first = reasons.first()
+        val blockedAppName = first.rule?.appName
+            ?: first.routine?.apps?.firstOrNull { it.appKey == foregroundPackage }?.appName
+            ?: foregroundPackage
+        val eventReason = first.eventName
+        // Every active reason is listed, so lifting one never looks like the
+        // whole explanation. The app opens again only after the last one ends.
+        val reason = reasons.joinToString("\n", transform = ::reasonFor)
+        val untilMs = if (reasons.any { it.untilMs == null }) null else reasons.maxOf { it.untilMs!! }
 
         if (lastBlockedAppKey != foregroundPackage) {
             lastBlockedAppKey = foregroundPackage
@@ -517,23 +496,37 @@ class BlockerService : Service() {
         )
     }
 
-    private fun reasonFor(rule: RestrictionRule): String {
-        return when (rule.type) {
-            RestrictionRuleType.BlockNow -> FocusTraceLocale.getString(
+    private fun reasonFor(reason: BlockReason): String {
+        val until = reason.untilMs?.let(::clock) ?: ""
+        val routineName = reason.routine?.name ?: ""
+        return when (reason.kind) {
+            BlockReason.Kind.BlockNow -> FocusTraceLocale.getString(
                 this,
-                R.string.restriction_reason_block_now,
+                R.string.restriction_reason_block_now_until,
+                until,
             )
-            RestrictionRuleType.DailyLimit -> FocusTraceLocale.getString(
+            BlockReason.Kind.DailyLimit -> FocusTraceLocale.getString(
                 this,
-                R.string.restriction_reason_daily_limit,
+                R.string.restriction_reason_daily_app_limit,
             )
-            RestrictionRuleType.Schedule -> FocusTraceLocale.getString(
+            BlockReason.Kind.Schedule -> FocusTraceLocale.getString(
                 this,
-                R.string.restriction_reason_schedule,
+                R.string.restriction_reason_schedule_until,
+                until,
             )
-            RestrictionRuleType.RoutineBlock -> FocusTraceLocale.getString(
+            BlockReason.Kind.RoutineBlock -> FocusTraceLocale.getString(
                 this,
                 R.string.restriction_reason_routine,
+            )
+            BlockReason.Kind.RoutineShared -> FocusTraceLocale.getString(
+                this,
+                R.string.restriction_reason_routine_shared,
+                routineName,
+            )
+            BlockReason.Kind.RoutineApp -> FocusTraceLocale.getString(
+                this,
+                R.string.restriction_reason_routine_app,
+                routineName,
             )
         }
     }

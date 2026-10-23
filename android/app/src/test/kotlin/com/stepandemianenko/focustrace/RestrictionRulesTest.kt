@@ -125,6 +125,86 @@ class RestrictionRulesTest {
     }
 
     @Test
+    fun appCapsAreCapsInsideTheSharedAllowance() {
+        // Shared 2h; A capped at 45m, B at 1h, C uncapped.
+        val json = """
+            {"version":3,"rules":[],"routines":[{
+              "id":"study","name":"Study time","isEnabled":true,"dailyLimitMinutes":120,
+              "apps":[
+                {"appKey":"a","appName":"A","limitMinutes":45},
+                {"appKey":"b","appName":"B","limitMinutes":60},
+                {"appKey":"c","appName":"C"}
+              ]}]}
+        """.trimIndent()
+        val configuration = RestrictionRules.parseConfiguration(json)
+        val now = localMs(2026, 10, 23, 15, 0)
+        fun kinds(app: String, usage: Map<String, Long>) =
+            configuration.blockReasons(app, now, usage).map { it.kind }
+
+        // A reaches its cap: only A is blocked, shared time remains.
+        val capped = mapOf("a" to 45 * 60L, "b" to 10 * 60L, "c" to 10 * 60L)
+        assertEquals(listOf(BlockReason.Kind.RoutineApp), kinds("a", capped))
+        assertTrue(kinds("b", capped).isEmpty())
+        assertTrue(kinds("c", capped).isEmpty())
+
+        // Caps do not reserve time: 30m + 40m + 50m exhausts the 2h share,
+        // blocking every app although A and B are under their caps.
+        val shared = mapOf("a" to 30 * 60L, "b" to 40 * 60L, "c" to 50 * 60L)
+        assertEquals(listOf(BlockReason.Kind.RoutineShared), kinds("a", shared))
+        assertEquals(listOf(BlockReason.Kind.RoutineShared), kinds("b", shared))
+        assertEquals(listOf(BlockReason.Kind.RoutineShared), kinds("c", shared))
+        assertEquals(120 * 60L, configuration.routines.single().usageSeconds(shared))
+        assertEquals(RestrictionRules.startOfTomorrowMs(now), configuration.blockReasons("a", now, shared).single().untilMs)
+    }
+
+    @Test
+    fun everyApplicableRestrictionIsReported() {
+        val json = """
+            {"version":3,
+             "rules":[
+               {"appKey":"a","appName":"A","type":"dailyLimit","limitMinutes":30},
+               {"appKey":"a","appName":"A","type":"schedule","startMinute":840,"endMinute":960}
+             ],
+             "routines":[
+               {"id":"r1","name":"One","isEnabled":true,"dailyLimitMinutes":20,
+                "apps":[{"appKey":"a","appName":"A"}]},
+               {"id":"r2","name":"Two","isEnabled":true,"dailyLimitMinutes":600,
+                "apps":[{"appKey":"a","appName":"A","limitMinutes":10}]}
+             ]}
+        """.trimIndent()
+        val configuration = RestrictionRules.parseConfiguration(json)
+        val now = localMs(2026, 10, 23, 15, 0)
+        val reasons = configuration.blockReasons("a", now, mapOf("a" to 40 * 60L))
+        assertEquals(
+            listOf(
+                BlockReason.Kind.DailyLimit,
+                BlockReason.Kind.Schedule,
+                BlockReason.Kind.RoutineShared,
+                BlockReason.Kind.RoutineApp,
+            ),
+            reasons.map { it.kind },
+        )
+        assertEquals(listOf("r1", "r2"), reasons.mapNotNull { it.routine?.id })
+        assertEquals(localMs(2026, 10, 23, 16, 0), reasons[1].untilMs)
+        // Under every limit and outside the schedule: nothing blocks.
+        assertTrue(
+            configuration.blockReasons("a", localMs(2026, 10, 23, 17, 0), mapOf("a" to 60L))
+                .isEmpty()
+        )
+    }
+
+    @Test
+    fun legacyRoutineMembersHaveNoCap() {
+        val json = """
+            {"version":3,"rules":[],"routines":[{"id":"r","name":"R","isEnabled":true,
+              "dailyLimitMinutes":60,"apps":[{"appKey":"a","appName":"A"}]}]}
+        """.trimIndent()
+        val routine = RestrictionRules.parseConfiguration(json).routines.single()
+        assertEquals(null, routine.apps.single().limitMinutes)
+        assertFalse(routine.isAppCapReached("a", mapOf("a" to 99_999L)))
+    }
+
+    @Test
     fun legacyFlatRoutineBlocksAreIgnored() {
         val json = """
             {"version":2,"rules":[],"routineBlocks":[

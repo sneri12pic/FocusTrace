@@ -314,7 +314,7 @@ void main() {
     expect(find.text('1h 15m'), findsWidgets);
     expect(find.byIcon(Icons.settings), findsOneWidget);
 
-    // The all-time top apps card now lives on the restrictions screen.
+    // Restrictions now start with recorded period usage and an explicit action.
     await tester.tap(find.byIcon(Icons.lock_outline));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 500));
@@ -322,21 +322,12 @@ void main() {
       find.byKey(const ValueKey('restrictions-scroll-view')),
       findsOneWidget,
     );
-    expect(find.text('Most used of all time'), findsOneWidget);
-    expect(find.text('#1'), findsOneWidget);
-    expect(find.text('Archive'), findsOneWidget);
-
-    await tester.tap(find.text('Archive'));
+    expect(find.text('Choose apps to limit'), findsOneWidget);
+    expect(find.text('Reader'), findsOneWidget);
+    expect(find.text('This week'), findsOneWidget);
+    await tester.ensureVisible(find.text('+ Limit'));
     await tester.pump();
-    await tester.pump(const Duration(milliseconds: 500));
-    await tester.pump(const Duration(seconds: 1));
-    expect(find.byType(UsageDetailsScreen), findsOneWidget);
-    expect(find.byKey(const ValueKey('usage-period-dropdown')), findsOneWidget);
-    Navigator.of(tester.element(find.byType(UsageDetailsScreen))).pop();
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 500));
-
-    await tester.longPress(find.text('Archive'));
+    await tester.tap(find.text('+ Limit'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 500));
     expect(
@@ -351,9 +342,14 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 500));
 
-    await tester.drag(
-      find.byKey(const ValueKey('restrictions-scroll-view')),
-      const Offset(0, -500),
+    // "Your restrictions" now leads the screen, above the suggestions.
+    await tester.scrollUntilVisible(
+      find.text('Editor'),
+      -300,
+      scrollable: find.descendant(
+        of: find.byKey(const ValueKey('restrictions-scroll-view')),
+        matching: find.byType(Scrollable),
+      ),
     );
     await tester.pump(const Duration(milliseconds: 300));
     expect(find.text('Editor'), findsOneWidget);

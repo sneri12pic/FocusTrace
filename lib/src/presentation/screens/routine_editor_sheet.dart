@@ -1,10 +1,11 @@
-import 'dart:typed_data';
-
 import 'package:flutter/material.dart';
 
 import '../../domain/models/app_usage_summary.dart';
 import '../../domain/models/block_routine.dart';
+import '../../domain/models/usage_item.dart';
 import '../localization/app_localizations_x.dart';
+import '../widgets/app_category_widgets.dart';
+import '../widgets/routine_app_picker.dart';
 
 Future<BlockRoutine?> showRoutineEditor(
   BuildContext context, {
@@ -35,7 +36,7 @@ class _RoutineEditor extends StatefulWidget {
 class _RoutineEditorState extends State<_RoutineEditor> {
   late final TextEditingController _nameController;
   late final Map<String, RoutineApp> _selectedApps;
-  String _query = '';
+  late final List<AppUsageSummary> _candidates;
   bool _hasDailyLimit = false;
   int _dailyLimitMinutes = 180;
 
@@ -47,6 +48,7 @@ class _RoutineEditorState extends State<_RoutineEditor> {
       for (final app in widget.existing?.apps ?? const <RoutineApp>[])
         app.appKey: app,
     };
+    _candidates = _buildCandidates();
     _hasDailyLimit = widget.existing?.dailyLimitMinutes != null;
     _dailyLimitMinutes = widget.existing?.dailyLimitMinutes ?? 180;
   }
@@ -59,9 +61,10 @@ class _RoutineEditorState extends State<_RoutineEditor> {
 
   @override
   Widget build(BuildContext context) {
-    final candidates = _candidates();
     final canSave =
         _nameController.text.trim().isNotEmpty && _selectedApps.isNotEmpty;
+    final namePrompt =
+        _selectedApps.isNotEmpty && _nameController.text.trim().isEmpty;
     return SafeArea(
       child: Column(
         children: [
@@ -94,35 +97,27 @@ class _RoutineEditorState extends State<_RoutineEditor> {
               textInputAction: TextInputAction.next,
               decoration: InputDecoration(
                 labelText: context.l10n.routineEditorName,
-                prefixIcon: const Icon(Icons.bookmark_outline),
+                // A gentle, warm nudge once apps are chosen: a hint, never
+                // the saved name and never an error.
+                hintText: namePrompt ? context.l10n.routineNamePrompt : null,
+                hintStyle: TextStyle(color: UsageCategory.entertainment.color),
+                floatingLabelBehavior: namePrompt
+                    ? FloatingLabelBehavior.always
+                    : FloatingLabelBehavior.auto,
+                prefixIcon: Icon(
+                  Icons.bookmark_outline,
+                  color: namePrompt ? UsageCategory.entertainment.color : null,
+                ),
                 border: _roundedBorder(),
-                enabledBorder: _roundedBorder(),
+                enabledBorder: _roundedBorder(
+                  color: namePrompt ? UsageCategory.entertainment.color : null,
+                ),
                 focusedBorder: _roundedBorder(
                   color: Theme.of(context).colorScheme.primary,
                   width: 2,
                 ),
               ),
               onChanged: (_) => setState(() {}),
-            ),
-          ),
-          const SizedBox(height: 12),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: TextField(
-              decoration: InputDecoration(
-                hintText: context.l10n.routineEditorSearchApps,
-                prefixIcon: const Icon(Icons.search),
-                suffixText: context.l10n.restrictionsRoutineAppCount(
-                  _selectedApps.length,
-                ),
-                border: _roundedBorder(),
-                enabledBorder: _roundedBorder(),
-                focusedBorder: _roundedBorder(
-                  color: Theme.of(context).colorScheme.primary,
-                  width: 2,
-                ),
-              ),
-              onChanged: (value) => setState(() => _query = value),
             ),
           ),
           const SizedBox(height: 8),
@@ -163,31 +158,11 @@ class _RoutineEditorState extends State<_RoutineEditor> {
               ),
             ),
           Expanded(
-            child: candidates.isEmpty
-                ? Center(child: Text(context.l10n.routineEditorNoMatchingApps))
-                : ListView.builder(
-                    itemCount: candidates.length,
-                    itemBuilder: (context, index) {
-                      final candidate = candidates[index];
-                      final isSelected = _selectedApps.containsKey(
-                        candidate.appKey,
-                      );
-                      return CheckboxListTile(
-                        value: isSelected,
-                        secondary: _RoutineAppIcon(
-                          appName: candidate.appName,
-                          iconBytes: candidate.iconBytes,
-                        ),
-                        title: Text(
-                          candidate.appName,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        controlAffinity: ListTileControlAffinity.trailing,
-                        onChanged: (_) => _toggle(candidate),
-                      );
-                    },
-                  ),
+            child: RoutineAppPicker(
+              apps: _candidates,
+              selected: _selectedApps.keys.toSet(),
+              onChanged: _select,
+            ),
           ),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
@@ -205,7 +180,7 @@ class _RoutineEditorState extends State<_RoutineEditor> {
     );
   }
 
-  List<AppUsageSummary> _candidates() {
+  List<AppUsageSummary> _buildCandidates() {
     final byKey = <String, AppUsageSummary>{
       for (final app in widget.apps) app.appKey: app,
     };
@@ -220,32 +195,18 @@ class _RoutineEditorState extends State<_RoutineEditor> {
         ),
       );
     }
-    final query = _query.trim().toLowerCase();
-    final candidates =
-        byKey.values
-            .where(
-              (app) =>
-                  query.isEmpty ||
-                  app.appName.toLowerCase().contains(query) ||
-                  app.appKey.toLowerCase().contains(query),
-            )
-            .toList()
-          ..sort(
-            (first, second) => first.appName.toLowerCase().compareTo(
-              second.appName.toLowerCase(),
-            ),
-          );
-    return candidates;
+    return byKey.values.toList();
   }
 
-  void _toggle(AppUsageSummary app) {
+  void _select(Set<String> keys) {
+    final names = {for (final app in _candidates) app.appKey: app.appName};
     setState(() {
-      if (_selectedApps.containsKey(app.appKey)) {
-        _selectedApps.remove(app.appKey);
-      } else {
-        _selectedApps[app.appKey] = RoutineApp(
-          appKey: app.appKey,
-          appName: app.appName,
+      _selectedApps.removeWhere((key, _) => !keys.contains(key));
+      for (final key in keys) {
+        // Keep an existing member's settings (inclusion, app limit).
+        _selectedApps.putIfAbsent(
+          key,
+          () => RoutineApp(appKey: key, appName: names[key] ?? key),
         );
       }
     });
@@ -287,9 +248,13 @@ OutlineInputBorder _roundedBorder({Color? color, double width = 1}) {
   );
 }
 
+/// Returns minutes, null when cancelled, or 0 when [removeLabel] was chosen.
 Future<int?> showRoutineLimitPicker(
   BuildContext context, {
   required int initialMinutes,
+  String? title,
+  String? hint,
+  String? removeLabel,
 }) {
   var hours = initialMinutes ~/ 60;
   var minutes = initialMinutes % 60;
@@ -304,35 +269,53 @@ Future<int?> showRoutineLimitPicker(
       builder: (context, setDialogState) {
         final valid = hours > 0 || minutes > 0;
         return AlertDialog(
-          title: Text(context.l10n.routineChooseDuration),
-          content: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
+          title: Text(title ?? context.l10n.routineChooseDuration),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              DropdownButton<int>(
-                value: hours.clamp(0, 24),
-                items: [
-                  for (var value = 0; value <= 24; value++)
-                    DropdownMenuItem(value: value, child: Text('$value h')),
+              if (hint != null)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Text(hint),
+                ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  DropdownButton<int>(
+                    value: hours.clamp(0, 24),
+                    items: [
+                      for (var value = 0; value <= 24; value++)
+                        DropdownMenuItem(value: value, child: Text('$value h')),
+                    ],
+                    onChanged: (value) => setDialogState(() {
+                      hours = value ?? 0;
+                      if (hours == 24) minutes = 0;
+                    }),
+                  ),
+                  const SizedBox(width: 16),
+                  DropdownButton<int>(
+                    value: hours == 24 ? 0 : minutes,
+                    items: [
+                      for (var value = 0; value < 60; value += 5)
+                        DropdownMenuItem(
+                          value: value,
+                          child: Text('$value min'),
+                        ),
+                    ],
+                    onChanged: hours == 24
+                        ? null
+                        : (value) => setDialogState(() => minutes = value ?? 0),
+                  ),
                 ],
-                onChanged: (value) => setDialogState(() {
-                  hours = value ?? 0;
-                  if (hours == 24) minutes = 0;
-                }),
-              ),
-              const SizedBox(width: 16),
-              DropdownButton<int>(
-                value: hours == 24 ? 0 : minutes,
-                items: [
-                  for (var value = 0; value < 60; value += 5)
-                    DropdownMenuItem(value: value, child: Text('$value min')),
-                ],
-                onChanged: hours == 24
-                    ? null
-                    : (value) => setDialogState(() => minutes = value ?? 0),
               ),
             ],
           ),
           actions: [
+            if (removeLabel != null)
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(0),
+                child: Text(removeLabel),
+              ),
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
               child: Text(MaterialLocalizations.of(context).cancelButtonLabel),
@@ -348,30 +331,4 @@ Future<int?> showRoutineLimitPicker(
       },
     ),
   );
-}
-
-class _RoutineAppIcon extends StatelessWidget {
-  const _RoutineAppIcon({required this.appName, this.iconBytes});
-
-  final String appName;
-  final Uint8List? iconBytes;
-
-  @override
-  Widget build(BuildContext context) {
-    final bytes = iconBytes;
-    if (bytes != null) {
-      return ClipOval(
-        child: Image.memory(
-          bytes,
-          width: 40,
-          height: 40,
-          cacheWidth: 120,
-          fit: BoxFit.cover,
-        ),
-      );
-    }
-    return CircleAvatar(
-      child: Text(appName.isEmpty ? '?' : appName[0].toUpperCase()),
-    );
-  }
 }

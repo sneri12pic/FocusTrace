@@ -26,4 +26,9 @@
     <string name="widget_no_access">Торкніться, щоб надати доступ до даних використання</string>
     <string name="widget_hours_minutes">%1$d год %2$d хв</string>
     <string name="widget_minutes">%1$d хв</string>
+    <string name="restriction_reason_daily_app_limit">Денний ліміт застосунку вичерпано</string>
+    <string name="restriction_reason_schedule_until">Заблоковано розкладом до %1$s</string>
+    <string name="restriction_reason_block_now_until">Тимчасове блокування до %1$s</string>
+    <string name="restriction_reason_routine_shared">%1$s: спільний час вичерпано</string>
+    <string name="restriction_reason_routine_app">%1$s: ліміт застосунку вичерпано</string>
 </resources>

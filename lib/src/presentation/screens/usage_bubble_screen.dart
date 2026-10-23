@@ -225,6 +225,7 @@ class UsageBubbleScreen extends ConsumerWidget {
 
     switch (action) {
       case _BubbleAction.unblockNow:
+        if (!await confirmRestrictionChange(context)) return;
         final summary = summaries.where((summary) => summary.appKey == item.id);
         await ref
             .read(restrictionsViewModelProvider.notifier)
@@ -234,6 +235,7 @@ class UsageBubbleScreen extends ConsumerWidget {
                   ? item.totalDurationSeconds
                   : summary.first.totalDurationSeconds,
             );
+        if (context.mounted) await showRestrictionResult(context, ref);
       case _BubbleAction.restrict:
         await _restrictItem(context, ref, item);
     }

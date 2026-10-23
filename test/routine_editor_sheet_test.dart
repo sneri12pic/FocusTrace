@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:focustrace/focus_trace.dart';
@@ -10,31 +11,33 @@ void main() {
   ) async {
     BlockRoutine? saved;
     await tester.pumpWidget(
-      MaterialApp(
-        localizationsDelegates: const [
-          AppLocalizations.delegate,
-          GlobalMaterialLocalizations.delegate,
-          GlobalWidgetsLocalizations.delegate,
-          GlobalCupertinoLocalizations.delegate,
-        ],
-        supportedLocales: AppLocalizations.supportedLocales,
-        home: Builder(
-          builder: (context) => Scaffold(
-            body: FilledButton(
-              onPressed: () async {
-                saved = await showRoutineEditor(
-                  context,
-                  apps: const [
-                    AppUsageSummary(
-                      appName: 'Social',
-                      packageName: 'com.example.social',
-                      totalDurationSeconds: 0,
-                      percentageOfTotal: 0,
-                    ),
-                  ],
-                );
-              },
-              child: const Text('Open'),
+      ProviderScope(
+        child: MaterialApp(
+          localizationsDelegates: const [
+            AppLocalizations.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Builder(
+            builder: (context) => Scaffold(
+              body: FilledButton(
+                onPressed: () async {
+                  saved = await showRoutineEditor(
+                    context,
+                    apps: const [
+                      AppUsageSummary(
+                        appName: 'Social',
+                        packageName: 'com.example.social',
+                        totalDurationSeconds: 0,
+                        percentageOfTotal: 0,
+                      ),
+                    ],
+                  );
+                },
+                child: const Text('Open'),
+              ),
             ),
           ),
         ),

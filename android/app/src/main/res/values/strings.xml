@@ -24,4 +24,9 @@
     <string name="widget_no_access">Tap to grant usage access</string>
     <string name="widget_hours_minutes">%1$dh %2$dm</string>
     <string name="widget_minutes">%1$dm</string>
+    <string name="restriction_reason_daily_app_limit">Daily app limit reached</string>
+    <string name="restriction_reason_schedule_until">Blocked by schedule until %1$s</string>
+    <string name="restriction_reason_block_now_until">Temporary block until %1$s</string>
+    <string name="restriction_reason_routine_shared">%1$s: shared allowance reached</string>
+    <string name="restriction_reason_routine_app">%1$s: app limit reached</string>
 </resources>

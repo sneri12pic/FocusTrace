@@ -56,8 +56,42 @@ class MainActivity : FlutterActivity() {
                         result.success(null)
                     }
                     "syncRestrictions" -> {
-                        syncRestrictions(call.arguments as? String ?: "")
-                        result.success(null)
+                        val json = call.arguments as? String ?: ""
+                        // Validating a changed daily limit reads today's usage
+                        // (~1s cold), so keep it off the main thread.
+                        Thread {
+                            try {
+                                syncRestrictions(json)
+                                runOnUiThread { result.success(null) }
+                            } catch (e: IllegalStateException) {
+                                runOnUiThread { result.error("RESTRICTION_LOCKED", e.message, null) }
+                            } catch (e: Exception) {
+                                runOnUiThread { result.error("RESTRICTION_SYNC_FAILED", e.message, null) }
+                            }
+                        }.start()
+                    }
+                    "readRestrictionConfiguration" -> result.success(
+                        getSharedPreferences(RestrictionRules.PREFS_NAME, Context.MODE_PRIVATE)
+                            .getString(RestrictionRules.PREFS_RULES_KEY, null)
+                    )
+                    "requestRestrictionChange" -> {
+                        val appKey = call.argument<String>("appKey")
+                        val type = call.argument<String>("type")
+                        Thread {
+                            try {
+                                val status = synchronized(restrictionLock) {
+                                    val prefs = getSharedPreferences(RestrictionRules.PREFS_NAME, Context.MODE_PRIVATE)
+                                    val rule = RestrictionRules.parseRules(prefs.getString(RestrictionRules.PREFS_RULES_KEY, null))
+                                        .firstOrNull { it.appKey == appKey && it.type.jsonName == type }
+                                    val now = System.currentTimeMillis()
+                                    if (rule == null) "allowed" else RestrictionChangeGuard(prefs)
+                                        .check(rule, now, restrictionUsage(rule, now), request = true)
+                                }
+                                runOnUiThread { result.success(status) }
+                            } catch (e: Exception) {
+                                runOnUiThread { result.error("RESTRICTION_CHECK_FAILED", e.message, null) }
+                            }
+                        }.start()
                     }
                     "getAppMetadata" -> {
                         val arguments = call.arguments as? Map<*, *>
@@ -284,11 +318,32 @@ class MainActivity : FlutterActivity() {
         syncRestrictions(json)
     }
 
-    private fun syncRestrictions(json: String) {
+    private fun restrictionUsage(rule: RestrictionRule, now: Long): Long {
+        if (rule.type != RestrictionRuleType.DailyLimit) return 0L
+        check(hasUsageAccess()) { "Usage access is required to check an active limit." }
+        return UsageHistoryRecovery(applicationContext).snapshotAndRecover(now, java.util.TimeZone.getDefault())[rule.appKey]?.totalMs?.div(1000L) ?: 0L
+    }
+
+    // Read-check-write of the native rules must not interleave between threads.
+    private val restrictionLock = Any()
+
+    private fun syncRestrictions(json: String) = synchronized(restrictionLock) {
+        val prefs = getSharedPreferences(RestrictionRules.PREFS_NAME, Context.MODE_PRIVATE)
+        val previous = RestrictionRules.parseRules(prefs.getString(RestrictionRules.PREFS_RULES_KEY, null))
+        val next = RestrictionRules.parseRules(json)
+        val changed = previous.filter { it !in next }
+        val guard = RestrictionChangeGuard(prefs)
+        val now = System.currentTimeMillis()
+        for (rule in changed) {
+            check(guard.check(rule, now, restrictionUsage(rule, now)) == "allowed") {
+                "Restriction change requires confirmation, a completed cooldown, or the end of the block."
+            }
+        }
         getSharedPreferences(RestrictionRules.PREFS_NAME, Context.MODE_PRIVATE)
             .edit()
             .putString(RestrictionRules.PREFS_RULES_KEY, json)
-            .apply()
+            .commit().also { check(it) }
+        changed.forEach(guard::clear)
 
         val serviceIntent = Intent(this, BlockerService::class.java)
         if (

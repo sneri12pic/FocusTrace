@@ -72,13 +72,51 @@ void main() {
     expect(routine.usageSeconds({'social': 120, 'music': 600}), 120);
   });
 
-  test('invalid and empty routines are ignored while decoding', () {
+  test('invalid routines are ignored; empty routines are kept disabled', () {
     expect(decodeBlockRoutines('not json'), isEmpty);
+    final empty = decodeBlockRoutines(
+      '{"routines":[{"id":"empty","name":"Empty","isEnabled":true,'
+      '"dailyLimitMinutes":60,"apps":[]}]}',
+    ).single;
+    expect(empty.apps, isEmpty);
+    expect(empty.isEnabled, isFalse);
+    // Kept, but never sent to native enforcement until it has apps again.
     expect(
-      decodeBlockRoutines(
-        '{"routines":[{"id":"empty","name":"Empty","apps":[]}]}',
-      ),
-      isEmpty,
+      encodeRestrictionConfiguration(const [], [empty]),
+      contains('"routines":[]'),
+    );
+    final refilled = empty.copyWith(
+      apps: const [RoutineApp(appKey: 'a', appName: 'A')],
+      isEnabled: true,
+    );
+    expect(refilled.isEnabled, isTrue);
+  });
+
+  test('per-app caps round-trip and cap only their own app', () {
+    const routine = BlockRoutine(
+      id: 'study',
+      name: 'Study time',
+      dailyLimitMinutes: 120,
+      isEnabled: true,
+      apps: [
+        RoutineApp(appKey: 'a', appName: 'A', limitMinutes: 45),
+        RoutineApp(appKey: 'b', appName: 'B', limitMinutes: 60),
+        RoutineApp(appKey: 'c', appName: 'C'),
+      ],
+    );
+    final decoded = decodeBlockRoutines(encodeBlockRoutines([routine])).single;
+    expect(decoded.apps.map((a) => a.limitMinutes), [45, 60, null]);
+    final capped = {'a': 45 * 60, 'b': 600, 'c': 600};
+    expect(decoded.isAppCapReached('a', capped), isTrue);
+    expect(decoded.isAppCapReached('b', capped), isFalse);
+    expect(decoded.isSharedAllowanceReached(capped), isFalse);
+    final shared = {'a': 30 * 60, 'b': 40 * 60, 'c': 50 * 60};
+    expect(decoded.isSharedAllowanceReached(shared), isTrue);
+    expect(decoded.isAppCapReached('a', shared), isFalse);
+    // Legacy members without the field have no cap.
+    expect(
+      RoutineApp.fromJson({'appKey': 'x', 'appName': 'X'})?.limitMinutes,
+      isNull,
     );
   });
 }

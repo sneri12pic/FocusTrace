@@ -5,11 +5,59 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../domain/models/app_usage_summary.dart';
 import '../../domain/models/block_routine.dart';
+import '../../domain/models/restriction_rule.dart';
 import '../localization/app_localizations_x.dart';
 import '../providers.dart';
+import '../view_models/app_usage_details_view_model.dart';
 import '../widgets/app_icon_avatar.dart';
+import '../widgets/routine_app_picker.dart';
+import '../widgets/trend_color.dart';
 import 'restriction_editor_sheet.dart';
 import 'routine_editor_sheet.dart';
+import 'usage_details_screen.dart';
+
+/// Every restriction blocking [appKey] right now, in plain words. An app
+/// stays blocked while any of them applies, so all are listed.
+List<String> appBlockReasons(
+  BuildContext context, {
+  required String appKey,
+  required List<RestrictionRule> rules,
+  required List<BlockRoutine> routines,
+  required Map<String, int> usageByAppKey,
+  DateTime? now,
+}) {
+  final l = context.l10n;
+  final at = now ?? DateTime.now();
+  final usage = usageByAppKey[appKey] ?? 0;
+  String time(DateTime value) =>
+      MaterialLocalizations.of(context).formatTimeOfDay(
+        TimeOfDay.fromDateTime(value),
+        alwaysUse24HourFormat: MediaQuery.alwaysUse24HourFormatOf(context),
+      );
+  return [
+    for (final rule in rules)
+      if (rule.appKey == appKey && rule.blocksAt(at, usage))
+        switch (rule.type) {
+          RestrictionRuleType.dailyLimit => l.reasonDailyAppLimit,
+          RestrictionRuleType.schedule => l.reasonScheduleUntil(
+            time(rule.blockedUntil(at, usageSecondsToday: usage)!),
+          ),
+          RestrictionRuleType.blockNow => l.reasonTemporaryUntil(
+            time(rule.blockedUntil(at, usageSecondsToday: usage)!),
+          ),
+        },
+    for (final routine in routines)
+      if (routine.apps.any((a) => a.appKey == appKey)) ...[
+        if (routine.apps.any(
+              (a) => a.appKey == appKey && a.isIncludedInLimit,
+            ) &&
+            routine.isSharedAllowanceReached(usageByAppKey))
+          l.routineReasonShared(routine.name),
+        if (routine.isAppCapReached(appKey, usageByAppKey))
+          l.routineReasonApp(routine.name),
+      ],
+  ];
+}
 
 class RoutineDetailsScreen extends ConsumerStatefulWidget {
   const RoutineDetailsScreen({
@@ -144,57 +192,37 @@ class _RoutineDetailsScreenState extends ConsumerState<RoutineDetailsScreen>
                       ? null
                       : () => _addApp(routine, summariesByKey.values.toList()),
                   icon: const Icon(Icons.add),
-                  label: Text(context.l10n.routineAddApp),
+                  label: Text(context.l10n.routineAddApps),
                 ),
               ],
             ),
             const SizedBox(height: 8),
-            for (final app in routine.apps)
+            if (routine.apps.isEmpty)
               Card(
                 elevation: 0,
-                margin: const EdgeInsets.only(bottom: 8),
-                child: ListTile(
-                  leading: AppIconAvatar(
-                    appName: app.appName,
-                    iconBytes: summariesByKey[app.appKey]?.iconBytes,
-                  ),
-                  title: Text(
-                    app.appName,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  subtitle: Text(
-                    app.isIncludedInLimit
-                        ? context.l10n.routineAppUsage(
-                            context.l10n.compactDuration(
-                              Duration(seconds: usageByKey[app.appKey] ?? 0),
-                            ),
-                          )
-                        : context.l10n.routineAppUsageExcluded(
-                            context.l10n.compactDuration(
-                              Duration(seconds: usageByKey[app.appKey] ?? 0),
-                            ),
-                          ),
-                  ),
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Switch(
-                        value: app.isIncludedInLimit,
-                        onChanged: state.isSaving
-                            ? null
-                            : (value) => _setIncluded(routine, app, value),
-                      ),
-                      IconButton(
-                        tooltip: context.l10n.routineRemoveApp,
-                        onPressed: state.isSaving
-                            ? null
-                            : () => _removeApp(routine, app),
-                        icon: const Icon(Icons.remove_circle_outline),
-                      ),
-                    ],
-                  ),
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Text(context.l10n.routineEmpty),
                 ),
+              ),
+            for (final app in routine.apps)
+              _RoutineAppRow(
+                key: ValueKey(app.appKey),
+                app: app,
+                summary: summariesByKey[app.appKey],
+                usageSeconds: usageByKey[app.appKey] ?? 0,
+                reasons: appBlockReasons(
+                  context,
+                  appKey: app.appKey,
+                  rules: state.rules,
+                  routines: state.routines,
+                  usageByAppKey: usageByKey,
+                ),
+                isSaving: state.isSaving,
+                onOpen: () => _openDetails(app, summariesByKey[app.appKey]),
+                onEditLimit: () => _editAppLimit(routine, app),
+                onIncluded: (value) => _setIncluded(routine, app, value),
+                onRemove: () => _removeApp(routine, app),
               ),
           ],
         ),
@@ -267,22 +295,71 @@ class _RoutineDetailsScreenState extends ConsumerState<RoutineDetailsScreen>
     List<AppUsageSummary> candidates,
   ) async {
     final existingKeys = routine.apps.map((app) => app.appKey).toSet();
-    final selected = await showModalBottomSheet<AppUsageSummary>(
+    final available = candidates
+        .where((app) => !existingKeys.contains(app.appKey))
+        .toList();
+    final selected = await showModalBottomSheet<List<AppUsageSummary>>(
       context: context,
       isScrollControlled: true,
       backgroundColor: const Color(0xFF0D111A),
-      builder: (context) => _RoutineAppSearch(
-        apps: candidates
-            .where((app) => !existingKeys.contains(app.appKey))
-            .toList(),
-      ),
+      builder: (context) => _AddAppsSheet(apps: available),
     );
-    if (selected == null || !mounted) return;
+    if (selected == null || selected.isEmpty || !mounted) return;
     await _save(
       routine.copyWith(
         apps: [
           ...routine.apps,
-          RoutineApp(appKey: selected.appKey, appName: selected.appName),
+          for (final app in selected)
+            RoutineApp(appKey: app.appKey, appName: app.appName),
+        ],
+      ),
+    );
+  }
+
+  void _openDetails(RoutineApp app, AppUsageSummary? summary) {
+    final platform = ref.read(restrictionsViewModelProvider).platform;
+    final now = DateTime.now();
+    Navigator.of(context).push<void>(
+      MaterialPageRoute(
+        builder: (context) => UsageDetailsScreen(
+          request: AppUsageDetailsRequest(
+            summary:
+                summary ??
+                AppUsageSummary(
+                  appName: app.appName,
+                  packageName: app.appKey,
+                  totalDurationSeconds: 0,
+                  percentageOfTotal: 0,
+                ),
+            selectedDate: DateTime(now.year, now.month, now.day),
+            platform: platform,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _editAppLimit(BlockRoutine routine, RoutineApp target) async {
+    final minutes = await showRoutineLimitPicker(
+      context,
+      initialMinutes: target.limitMinutes ?? 60,
+      title: context.l10n.routineAppLimitTitle(target.appName),
+      hint: context.l10n.routineAppLimitHint,
+      removeLabel: target.limitMinutes == null
+          ? null
+          : context.l10n.routineNoAppLimit,
+    );
+    if (minutes == null || !mounted) return;
+    await _save(
+      routine.copyWith(
+        apps: [
+          for (final app in routine.apps)
+            if (app.appKey != target.appKey)
+              app
+            else if (minutes <= 0)
+              app.copyWith(clearLimit: true)
+            else
+              app.copyWith(limitMinutes: minutes),
         ],
       ),
     );
@@ -308,10 +385,32 @@ class _RoutineDetailsScreenState extends ConsumerState<RoutineDetailsScreen>
 
   Future<void> _removeApp(BlockRoutine routine, RoutineApp target) async {
     if (routine.apps.length == 1) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(context.l10n.routineKeepOneApp)));
-      return;
+      final delete = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          content: Text(context.l10n.routineLastAppPrompt),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: Text(context.l10n.routineKeepRoutine),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: Text(context.l10n.restrictionsDeleteRoutine),
+            ),
+          ],
+        ),
+      );
+      if (!mounted) return;
+      if (delete == true) {
+        await ref
+            .read(restrictionsViewModelProvider.notifier)
+            .deleteRoutine(routine.id);
+        if (mounted) Navigator.of(context).pop();
+        return;
+      }
+      // Keep (or dismissing the question) keeps the routine, now empty, so
+      // apps can be added again later.
     }
     await _save(
       routine.copyWith(
@@ -468,71 +567,219 @@ class _UsageCard extends StatelessWidget {
   }
 }
 
-class _RoutineAppSearch extends StatefulWidget {
-  const _RoutineAppSearch({required this.apps});
+class _RoutineAppRow extends StatelessWidget {
+  const _RoutineAppRow({
+    super.key,
+    required this.app,
+    required this.summary,
+    required this.usageSeconds,
+    required this.reasons,
+    required this.isSaving,
+    required this.onOpen,
+    required this.onEditLimit,
+    required this.onIncluded,
+    required this.onRemove,
+  });
+
+  final RoutineApp app;
+  final AppUsageSummary? summary;
+  final int usageSeconds;
+  final List<String> reasons;
+  final bool isSaving;
+  final VoidCallback onOpen;
+  final VoidCallback onEditLimit;
+  final ValueChanged<bool> onIncluded;
+  final VoidCallback onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = context.l10n;
+    final theme = Theme.of(context);
+    final usage = l.compactDuration(Duration(seconds: usageSeconds));
+    final blocked = trendColor(theme, isFlat: false, isIncrease: true);
+    return Card(
+      elevation: 0,
+      margin: const EdgeInsets.only(bottom: 8),
+      clipBehavior: Clip.antiAlias,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(0, 4, 4, 8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                // Icon and name open the app's details; the controls beside
+                // them never do.
+                Expanded(
+                  child: Semantics(
+                    button: true,
+                    label: l.routineOpenDetails(app.appName),
+                    excludeSemantics: true,
+                    onTap: onOpen,
+                    child: InkWell(
+                      onTap: onOpen,
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 8, 8, 8),
+                        child: Row(
+                          children: [
+                            AppIconAvatar(
+                              appName: app.appName,
+                              iconBytes: summary?.iconBytes,
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    app.appName,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: theme.textTheme.titleMedium,
+                                  ),
+                                  Text(
+                                    app.isIncludedInLimit
+                                        ? l.routineAppUsage(usage)
+                                        : l.routineAppUsageExcluded(usage),
+                                    style: theme.textTheme.bodySmall?.copyWith(
+                                      color: theme.colorScheme.onSurfaceVariant,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                Switch(
+                  value: app.isIncludedInLimit,
+                  onChanged: isSaving ? null : onIncluded,
+                ),
+                IconButton(
+                  tooltip: l.routineRemoveApp,
+                  onPressed: isSaving ? null : onRemove,
+                  icon: const Icon(Icons.remove_circle_outline),
+                ),
+              ],
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Align(
+                alignment: AlignmentDirectional.centerStart,
+                child: ActionChip(
+                  avatar: Icon(
+                    app.limitMinutes == null ? Icons.add : Icons.timer_outlined,
+                    size: 18,
+                  ),
+                  label: Text(
+                    app.limitMinutes == null
+                        ? l.routineNoAppLimit
+                        : l.routineAppLimit(
+                            l.compactDuration(
+                              Duration(minutes: app.limitMinutes!),
+                            ),
+                          ),
+                  ),
+                  onPressed: isSaving ? null : onEditLimit,
+                ),
+              ),
+            ),
+            for (final reason in reasons)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 6, 16, 0),
+                child: Row(
+                  children: [
+                    Icon(Icons.lock_outline, size: 16, color: blocked),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        reason,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: blocked,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _AddAppsSheet extends StatefulWidget {
+  const _AddAppsSheet({required this.apps});
 
   final List<AppUsageSummary> apps;
 
   @override
-  State<_RoutineAppSearch> createState() => _RoutineAppSearchState();
+  State<_AddAppsSheet> createState() => _AddAppsSheetState();
 }
 
-class _RoutineAppSearchState extends State<_RoutineAppSearch> {
-  String _query = '';
+class _AddAppsSheetState extends State<_AddAppsSheet> {
+  Set<String> _selected = {};
 
   @override
   Widget build(BuildContext context) {
-    final query = _query.trim().toLowerCase();
-    final apps =
-        widget.apps
-            .where(
-              (app) =>
-                  query.isEmpty ||
-                  app.appName.toLowerCase().contains(query) ||
-                  app.appKey.toLowerCase().contains(query),
-            )
-            .toList()
-          ..sort(
-            (a, b) =>
-                a.appName.toLowerCase().compareTo(b.appName.toLowerCase()),
-          );
     return SafeArea(
       child: FractionallySizedBox(
-        heightFactor: 0.85,
+        heightFactor: 0.88,
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Padding(
-              padding: const EdgeInsets.all(16),
-              child: TextField(
-                decoration: InputDecoration(
-                  hintText: context.l10n.routineEditorSearchApps,
-                  prefixIcon: const Icon(Icons.search),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(28),
+              padding: const EdgeInsets.fromLTRB(20, 16, 8, 8),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      context.l10n.routineAddApps,
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
                   ),
-                ),
-                onChanged: (value) => setState(() => _query = value),
+                  IconButton(
+                    tooltip: MaterialLocalizations.of(
+                      context,
+                    ).closeButtonTooltip,
+                    onPressed: () => Navigator.of(context).pop(),
+                    icon: const Icon(Icons.close),
+                  ),
+                ],
               ),
             ),
             Expanded(
-              child: apps.isEmpty
-                  ? Center(
-                      child: Text(context.l10n.routineEditorNoMatchingApps),
-                    )
-                  : ListView.builder(
-                      itemCount: apps.length,
-                      itemBuilder: (context, index) {
-                        final app = apps[index];
-                        return ListTile(
-                          leading: AppIconAvatar(
-                            appName: app.appName,
-                            iconBytes: app.iconBytes,
-                          ),
-                          title: Text(app.appName),
-                          onTap: () => Navigator.of(context).pop(app),
-                        );
-                      },
-                    ),
+              child: RoutineAppPicker(
+                apps: widget.apps,
+                selected: _selected,
+                onChanged: (keys) => setState(() => _selected = keys),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+              child: FilledButton(
+                style: FilledButton.styleFrom(
+                  minimumSize: const Size.fromHeight(48),
+                ),
+                onPressed: _selected.isEmpty
+                    ? null
+                    : () => Navigator.of(context).pop([
+                        for (final app in widget.apps)
+                          if (_selected.contains(app.appKey)) app,
+                      ]),
+                child: Text(
+                  _selected.isEmpty
+                      ? context.l10n.routineAddApps
+                      : context.l10n.routineAddSelected(_selected.length),
+                ),
+              ),
             ),
           ],
         ),

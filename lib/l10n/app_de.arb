@@ -677,5 +677,188 @@
       }
     }
   },
-  "restrictionsLimitReached": "Limit erreicht"
+  "restrictionsLimitReached": "Limit erreicht",
+  "rxWeek": "Diese Woche",
+  "rxTopApps": "Deine meistgenutzten Apps",
+  "rxAverage": "{days, plural, one{Tagesdurchschnitt · 1 erfasster Tag} other{Tagesdurchschnitt · {days} erfasste Tage}}",
+  "@rxAverage": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "rxBusiest": "Deine aktivsten Stunden",
+  "rxPeak": "Die meiste erfasste Nutzung liegt zwischen {start} und {end}.",
+  "@rxPeak": {
+    "placeholders": {
+      "start": {
+        "type": "String"
+      },
+      "end": {
+        "type": "String"
+      }
+    }
+  },
+  "rxNoInsights": "Noch nicht genug erfasste Nutzung für einen Zeitvorschlag.",
+  "rxPlanBlock": "Zeitplan anlegen",
+  "rxYourRules": "Deine Einschränkungen",
+  "rxLimit": "Limit",
+  "rxEdit": "Bearbeiten",
+  "rxRestrict": "{app} einschränken",
+  "@rxRestrict": {
+    "placeholders": {
+      "app": {
+        "type": "String"
+      }
+    }
+  },
+  "rxAverageApp": "Durchschnittlich {duration} / Tag",
+  "@rxAverageApp": {
+    "placeholders": {
+      "duration": {
+        "type": "String"
+      }
+    }
+  },
+  "rxType": "Art der Einschränkung",
+  "rxDailyLimit": "Tageslimit",
+  "rxBlockNow": "Jetzt sperren",
+  "rxDifficulty": "Schwierigkeit beim Entsperren",
+  "rxEasy": "Einfach",
+  "rxModerate": "Mittel",
+  "rxHard": "Schwer",
+  "rxEasyHint": "Zum Entsperren bestätigen",
+  "rxModerateHint": "Zum Entsperren 5 Minuten warten",
+  "rxHardHint": "Kein vorzeitiges Entsperren in FocusTrace",
+  "rxProtectionNote": "Dies gilt auch für das Ändern oder Entfernen einer aktiven Regel.",
+  "rxSetLimit": "Tageslimit festlegen",
+  "rxSetSchedule": "Zeitplan festlegen",
+  "rxStartBlock": "Sperre starten",
+  "rxBelowAverage": "{duration} unter deinem Tagesdurchschnitt",
+  "@rxBelowAverage": {
+    "placeholders": {
+      "duration": {
+        "type": "String"
+      }
+    }
+  },
+  "rxRepeat": "Wiederholen",
+  "rxNextDay": "Endet am nächsten Tag",
+  "rxEndsAt": "Endet um {time}",
+  "@rxEndsAt": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "rxHardConfirm": "Solange diese Regel eine App sperrt, kannst du sie in FocusTrace nicht vorzeitig entsperren, bearbeiten oder entfernen.",
+  "rxConfirm": "Bestätigen",
+  "rxChangeTitle": "Einschränkung ändern?",
+  "rxChangeBody": "Einfache Regeln lassen sich sofort ändern. Mittlere Regeln erfordern fünf Minuten Wartezeit. Schwere Regeln bleiben bis zum Ende der aktuellen Sperre gesperrt.",
+  "rxCooldown": "Fünf Minuten Wartezeit gestartet. Versuche es danach erneut; die App bleibt bis zur erneuten Bestätigung gesperrt.",
+  "rxHardLocked": "Diese Regel bleibt bis zum Ende der aktuellen Sperre gesperrt.",
+  "rxUnavailable": "Die Einschränkung konnte nicht geprüft werden. Prüfe den Nutzungszugriff und versuche es erneut.",
+  "rxMinutes": "Dauer in Minuten",
+  "rxRetry": "Erneut versuchen",
+  "rxScheduleInvalid": "Wähle unterschiedliche Start- und Endzeiten und mindestens einen Tag.",
+  "rxNoUsage": "Keine erfasste Nutzung für diesen Zeitraum. Du kannst trotzdem eine App einschränken.",
+  "rxNextBlock": "Nächster Start: {time}",
+  "@rxNextBlock": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "rxPerDay": "{duration} / Tag",
+  "@rxPerDay": {
+    "placeholders": {
+      "duration": {
+        "type": "String"
+      }
+    }
+  },
+  "rxUntil": "Bis {time}",
+  "@rxUntil": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "rxLeftToday": "Heute noch {duration}",
+  "@rxLeftToday": {
+    "placeholders": {
+      "duration": {
+        "type": "String"
+      }
+    }
+  },
+  "rxStarts": "Beginnt {time}",
+  "@rxStarts": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "rxStartLabel": "Beginn",
+  "rxEndLabel": "Ende",
+  "rxHoursField": "Stunden",
+  "rxMinutesField": "Minuten",
+  "rxAdd": "Hinzufügen",
+  "rxNoRulesYet": "Noch keine Einschränkungen. Wähle unten eine App oder tippe auf Hinzufügen.",
+  "rxChooseApps": "Apps zum Begrenzen wählen",
+  "rxSearchAll": "Alle Apps durchsuchen",
+  "rxTodayUsage": "Heutige Nutzung bisher",
+  "rxCreate": "Erstellen",
+  "rxSharedLimit": "Gemeinsames Tageslimit · {duration}",
+  "rxMoreApps": "{names} + {count, plural, one{1 App} other{{count} Apps}}",
+  "rxPaused": "Pausiert",
+  "rxUsed": "{duration} genutzt",
+  "rxLeft": "Noch {duration}",
+  "rxEveryDay": "Jeden Tag",
+  "rxUnblockAfterWait": "Nach 5 Minuten Wartezeit entsperren",
+  "rxLockedUntil": "Gesperrt bis {time}",
+  "rxEditDuration": "Dauer bearbeiten",
+  "rxSaveChanges": "Änderungen speichern",
+  "rxEasyExplain": "Du kannst nach einer Bestätigung vorzeitig entsperren. Auch das Bearbeiten oder Entfernen der Regel während einer Sperre erfordert eine Bestätigung.",
+  "rxModerateExplain": "Vorzeitiges Entsperren oder das Bearbeiten oder Entfernen der Regel während einer Sperre startet eine Wartezeit von fünf Minuten. Die App bleibt so lange gesperrt. Wiederhole danach die Aktion und bestätige erneut. Nichts wird von selbst entsperrt.",
+  "rxHardExplain": "Solange diese Regel sperrt, entsperrt FocusTrace nicht vorzeitig, und du kannst sie bis zum Ende der Sperre weder bearbeiten noch entfernen. Außerhalb der Sperrzeiten kannst du sie normal ändern.",
+  "rxModerateUnblockBody": "Damit startet eine Wartezeit von fünf Minuten. Die App bleibt bis dahin gesperrt. Wähle danach erneut Entsperren und bestätige.",
+  "@rxSharedLimit": {"placeholders": {"duration": {"type": "String"}}},
+  "@rxMoreApps": {"placeholders": {"names": {"type": "String"}, "count": {"type": "int"}}},
+  "@rxUsed": {"placeholders": {"duration": {"type": "String"}}},
+  "@rxLeft": {"placeholders": {"duration": {"type": "String"}}},
+  "@rxLockedUntil": {"placeholders": {"time": {"type": "String"}}},
+  "routineLastAppPrompt": "Diese Routine hat keine Apps mehr. Routine löschen?",
+  "routineKeepRoutine": "Routine behalten",
+  "routineNamePrompt": "Routinenamen hinzufügen",
+  "routineEmpty": "Diese Routine enthält noch keine Apps. Füge Apps hinzu, um ihre Limits wieder zu nutzen.",
+  "routineNoAppsShort": "Noch keine Apps",
+  "routinePickerAll": "Alle",
+  "routinePickerSelectCategory": "Alle in {category} auswählen",
+  "@routinePickerSelectCategory": {"placeholders": {"category": {"type": "String"}}},
+  "routineAddApps": "Apps hinzufügen",
+  "routineAddSelected": "{count, plural, one{1 App hinzufügen} other{{count} Apps hinzufügen}}",
+  "@routineAddSelected": {"placeholders": {"count": {"type": "int"}}},
+  "routineAppLimit": "App-Limit {duration}",
+  "@routineAppLimit": {"placeholders": {"duration": {"type": "String"}}},
+  "routineNoAppLimit": "Kein App-Limit",
+  "routineAppLimitTitle": "Tageslimit für {app}",
+  "@routineAppLimitTitle": {"placeholders": {"app": {"type": "String"}}},
+  "routineAppLimitHint": "Begrenzt nur diese App. Ihre Zeit zählt weiter zum gemeinsamen Kontingent.",
+  "routineReasonShared": "{routine}: gemeinsames Kontingent aufgebraucht",
+  "@routineReasonShared": {"placeholders": {"routine": {"type": "String"}}},
+  "routineReasonApp": "{routine}: App-Limit erreicht",
+  "@routineReasonApp": {"placeholders": {"routine": {"type": "String"}}},
+  "reasonDailyAppLimit": "Tageslimit der App erreicht",
+  "reasonScheduleUntil": "Durch Zeitplan gesperrt bis {time}",
+  "@reasonScheduleUntil": {"placeholders": {"time": {"type": "String"}}},
+  "reasonTemporaryUntil": "Vorübergehend gesperrt bis {time}",
+  "@reasonTemporaryUntil": {"placeholders": {"time": {"type": "String"}}},
+  "routineOpenDetails": "Details zu {app} öffnen",
+  "@routineOpenDetails": {"placeholders": {"app": {"type": "String"}}}
 }

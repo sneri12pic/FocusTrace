@@ -21,6 +21,8 @@ enum RestrictionRuleType {
   }
 }
 
+enum RestrictionDifficulty { easy, moderate, hard }
+
 class RestrictionRule {
   const RestrictionRule({
     required this.appKey,
@@ -30,6 +32,8 @@ class RestrictionRule {
     this.limitMinutes,
     this.startMinute,
     this.endMinute,
+    this.difficulty = RestrictionDifficulty.easy,
+    this.weekdays = const [1, 2, 3, 4, 5, 6, 7],
   });
 
   factory RestrictionRule.blockNow({
@@ -80,6 +84,10 @@ class RestrictionRule {
   final int? limitMinutes;
   final int? startMinute;
   final int? endMinute;
+  final RestrictionDifficulty difficulty;
+
+  /// ISO weekdays on which a schedule starts; overnight tails belong to that day.
+  final List<int> weekdays;
 
   bool get isExpiredBlockNow {
     if (type != RestrictionRuleType.blockNow) {
@@ -104,9 +112,11 @@ class RestrictionRule {
           return false;
         }
         final current = now.hour * 60 + now.minute;
-        if (end < start) {
-          return current >= start || current < end;
-        }
+        final startDay = end < start && current < end
+            ? DateTime(now.year, now.month, now.day - 1)
+            : now;
+        if (!weekdays.contains(startDay.weekday)) return false;
+        if (end < start) return current >= start || current < end;
         return current >= start && current < end;
     }
   }
@@ -137,8 +147,25 @@ class RestrictionRule {
         );
         return endDate.isAfter(now)
             ? endDate
-            : endDate.add(const Duration(days: 1));
+            : DateTime(now.year, now.month, now.day + 1, end ~/ 60, end % 60);
     }
+  }
+
+  DateTime? nextScheduledStart(DateTime now) {
+    if (type != RestrictionRuleType.schedule || startMinute == null) {
+      return null;
+    }
+    for (var offset = 0; offset <= 7; offset++) {
+      final date = DateTime(
+        now.year,
+        now.month,
+        now.day + offset,
+        startMinute! ~/ 60,
+        startMinute! % 60,
+      );
+      if (date.isAfter(now) && weekdays.contains(date.weekday)) return date;
+    }
+    return null;
   }
 
   Map<String, Object?> toJson() {
@@ -146,6 +173,8 @@ class RestrictionRule {
       'appKey': appKey,
       'appName': appName,
       'type': type.jsonName,
+      'difficulty': difficulty.name,
+      'weekdays': weekdays,
       if (untilMs != null) 'untilMs': untilMs,
       if (limitMinutes != null) 'limitMinutes': limitMinutes,
       if (startMinute != null) 'startMinute': startMinute,
@@ -198,6 +227,16 @@ class RestrictionRule {
       limitMinutes: limitMinutes,
       startMinute: startMinute,
       endMinute: endMinute,
+      difficulty:
+          RestrictionDifficulty.values.asNameMap()[row['difficulty']] ??
+          RestrictionDifficulty.easy,
+      weekdays: row['weekdays'] is List
+          ? (row['weekdays'] as List)
+                .whereType<int>()
+                .where((d) => d >= 1 && d <= 7)
+                .toSet()
+                .toList()
+          : const [1, 2, 3, 4, 5, 6, 7],
     );
   }
 
@@ -209,6 +248,8 @@ class RestrictionRule {
     int? limitMinutes,
     int? startMinute,
     int? endMinute,
+    RestrictionDifficulty? difficulty,
+    List<int>? weekdays,
   }) {
     return RestrictionRule(
       appKey: appKey ?? this.appKey,
@@ -218,6 +259,8 @@ class RestrictionRule {
       limitMinutes: limitMinutes ?? this.limitMinutes,
       startMinute: startMinute ?? this.startMinute,
       endMinute: endMinute ?? this.endMinute,
+      difficulty: difficulty ?? this.difficulty,
+      weekdays: weekdays ?? this.weekdays,
     );
   }
 }
