@@ -97,7 +97,7 @@ class RestrictionsScreen extends ConsumerWidget {
         child: ListView(
           key: const ValueKey('restrictions-scroll-view'),
           physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+          padding: const EdgeInsets.fromLTRB(16, 4, 16, 48),
           children: [
             // Permission and platform problems stay at the very top.
             if (state.platform == UsagePlatform.android &&

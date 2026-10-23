@@ -162,7 +162,13 @@ class _RoutineDetailsScreenState extends ConsumerState<RoutineDetailsScreen>
             .refreshRoutineUsage(),
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.all(16),
+          // Edge-to-edge: reserve room so the last app clears the nav bar.
+          padding: EdgeInsets.fromLTRB(
+            16,
+            16,
+            16,
+            48 + MediaQuery.paddingOf(context).bottom,
+          ),
           children: [
             _UsageCard(
               routine: routine,
