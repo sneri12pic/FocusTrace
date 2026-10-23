@@ -38,11 +38,11 @@ android {
         applicationId = "com.stepandemianenko.focustrace"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
-        // 23, not Flutter's 21: the sync refresh token is sealed with an
-        // AndroidKeyStore AES key, and KeyGenParameterSpec is API 23. Below it
-        // the credential could only be stored in the clear, which the security
-        // baseline forbids. Drops Android 5.0/5.1.
-        minSdk = 23
+        // 24: Play automatic protection rejects bundles below it. (23 was
+        // already needed: the sync refresh token is sealed with an
+        // AndroidKeyStore AES key, and KeyGenParameterSpec is API 23.)
+        // Drops Android 6.0.
+        minSdk = 24
         // Pinned: FocusTrace targets Android 16; Flutter's default lags at 35.
         targetSdk = 36
         versionCode = flutter.versionCode
