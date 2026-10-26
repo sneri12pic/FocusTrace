@@ -1551,4 +1551,194 @@ class AppLocalizationsUk extends AppLocalizations {
   @override
   String get rxScheduleDialHint =>
       'Перетягніть будь-який червоний кінець або торкніться, де він має бути';
+
+  @override
+  String get healthConnectTitle => 'Health Connect';
+
+  @override
+  String get healthConnectSettingsOff =>
+      'Вимкнено · імпорт тренувань із застосунків на кшталт Hevy';
+
+  @override
+  String healthConnectSettingsOn(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Увімкнено · $count тренування імпортовано',
+      many: 'Увімкнено · $count тренувань імпортовано',
+      few: 'Увімкнено · $count тренування імпортовано',
+      one: 'Увімкнено · $count тренування імпортовано',
+      zero: 'Увімкнено · тренувань ще не імпортовано',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get healthConnectIntro =>
+      'Імпортуйте тренування із застосунків на кшталт Hevy через Health Connect в Android. Це необов\'язково й за замовчуванням вимкнено. Відстеження, ліміти й блокування ніколи від цього не залежать.';
+
+  @override
+  String get healthConnectDataTitle => 'Що читає FocusTrace';
+
+  @override
+  String get healthConnectDataBody =>
+      'Лише сеанси вправ: вид тренування, його назву, час початку й завершення та застосунок, який його записав. Нічого іншого, як-от пульс, маршрути чи підходи, і FocusTrace нічого не записує в Health Connect. Імпортовані тренування залишаються на цьому пристрої: синхронізація їх не вивантажує, а резервні копії їх не містять.';
+
+  @override
+  String get healthConnectImportSwitch => 'Імпортувати тренування';
+
+  @override
+  String get healthConnectAutoImport => 'Імпортувати автоматично';
+
+  @override
+  String get healthConnectAutoImportBody =>
+      'Перевіряє нові тренування кожні кілька годин. Застосунки синхронізуються з Health Connect за власним розкладом, тож тренування може з\'явитися не одразу.';
+
+  @override
+  String get healthConnectAutoImportUnsupported =>
+      'Для автоматичного імпорту потрібна новіша версія Health Connect. Імпорт вручну працює як і раніше.';
+
+  @override
+  String get healthConnectAutoImportBlocked =>
+      'Health Connect не дозволяє FocusTrace читати у фоновому режимі, тож автоматичний імпорт не може працювати. Дозвольте це в Health Connect або скористайтеся імпортом вручну.';
+
+  @override
+  String get healthConnectImportNow => 'Імпортувати зараз';
+
+  @override
+  String healthConnectLastSuccess(String time) {
+    return 'Останній успішний імпорт: $time';
+  }
+
+  @override
+  String get healthConnectNeverImported => 'Ще нічого не імпортовано';
+
+  @override
+  String healthConnectOutcomeImported(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Остання перевірка: $count тренування додано або оновлено',
+      many: 'Остання перевірка: $count тренувань додано або оновлено',
+      few: 'Остання перевірка: $count тренування додано або оновлено',
+      one: 'Остання перевірка: $count тренування додано або оновлено',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get healthConnectOutcomeNoNew =>
+      'Остання перевірка: нових тренувань немає';
+
+  @override
+  String get healthConnectOutcomeUnavailable =>
+      'Остання перевірка не вдалася: Health Connect недоступний';
+
+  @override
+  String get healthConnectOutcomePermission =>
+      'Остання перевірка не вдалася: доступ до даних про вправи вимкнено в Health Connect';
+
+  @override
+  String get healthConnectOutcomeBackground =>
+      'Остання автоматична перевірка не змогла запуститися у фоновому режимі';
+
+  @override
+  String get healthConnectOutcomeFailed =>
+      'Остання перевірка не завершилася. Її буде повторено.';
+
+  @override
+  String get healthConnectUnavailable =>
+      'Health Connect недоступний на цьому пристрої. Потрібен Android 9 або новіший.';
+
+  @override
+  String get healthConnectUpdateRequired =>
+      'Щоб скористатися цим, установіть або оновіть Health Connect у Google Play.';
+
+  @override
+  String get healthConnectGetApp => 'Відкрити Google Play';
+
+  @override
+  String get healthConnectRevoked =>
+      'FocusTrace більше не має доступу до ваших даних про вправи. Надайте його знову, щоб продовжити імпорт.';
+
+  @override
+  String get healthConnectGrantAgain => 'Надати доступ';
+
+  @override
+  String get healthConnectManage => 'Керувати доступом у Health Connect';
+
+  @override
+  String get healthConnectOffNote =>
+      'Вимкнення зупиняє всі читання й заплановані імпорти. Воно не відкликає дозвіл FocusTrace і нічого не змінює в Health Connect; керуйте цим там. Уже імпортовані тренування залишаються на цьому пристрої, доки ви їх не видалите.';
+
+  @override
+  String get healthConnectDeleteImported => 'Видалити імпортовані тренування';
+
+  @override
+  String get healthConnectDeleteTitle => 'Видалити імпортовані тренування?';
+
+  @override
+  String get healthConnectDeleteBody =>
+      'Буде видалено тренування, які FocusTrace скопіював на цей пристрій. У Health Connect і застосунках, що їх записали, нічого не зміниться.';
+
+  @override
+  String get healthConnectDelete => 'Видалити';
+
+  @override
+  String get healthConnectWorkoutsTitle => 'Імпортовані тренування';
+
+  @override
+  String get healthConnectNoWorkouts =>
+      'Тренувань ще немає. Перший імпорт охоплює останні 30 днів; давніші тренування не імпортуються.';
+
+  @override
+  String healthConnectWorkoutSource(String duration, String app) {
+    return '$duration · з $app';
+  }
+
+  @override
+  String get workoutStrength => 'Силове тренування';
+
+  @override
+  String get workoutRunning => 'Біг';
+
+  @override
+  String get workoutWalking => 'Ходьба';
+
+  @override
+  String get workoutCycling => 'Велоспорт';
+
+  @override
+  String get workoutSwimming => 'Плавання';
+
+  @override
+  String get workoutYoga => 'Йога';
+
+  @override
+  String get workoutOther => 'Тренування';
+
+  @override
+  String get onboardingHealthTitle => 'Додайте свої тренування';
+
+  @override
+  String get onboardingHealthBody =>
+      'Необов\'язково. Імпортуйте тренування із застосунків на кшталт Hevy через Health Connect. FocusTrace читає лише сеанси вправ і зберігає їх на цьому пристрої. Це можна будь-коли змінити в налаштуваннях.';
+
+  @override
+  String get onboardingHealthConnect => 'Підключити Health Connect';
+
+  @override
+  String get onboardingHealthSkip => 'Не зараз';
+
+  @override
+  String get onboardingHealthConnected =>
+      'Підключено. Ваші тренування в налаштуваннях, у розділі Health Connect.';
+
+  @override
+  String get onboardingHealthDenied =>
+      'Доступ не надано. Підключити можна пізніше в налаштуваннях.';
+
+  @override
+  String get settingsClearDataHealth =>
+      'Імпорт із Health Connect вимкнеться, а імпортовані тренування буде видалено. У Health Connect нічого не зміниться.';
 }

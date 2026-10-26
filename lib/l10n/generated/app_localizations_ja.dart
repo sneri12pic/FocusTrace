@@ -1476,4 +1476,183 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get rxScheduleDialHint => '赤い端をドラッグするか、移動先をタップ';
+
+  @override
+  String get healthConnectTitle => 'Health Connect';
+
+  @override
+  String get healthConnectSettingsOff => 'オフ · Hevy などのアプリからワークアウトを取り込む';
+
+  @override
+  String healthConnectSettingsOn(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'オン · $count 件のワークアウトを取り込み済み',
+      zero: 'オン · まだ取り込んだワークアウトはありません',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get healthConnectIntro =>
+      'Android の Health Connect を通じて、Hevy などのアプリからワークアウトを取り込みます。任意の機能で、初期設定はオフです。記録、制限、ブロックがこれに依存することはありません。';
+
+  @override
+  String get healthConnectDataTitle => 'FocusTrace が読み取るもの';
+
+  @override
+  String get healthConnectDataBody =>
+      'エクササイズセッションのみです。ワークアウトの種類、名前、開始と終了の時刻、記録したアプリを読み取ります。心拍数、ルート、セットなどそれ以外は読み取らず、FocusTrace は Health Connect に何も書き込みません。取り込んだワークアウトはこの端末に保存され、同期でアップロードされることもバックアップに含まれることもありません。';
+
+  @override
+  String get healthConnectImportSwitch => 'ワークアウトを取り込む';
+
+  @override
+  String get healthConnectAutoImport => '自動で取り込む';
+
+  @override
+  String get healthConnectAutoImportBody =>
+      '数時間ごとに新しいワークアウトを確認します。各アプリは独自のタイミングで Health Connect と同期するため、表示まで時間がかかることがあります。';
+
+  @override
+  String get healthConnectAutoImportUnsupported =>
+      '自動取り込みには新しいバージョンの Health Connect が必要です。「今すぐ取り込む」は引き続き使えます。';
+
+  @override
+  String get healthConnectAutoImportBlocked =>
+      'Health Connect が FocusTrace のバックグラウンドでの読み取りを許可していないため、自動取り込みを実行できません。Health Connect で許可するか、「今すぐ取り込む」を使ってください。';
+
+  @override
+  String get healthConnectImportNow => '今すぐ取り込む';
+
+  @override
+  String healthConnectLastSuccess(String time) {
+    return '最後に成功した取り込み: $time';
+  }
+
+  @override
+  String get healthConnectNeverImported => 'まだ何も取り込んでいません';
+
+  @override
+  String healthConnectOutcomeImported(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '前回の確認: $count 件のワークアウトを追加または更新',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get healthConnectOutcomeNoNew => '前回の確認: 新しいワークアウトはありません';
+
+  @override
+  String get healthConnectOutcomeUnavailable =>
+      '前回の確認に失敗: Health Connect を利用できません';
+
+  @override
+  String get healthConnectOutcomePermission =>
+      '前回の確認に失敗: Health Connect でエクササイズデータへのアクセスがオフになっています';
+
+  @override
+  String get healthConnectOutcomeBackground => '前回の自動確認はバックグラウンドで実行できませんでした';
+
+  @override
+  String get healthConnectOutcomeFailed => '前回の確認は完了しませんでした。再度試行されます。';
+
+  @override
+  String get healthConnectUnavailable =>
+      'この端末では Health Connect を利用できません。Android 9 以降が必要です。';
+
+  @override
+  String get healthConnectUpdateRequired =>
+      '利用するには Google Play から Health Connect をインストールまたは更新してください。';
+
+  @override
+  String get healthConnectGetApp => 'Google Play を開く';
+
+  @override
+  String get healthConnectRevoked =>
+      'FocusTrace はエクササイズデータにアクセスできなくなりました。取り込みを続けるには、もう一度アクセスを許可してください。';
+
+  @override
+  String get healthConnectGrantAgain => 'アクセスを許可';
+
+  @override
+  String get healthConnectManage => 'Health Connect でアクセスを管理';
+
+  @override
+  String get healthConnectOffNote =>
+      'オフにすると、すべての読み取りと予定された取り込みが止まります。FocusTrace の権限が取り消されたり Health Connect 内のデータが変わったりはしないので、そちらで管理してください。取り込み済みのワークアウトは、削除するまでこの端末に残ります。';
+
+  @override
+  String get healthConnectDeleteImported => '取り込んだワークアウトを削除';
+
+  @override
+  String get healthConnectDeleteTitle => '取り込んだワークアウトを削除しますか？';
+
+  @override
+  String get healthConnectDeleteBody =>
+      'FocusTrace がこの端末にコピーしたワークアウトを削除します。Health Connect や記録したアプリのデータは変わりません。';
+
+  @override
+  String get healthConnectDelete => '削除';
+
+  @override
+  String get healthConnectWorkoutsTitle => '取り込んだワークアウト';
+
+  @override
+  String get healthConnectNoWorkouts =>
+      'まだワークアウトはありません。最初の取り込みは過去 30 日分が対象で、それより前のワークアウトは取り込まれません。';
+
+  @override
+  String healthConnectWorkoutSource(String duration, String app) {
+    return '$duration · $app から';
+  }
+
+  @override
+  String get workoutStrength => '筋力トレーニング';
+
+  @override
+  String get workoutRunning => 'ランニング';
+
+  @override
+  String get workoutWalking => 'ウォーキング';
+
+  @override
+  String get workoutCycling => 'サイクリング';
+
+  @override
+  String get workoutSwimming => '水泳';
+
+  @override
+  String get workoutYoga => 'ヨガ';
+
+  @override
+  String get workoutOther => 'ワークアウト';
+
+  @override
+  String get onboardingHealthTitle => 'ワークアウトも取り込む';
+
+  @override
+  String get onboardingHealthBody =>
+      '任意です。Health Connect を通じて Hevy などのアプリからワークアウトを取り込みます。FocusTrace はエクササイズセッションだけを読み取り、この端末に保存します。設定でいつでも変更できます。';
+
+  @override
+  String get onboardingHealthConnect => 'Health Connect に接続';
+
+  @override
+  String get onboardingHealthSkip => '今はしない';
+
+  @override
+  String get onboardingHealthConnected =>
+      '接続しました。ワークアウトは設定の Health Connect にあります。';
+
+  @override
+  String get onboardingHealthDenied => 'アクセスは許可されませんでした。あとから設定で接続できます。';
+
+  @override
+  String get settingsClearDataHealth =>
+      'Health Connect からの取り込みはオフになり、取り込んだワークアウトは削除されます。Health Connect 内のデータは変わりません。';
 }

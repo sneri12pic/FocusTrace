@@ -12,7 +12,7 @@
 </head>
 <body>
   <h1>FocusTrace — Privacy Policy</h1>
-  <p><em>Effective date: September 30, 2026</em></p>
+  <p><em>Effective date: October 26, 2026</em></p>
 
   <p>FocusTrace is a local-first screen-time tracker. The short version:
   <strong>your data stays on your device unless you create an account and turn
@@ -61,6 +61,18 @@
     <li>To remove the synced data, delete the account (below).</li>
   </ul>
 
+  <h2>Optional Health Connect workout import</h2>
+  <p>On Android you can let FocusTrace import your workouts from other apps,
+  such as Hevy, through Android's Health Connect. It is off until you turn it
+  on in <em>Settings → Health Connect</em> or during setup.</p>
+  <ul>
+    <li><strong>What is read:</strong> exercise sessions only: the type of workout, its name, its start and end time and time zone offset, the app that recorded it, and Health Connect's identifier for the record. No other health data (for example heart rate, routes, sets or weights) is read.</li>
+    <li><strong>Why:</strong> to show your workouts inside FocusTrace. They are not used for advertising, profiling or any other purpose.</li>
+    <li><strong>Where it goes:</strong> imported workouts are stored only in the app's private storage on your device. They are never sent to the sync server, never included in exported backups, and excluded from Android's own backup and device transfer. FocusTrace writes nothing to Health Connect.</li>
+    <li><strong>Background:</strong> if you turn on automatic import, FocusTrace asks Health Connect for permission to read in the background and checks for new workouts every few hours.</li>
+    <li><strong>Stopping:</strong> turning the import off stops all reads. Imported workouts stay on your device until you choose <em>Delete imported workouts</em> or <em>Delete local data</em>. FocusTrace's access is managed, and can be revoked, in Health Connect.</li>
+  </ul>
+
   <h2>Permissions and why the app needs them</h2>
   <ul>
     <li><strong>Usage access (PACKAGE_USAGE_STATS)</strong> — reading screen-time statistics is the app's core function.</li>
@@ -68,6 +80,7 @@
     <li><strong>Display over other apps</strong> — used to show the blocking overlay when an app restriction you configured is reached.</li>
     <li><strong>Notifications &amp; foreground service</strong> — used to keep restriction enforcement running and to show its status.</li>
     <li><strong>Run at boot</strong> — restarts restriction enforcement after your device reboots.</li>
+    <li><strong>Health Connect: read exercise, and read in the background</strong> — only if you turn on the optional workout import described above.</li>
     <li><strong>Network access (INTERNET)</strong> — used only for the optional account and cloud sync. The app makes no other network connections.</li>
   </ul>
 

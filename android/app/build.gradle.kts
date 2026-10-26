@@ -106,7 +106,16 @@ dependencies {
     // 2.10.x was pinned because it was the newest line supporting minSdk 21.
     // That constraint is gone, but nothing here needs a newer line.
     implementation("androidx.work:work-runtime-ktx:2.10.5")
+    // Optional workout import. Stable line; it declares minSdk 26, so the
+    // manifest overrides that and HealthConnectImporter reports Health Connect
+    // as unavailable below Android 8.
+    implementation("androidx.health.connect:connect-client:1.1.0")
+    // connect-client brings full Guava at runtime, which swaps WorkManager's
+    // listenablefuture for an empty stub at compile time. Compile against the
+    // same Guava so SyncPlatformChannel's ListenableFuture still resolves.
+    compileOnly("com.google.guava:guava:31.1-android")
     testImplementation("junit:junit:4.13.2")
+    testImplementation("androidx.health.connect:connect-testing:1.0.0-alpha03")
     testImplementation("org.json:json:20240303")
     testImplementation("org.robolectric:robolectric:4.15.1")
     androidTestImplementation("androidx.test:runner:1.6.2")
