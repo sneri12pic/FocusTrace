@@ -517,7 +517,10 @@ class _ConfirmSheetState extends State<_ConfirmSheet> {
           24,
           24,
           24,
-          16 + MediaQuery.viewInsetsOf(context).bottom,
+          // useSafeArea leaves the bottom out; keep buttons above the nav bar.
+          16 +
+              MediaQuery.viewInsetsOf(context).bottom +
+              MediaQuery.paddingOf(context).bottom,
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,

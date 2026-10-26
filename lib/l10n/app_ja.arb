@@ -668,5 +668,202 @@
         "type": "String"
       }
     }
-  }
+  },
+  "restrictionsTimeLeft": "残り {duration}",
+  "@restrictionsTimeLeft": {
+    "placeholders": {
+      "duration": {
+        "type": "String"
+      }
+    }
+  },
+  "restrictionsLimitReached": "上限に達しました",
+  "rxWeek": "今週",
+  "rxTopApps": "よく使うアプリ",
+  "rxAverage": "1日の平均 · 記録日数 {days}日",
+  "@rxAverage": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "rxBusiest": "よく使う時間帯",
+  "rxPeak": "記録された利用が最も多いのは{start}〜{end}です。",
+  "@rxPeak": {
+    "placeholders": {
+      "start": {
+        "type": "String"
+      },
+      "end": {
+        "type": "String"
+      }
+    }
+  },
+  "rxNoInsights": "時間帯を提案するための利用記録がまだ不足しています。",
+  "rxPlanBlock": "スケジュールを作成",
+  "rxYourRules": "設定した制限",
+  "rxLimit": "制限",
+  "rxEdit": "編集",
+  "rxRestrict": "{app}を制限",
+  "@rxRestrict": {
+    "placeholders": {
+      "app": {
+        "type": "String"
+      }
+    }
+  },
+  "rxAverageApp": "平均 {duration} / 日",
+  "@rxAverageApp": {
+    "placeholders": {
+      "duration": {
+        "type": "String"
+      }
+    }
+  },
+  "rxType": "制限の種類",
+  "rxDailyLimit": "1日の上限",
+  "rxBlockNow": "今すぐブロック",
+  "rxDifficulty": "解除の難しさ",
+  "rxEasy": "簡単",
+  "rxModerate": "普通",
+  "rxHard": "厳しい",
+  "rxEasyHint": "確認して解除",
+  "rxModerateHint": "解除まで5分待つ",
+  "rxHardHint": "FocusTraceでの早期解除は不可",
+  "rxProtectionNote": "有効なルールの変更や削除にも適用されます。",
+  "rxSetLimit": "1日の上限を設定",
+  "rxSetSchedule": "スケジュールを設定",
+  "rxStartBlock": "ブロック開始",
+  "rxBelowAverage": "1日の平均より{duration}短い",
+  "@rxBelowAverage": {
+    "placeholders": {
+      "duration": {
+        "type": "String"
+      }
+    }
+  },
+  "rxRepeat": "繰り返し",
+  "rxNextDay": "翌日に終了",
+  "rxEndsAt": "{time}に終了",
+  "@rxEndsAt": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "rxHardConfirm": "このルールでアプリをブロックしている間は、FocusTraceで早期解除、ルールの編集、削除はできません。",
+  "rxConfirm": "確認",
+  "rxChangeTitle": "制限を変更しますか？",
+  "rxChangeBody": "簡単なルールはすぐ変更できます。普通のルールは5分待つ必要があります。厳しいルールは現在のブロックが終了するまで変更できません。",
+  "rxCooldown": "5分の待機を開始しました。終了後に再試行してください。再確認するまでアプリはブロックされたままです。",
+  "rxHardLocked": "現在のブロックが終了するまでこのルールは変更できません。",
+  "rxUnavailable": "この制限を確認できません。使用状況へのアクセスを確認して再試行してください。",
+  "rxMinutes": "時間（分）",
+  "rxRetry": "再試行",
+  "rxScheduleInvalid": "異なる開始・終了時刻と、少なくとも1つの曜日を選んでください。",
+  "rxNoUsage": "この期間の利用記録はありません。制限するアプリは選択できます。",
+  "rxNextBlock": "次回: {time}",
+  "@rxNextBlock": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "rxPerDay": "1日 {duration}",
+  "@rxPerDay": {
+    "placeholders": {
+      "duration": {
+        "type": "String"
+      }
+    }
+  },
+  "rxUntil": "{time} まで",
+  "@rxUntil": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "rxLeftToday": "今日の残り {duration}",
+  "@rxLeftToday": {
+    "placeholders": {
+      "duration": {
+        "type": "String"
+      }
+    }
+  },
+  "rxStarts": "{time} に開始",
+  "@rxStarts": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "rxStartLabel": "開始",
+  "rxEndLabel": "終了",
+  "rxHoursField": "時間",
+  "rxMinutesField": "分",
+  "rxAdd": "追加",
+  "rxNoRulesYet": "制限はまだありません。下のアプリを選ぶか、「追加」をタップしてください。",
+  "rxChooseApps": "制限するアプリを選ぶ",
+  "rxSearchAll": "すべてのアプリを検索",
+  "rxTodayUsage": "今日のここまでの使用時間",
+  "rxCreate": "作成",
+  "rxSharedLimit": "共有の1日の上限 · {duration}",
+  "rxMoreApps": "{names} + {count, plural, other{{count}個のアプリ}}",
+  "rxPaused": "一時停止中",
+  "rxUsed": "{duration} 使用",
+  "rxLeft": "残り {duration}",
+  "rxEveryDay": "毎日",
+  "rxUnblockAfterWait": "5分待ってからブロック解除",
+  "rxLockedUntil": "{time} までロック中",
+  "rxEditDuration": "時間を編集",
+  "rxSaveChanges": "変更を保存",
+  "rxEasyExplain": "確認すると早めにブロックを解除できます。ブロック中にこのルールを編集・削除するときも確認が必要です。",
+  "rxModerateExplain": "早めの解除や、ブロック中のルールの編集・削除をすると5分間の待機が始まります。その間アプリはブロックされたままです。待機後にもう一度操作して確認してください。自動では解除されません。",
+  "rxHardExplain": "このルールがブロック中の間、FocusTraceは早めに解除せず、ブロックが終わるまで編集・削除もできません。ブロック時間外は通常どおり変更できます。",
+  "rxModerateUnblockBody": "5分間の待機が始まります。終わるまでアプリはブロックされたままです。その後もう一度「ブロック解除」を選んで確認してください。",
+  "@rxSharedLimit": {"placeholders": {"duration": {"type": "String"}}},
+  "@rxMoreApps": {"placeholders": {"names": {"type": "String"}, "count": {"type": "int"}}},
+  "@rxUsed": {"placeholders": {"duration": {"type": "String"}}},
+  "@rxLeft": {"placeholders": {"duration": {"type": "String"}}},
+  "@rxLockedUntil": {"placeholders": {"time": {"type": "String"}}},
+  "routineLastAppPrompt": "このルーティンにはアプリが残っていません。ルーティンを削除しますか？",
+  "routineKeepRoutine": "ルーティンを残す",
+  "routineNamePrompt": "ルーティン名を追加",
+  "routineEmpty": "このルーティンにはまだアプリがありません。上限を使うにはアプリを追加してください。",
+  "routineNoAppsShort": "アプリはまだありません",
+  "routinePickerAll": "すべて",
+  "routinePickerSelectCategory": "{category} をすべて選択",
+  "@routinePickerSelectCategory": {"placeholders": {"category": {"type": "String"}}},
+  "routineAddApps": "アプリを追加",
+  "routineAddSelected": "{count, plural, other{{count}個のアプリを追加}}",
+  "@routineAddSelected": {"placeholders": {"count": {"type": "int"}}},
+  "routineAppLimit": "アプリ上限 {duration}",
+  "@routineAppLimit": {"placeholders": {"duration": {"type": "String"}}},
+  "routineNoAppLimit": "アプリ上限なし",
+  "routineAppLimitTitle": "{app} の1日の上限",
+  "@routineAppLimitTitle": {"placeholders": {"app": {"type": "String"}}},
+  "routineAppLimitHint": "このアプリだけを制限します。使用時間は共有の時間にも含まれます。",
+  "routineReasonShared": "{routine}：共有の時間を使い切りました",
+  "@routineReasonShared": {"placeholders": {"routine": {"type": "String"}}},
+  "routineReasonApp": "{routine}：アプリの上限に達しました",
+  "@routineReasonApp": {"placeholders": {"routine": {"type": "String"}}},
+  "reasonDailyAppLimit": "アプリの1日の上限に達しました",
+  "reasonScheduleUntil": "スケジュールにより {time} までブロック",
+  "@reasonScheduleUntil": {"placeholders": {"time": {"type": "String"}}},
+  "reasonTemporaryUntil": "{time} まで一時ブロック",
+  "@reasonTemporaryUntil": {"placeholders": {"time": {"type": "String"}}},
+  "routineOpenDetails": "{app} の詳細を開く",
+  "@routineOpenDetails": {"placeholders": {"app": {"type": "String"}}},
+  "usageTimelineHint": "タップまたはなぞると正確な時刻 · 長押しで時間帯を制限",
+  "rxRangeQuestion": "この時間帯を制限しますか？",
+  "rxRangeHint": "リングをなぞるかタップして終了時刻を変更",
+  "rxRangeAction": "制限する",
+  "rxScheduleDialHint": "赤い端をドラッグするか、移動先をタップ"
 }

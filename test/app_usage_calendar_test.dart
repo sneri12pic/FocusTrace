@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -196,11 +197,6 @@ void main() {
                   onNextMonth: () {},
                   onDaySelected: (day) => tapped = day,
                 ),
-                UsageDayPanel(
-                  state: viewModel.state,
-                  day: DateTime(2025, 3, 4),
-                  isGood: isGood,
-                ),
               ],
             ),
           ),
@@ -225,7 +221,6 @@ void main() {
     expect(cellColor(), usageHeatColor(theme, 4, isGood: false));
     await tester.tap(find.byKey(const ValueKey('usage-calendar-day-4')));
     expect(tapped, DateTime(2025, 3, 4));
-    expect(find.text('No session details for this day'), findsOneWidget);
 
     await pump(isGood: true);
     expect(cellColor(), usageHeatColor(theme, 4, isGood: true));
@@ -233,6 +228,297 @@ void main() {
       usageHeatColor(theme, 4, isGood: true),
       isNot(usageHeatColor(theme, 4, isGood: false)),
     );
+    viewModel.dispose();
+  });
+
+  testWidgets('swiping the calendar changes month', (tester) async {
+    final viewModel = AppUsageCalendarViewModel(
+      reportRepository: _CalendarReportRepository(),
+      request: _request(DateTime(2025, 3, 18)),
+      clock: () => DateTime(2025, 3, 18),
+    );
+    await viewModel.load();
+    var previous = 0, next = 0;
+    Future<void> pump() => tester.pumpWidget(
+      MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Scaffold(
+          body: SingleChildScrollView(
+            child: UsageCalendar(
+              state: viewModel.state,
+              isGood: false,
+              onPreviousMonth: () => previous++,
+              onNextMonth: () => next++,
+              onDaySelected: (_) {},
+            ),
+          ),
+        ),
+      ),
+    );
+    await pump();
+    final grid = find.byKey(const ValueKey('usage-calendar-swipe'));
+    await tester.fling(grid, const Offset(300, 0), 1000);
+    await tester.pumpAndSettle();
+    expect(previous, 1);
+    // The current month has no next month, so a left swipe does nothing.
+    await tester.fling(grid, const Offset(-300, 0), 1000);
+    await tester.pumpAndSettle();
+    expect(next, 0);
+    viewModel.dispose();
+  });
+
+  testWidgets('timeline shows exact times of the stretch touched', (
+    tester,
+  ) async {
+    final day = DateTime(2025, 3, 4);
+    await tester.pumpWidget(
+      MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        locale: const Locale('en'),
+        builder: (context, child) => MediaQuery(
+          data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: true),
+          child: child!,
+        ),
+        home: Scaffold(
+          body: SizedBox(
+            width: 480,
+            child: UsageDayTimeline(
+              day: day,
+              intervals: [
+                _interval(day.add(const Duration(hours: 12)), 10),
+                _interval(day.add(const Duration(hours: 12, minutes: 20)), 5),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    expect(
+      find.text('Tap or drag for exact times · hold to restrict a time frame'),
+      findsOne,
+    );
+    expect(find.text('15m'), findsOne); // the day's total in the centre
+    final dial = tester.getRect(
+      find.byKey(const ValueKey('usage-day-timeline')),
+    );
+    // 12:22 on a 24-hour dial (midnight at the top, clockwise), on the ring.
+    final angle = -math.pi / 2 + (12 * 60 + 22) / 1440 * 2 * math.pi;
+    final radius = dial.shortestSide / 2 - 45;
+    await tester.tapAt(
+      dial.center + Offset(math.cos(angle), math.sin(angle)) * radius,
+    );
+    await tester.pump();
+    // The second of two close sessions, with its exact times.
+    expect(find.text('12:20 – 12:25'), findsOne);
+    expect(find.text('5m'), findsOne);
+  });
+
+  testWidgets(
+    'hold picks a time frame, drag moves its end, restrict reports it',
+    (tester) async {
+      final day = DateTime(2025, 3, 4);
+      (int, int)? restricted;
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          locale: const Locale('en'),
+          builder: (context, child) => MediaQuery(
+            data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: true),
+            child: child!,
+          ),
+          home: Scaffold(
+            body: SingleChildScrollView(
+              child: SizedBox(
+                width: 480,
+                child: UsageDayTimeline(
+                  day: day,
+                  intervals: [
+                    _interval(
+                      day.add(const Duration(hours: 12, minutes: 41)),
+                      57,
+                    ),
+                  ],
+                  onRestrictRange: (start, end) => restricted = (start, end),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      final dial = tester.getRect(
+        find.byKey(const ValueKey('usage-day-timeline')),
+      );
+      Offset at(int minute) {
+        final angle = -math.pi / 2 + minute / 1440 * 2 * math.pi;
+        return dial.center +
+            Offset(math.cos(angle), math.sin(angle)) *
+                (dial.shortestSide / 2 - 45);
+      }
+
+      // Holding on the session picks its quarter-hours: 12:30 to 13:45.
+      await tester.longPressAt(at(13 * 60));
+      await tester.pumpAndSettle();
+      expect(find.text('12:30 – 13:45'), findsOne);
+      expect(find.text('Restrict this time frame?'), findsOne);
+      // Tapping 15:10 moves the end to 15:15.
+      await tester.tapAt(at(15 * 60 + 10));
+      await tester.pump();
+      expect(find.text('12:30 – 15:15'), findsOne);
+      await tester.tap(find.text('Restrict'));
+      await tester.pump();
+      expect(restricted, (12 * 60 + 30, 15 * 60 + 15));
+      expect(find.text('Restrict this time frame?'), findsNothing);
+    },
+  );
+
+  testWidgets('schedule dial moves the nearer end, snapping to quarter-hours', (
+    tester,
+  ) async {
+    var range = (21 * 60, 7 * 60);
+    await tester.pumpWidget(
+      MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        locale: const Locale('en'),
+        builder: (context, child) => MediaQuery(
+          data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: true),
+          child: child!,
+        ),
+        home: Scaffold(
+          body: StatefulBuilder(
+            builder: (context, setState) => ScheduleRangeDial(
+              startMinute: range.$1,
+              endMinute: range.$2,
+              onChanged: (start, end) => setState(() => range = (start, end)),
+            ),
+          ),
+        ),
+      ),
+    );
+    expect(find.text('21:00 – 07:00'), findsOne);
+    expect(find.text('Ends the next day'), findsOne);
+    final dial = tester.getRect(
+      find.byKey(const ValueKey('schedule-range-dial')),
+    );
+    Offset at(int minute) {
+      final angle = -math.pi / 2 + minute / 1440 * 2 * math.pi;
+      return dial.center +
+          Offset(math.cos(angle), math.sin(angle)) *
+              (dial.shortestSide / 2 - 45);
+    }
+
+    // 08:10 is nearer the end (07:00): it snaps to 08:15.
+    await tester.tapAt(at(8 * 60 + 10));
+    await tester.pump();
+    expect(range, (21 * 60, 8 * 60 + 15));
+    // 19:50 is nearer the start: it snaps to 19:45.
+    await tester.tapAt(at(19 * 60 + 50));
+    await tester.pump();
+    expect(range, (19 * 60 + 45, 8 * 60 + 15));
+    expect(find.text('19:45 – 08:15'), findsOne);
+  });
+
+  testWidgets('scrolling over the dial or tapping away from sessions selects '
+      'nothing', (tester) async {
+    final day = DateTime(2025, 3, 4);
+    await tester.pumpWidget(
+      MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        locale: const Locale('en'),
+        builder: (context, child) => MediaQuery(
+          data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: true),
+          child: child!,
+        ),
+        home: Scaffold(
+          body: ListView(
+            children: [
+              UsageDayTimeline(
+                day: day,
+                intervals: [_interval(day.add(const Duration(hours: 12)), 10)],
+              ),
+              const SizedBox(height: 2000),
+            ],
+          ),
+        ),
+      ),
+    );
+    final dial = tester.getRect(
+      find.byKey(const ValueKey('usage-day-timeline')),
+    );
+    Offset at(int minute) {
+      final angle = -math.pi / 2 + minute / 1440 * 2 * math.pi;
+      return dial.center +
+          Offset(math.cos(angle), math.sin(angle)) *
+              (dial.shortestSide / 2 - 45);
+    }
+
+    final selection = find.byKey(
+      const ValueKey('usage-day-timeline-selection'),
+    );
+    // A scroll that starts on the session scrolls, it does not select.
+    await tester.dragFrom(at(12 * 60 + 5), const Offset(0, -300));
+    await tester.pumpAndSettle();
+    expect(selection, findsNothing);
+    await tester.drag(find.byType(ListView), const Offset(0, 300));
+    await tester.pumpAndSettle();
+    // The middle of the dial and empty parts of the ring select nothing.
+    await tester.tapAt(dial.center);
+    await tester.tapAt(at(18 * 60));
+    await tester.pump();
+    expect(selection, findsNothing);
+    // A tap on the session does.
+    await tester.tapAt(at(12 * 60 + 5));
+    await tester.pump();
+    expect(selection, findsOne);
+  });
+
+  test('quarter-hour slots split sessions by clock time', () {
+    final day = DateTime(2025, 3, 4);
+    final slots = usageBySlot(day, [
+      _interval(day.add(const Duration(hours: 12, minutes: 10)), 10),
+      // Runs past midnight: only today's part counts.
+      _interval(day.add(const Duration(hours: 23, minutes: 50)), 20),
+    ]);
+    expect(slots[48], 5 * 60); // 12:00-12:15
+    expect(slots[49], 5 * 60); // 12:15-12:30
+    expect(slots[95], 10 * 60); // 23:45-24:00
+    expect(slots.reduce((a, b) => a + b), 20 * 60);
+  });
+
+  testWidgets('month stats add today in green', (tester) async {
+    final reports = _CalendarReportRepository()
+      ..daily = [
+        _usage(DateTime(2025, 3, 4), 60, launches: 3),
+        // Today's figures come from the live summary (46m, 12 opens).
+        _usage(DateTime(2025, 3, 18), 30, launches: 5),
+      ];
+    final viewModel = AppUsageCalendarViewModel(
+      reportRepository: reports,
+      request: _request(DateTime(2025, 3, 18)),
+      clock: () => DateTime(2025, 3, 18, 15),
+    );
+    await viewModel.load();
+    Future<void> pump() => tester.pumpWidget(
+      MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        locale: const Locale('en'),
+        home: Scaffold(
+          body: UsageMonthStats(state: viewModel.state, isGood: false),
+        ),
+      ),
+    );
+    await pump();
+    expect(find.textContaining('+46m', findRichText: true), findsOne);
+    expect(find.textContaining('+12', findRichText: true), findsOne);
+    // A past month has no "today" to add.
+    await viewModel.load(month: DateTime(2025, 2));
+    await pump();
+    expect(find.textContaining('+', findRichText: true), findsNothing);
     viewModel.dispose();
   });
 
@@ -272,10 +558,13 @@ void main() {
                     onNextMonth: () {},
                     onDaySelected: (_) {},
                   ),
-                  UsageDayPanel(
-                    state: state,
-                    day: state.selectedDay!,
-                    isGood: false,
+                  KeyedSubtree(
+                    key: const ValueKey('usage-day-dial'),
+                    child: UsageDayTimeline(
+                      day: state.selectedDay!,
+                      intervals: state.intervalsOn(state.selectedDay!),
+                      emptyLabel: 'No sessions',
+                    ),
                   ),
                 ],
               ),
@@ -287,7 +576,7 @@ void main() {
         for (final key in const [
           'usage-month-stats',
           'usage-calendar',
-          'usage-day-panel',
+          'usage-day-dial',
         ])
           tester.getSize(find.byKey(ValueKey(key))),
       ];

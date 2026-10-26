@@ -74,15 +74,10 @@ enum UsageDetailsPeriod {
 
   DateTime startDate(DateTime selectedDay) {
     return switch (this) {
-      UsageDetailsPeriod.sevenDays => selectedDay.subtract(
-        const Duration(days: 6),
-      ),
-      UsageDetailsPeriod.twoWeeks => selectedDay.subtract(
-        const Duration(days: 13),
-      ),
-      UsageDetailsPeriod.month => selectedDay.subtract(
-        const Duration(days: 29),
-      ),
+      // Calendar arithmetic: a Duration of days drifts off midnight across DST.
+      UsageDetailsPeriod.sevenDays => _shiftDays(selectedDay, -6),
+      UsageDetailsPeriod.twoWeeks => _shiftDays(selectedDay, -13),
+      UsageDetailsPeriod.month => _shiftDays(selectedDay, -29),
       UsageDetailsPeriod.year => DateTime(
         selectedDay.year,
         selectedDay.month - 11,
@@ -90,6 +85,9 @@ enum UsageDetailsPeriod {
     };
   }
 }
+
+DateTime _shiftDays(DateTime day, int days) =>
+    DateTime(day.year, day.month, day.day + days);
 
 class AppUsageDetailsState {
   const AppUsageDetailsState({
@@ -185,7 +183,7 @@ class AppUsageDetailsViewModel extends StateNotifier<AppUsageDetailsState> {
     try {
       final historyFuture = _usageRepository.getUsageHistory(
         selectedPeriod.startDate(selectedDay),
-        selectedDay.add(const Duration(days: 1)),
+        _shiftDays(selectedDay, 1),
       );
       final sessionsFuture = _usageRepository.topSessionsForApp(
         _request.summary.appKey,
@@ -223,8 +221,7 @@ class AppUsageDetailsViewModel extends StateNotifier<AppUsageDetailsState> {
 
       // Yesterday's comparison uses recorded usage only.
       final current = totalsByDay[selectedDay] ?? 0;
-      final previous =
-          totalsByDay[selectedDay.subtract(const Duration(days: 1))] ?? 0;
+      final previous = totalsByDay[_shiftDays(selectedDay, -1)] ?? 0;
       // A day with no rows for any app was not recorded, so Android's
       // aggregated total may stand in for it. A recorded day where this app
       // has no row really was zero.
@@ -274,7 +271,7 @@ class AppUsageDetailsViewModel extends StateNotifier<AppUsageDetailsState> {
     }
     await osHistory.importOnce();
     final from = period.startDate(selectedDay);
-    final to = selectedDay.add(const Duration(days: 1));
+    final to = _shiftDays(selectedDay, 1);
     final appKey = _request.summary.appKey;
     final (days, months) = await (
       osHistory.dailySeconds(appKey, from, to),
@@ -307,16 +304,16 @@ class AppUsageDetailsViewModel extends StateNotifier<AppUsageDetailsState> {
       ];
     }
 
-    final dayCount = selectedDay.difference(startDate).inDays + 1;
     return [
-      for (var dayOffset = 0; dayOffset < dayCount; dayOffset++)
+      for (
+        var day = startDate;
+        !day.isAfter(selectedDay);
+        day = _shiftDays(day, 1)
+      )
         DailyUsagePoint(
-          day: startDate.add(Duration(days: dayOffset)),
-          durationSeconds:
-              totalsByDay[startDate.add(Duration(days: dayOffset))] ?? 0,
-          isApproximate: approximateDays.contains(
-            startDate.add(Duration(days: dayOffset)),
-          ),
+          day: day,
+          durationSeconds: totalsByDay[day] ?? 0,
+          isApproximate: approximateDays.contains(day),
         ),
     ];
   }

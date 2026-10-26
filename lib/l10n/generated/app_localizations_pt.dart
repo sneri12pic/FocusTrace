@@ -1169,4 +1169,381 @@ class AppLocalizationsPt extends AppLocalizations {
   String onboardingHistoryFound(String date) {
     return 'Encontramos seu uso anterior desde $date';
   }
+
+  @override
+  String restrictionsTimeLeft(String duration) {
+    return 'Faltam $duration';
+  }
+
+  @override
+  String get restrictionsLimitReached => 'Limite atingido';
+
+  @override
+  String get rxWeek => 'Esta semana';
+
+  @override
+  String get rxTopApps => 'Seus apps mais usados';
+
+  @override
+  String rxAverage(int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: 'Média diária · $days dias registrados',
+      one: 'Média diária · 1 dia registrado',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get rxBusiest => 'Seus horários de maior uso';
+
+  @override
+  String rxPeak(String start, String end) {
+    return 'A maior parte do uso registrado ocorre de $start a $end.';
+  }
+
+  @override
+  String get rxNoInsights =>
+      'Ainda não há uso registrado suficiente para sugerir um horário.';
+
+  @override
+  String get rxPlanBlock => 'Planejar um horário';
+
+  @override
+  String get rxYourRules => 'Suas restrições';
+
+  @override
+  String get rxLimit => 'Limite';
+
+  @override
+  String get rxEdit => 'Editar';
+
+  @override
+  String rxRestrict(String app) {
+    return 'Restringir $app';
+  }
+
+  @override
+  String rxAverageApp(String duration) {
+    return 'Média de $duration / dia';
+  }
+
+  @override
+  String get rxType => 'Tipo de restrição';
+
+  @override
+  String get rxDailyLimit => 'Limite diário';
+
+  @override
+  String get rxBlockNow => 'Bloquear agora';
+
+  @override
+  String get rxDifficulty => 'Dificuldade para desbloquear';
+
+  @override
+  String get rxEasy => 'Fácil';
+
+  @override
+  String get rxModerate => 'Moderada';
+
+  @override
+  String get rxHard => 'Difícil';
+
+  @override
+  String get rxEasyHint => 'Confirme para desbloquear';
+
+  @override
+  String get rxModerateHint => 'Espere 5 minutos para desbloquear';
+
+  @override
+  String get rxHardHint => 'Sem desbloqueio antecipado no FocusTrace';
+
+  @override
+  String get rxProtectionNote =>
+      'Isso também se aplica à alteração ou remoção de uma regra ativa.';
+
+  @override
+  String get rxSetLimit => 'Definir limite diário';
+
+  @override
+  String get rxSetSchedule => 'Definir horário';
+
+  @override
+  String get rxStartBlock => 'Iniciar bloqueio';
+
+  @override
+  String rxBelowAverage(String duration) {
+    return '$duration abaixo da sua média diária';
+  }
+
+  @override
+  String get rxRepeat => 'Repetir';
+
+  @override
+  String get rxNextDay => 'Termina no dia seguinte';
+
+  @override
+  String rxEndsAt(String time) {
+    return 'Termina às $time';
+  }
+
+  @override
+  String get rxHardConfirm =>
+      'Enquanto esta regra bloquear um app, você não poderá desbloqueá-lo, editar a regra ou removê-la antecipadamente no FocusTrace.';
+
+  @override
+  String get rxConfirm => 'Confirmar';
+
+  @override
+  String get rxChangeTitle => 'Alterar restrição?';
+
+  @override
+  String get rxChangeBody =>
+      'Regras fáceis podem ser alteradas agora. Regras moderadas exigem cinco minutos de espera. Regras difíceis permanecem até o fim do bloqueio atual.';
+
+  @override
+  String get rxCooldown =>
+      'A espera de cinco minutos começou. Tente novamente depois; o app fica bloqueado até você confirmar outra vez.';
+
+  @override
+  String get rxHardLocked =>
+      'Esta regra está bloqueada até o fim do bloqueio atual.';
+
+  @override
+  String get rxUnavailable =>
+      'Não foi possível verificar esta restrição. Confira o acesso ao uso e tente novamente.';
+
+  @override
+  String get rxMinutes => 'Duração em minutos';
+
+  @override
+  String get rxRetry => 'Tentar novamente';
+
+  @override
+  String get rxScheduleInvalid =>
+      'Escolha horários de início e fim diferentes e pelo menos um dia.';
+
+  @override
+  String get rxNoUsage =>
+      'Nenhum uso registrado neste período. Você ainda pode escolher qualquer app para restringir.';
+
+  @override
+  String rxNextBlock(String time) {
+    return 'Próximo início: $time';
+  }
+
+  @override
+  String rxPerDay(String duration) {
+    return '$duration / dia';
+  }
+
+  @override
+  String rxUntil(String time) {
+    return 'Até $time';
+  }
+
+  @override
+  String rxLeftToday(String duration) {
+    return 'Faltam $duration hoje';
+  }
+
+  @override
+  String rxStarts(String time) {
+    return 'Começa $time';
+  }
+
+  @override
+  String get rxStartLabel => 'Início';
+
+  @override
+  String get rxEndLabel => 'Fim';
+
+  @override
+  String get rxHoursField => 'Horas';
+
+  @override
+  String get rxMinutesField => 'Minutos';
+
+  @override
+  String get rxAdd => 'Adicionar';
+
+  @override
+  String get rxNoRulesYet =>
+      'Nenhuma restrição ainda. Escolha um app abaixo ou toque em Adicionar.';
+
+  @override
+  String get rxChooseApps => 'Escolha apps para limitar';
+
+  @override
+  String get rxSearchAll => 'Pesquisar todos os apps';
+
+  @override
+  String get rxTodayUsage => 'Uso de hoje até agora';
+
+  @override
+  String get rxCreate => 'Criar';
+
+  @override
+  String rxSharedLimit(String duration) {
+    return 'Limite diário compartilhado · $duration';
+  }
+
+  @override
+  String rxMoreApps(String names, int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count apps',
+      one: '1 app',
+    );
+    return '$names + $_temp0';
+  }
+
+  @override
+  String get rxPaused => 'Pausada';
+
+  @override
+  String rxUsed(String duration) {
+    return '$duration usado';
+  }
+
+  @override
+  String rxLeft(String duration) {
+    return 'Restam $duration';
+  }
+
+  @override
+  String get rxEveryDay => 'Todos os dias';
+
+  @override
+  String get rxUnblockAfterWait => 'Desbloquear após 5 minutos de espera';
+
+  @override
+  String rxLockedUntil(String time) {
+    return 'Bloqueada até $time';
+  }
+
+  @override
+  String get rxEditDuration => 'Editar duração';
+
+  @override
+  String get rxSaveChanges => 'Salvar alterações';
+
+  @override
+  String get rxEasyExplain =>
+      'Você pode desbloquear antes depois de confirmar. Editar ou remover esta regra enquanto ela bloqueia também pede confirmação.';
+
+  @override
+  String get rxModerateExplain =>
+      'Desbloquear antes, ou editar ou remover esta regra enquanto ela bloqueia, inicia uma espera de cinco minutos. O app continua bloqueado nesse tempo. Quando a espera terminar, repita a ação e confirme de novo. Nada é desbloqueado sozinho.';
+
+  @override
+  String get rxHardExplain =>
+      'Enquanto esta regra bloqueia, o FocusTrace não desbloqueia antes, e você não pode editá-la nem removê-la até o bloqueio terminar. Fora dos horários de bloqueio, você pode alterá-la normalmente.';
+
+  @override
+  String get rxModerateUnblockBody =>
+      'Isso inicia uma espera de cinco minutos. O app continua bloqueado até ela terminar. Depois, escolha Desbloquear de novo e confirme.';
+
+  @override
+  String get routineLastAppPrompt =>
+      'Esta rotina não tem mais apps. Excluir a rotina?';
+
+  @override
+  String get routineKeepRoutine => 'Manter rotina';
+
+  @override
+  String get routineNamePrompt => 'Adicione um nome à rotina';
+
+  @override
+  String get routineEmpty =>
+      'Esta rotina ainda não tem apps. Adicione apps para voltar a usar os limites.';
+
+  @override
+  String get routineNoAppsShort => 'Nenhum app ainda';
+
+  @override
+  String get routinePickerAll => 'Todos';
+
+  @override
+  String routinePickerSelectCategory(String category) {
+    return 'Selecionar tudo em $category';
+  }
+
+  @override
+  String get routineAddApps => 'Adicionar apps';
+
+  @override
+  String routineAddSelected(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Adicionar $count apps',
+      one: 'Adicionar 1 app',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String routineAppLimit(String duration) {
+    return 'Limite do app $duration';
+  }
+
+  @override
+  String get routineNoAppLimit => 'Sem limite do app';
+
+  @override
+  String routineAppLimitTitle(String app) {
+    return 'Limite diário de $app';
+  }
+
+  @override
+  String get routineAppLimitHint =>
+      'Limita só este app. O tempo dele continua contando para o tempo compartilhado.';
+
+  @override
+  String routineReasonShared(String routine) {
+    return '$routine: tempo compartilhado esgotado';
+  }
+
+  @override
+  String routineReasonApp(String routine) {
+    return '$routine: limite do app atingido';
+  }
+
+  @override
+  String get reasonDailyAppLimit => 'Limite diário do app atingido';
+
+  @override
+  String reasonScheduleUntil(String time) {
+    return 'Bloqueado pelo horário até $time';
+  }
+
+  @override
+  String reasonTemporaryUntil(String time) {
+    return 'Bloqueio temporário até $time';
+  }
+
+  @override
+  String routineOpenDetails(String app) {
+    return 'Abrir detalhes de $app';
+  }
+
+  @override
+  String get usageTimelineHint =>
+      'Toque ou arraste para ver horários exatos · segure para restringir um intervalo';
+
+  @override
+  String get rxRangeQuestion => 'Restringir este intervalo?';
+
+  @override
+  String get rxRangeHint => 'Arraste ou toque no anel para mover o fim';
+
+  @override
+  String get rxRangeAction => 'Restringir';
+
+  @override
+  String get rxScheduleDialHint =>
+      'Arraste uma das pontas vermelhas ou toque onde ela deve ficar';
 }

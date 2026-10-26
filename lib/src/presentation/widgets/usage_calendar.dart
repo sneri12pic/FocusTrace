@@ -1,6 +1,8 @@
 import 'dart:math' as math;
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 
 import '../../domain/models/app_usage_interval.dart';
@@ -22,6 +24,12 @@ class UsageMonthStats extends StatelessWidget {
     final total = state.monthTotal;
     final previous = state.previousSameSpan;
     final longest = state.longestInterval;
+    // Today's share, while the shown month is the current one.
+    final today = state.today;
+    final todayUsage =
+        state.month.year == today.year && state.month.month == today.month
+        ? state.dayUsage(today)
+        : null;
     // Figures that include Android's aggregated history read "≈".
     final approx = state.isMonthApproximate ? '≈' : '';
     UsageTrendChange change(int current, int before) =>
@@ -55,6 +63,9 @@ class UsageMonthStats extends StatelessWidget {
                       Duration(seconds: total.durationSeconds),
                     ),
                 label: l10n.usageCalendarTotalThisMonth,
+                today: todayUsage == null || todayUsage.durationSeconds == 0
+                    ? null
+                    : '+${l10n.compactDuration(Duration(seconds: todayUsage.durationSeconds))}',
                 footer: _monthChange(
                   context,
                   change(total.durationSeconds, previous.durationSeconds),
@@ -82,6 +93,9 @@ class UsageMonthStats extends StatelessWidget {
                 icon: Icons.smartphone_rounded,
                 value: '${total.launchCount}',
                 label: l10n.usageCalendarAppOpens,
+                today: todayUsage == null || todayUsage.launchCount == 0
+                    ? null
+                    : '+${todayUsage.launchCount}',
                 footer: _monthChange(
                   context,
                   change(total.launchCount, previous.launchCount),
@@ -152,12 +166,16 @@ class _StatTile extends StatelessWidget {
     required this.value,
     required this.label,
     this.footer,
+    this.today,
   });
 
   final IconData icon;
   final String value;
   final String label;
   final Widget? footer;
+
+  /// Today's part of [value], such as "+2h 15m", shown beside it in green.
+  final String? today;
 
   @override
   Widget build(BuildContext context) {
@@ -185,6 +203,30 @@ class _StatTile extends StatelessWidget {
                   height: 1.2,
                 ),
               ),
+            ),
+            // Today's part in green on its own line, reserved in every tile
+            // so the labels stay aligned across the row.
+            SizedBox(
+              height: MediaQuery.textScalerOf(context).scale(16),
+              child: today == null
+                  ? null
+                  : FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        today!,
+                        semanticsLabel:
+                            '${context.l10n.dashboardDayToday} $today',
+                        style: theme.textTheme.labelMedium?.copyWith(
+                          color: trendColor(
+                            theme,
+                            isFlat: false,
+                            isIncrease: false,
+                          ),
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
             ),
             const SizedBox(height: 2),
             // Two reserved lines so a one-line label doesn't lift its footer.
@@ -368,21 +410,38 @@ class UsageCalendar extends StatelessWidget {
                   ? const Center(child: LinearProgressIndicator(minHeight: 2))
                   : null,
             ),
-            GridView.count(
-              crossAxisCount: 7,
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              padding: EdgeInsets.zero,
-              mainAxisSpacing: 6,
-              crossAxisSpacing: 6,
-              childAspectRatio: 0.82,
-              children: [
-                for (var cell = 0; cell < cellCount; cell++)
-                  _dayCell(
-                    context,
-                    DateTime(month.year, month.month, cell - leading + 1),
-                  ),
-              ],
+            // Swipe left for the next month, right for the previous one.
+            GestureDetector(
+              key: const ValueKey('usage-calendar-swipe'),
+              behavior: HitTestBehavior.opaque,
+              onHorizontalDragEnd: (details) {
+                final velocity = details.primaryVelocity ?? 0;
+                if (velocity < -200 && state.canShowNextMonth) {
+                  onNextMonth();
+                } else if (velocity > 200) {
+                  onPreviousMonth();
+                }
+              },
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 220),
+                child: GridView.count(
+                  key: ValueKey(month),
+                  crossAxisCount: 7,
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  padding: EdgeInsets.zero,
+                  mainAxisSpacing: 6,
+                  crossAxisSpacing: 6,
+                  childAspectRatio: 0.82,
+                  children: [
+                    for (var cell = 0; cell < cellCount; cell++)
+                      _dayCell(
+                        context,
+                        DateTime(month.year, month.month, cell - leading + 1),
+                      ),
+                  ],
+                ),
+              ),
             ),
             const SizedBox(height: 16),
             _Legend(isGood: isGood),
@@ -557,330 +616,834 @@ class _Legend extends StatelessWidget {
   }
 }
 
-/// The selected day's total, opens, average session and 24-hour timeline.
-class UsageDayPanel extends StatelessWidget {
-  const UsageDayPanel({
-    required this.state,
+/// The day as a 24-hour dial: midnight at the top, noon at the bottom. The
+/// ring is cut into quarter-hour slices that glow brighter the more of that
+/// quarter was used. Tap or drag around it to select the nearest session and
+/// read its exact times in the centre. With [onRestrictRange], press and
+/// hold to pick a time frame (outlined in red), drag or tap to move its end,
+/// then restrict it.
+class UsageDayTimeline extends StatefulWidget {
+  const UsageDayTimeline({
     required this.day,
-    required this.isGood,
+    required this.intervals,
+    this.emptyLabel,
+    this.onRestrictRange,
+    this.restrictedFrames = const [],
     super.key,
   });
 
-  final AppUsageCalendarState state;
+  /// Schedules already restricting this app on [day], as (start, end)
+  /// minutes; shown faintly behind the usage.
+  final List<(int, int)> restrictedFrames;
+
   final DateTime day;
-  final bool isGood;
+  final List<AppUsageInterval> intervals;
+
+  /// Shown in the centre when the day has no sessions.
+  final String? emptyLabel;
+
+  /// Called with minutes since midnight; [endMinute] < [startMinute] means
+  /// the frame runs past midnight.
+  final void Function(int startMinute, int endMinute)? onRestrictRange;
+
+  @override
+  State<UsageDayTimeline> createState() => _UsageDayTimelineState();
+}
+
+/// Quarter-hour slices: wide enough to read, with exact times on selection.
+const _slotMinutes = 15;
+const _slots = 24 * 60 ~/ _slotMinutes;
+
+/// Minutes since local midnight on the clock face, clipped to [day].
+double _clockMinute(DateTime value, DateTime day) {
+  final start = DateTime(day.year, day.month, day.day);
+  final end = DateTime(day.year, day.month, day.day + 1);
+  if (!value.isAfter(start)) return 0;
+  if (!value.isBefore(end)) return 24 * 60;
+  return value.hour * 60 + value.minute + value.second / 60;
+}
+
+/// Seconds used in each quarter-hour of [day], by local clock time.
+List<int> usageBySlot(DateTime day, List<AppUsageInterval> intervals) {
+  final slots = List.filled(_slots, 0);
+  final dayStart = DateTime(day.year, day.month, day.day);
+  final dayEnd = DateTime(day.year, day.month, day.day + 1);
+  for (final interval in intervals) {
+    var cursor = interval.startedAt.isBefore(dayStart)
+        ? dayStart
+        : interval.startedAt;
+    final end = interval.endedAt.isAfter(dayEnd) ? dayEnd : interval.endedAt;
+    while (cursor.isBefore(end)) {
+      final slot = (cursor.hour * 60 + cursor.minute) ~/ _slotMinutes;
+      final boundary = DateTime(
+        cursor.year,
+        cursor.month,
+        cursor.day,
+        cursor.hour,
+        (cursor.minute ~/ _slotMinutes + 1) * _slotMinutes,
+      );
+      final stop = boundary.isBefore(end) ? boundary : end;
+      slots[slot] += stop.difference(cursor).inSeconds;
+      // A clock change can make the next boundary not move forward.
+      cursor = stop.isAfter(cursor) ? stop : end;
+    }
+  }
+  return slots;
+}
+
+class _UsageDayTimelineState extends State<UsageDayTimeline> {
+  int? _selected;
+  late List<int> _slotSeconds;
+
+  /// First and last slot of the time frame being picked, inclusive. The last
+  /// one may be "before" the first: the frame then runs past midnight.
+  (int, int)? _range;
+
+  @override
+  void initState() {
+    super.initState();
+    _slotSeconds = usageBySlot(widget.day, widget.intervals);
+  }
+
+  @override
+  void didUpdateWidget(UsageDayTimeline oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.day != widget.day ||
+        oldWidget.intervals != widget.intervals) {
+      _selected = null;
+      _range = null;
+      _slotSeconds = usageBySlot(widget.day, widget.intervals);
+    }
+  }
+
+  /// Whether [position] is on the ring itself (with a little slack), not in
+  /// the middle or out by the labels. Matches the painter's geometry.
+  bool _onRing(Offset position, Size size) {
+    final distance = (position - size.center(Offset.zero)).distance;
+    final outer = size.shortestSide / 2 - 30;
+    final inner = outer * 0.76;
+    return distance >= inner - 14 && distance <= outer + 14;
+  }
+
+  /// The quarter-hour slot under [position], or null off the ring.
+  int? _slotAt(Offset position, Size size) {
+    final delta = position - size.center(Offset.zero);
+    if (!_onRing(position, size)) return null;
+    final turn = (math.atan2(delta.dx, -delta.dy) / (2 * math.pi) + 1) % 1;
+    return (turn * _slots).floor() % _slots;
+  }
+
+  /// Press and hold: start a frame on the session under the finger, or on
+  /// the touched quarter-hour when there is none.
+  void _startRange(Offset position, Size size) {
+    final slot = _slotAt(position, size);
+    if (slot == null) return;
+    var range = (slot, slot);
+    final minute = slot * _slotMinutes + _slotMinutes / 2;
+    for (final interval in widget.intervals) {
+      final start = _clockMinute(interval.startedAt, widget.day);
+      final end = _clockMinute(interval.endedAt, widget.day);
+      if (start <= minute && minute <= end + _slotMinutes / 2) {
+        final first = start ~/ _slotMinutes;
+        range = (first, math.max(first, (end - 0.001) ~/ _slotMinutes));
+        break;
+      }
+    }
+    HapticFeedback.mediumImpact();
+    setState(() {
+      _range = range;
+      _selected = null;
+    });
+  }
+
+  /// Dragging or tapping while a frame is picked moves its end there.
+  void _moveRangeEnd(Offset position, Size size) {
+    final range = _range;
+    final slot = _slotAt(position, size);
+    if (range == null || slot == null || slot == range.$2) return;
+    // A whole day would leave no start or end; stop one slot short.
+    if ((slot - range.$1) % _slots == _slots - 1) return;
+    HapticFeedback.selectionClick();
+    setState(() => _range = (range.$1, slot));
+  }
+
+  void _restrictRange() {
+    final range = _range;
+    if (range == null) return;
+    widget.onRestrictRange?.call(
+      range.$1 * _slotMinutes,
+      (range.$2 + 1) * _slotMinutes % (24 * 60),
+    );
+    setState(() => _range = null);
+  }
+
+  /// Selects the session under the touch, or one within a few minutes of it.
+  /// A tap on an empty part of the ring clears the selection; touches off
+  /// the ring are ignored.
+  void _pick(Offset position, Size size, {bool clearOnMiss = false}) {
+    final intervals = widget.intervals;
+    if (intervals.isEmpty || !_onRing(position, size)) return;
+    final delta = position - size.center(Offset.zero);
+    // 0 at the top, growing clockwise.
+    final turn = (math.atan2(delta.dx, -delta.dy) / (2 * math.pi) + 1) % 1;
+    final minute = turn * 24 * 60;
+    var best = 0;
+    var bestDistance = double.infinity;
+    for (var i = 0; i < intervals.length; i++) {
+      final start = _clockMinute(intervals[i].startedAt, widget.day);
+      final end = _clockMinute(intervals[i].endedAt, widget.day);
+      final distance = minute < start
+          ? start - minute
+          : minute > end
+          ? minute - end
+          : 0.0;
+      if (distance < bestDistance) {
+        bestDistance = distance;
+        best = i;
+      }
+    }
+    // ponytail: fixed 20-minute reach, about one slice either side.
+    if (bestDistance > 20) {
+      if (clearOnMiss && _selected != null) setState(() => _selected = null);
+      return;
+    }
+    if (best != _selected) {
+      HapticFeedback.selectionClick();
+      setState(() => _selected = best);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final l10n = context.l10n;
     final locale = Localizations.localeOf(context).toString();
-    final usage = state.dayUsage(day);
-    final busiest = state.busiestDaySeconds;
-    final average = state.averagePerDaySeconds;
-    final intervals = state.intervalsOn(day);
-    final isApproximate = state.isApproximateDay(day);
-    return Card(
-      key: const ValueKey('usage-day-panel'),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // The approximate tag shares the date's row, so the panel keeps
-            // its height for every day.
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    DateFormat.yMMMEd(locale).format(day),
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
-                if (isApproximate)
-                  Tooltip(
-                    message: l10n.usageApproximateNote,
-                    child: Text(
-                      l10n.usageApproximateTag,
-                      style: theme.textTheme.labelMedium?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                  ),
-              ],
+    final use24 = MediaQuery.alwaysUse24HourFormatOf(context);
+    final hourFormat = use24 ? DateFormat('HH', locale) : DateFormat.j(locale);
+    final timeFormat = use24 ? DateFormat.Hm(locale) : DateFormat.jm(locale);
+    final muted = theme.colorScheme.onSurfaceVariant;
+    final intervals = widget.intervals;
+    final selected = _selected == null || _selected! >= intervals.length
+        ? null
+        : intervals[_selected!];
+    final total = intervals.fold(
+      Duration.zero,
+      (sum, interval) => sum + interval.endedAt.difference(interval.startedAt),
+    );
+    String range(AppUsageInterval interval) =>
+        '${timeFormat.format(interval.startedAt)} – '
+        '${timeFormat.format(interval.endedAt)}';
+
+    // A clear red, stronger than the theme's soft error tone.
+    const rangeColor = Color(0xFFFF5A5F);
+    final picked = _range;
+    String clock(int minute) =>
+        timeFormat.format(DateTime(2000, 1, 1, minute ~/ 60, minute % 60));
+    final Widget centre;
+    if (picked != null) {
+      final slots = (picked.$2 - picked.$1) % _slots + 1;
+      centre = Column(
+        key: const ValueKey('usage-day-timeline-range'),
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              '${clock(picked.$1 * _slotMinutes)} – '
+              '${clock((picked.$2 + 1) * _slotMinutes % (24 * 60))}',
+              maxLines: 1,
+              style: theme.textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.w800,
+                color: rangeColor,
+              ),
             ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                SizedBox.square(
-                  dimension: 112,
+          ),
+          Text(
+            l10n.compactDuration(Duration(minutes: slots * _slotMinutes)),
+            style: theme.textTheme.headlineSmall?.copyWith(
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ],
+      );
+    } else if (intervals.isEmpty) {
+      centre = Text(
+        widget.emptyLabel ?? '',
+        textAlign: TextAlign.center,
+        style: theme.textTheme.bodyMedium?.copyWith(color: muted),
+      );
+    } else if (selected == null) {
+      centre = Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            l10n.compactDuration(total),
+            style: theme.textTheme.headlineMedium?.copyWith(
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          Text(
+            l10n.usageCalendarTotalTime,
+            style: theme.textTheme.bodyMedium?.copyWith(color: muted),
+          ),
+        ],
+      );
+    } else {
+      centre = Column(
+        key: const ValueKey('usage-day-timeline-selection'),
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              range(selected),
+              maxLines: 1,
+              style: theme.textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+          Text(
+            l10n.compactDuration(
+              selected.endedAt.difference(selected.startedAt),
+            ),
+            style: theme.textTheme.headlineSmall?.copyWith(
+              color: theme.colorScheme.primary,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            '${l10n.usageCalendarTotalTime} ${l10n.compactDuration(total)}',
+            style: theme.textTheme.bodySmall?.copyWith(color: muted),
+          ),
+        ],
+      );
+    }
+
+    return Column(
+      children: [
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final side = math.min(constraints.maxWidth, 320.0);
+            final size = Size.square(side);
+            return Semantics(
+              label: [
+                for (final interval in intervals)
+                  '${range(interval)}, '
+                      '${l10n.compactDuration(interval.endedAt.difference(interval.startedAt))}',
+              ].join('; '),
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                // Only a finished tap or a real drag selects, so a touch
+                // that turns into scrolling the page selects nothing.
+                onTapUp: (d) => _range == null
+                    ? _pick(d.localPosition, size, clearOnMiss: true)
+                    : _moveRangeEnd(d.localPosition, size),
+                onPanStart: (d) => _range == null
+                    ? _pick(d.localPosition, size)
+                    : _moveRangeEnd(d.localPosition, size),
+                onPanUpdate: (d) => _range == null
+                    ? _pick(d.localPosition, size)
+                    : _moveRangeEnd(d.localPosition, size),
+                onLongPressStart: widget.onRestrictRange == null
+                    ? null
+                    : (d) => _startRange(d.localPosition, size),
+                onLongPressMoveUpdate: widget.onRestrictRange == null
+                    ? null
+                    : (d) => _moveRangeEnd(d.localPosition, size),
+                child: SizedBox.fromSize(
+                  size: size,
                   child: Stack(
-                    fit: StackFit.expand,
                     children: [
-                      CircularProgressIndicator(
-                        value: busiest == 0
-                            ? 0
-                            : usage.durationSeconds / busiest,
-                        strokeWidth: 9,
-                        strokeCap: StrokeCap.round,
-                        backgroundColor: theme.colorScheme.surfaceContainerHigh,
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            FittedBox(
-                              child: Text(
-                                '${isApproximate ? '≈' : ''}'
-                                '${l10n.compactDuration(Duration(seconds: usage.durationSeconds))}',
-                                style: theme.textTheme.titleLarge?.copyWith(
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                            ),
-                            Text(
-                              l10n.usageCalendarTotalTime,
-                              style: theme.textTheme.labelSmall?.copyWith(
-                                color: theme.colorScheme.onSurfaceVariant,
-                              ),
-                            ),
-                          ],
+                      Positioned.fill(
+                        child: CustomPaint(
+                          key: const ValueKey('usage-day-timeline'),
+                          painter: _ClockPainter(
+                            day: widget.day,
+                            slotSeconds: _slotSeconds,
+                            selected: picked == null ? selected : null,
+                            range: picked,
+                            frames: widget.restrictedFrames,
+                            rangeColor: rangeColor,
+                            trackColor: theme
+                                .colorScheme
+                                .surfaceContainerHighest
+                                .withValues(alpha: 0.7),
+                            dimColor: const Color(0xFF1C5FA6),
+                            brightColor: const Color(0xFF8FDBFF),
+                            tickColor: muted.withValues(alpha: 0.6),
+                            outlineColor: Colors.white,
+                          ),
                         ),
                       ),
+                      Positioned.fill(
+                        child: Padding(
+                          padding: EdgeInsets.all(side * 0.28),
+                          child: Center(child: centre),
+                        ),
+                      ),
+                      // The four cardinal hours, just outside the ticks.
+                      for (final (hour, alignment) in const [
+                        (0, Alignment.topCenter),
+                        (6, Alignment.centerRight),
+                        (12, Alignment.bottomCenter),
+                        (18, Alignment.centerLeft),
+                      ])
+                        Align(
+                          alignment: alignment,
+                          child: Text(
+                            hourFormat.format(DateTime(2000, 1, 1, hour)),
+                            style: theme.textTheme.labelMedium?.copyWith(
+                              color: muted,
+                            ),
+                          ),
+                        ),
                     ],
                   ),
                 ),
-                const SizedBox(width: 20),
+              ),
+            );
+          },
+        ),
+        if (picked != null)
+          // The "popup": restrict the picked frame, or let it go.
+          Container(
+            key: const ValueKey('usage-day-timeline-restrict-bar'),
+            margin: const EdgeInsets.only(top: 8),
+            padding: const EdgeInsets.fromLTRB(14, 6, 6, 6),
+            decoration: BoxDecoration(
+              color: rangeColor.withValues(alpha: .12),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: rangeColor.withValues(alpha: .5)),
+            ),
+            child: Row(
+              children: [
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _PanelValue(
-                        icon: Icons.smartphone_rounded,
-                        child: _valueAndLabel(
-                          context,
-                          isApproximate ? '-' : '${usage.launchCount}',
-                          l10n.usageCalendarAppOpens,
+                      Text(
+                        l10n.rxRangeQuestion,
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
-                      const SizedBox(height: 12),
-                      _PanelValue(
-                        icon: Icons.schedule_rounded,
-                        child: _valueAndLabel(
-                          context,
-                          isApproximate || usage.launchCount == 0
-                              ? '-'
-                              : l10n.compactDuration(
-                                  Duration(
-                                    seconds:
-                                        usage.durationSeconds ~/
-                                        usage.launchCount,
-                                  ),
-                                ),
-                          l10n.usageCalendarAverageSession,
-                        ),
-                      ),
-                      // Always present, so the panel keeps its height.
-                      const SizedBox(height: 12),
-                      _PanelValue(
-                        icon: Icons.insights_rounded,
-                        child: UsageChangeLabel(
-                          change: UsageTrendChange.compare(
-                            currentSeconds: usage.durationSeconds,
-                            previousSeconds: average,
-                            previousWindowCovered: true,
-                          ),
-                          isGood: isGood,
-                          caption: l10n.usageCalendarVsDailyAverage,
+                      Text(
+                        l10n.rxRangeHint,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: muted,
                         ),
                       ),
                     ],
                   ),
                 ),
+                TextButton(
+                  onPressed: () => setState(() => _range = null),
+                  child: Text(l10n.commonCancel),
+                ),
+                FilledButton(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: rangeColor,
+                    foregroundColor: Colors.white,
+                  ),
+                  onPressed: _restrictRange,
+                  child: Text(l10n.rxRangeAction),
+                ),
               ],
             ),
-            const SizedBox(height: 20),
-            Text(
-              l10n.usageCalendarTimeline,
-              style: theme.textTheme.titleSmall?.copyWith(
-                fontWeight: FontWeight.w700,
+          )
+        else
+          // Always laid out, so the card keeps its height on empty days.
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Visibility(
+              visible: intervals.isNotEmpty,
+              maintainSize: true,
+              maintainAnimation: true,
+              maintainState: true,
+              child: Text(
+                l10n.usageTimelineHint,
+                textAlign: TextAlign.center,
+                style: theme.textTheme.bodySmall?.copyWith(color: muted),
               ),
             ),
-            const SizedBox(height: 10),
-            UsageDayTimeline(
-              day: day,
-              intervals: intervals,
-              emptyLabel: l10n.usageCalendarNoTimeline,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _valueAndLabel(BuildContext context, String value, String label) {
-    final theme = Theme.of(context);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(
-          value,
-          style: theme.textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.w700,
-            height: 1.2,
           ),
-        ),
-        Text(
-          label,
-          style: theme.textTheme.labelSmall?.copyWith(
-            color: theme.colorScheme.onSurfaceVariant,
-          ),
-        ),
       ],
     );
   }
 }
 
-class _PanelValue extends StatelessWidget {
-  const _PanelValue({required this.icon, required this.child});
-
-  final IconData icon;
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        _MetricIcon(icon),
-        const SizedBox(width: 10),
-        Expanded(child: child),
-      ],
-    );
-  }
-}
-
-/// A 24-hour strip with a mark for each stretch of use.
-class UsageDayTimeline extends StatelessWidget {
-  const UsageDayTimeline({
+class _ClockPainter extends CustomPainter {
+  _ClockPainter({
     required this.day,
-    required this.intervals,
-    this.emptyLabel,
-    super.key,
-  });
-
-  final DateTime day;
-  final List<AppUsageInterval> intervals;
-
-  /// Shown inside the empty track, which keeps the strip's height.
-  final String? emptyLabel;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final locale = Localizations.localeOf(context).toString();
-    final hourFormat = MediaQuery.alwaysUse24HourFormatOf(context)
-        ? DateFormat.H(locale)
-        : DateFormat.j(locale);
-    return Column(
-      children: [
-        SizedBox(
-          height: 28,
-          width: double.infinity,
-          child: CustomPaint(
-            key: const ValueKey('usage-day-timeline'),
-            painter: _TimelinePainter(
-              day: day,
-              intervals: intervals,
-              trackColor: theme.colorScheme.surfaceContainerHigh,
-              gridColor: theme.colorScheme.outlineVariant.withValues(
-                alpha: 0.35,
-              ),
-              markColor: theme.colorScheme.primary,
-            ),
-            child: intervals.isEmpty && emptyLabel != null
-                ? Center(
-                    child: Text(
-                      emptyLabel!,
-                      style: theme.textTheme.labelSmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                  )
-                : null,
-          ),
-        ),
-        const SizedBox(height: 6),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            for (final hour in const [0, 6, 12, 18, 24])
-              Text(
-                hourFormat.format(DateTime(2000, 1, 1, hour % 24)),
-                style: theme.textTheme.labelSmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-              ),
-          ],
-        ),
-      ],
-    );
-  }
-}
-
-class _TimelinePainter extends CustomPainter {
-  const _TimelinePainter({
-    required this.day,
-    required this.intervals,
+    required this.slotSeconds,
+    required this.selected,
+    this.range,
+    this.frames = const [],
+    this.startHandle = false,
+    this.slotCapacitySeconds = _slotMinutes * 60,
+    this.rangeColor = Colors.red,
     required this.trackColor,
-    required this.gridColor,
-    required this.markColor,
+    required this.dimColor,
+    required this.brightColor,
+    required this.tickColor,
+    required this.outlineColor,
   });
 
   final DateTime day;
-  final List<AppUsageInterval> intervals;
+  final List<int> slotSeconds;
+  final AppUsageInterval? selected;
+  final (int, int)? range;
+
+  /// Restrictions already set, as (start, end) minutes; drawn faintly.
+  final List<(int, int)> frames;
+
+  /// Also marks the range's start with a dot, when both ends can move.
+  final bool startHandle;
+
+  /// Seconds that make a slice fully bright (more than 15 min when the
+  /// usage covers several days).
+  final int slotCapacitySeconds;
+  final Color rangeColor;
   final Color trackColor;
-  final Color gridColor;
-  final Color markColor;
+  final Color dimColor;
+  final Color brightColor;
+  final Color tickColor;
+  final Color outlineColor;
 
   @override
   void paint(Canvas canvas, Size size) {
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(Offset.zero & size, const Radius.circular(10)),
-      Paint()..color = trackColor,
-    );
-    final grid = Paint()
-      ..color = gridColor
-      ..strokeWidth = 1;
-    for (final hour in const [6, 12, 18]) {
-      final x = size.width * hour / 24;
-      canvas.drawLine(Offset(x, 6), Offset(x, size.height - 6), grid);
+    final center = size.center(Offset.zero);
+    final outer = size.shortestSide / 2 - 30;
+    final thickness = outer * 0.24;
+    final inner = outer - thickness;
+    const turn = 2 * math.pi;
+    // Clockwise from the top.
+    double angleOf(double minute) => -math.pi / 2 + minute / (24 * 60) * turn;
+    final slice = turn / _slots;
+    // A hairline gap between slices, constant in pixels.
+    final gap = 1.2 / outer;
+
+    Path sector(double from, double to, double r0, double r1) => Path()
+      ..arcTo(
+        Rect.fromCircle(center: center, radius: r1),
+        from,
+        to - from,
+        true,
+      )
+      ..arcTo(Rect.fromCircle(center: center, radius: r0), to, from - to, false)
+      ..close();
+
+    final paint = Paint()..style = PaintingStyle.fill;
+    for (var i = 0; i < _slots; i++) {
+      final from = -math.pi / 2 + i * slice + gap / 2;
+      final to = from + slice - gap;
+      final used = slotSeconds[i] / slotCapacitySeconds;
+      paint.color = used <= 0
+          ? trackColor
+          // Any use gets at least a visible shade.
+          : Color.lerp(dimColor, brightColor, used.clamp(0.0, 1.0))!;
+      canvas.drawPath(sector(from, to, inner, outer), paint);
     }
-    final mark = Paint()..color = markColor;
-    const daySeconds = 24 * 60 * 60;
-    for (final interval in intervals) {
-      final start = interval.startedAt.difference(day).inSeconds / daySeconds;
-      final end = interval.endedAt.difference(day).inSeconds / daySeconds;
-      // Keep short sessions visible as at least a thin mark.
-      final width = math.max(4.0, (end - start) * size.width);
-      canvas.drawRRect(
-        RRect.fromRectAndRadius(
-          Rect.fromLTWH(start * size.width, 5, width, size.height - 10),
-          const Radius.circular(3),
-        ),
-        mark,
+
+    // Hour ticks outside the ring; the four cardinal hours are longer.
+    final tick = Paint()
+      ..color = tickColor
+      ..strokeWidth = 1.4
+      ..strokeCap = StrokeCap.round;
+    for (var hour = 0; hour < 24; hour++) {
+      final angle = angleOf(hour * 60.0);
+      final direction = Offset(math.cos(angle), math.sin(angle));
+      final length = hour % 6 == 0 ? 9.0 : 4.0;
+      canvas.drawLine(
+        center + direction * (outer + 5),
+        center + direction * (outer + 5 + length),
+        tick,
+      );
+    }
+
+    // Existing restrictions: a soft red band, quieter than a fresh pick.
+    for (final (start, end) in frames) {
+      final from = angleOf(start.toDouble());
+      var to = angleOf(end.toDouble());
+      if (to <= from) to += turn;
+      final band = sector(from, to, inner - 2, outer + 2);
+      canvas.drawPath(band, Paint()..color = rangeColor.withValues(alpha: .16));
+      canvas.drawPath(
+        band,
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.2
+          ..color = rangeColor.withValues(alpha: .55),
+      );
+    }
+
+    final picked = range;
+    if (picked != null) {
+      // The time frame being picked: tinted, outlined in red, with a dot on
+      // the end that moves.
+      final slots = (picked.$2 - picked.$1) % _slots + 1;
+      final from = -math.pi / 2 + picked.$1 * slice + gap / 2;
+      final to = from + slots * slice - gap;
+      final band = sector(from, to, inner - 3, outer + 3);
+      canvas.drawPath(band, Paint()..color = rangeColor.withValues(alpha: .25));
+      canvas.drawPath(
+        band,
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 2.6
+          ..strokeJoin = StrokeJoin.round
+          ..color = rangeColor,
+      );
+      canvas.drawCircle(
+        center + Offset(math.cos(to), math.sin(to)) * (outer + 3),
+        6,
+        Paint()..color = rangeColor,
+      );
+      if (startHandle) {
+        canvas.drawCircle(
+          center + Offset(math.cos(from), math.sin(from)) * (outer + 3),
+          6,
+          Paint()..color = rangeColor,
+        );
+      }
+    }
+
+    final session = selected;
+    if (session != null) {
+      // Outline the whole quarter-hour slices the session touches, so even
+      // a short one is easy to spot; the centre gives its exact times.
+      final start = _clockMinute(session.startedAt, day);
+      final end = _clockMinute(session.endedAt, day);
+      final firstSlot = start ~/ _slotMinutes;
+      final lastSlot = math.max(firstSlot, (end - 0.001) ~/ _slotMinutes);
+      final from = angleOf(firstSlot * _slotMinutes.toDouble()) + gap / 2;
+      final to = angleOf((lastSlot + 1) * _slotMinutes.toDouble()) - gap / 2;
+      canvas.drawPath(
+        sector(from, to, inner - 3, outer + 3),
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.8
+          ..strokeJoin = StrokeJoin.round
+          ..color = outlineColor,
+      );
+      final middle = (from + to) / 2;
+      canvas.drawCircle(
+        center + Offset(math.cos(middle), math.sin(middle)) * (inner - 9),
+        4,
+        Paint()..color = outlineColor,
       );
     }
   }
 
   @override
-  bool shouldRepaint(covariant _TimelinePainter oldDelegate) =>
-      oldDelegate.intervals != intervals ||
+  bool shouldRepaint(covariant _ClockPainter oldDelegate) =>
+      oldDelegate.slotSeconds != slotSeconds ||
+      oldDelegate.selected != selected ||
+      oldDelegate.range != range ||
+      oldDelegate.frames != frames ||
       oldDelegate.day != day ||
       oldDelegate.trackColor != trackColor ||
-      oldDelegate.gridColor != gridColor ||
-      oldDelegate.markColor != markColor;
+      oldDelegate.tickColor != tickColor;
+}
+
+/// Picks a schedule on a 24-hour dial over this app's usage: drag either red
+/// end around the ring, or tap where the nearer end should go. Ends snap to
+/// quarter-hours.
+class ScheduleRangeDial extends StatefulWidget {
+  const ScheduleRangeDial({
+    required this.startMinute,
+    required this.endMinute,
+    required this.onChanged,
+    this.slotSeconds,
+    this.slotCapacitySeconds = _slotMinutes * 60,
+    super.key,
+  });
+
+  final int startMinute;
+  final int endMinute;
+  final void Function(int startMinute, int endMinute) onChanged;
+
+  /// Usage per quarter-hour to draw under the range; null while loading.
+  final List<int>? slotSeconds;
+  final int slotCapacitySeconds;
+
+  @override
+  State<ScheduleRangeDial> createState() => _ScheduleRangeDialState();
+}
+
+class _ScheduleRangeDialState extends State<ScheduleRangeDial> {
+  bool? _movingStart;
+
+  /// The quarter-hour boundary (0-95) nearest [position], or null in the
+  /// middle of the dial.
+  int? _boundaryAt(Offset position, Size size) {
+    final delta = position - size.center(Offset.zero);
+    if (delta.distance < size.shortestSide / 2 * 0.4) return null;
+    final turn = (math.atan2(delta.dx, -delta.dy) / (2 * math.pi) + 1) % 1;
+    return (turn * _slots).round() % _slots;
+  }
+
+  int _distance(int boundary, int minute) {
+    final d = (boundary - minute / _slotMinutes).abs() % _slots;
+    return math.min(d, _slots - d).round();
+  }
+
+  void _grab(Offset position, Size size) {
+    final boundary = _boundaryAt(position, size);
+    if (boundary == null) return;
+    _movingStart =
+        _distance(boundary, widget.startMinute) <
+        _distance(boundary, widget.endMinute);
+    _move(position, size);
+  }
+
+  void _move(Offset position, Size size) {
+    final movingStart = _movingStart;
+    final boundary = _boundaryAt(position, size);
+    if (movingStart == null || boundary == null) return;
+    final minute = boundary * _slotMinutes;
+    final start = movingStart ? minute : widget.startMinute;
+    final end = movingStart ? widget.endMinute : minute;
+    // A schedule needs different start and end times.
+    if (start == end ||
+        (start == widget.startMinute && end == widget.endMinute)) {
+      return;
+    }
+    HapticFeedback.selectionClick();
+    widget.onChanged(start, end);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final l10n = context.l10n;
+    final locale = Localizations.localeOf(context).toString();
+    final use24 = MediaQuery.alwaysUse24HourFormatOf(context);
+    final hourFormat = use24 ? DateFormat('HH', locale) : DateFormat.j(locale);
+    final timeFormat = use24 ? DateFormat.Hm(locale) : DateFormat.jm(locale);
+    final muted = theme.colorScheme.onSurfaceVariant;
+    const rangeColor = Color(0xFFFF5A5F);
+    String clock(int minute) =>
+        timeFormat.format(DateTime(2000, 1, 1, minute ~/ 60, minute % 60));
+    final start = widget.startMinute;
+    final end = widget.endMinute;
+    final length = (end - start) % (24 * 60);
+    final firstSlot = start ~/ _slotMinutes;
+    final lastSlot = ((end - 1) % (24 * 60)) ~/ _slotMinutes;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final side = math.min(constraints.maxWidth, 300.0);
+        final size = Size.square(side);
+        return Center(
+          child: Semantics(
+            label: '${clock(start)} – ${clock(end)}',
+            child: RawGestureDetector(
+              behavior: HitTestBehavior.opaque,
+              // Claims touches at once, so dragging around the ring moves an
+              // end instead of scrolling the sheet.
+              gestures: {
+                EagerGestureRecognizer:
+                    GestureRecognizerFactoryWithHandlers<
+                      EagerGestureRecognizer
+                    >(EagerGestureRecognizer.new, (_) {}),
+              },
+              child: Listener(
+                onPointerDown: (e) => _grab(e.localPosition, size),
+                onPointerMove: (e) => _move(e.localPosition, size),
+                onPointerUp: (_) => _movingStart = null,
+                onPointerCancel: (_) => _movingStart = null,
+                child: SizedBox.fromSize(
+                  size: size,
+                  child: Stack(
+                    children: [
+                      Positioned.fill(
+                        child: CustomPaint(
+                          key: const ValueKey('schedule-range-dial'),
+                          painter: _ClockPainter(
+                            day: DateTime(2000),
+                            slotSeconds:
+                                widget.slotSeconds ?? List.filled(_slots, 0),
+                            slotCapacitySeconds: widget.slotCapacitySeconds,
+                            selected: null,
+                            range: (firstSlot, lastSlot),
+                            rangeColor: rangeColor,
+                            startHandle: true,
+                            trackColor: theme
+                                .colorScheme
+                                .surfaceContainerHighest
+                                .withValues(alpha: 0.7),
+                            dimColor: const Color(0xFF1C5FA6),
+                            brightColor: const Color(0xFF8FDBFF),
+                            tickColor: muted.withValues(alpha: 0.6),
+                            outlineColor: Colors.white,
+                          ),
+                        ),
+                      ),
+                      Positioned.fill(
+                        child: Padding(
+                          padding: EdgeInsets.all(side * 0.28),
+                          child: Center(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  child: Text(
+                                    '${clock(start)} – ${clock(end)}',
+                                    key: const ValueKey('schedule-range-text'),
+                                    maxLines: 1,
+                                    style: theme.textTheme.titleLarge?.copyWith(
+                                      fontWeight: FontWeight.w800,
+                                      color: rangeColor,
+                                    ),
+                                  ),
+                                ),
+                                Text(
+                                  l10n.compactDuration(
+                                    Duration(minutes: length),
+                                  ),
+                                  style: theme.textTheme.titleMedium?.copyWith(
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                                if (end < start)
+                                  Text(
+                                    l10n.rxNextDay,
+                                    textAlign: TextAlign.center,
+                                    style: theme.textTheme.bodySmall?.copyWith(
+                                      color: muted,
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                      for (final (hour, alignment) in const [
+                        (0, Alignment.topCenter),
+                        (6, Alignment.centerRight),
+                        (12, Alignment.bottomCenter),
+                        (18, Alignment.centerLeft),
+                      ])
+                        Align(
+                          alignment: alignment,
+                          child: Text(
+                            hourFormat.format(DateTime(2000, 1, 1, hour)),
+                            style: theme.textTheme.labelMedium?.copyWith(
+                              color: muted,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
 }

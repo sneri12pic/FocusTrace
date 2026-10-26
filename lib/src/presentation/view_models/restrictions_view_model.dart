@@ -87,10 +87,11 @@ class RestrictionsViewModel extends StateNotifier<RestrictionsState> {
   final ReportRepository? _reportRepository;
 
   Future<void> load() async {
+    if (state.isSaving) return;
     state = state.copyWith(isLoading: true, clearError: true);
     try {
       final (rules, routines, todayUsage) = await (
-        _settingsRepository.restrictionRules(),
+        _readRules(),
         _settingsRepository.blockRoutines(),
         _loadTodayUsage(),
       ).wait;
@@ -112,14 +113,98 @@ class RestrictionsViewModel extends StateNotifier<RestrictionsState> {
     }
   }
 
-  Future<void> saveRule(RestrictionRule rule) {
-    return _mutateRules(() => _settingsRepository.saveRestrictionRule(rule));
+  // Preserve ordinary imports/clears, but native enforcement has the final say
+  // when a local change would remove or weaken an actively protected rule.
+  Future<List<RestrictionRule>> _readRules({
+    bool recoverAccepted = false,
+  }) async {
+    final source = _platformDataSource;
+    if (source is RestrictionChangeDataSource) {
+      final json = await (source as RestrictionChangeDataSource)
+          .readRestrictionConfiguration();
+      if (json != null) {
+        final native = pruneExpiredBlockNowRules(decodeRules(json));
+        final local = await _settingsRepository.restrictionRules();
+        if (encodeRules(native) != encodeRules(local)) {
+          if (!recoverAccepted) {
+            try {
+              await _sync(local, await _settingsRepository.blockRoutines());
+              return local;
+            } catch (_) {
+              // A protected native rule cannot be bypassed by replacing SQLite.
+            }
+          }
+          for (final rule in native) {
+            await _settingsRepository.saveRestrictionRule(rule);
+          }
+          for (final rule in local) {
+            if (!native.any(
+              (r) => r.appKey == rule.appKey && r.type == rule.type,
+            )) {
+              await _settingsRepository.removeRestrictionRule(
+                rule.appKey,
+                rule.type,
+              );
+            }
+          }
+        }
+        return native;
+      }
+    }
+    return _settingsRepository.restrictionRules();
+  }
+
+  Future<void> _authorize(List<RestrictionRule> rules) async {
+    final source = _platformDataSource;
+    for (final rule in rules) {
+      if (source is RestrictionChangeDataSource) {
+        final status = await (source as RestrictionChangeDataSource)
+            .requestRestrictionChange(rule.appKey, rule.type.jsonName);
+        if (status != 'allowed') throw StateError('restriction:$status');
+      } else if (rule.difficulty != RestrictionDifficulty.easy) {
+        throw StateError('restriction:unavailable');
+      }
+    }
+  }
+
+  Future<void> saveRule(RestrictionRule rule, {RestrictionRule? replacing}) {
+    return _mutateRules(() async {
+      final rules = await _readRules();
+      final changed = rules
+          .where(
+            (r) =>
+                r.appKey == rule.appKey &&
+                (r.type == rule.type || r.type == replacing?.type),
+          )
+          .toList();
+      await _authorize(changed);
+      final next = [...rules.where((r) => !changed.contains(r)), rule];
+      await _sync(next, state.routines);
+      // Native validation happens before local persistence, including edits that
+      // change type. Never remove a protected rule as a separate UI operation.
+      await _settingsRepository.saveRestrictionRule(rule);
+      if (replacing != null && replacing.type != rule.type) {
+        await _settingsRepository.removeRestrictionRule(
+          replacing.appKey,
+          replacing.type,
+        );
+      }
+    });
   }
 
   Future<void> deleteRule(String appKey, RestrictionRuleType type) {
-    return _mutateRules(
-      () => _settingsRepository.removeRestrictionRule(appKey, type),
-    );
+    return _mutateRules(() async {
+      final rules = await _readRules();
+      final removed = rules
+          .where((r) => r.appKey == appKey && r.type == type)
+          .toList();
+      await _authorize(removed);
+      await _sync(
+        rules.where((r) => !removed.contains(r)).toList(),
+        state.routines,
+      );
+      await _settingsRepository.removeRestrictionRule(appKey, type);
+    });
   }
 
   Future<void> unblockAppNow({
@@ -128,15 +213,28 @@ class RestrictionsViewModel extends StateNotifier<RestrictionsState> {
     DateTime? now,
   }) {
     return _mutateRules(() async {
-      final currentRules = await _settingsRepository.restrictionRules();
+      final currentRules = await _readRules();
+      final fresh = _usageRepository == null
+          ? null
+          : await _usageRepository.getTodaySummaries();
+      final usage = fresh == null
+          ? usageSecondsToday
+          : fresh
+                    .where((a) => a.appKey == appKey)
+                    .firstOrNull
+                    ?.totalDurationSeconds ??
+                0;
       final checkedAt = now ?? DateTime.now();
       final blockingRules = currentRules
           .where(
-            (rule) =>
-                rule.appKey == appKey &&
-                rule.blocksAt(checkedAt, usageSecondsToday),
+            (rule) => rule.appKey == appKey && rule.blocksAt(checkedAt, usage),
           )
           .toList();
+      await _authorize(blockingRules);
+      await _sync(
+        currentRules.where((r) => !blockingRules.contains(r)).toList(),
+        state.routines,
+      );
       for (final rule in blockingRules) {
         await _settingsRepository.removeRestrictionRule(rule.appKey, rule.type);
       }
@@ -162,10 +260,11 @@ class RestrictionsViewModel extends StateNotifier<RestrictionsState> {
   /// Runs [mutation], then reloads rules, rechecks the overlay permission,
   /// and pushes the new configuration to the platform side.
   Future<void> _mutateRules(Future<void> Function() mutation) async {
+    if (state.isSaving) return;
     state = state.copyWith(isSaving: true, clearError: true);
     try {
       await mutation();
-      final rules = await _settingsRepository.restrictionRules();
+      final rules = await _readRules();
       final hasOverlayPermission = await _platformDataSource
           .hasOverlayPermission();
       state = state.copyWith(
@@ -173,8 +272,12 @@ class RestrictionsViewModel extends StateNotifier<RestrictionsState> {
         hasOverlayPermission: hasOverlayPermission,
         isSaving: false,
       );
-      await _sync(rules, state.routines);
     } catch (error) {
+      try {
+        state = state.copyWith(rules: await _readRules(recoverAccepted: true));
+      } catch (_) {
+        // Keep the original failure visible if storage is still unavailable.
+      }
       state = state.copyWith(isSaving: false, errorMessage: error.toString());
     }
   }

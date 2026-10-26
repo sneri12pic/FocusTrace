@@ -24,4 +24,9 @@
     <string name="widget_no_access">Toca para conceder acceso a datos de uso</string>
     <string name="widget_hours_minutes">%1$d h %2$d min</string>
     <string name="widget_minutes">%1$d min</string>
+    <string name="restriction_reason_daily_app_limit">Límite diario de la app alcanzado</string>
+    <string name="restriction_reason_schedule_until">Bloqueada por horario hasta las %1$s</string>
+    <string name="restriction_reason_block_now_until">Bloqueo temporal hasta las %1$s</string>
+    <string name="restriction_reason_routine_shared">%1$s: tiempo compartido agotado</string>
+    <string name="restriction_reason_routine_app">%1$s: límite de la app alcanzado</string>
 </resources>

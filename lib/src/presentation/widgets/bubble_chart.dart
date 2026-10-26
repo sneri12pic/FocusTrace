@@ -54,6 +54,11 @@ class _BubbleChartState extends State<BubbleChart>
   List<_BubbleGeometry> _fromGeometry = const <_BubbleGeometry>[];
   List<_BubbleGeometry> _toGeometry = const <_BubbleGeometry>[];
 
+  /// Every step of the packing simulation, recorded once for the entrance.
+  /// Playing them back shows bubbles fly in, bump and settle (as in 1.0.6)
+  /// without re-running the physics each frame. Null once it has played.
+  List<List<_BubbleGeometry>>? _entranceFrames;
+
   @override
   void initState() {
     super.initState();
@@ -124,6 +129,7 @@ class _BubbleChartState extends State<BubbleChart>
       return;
     }
     _entrancePending = false;
+    _entranceFrames = null;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         DashboardPerformance.entranceAnimationComplete();
@@ -217,12 +223,31 @@ class _BubbleChartState extends State<BubbleChart>
       return;
     }
 
-    final target = _calculateGeometry(items, size, steps: packSteps);
-    widget.onLayoutComputed?.call();
     if (_layoutSize == null) {
-      _fromGeometry = _calculateGeometry(items, size, steps: 0);
+      final frames = <List<Offset>>[];
+      final target = _calculateGeometry(
+        items,
+        size,
+        steps: packSteps,
+        frames: frames,
+      );
+      widget.onLayoutComputed?.call();
+      _entranceFrames = [
+        for (final centers in frames)
+          [
+            for (var i = 0; i < target.length; i++)
+              _BubbleGeometry(
+                id: target[i].id,
+                radius: target[i].radius,
+                center: centers[i],
+              ),
+          ],
+      ];
+      _fromGeometry = _entranceFrames!.first;
       _toGeometry = target;
     } else {
+      final target = _calculateGeometry(items, size, steps: packSteps);
+      widget.onLayoutComputed?.call();
       final currentById = {
         for (final geometry in _interpolatedGeometry()) geometry.id: geometry,
       };
@@ -235,6 +260,8 @@ class _BubbleChartState extends State<BubbleChart>
           currentById[geometry.id] ?? entranceById[geometry.id]!,
       ];
       _toGeometry = target;
+      // New data mid-entrance continues smoothly from where bubbles are now.
+      _entranceFrames = null;
 
       if (_entrancePending && _layoutController.isAnimating) {
         final currentDuration = _layoutController.duration!;
@@ -270,6 +297,11 @@ class _BubbleChartState extends State<BubbleChart>
     if (_toGeometry.isEmpty) {
       return const <_BubbleGeometry>[];
     }
+    if (_entranceFrames case final frames?) {
+      // Linear in time, like the original replay of the simulation.
+      final step = (_layoutController.value * (frames.length - 1)).ceil();
+      return frames[step.clamp(0, frames.length - 1)];
+    }
     final fromById = {
       for (final geometry in _fromGeometry) geometry.id: geometry,
     };
@@ -295,6 +327,7 @@ class _BubbleChartState extends State<BubbleChart>
     List<UsageItem> items,
     Size size, {
     required int steps,
+    List<List<Offset>>? frames,
   }) {
     if (items.isEmpty) {
       return const <_BubbleGeometry>[];
@@ -309,7 +342,7 @@ class _BubbleChartState extends State<BubbleChart>
     final radii = [
       for (final item in items) _radiusFor(item, maxSeconds, maxRadius),
     ];
-    final centers = packBubbles(radii, size, steps: steps);
+    final centers = packBubbles(radii, size, steps: steps, frames: frames);
 
     return [
       for (var index = 0; index < items.length; index++)
@@ -434,9 +467,9 @@ double _clamp(double value, double min, double max) {
 
 const double _goldenAngle = 2.399963;
 
-/// Total relaxation steps of the packing simulation. The chart computes the
-/// zero-step entrance positions and the fully packed positions once, then
-/// interpolates between those cached geometries during animation frames.
+/// Total relaxation steps of the packing simulation. The entrance records
+/// every step once and plays them back; later data changes interpolate
+/// between the current and the newly packed positions.
 const int packSteps = 150;
 
 /// Iterative circle packing: every bubble is pulled toward the center while
@@ -447,6 +480,7 @@ List<Offset> packBubbles(
   List<double> radii,
   Size size, {
   int steps = packSteps,
+  List<List<Offset>>? frames,
 }) {
   final center = Offset(size.width / 2, size.height / 2 + 10);
   // Seed scattered around the chart edges (deterministic golden-angle fan) so
@@ -463,6 +497,7 @@ List<Offset> packBubbles(
   ];
 
   final maxRadius = radii.reduce(math.max);
+  frames?.add(List.of(positions));
 
   // ponytail: fixed 150 relaxation steps for <=10 bubbles; converges long before that.
   for (var step = 0; step < steps; step++) {
@@ -497,6 +532,7 @@ List<Offset> packBubbles(
     for (var i = 0; i < positions.length; i++) {
       positions[i] = _clampToBounds(positions[i], radii[i], size);
     }
+    frames?.add(List.of(positions));
   }
   return positions;
 }

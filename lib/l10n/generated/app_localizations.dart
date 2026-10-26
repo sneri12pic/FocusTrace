@@ -2072,6 +2072,582 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Found your earlier usage back to {date}'**
   String onboardingHistoryFound(String date);
+
+  /// No description provided for @restrictionsTimeLeft.
+  ///
+  /// In en, this message translates to:
+  /// **'{duration} left'**
+  String restrictionsTimeLeft(String duration);
+
+  /// No description provided for @restrictionsLimitReached.
+  ///
+  /// In en, this message translates to:
+  /// **'Limit reached'**
+  String get restrictionsLimitReached;
+
+  /// No description provided for @rxWeek.
+  ///
+  /// In en, this message translates to:
+  /// **'This week'**
+  String get rxWeek;
+
+  /// No description provided for @rxTopApps.
+  ///
+  /// In en, this message translates to:
+  /// **'Your most-used apps'**
+  String get rxTopApps;
+
+  /// No description provided for @rxAverage.
+  ///
+  /// In en, this message translates to:
+  /// **'{days, plural, one{Daily average · 1 recorded day} other{Daily average · {days} recorded days}}'**
+  String rxAverage(int days);
+
+  /// No description provided for @rxBusiest.
+  ///
+  /// In en, this message translates to:
+  /// **'Your busiest hours'**
+  String get rxBusiest;
+
+  /// No description provided for @rxPeak.
+  ///
+  /// In en, this message translates to:
+  /// **'Most recorded usage is from {start} to {end}.'**
+  String rxPeak(String start, String end);
+
+  /// No description provided for @rxNoInsights.
+  ///
+  /// In en, this message translates to:
+  /// **'Not enough recorded usage to suggest a time yet.'**
+  String get rxNoInsights;
+
+  /// No description provided for @rxPlanBlock.
+  ///
+  /// In en, this message translates to:
+  /// **'Plan a schedule'**
+  String get rxPlanBlock;
+
+  /// No description provided for @rxYourRules.
+  ///
+  /// In en, this message translates to:
+  /// **'Your restrictions'**
+  String get rxYourRules;
+
+  /// No description provided for @rxLimit.
+  ///
+  /// In en, this message translates to:
+  /// **'Limit'**
+  String get rxLimit;
+
+  /// No description provided for @rxEdit.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit'**
+  String get rxEdit;
+
+  /// No description provided for @rxRestrict.
+  ///
+  /// In en, this message translates to:
+  /// **'Restrict {app}'**
+  String rxRestrict(String app);
+
+  /// No description provided for @rxAverageApp.
+  ///
+  /// In en, this message translates to:
+  /// **'Average {duration} / day'**
+  String rxAverageApp(String duration);
+
+  /// No description provided for @rxType.
+  ///
+  /// In en, this message translates to:
+  /// **'Restriction type'**
+  String get rxType;
+
+  /// No description provided for @rxDailyLimit.
+  ///
+  /// In en, this message translates to:
+  /// **'Daily limit'**
+  String get rxDailyLimit;
+
+  /// No description provided for @rxBlockNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Block now'**
+  String get rxBlockNow;
+
+  /// No description provided for @rxDifficulty.
+  ///
+  /// In en, this message translates to:
+  /// **'Unblocking difficulty'**
+  String get rxDifficulty;
+
+  /// No description provided for @rxEasy.
+  ///
+  /// In en, this message translates to:
+  /// **'Easy'**
+  String get rxEasy;
+
+  /// No description provided for @rxModerate.
+  ///
+  /// In en, this message translates to:
+  /// **'Moderate'**
+  String get rxModerate;
+
+  /// No description provided for @rxHard.
+  ///
+  /// In en, this message translates to:
+  /// **'Hard'**
+  String get rxHard;
+
+  /// No description provided for @rxEasyHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm to unblock'**
+  String get rxEasyHint;
+
+  /// No description provided for @rxModerateHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Wait 5 minutes to unblock'**
+  String get rxModerateHint;
+
+  /// No description provided for @rxHardHint.
+  ///
+  /// In en, this message translates to:
+  /// **'No early unblock in FocusTrace'**
+  String get rxHardHint;
+
+  /// No description provided for @rxProtectionNote.
+  ///
+  /// In en, this message translates to:
+  /// **'This also applies to changing or removing an active rule.'**
+  String get rxProtectionNote;
+
+  /// No description provided for @rxSetLimit.
+  ///
+  /// In en, this message translates to:
+  /// **'Set daily limit'**
+  String get rxSetLimit;
+
+  /// No description provided for @rxSetSchedule.
+  ///
+  /// In en, this message translates to:
+  /// **'Set schedule'**
+  String get rxSetSchedule;
+
+  /// No description provided for @rxStartBlock.
+  ///
+  /// In en, this message translates to:
+  /// **'Start block'**
+  String get rxStartBlock;
+
+  /// No description provided for @rxBelowAverage.
+  ///
+  /// In en, this message translates to:
+  /// **'{duration} below your daily average'**
+  String rxBelowAverage(String duration);
+
+  /// No description provided for @rxRepeat.
+  ///
+  /// In en, this message translates to:
+  /// **'Repeat'**
+  String get rxRepeat;
+
+  /// No description provided for @rxNextDay.
+  ///
+  /// In en, this message translates to:
+  /// **'Ends the next day'**
+  String get rxNextDay;
+
+  /// No description provided for @rxEndsAt.
+  ///
+  /// In en, this message translates to:
+  /// **'Ends at {time}'**
+  String rxEndsAt(String time);
+
+  /// No description provided for @rxHardConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'While this rule is blocking an app, you cannot unblock it, edit it, or remove it early in FocusTrace.'**
+  String get rxHardConfirm;
+
+  /// No description provided for @rxConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm'**
+  String get rxConfirm;
+
+  /// No description provided for @rxChangeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Change restriction?'**
+  String get rxChangeTitle;
+
+  /// No description provided for @rxChangeBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Easy rules can be changed now. Moderate rules start a five-minute wait. Hard rules stay locked until the current block ends.'**
+  String get rxChangeBody;
+
+  /// No description provided for @rxCooldown.
+  ///
+  /// In en, this message translates to:
+  /// **'Five-minute cooldown requested. Try again after it ends; the app stays blocked until you confirm again.'**
+  String get rxCooldown;
+
+  /// No description provided for @rxHardLocked.
+  ///
+  /// In en, this message translates to:
+  /// **'This rule is locked until the current block ends.'**
+  String get rxHardLocked;
+
+  /// No description provided for @rxUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Unable to verify this restriction. Check usage access and try again.'**
+  String get rxUnavailable;
+
+  /// No description provided for @rxMinutes.
+  ///
+  /// In en, this message translates to:
+  /// **'Duration in minutes'**
+  String get rxMinutes;
+
+  /// No description provided for @rxRetry.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get rxRetry;
+
+  /// No description provided for @rxScheduleInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose different start and end times and at least one day.'**
+  String get rxScheduleInvalid;
+
+  /// No description provided for @rxNoUsage.
+  ///
+  /// In en, this message translates to:
+  /// **'No recorded usage for this period. You can still choose any app to restrict.'**
+  String get rxNoUsage;
+
+  /// No description provided for @rxNextBlock.
+  ///
+  /// In en, this message translates to:
+  /// **'Next: {time}'**
+  String rxNextBlock(String time);
+
+  /// No description provided for @rxPerDay.
+  ///
+  /// In en, this message translates to:
+  /// **'{duration} / day'**
+  String rxPerDay(String duration);
+
+  /// No description provided for @rxUntil.
+  ///
+  /// In en, this message translates to:
+  /// **'Until {time}'**
+  String rxUntil(String time);
+
+  /// No description provided for @rxLeftToday.
+  ///
+  /// In en, this message translates to:
+  /// **'{duration} left today'**
+  String rxLeftToday(String duration);
+
+  /// No description provided for @rxStarts.
+  ///
+  /// In en, this message translates to:
+  /// **'Starts {time}'**
+  String rxStarts(String time);
+
+  /// No description provided for @rxStartLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Starts'**
+  String get rxStartLabel;
+
+  /// No description provided for @rxEndLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Ends'**
+  String get rxEndLabel;
+
+  /// No description provided for @rxHoursField.
+  ///
+  /// In en, this message translates to:
+  /// **'Hours'**
+  String get rxHoursField;
+
+  /// No description provided for @rxMinutesField.
+  ///
+  /// In en, this message translates to:
+  /// **'Minutes'**
+  String get rxMinutesField;
+
+  /// No description provided for @rxAdd.
+  ///
+  /// In en, this message translates to:
+  /// **'Add'**
+  String get rxAdd;
+
+  /// No description provided for @rxNoRulesYet.
+  ///
+  /// In en, this message translates to:
+  /// **'No restrictions yet. Choose an app below, or tap Add.'**
+  String get rxNoRulesYet;
+
+  /// No description provided for @rxChooseApps.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose apps to limit'**
+  String get rxChooseApps;
+
+  /// No description provided for @rxSearchAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Search all apps'**
+  String get rxSearchAll;
+
+  /// No description provided for @rxTodayUsage.
+  ///
+  /// In en, this message translates to:
+  /// **'Today\'s usage so far'**
+  String get rxTodayUsage;
+
+  /// No description provided for @rxCreate.
+  ///
+  /// In en, this message translates to:
+  /// **'Create'**
+  String get rxCreate;
+
+  /// No description provided for @rxSharedLimit.
+  ///
+  /// In en, this message translates to:
+  /// **'Shared daily limit · {duration}'**
+  String rxSharedLimit(String duration);
+
+  /// No description provided for @rxMoreApps.
+  ///
+  /// In en, this message translates to:
+  /// **'{names} + {count, plural, one{1 app} other{{count} apps}}'**
+  String rxMoreApps(String names, int count);
+
+  /// No description provided for @rxPaused.
+  ///
+  /// In en, this message translates to:
+  /// **'Paused'**
+  String get rxPaused;
+
+  /// No description provided for @rxUsed.
+  ///
+  /// In en, this message translates to:
+  /// **'{duration} used'**
+  String rxUsed(String duration);
+
+  /// No description provided for @rxLeft.
+  ///
+  /// In en, this message translates to:
+  /// **'{duration} left'**
+  String rxLeft(String duration);
+
+  /// No description provided for @rxEveryDay.
+  ///
+  /// In en, this message translates to:
+  /// **'Every day'**
+  String get rxEveryDay;
+
+  /// No description provided for @rxUnblockAfterWait.
+  ///
+  /// In en, this message translates to:
+  /// **'Unblock after 5-minute wait'**
+  String get rxUnblockAfterWait;
+
+  /// No description provided for @rxLockedUntil.
+  ///
+  /// In en, this message translates to:
+  /// **'Locked until {time}'**
+  String rxLockedUntil(String time);
+
+  /// No description provided for @rxEditDuration.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit duration'**
+  String get rxEditDuration;
+
+  /// No description provided for @rxSaveChanges.
+  ///
+  /// In en, this message translates to:
+  /// **'Save changes'**
+  String get rxSaveChanges;
+
+  /// No description provided for @rxEasyExplain.
+  ///
+  /// In en, this message translates to:
+  /// **'You can unblock early after confirming. Editing or removing this rule while it blocks also asks for confirmation.'**
+  String get rxEasyExplain;
+
+  /// No description provided for @rxModerateExplain.
+  ///
+  /// In en, this message translates to:
+  /// **'Unblocking early, or editing or removing this rule while it blocks, starts a five-minute wait. The app stays blocked meanwhile. When the wait ends, repeat the action and confirm again. Nothing unblocks on its own.'**
+  String get rxModerateExplain;
+
+  /// No description provided for @rxHardExplain.
+  ///
+  /// In en, this message translates to:
+  /// **'While this rule is blocking, FocusTrace will not unblock it early, and you cannot edit or remove it until the block ends. Outside blocking times you can change it as usual.'**
+  String get rxHardExplain;
+
+  /// No description provided for @rxModerateUnblockBody.
+  ///
+  /// In en, this message translates to:
+  /// **'This starts a five-minute wait. The app stays blocked until it ends. Then choose Unblock again and confirm.'**
+  String get rxModerateUnblockBody;
+
+  /// No description provided for @routineLastAppPrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'This routine has no apps left. Delete the routine?'**
+  String get routineLastAppPrompt;
+
+  /// No description provided for @routineKeepRoutine.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep routine'**
+  String get routineKeepRoutine;
+
+  /// No description provided for @routineNamePrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'Add routine name'**
+  String get routineNamePrompt;
+
+  /// No description provided for @routineEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No apps in this routine yet. Add apps to use its limits again.'**
+  String get routineEmpty;
+
+  /// No description provided for @routineNoAppsShort.
+  ///
+  /// In en, this message translates to:
+  /// **'No apps yet'**
+  String get routineNoAppsShort;
+
+  /// No description provided for @routinePickerAll.
+  ///
+  /// In en, this message translates to:
+  /// **'All'**
+  String get routinePickerAll;
+
+  /// No description provided for @routinePickerSelectCategory.
+  ///
+  /// In en, this message translates to:
+  /// **'Select all in {category}'**
+  String routinePickerSelectCategory(String category);
+
+  /// No description provided for @routineAddApps.
+  ///
+  /// In en, this message translates to:
+  /// **'Add apps'**
+  String get routineAddApps;
+
+  /// No description provided for @routineAddSelected.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{Add 1 app} other{Add {count} apps}}'**
+  String routineAddSelected(int count);
+
+  /// No description provided for @routineAppLimit.
+  ///
+  /// In en, this message translates to:
+  /// **'App limit {duration}'**
+  String routineAppLimit(String duration);
+
+  /// No description provided for @routineNoAppLimit.
+  ///
+  /// In en, this message translates to:
+  /// **'No app limit'**
+  String get routineNoAppLimit;
+
+  /// No description provided for @routineAppLimitTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Daily limit for {app}'**
+  String routineAppLimitTitle(String app);
+
+  /// No description provided for @routineAppLimitHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Caps this app alone. Its time still counts toward the shared allowance.'**
+  String get routineAppLimitHint;
+
+  /// No description provided for @routineReasonShared.
+  ///
+  /// In en, this message translates to:
+  /// **'{routine}: shared allowance reached'**
+  String routineReasonShared(String routine);
+
+  /// No description provided for @routineReasonApp.
+  ///
+  /// In en, this message translates to:
+  /// **'{routine}: app limit reached'**
+  String routineReasonApp(String routine);
+
+  /// No description provided for @reasonDailyAppLimit.
+  ///
+  /// In en, this message translates to:
+  /// **'Daily app limit reached'**
+  String get reasonDailyAppLimit;
+
+  /// No description provided for @reasonScheduleUntil.
+  ///
+  /// In en, this message translates to:
+  /// **'Blocked by schedule until {time}'**
+  String reasonScheduleUntil(String time);
+
+  /// No description provided for @reasonTemporaryUntil.
+  ///
+  /// In en, this message translates to:
+  /// **'Temporary block until {time}'**
+  String reasonTemporaryUntil(String time);
+
+  /// No description provided for @routineOpenDetails.
+  ///
+  /// In en, this message translates to:
+  /// **'Open details for {app}'**
+  String routineOpenDetails(String app);
+
+  /// No description provided for @usageTimelineHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap or drag for exact times · hold to restrict a time frame'**
+  String get usageTimelineHint;
+
+  /// No description provided for @rxRangeQuestion.
+  ///
+  /// In en, this message translates to:
+  /// **'Restrict this time frame?'**
+  String get rxRangeQuestion;
+
+  /// No description provided for @rxRangeHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Drag or tap the ring to move the end'**
+  String get rxRangeHint;
+
+  /// No description provided for @rxRangeAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Restrict'**
+  String get rxRangeAction;
+
+  /// No description provided for @rxScheduleDialHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Drag either red end, or tap where it should go'**
+  String get rxScheduleDialHint;
 }
 
 class _AppLocalizationsDelegate

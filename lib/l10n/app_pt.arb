@@ -668,5 +668,202 @@
         "type": "String"
       }
     }
-  }
+  },
+  "restrictionsTimeLeft": "Faltam {duration}",
+  "@restrictionsTimeLeft": {
+    "placeholders": {
+      "duration": {
+        "type": "String"
+      }
+    }
+  },
+  "restrictionsLimitReached": "Limite atingido",
+  "rxWeek": "Esta semana",
+  "rxTopApps": "Seus apps mais usados",
+  "rxAverage": "{days, plural, one{Média diária · 1 dia registrado} other{Média diária · {days} dias registrados}}",
+  "@rxAverage": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "rxBusiest": "Seus horários de maior uso",
+  "rxPeak": "A maior parte do uso registrado ocorre de {start} a {end}.",
+  "@rxPeak": {
+    "placeholders": {
+      "start": {
+        "type": "String"
+      },
+      "end": {
+        "type": "String"
+      }
+    }
+  },
+  "rxNoInsights": "Ainda não há uso registrado suficiente para sugerir um horário.",
+  "rxPlanBlock": "Planejar um horário",
+  "rxYourRules": "Suas restrições",
+  "rxLimit": "Limite",
+  "rxEdit": "Editar",
+  "rxRestrict": "Restringir {app}",
+  "@rxRestrict": {
+    "placeholders": {
+      "app": {
+        "type": "String"
+      }
+    }
+  },
+  "rxAverageApp": "Média de {duration} / dia",
+  "@rxAverageApp": {
+    "placeholders": {
+      "duration": {
+        "type": "String"
+      }
+    }
+  },
+  "rxType": "Tipo de restrição",
+  "rxDailyLimit": "Limite diário",
+  "rxBlockNow": "Bloquear agora",
+  "rxDifficulty": "Dificuldade para desbloquear",
+  "rxEasy": "Fácil",
+  "rxModerate": "Moderada",
+  "rxHard": "Difícil",
+  "rxEasyHint": "Confirme para desbloquear",
+  "rxModerateHint": "Espere 5 minutos para desbloquear",
+  "rxHardHint": "Sem desbloqueio antecipado no FocusTrace",
+  "rxProtectionNote": "Isso também se aplica à alteração ou remoção de uma regra ativa.",
+  "rxSetLimit": "Definir limite diário",
+  "rxSetSchedule": "Definir horário",
+  "rxStartBlock": "Iniciar bloqueio",
+  "rxBelowAverage": "{duration} abaixo da sua média diária",
+  "@rxBelowAverage": {
+    "placeholders": {
+      "duration": {
+        "type": "String"
+      }
+    }
+  },
+  "rxRepeat": "Repetir",
+  "rxNextDay": "Termina no dia seguinte",
+  "rxEndsAt": "Termina às {time}",
+  "@rxEndsAt": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "rxHardConfirm": "Enquanto esta regra bloquear um app, você não poderá desbloqueá-lo, editar a regra ou removê-la antecipadamente no FocusTrace.",
+  "rxConfirm": "Confirmar",
+  "rxChangeTitle": "Alterar restrição?",
+  "rxChangeBody": "Regras fáceis podem ser alteradas agora. Regras moderadas exigem cinco minutos de espera. Regras difíceis permanecem até o fim do bloqueio atual.",
+  "rxCooldown": "A espera de cinco minutos começou. Tente novamente depois; o app fica bloqueado até você confirmar outra vez.",
+  "rxHardLocked": "Esta regra está bloqueada até o fim do bloqueio atual.",
+  "rxUnavailable": "Não foi possível verificar esta restrição. Confira o acesso ao uso e tente novamente.",
+  "rxMinutes": "Duração em minutos",
+  "rxRetry": "Tentar novamente",
+  "rxScheduleInvalid": "Escolha horários de início e fim diferentes e pelo menos um dia.",
+  "rxNoUsage": "Nenhum uso registrado neste período. Você ainda pode escolher qualquer app para restringir.",
+  "rxNextBlock": "Próximo início: {time}",
+  "@rxNextBlock": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "rxPerDay": "{duration} / dia",
+  "@rxPerDay": {
+    "placeholders": {
+      "duration": {
+        "type": "String"
+      }
+    }
+  },
+  "rxUntil": "Até {time}",
+  "@rxUntil": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "rxLeftToday": "Faltam {duration} hoje",
+  "@rxLeftToday": {
+    "placeholders": {
+      "duration": {
+        "type": "String"
+      }
+    }
+  },
+  "rxStarts": "Começa {time}",
+  "@rxStarts": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "rxStartLabel": "Início",
+  "rxEndLabel": "Fim",
+  "rxHoursField": "Horas",
+  "rxMinutesField": "Minutos",
+  "rxAdd": "Adicionar",
+  "rxNoRulesYet": "Nenhuma restrição ainda. Escolha um app abaixo ou toque em Adicionar.",
+  "rxChooseApps": "Escolha apps para limitar",
+  "rxSearchAll": "Pesquisar todos os apps",
+  "rxTodayUsage": "Uso de hoje até agora",
+  "rxCreate": "Criar",
+  "rxSharedLimit": "Limite diário compartilhado · {duration}",
+  "rxMoreApps": "{names} + {count, plural, one{1 app} other{{count} apps}}",
+  "rxPaused": "Pausada",
+  "rxUsed": "{duration} usado",
+  "rxLeft": "Restam {duration}",
+  "rxEveryDay": "Todos os dias",
+  "rxUnblockAfterWait": "Desbloquear após 5 minutos de espera",
+  "rxLockedUntil": "Bloqueada até {time}",
+  "rxEditDuration": "Editar duração",
+  "rxSaveChanges": "Salvar alterações",
+  "rxEasyExplain": "Você pode desbloquear antes depois de confirmar. Editar ou remover esta regra enquanto ela bloqueia também pede confirmação.",
+  "rxModerateExplain": "Desbloquear antes, ou editar ou remover esta regra enquanto ela bloqueia, inicia uma espera de cinco minutos. O app continua bloqueado nesse tempo. Quando a espera terminar, repita a ação e confirme de novo. Nada é desbloqueado sozinho.",
+  "rxHardExplain": "Enquanto esta regra bloqueia, o FocusTrace não desbloqueia antes, e você não pode editá-la nem removê-la até o bloqueio terminar. Fora dos horários de bloqueio, você pode alterá-la normalmente.",
+  "rxModerateUnblockBody": "Isso inicia uma espera de cinco minutos. O app continua bloqueado até ela terminar. Depois, escolha Desbloquear de novo e confirme.",
+  "@rxSharedLimit": {"placeholders": {"duration": {"type": "String"}}},
+  "@rxMoreApps": {"placeholders": {"names": {"type": "String"}, "count": {"type": "int"}}},
+  "@rxUsed": {"placeholders": {"duration": {"type": "String"}}},
+  "@rxLeft": {"placeholders": {"duration": {"type": "String"}}},
+  "@rxLockedUntil": {"placeholders": {"time": {"type": "String"}}},
+  "routineLastAppPrompt": "Esta rotina não tem mais apps. Excluir a rotina?",
+  "routineKeepRoutine": "Manter rotina",
+  "routineNamePrompt": "Adicione um nome à rotina",
+  "routineEmpty": "Esta rotina ainda não tem apps. Adicione apps para voltar a usar os limites.",
+  "routineNoAppsShort": "Nenhum app ainda",
+  "routinePickerAll": "Todos",
+  "routinePickerSelectCategory": "Selecionar tudo em {category}",
+  "@routinePickerSelectCategory": {"placeholders": {"category": {"type": "String"}}},
+  "routineAddApps": "Adicionar apps",
+  "routineAddSelected": "{count, plural, one{Adicionar 1 app} other{Adicionar {count} apps}}",
+  "@routineAddSelected": {"placeholders": {"count": {"type": "int"}}},
+  "routineAppLimit": "Limite do app {duration}",
+  "@routineAppLimit": {"placeholders": {"duration": {"type": "String"}}},
+  "routineNoAppLimit": "Sem limite do app",
+  "routineAppLimitTitle": "Limite diário de {app}",
+  "@routineAppLimitTitle": {"placeholders": {"app": {"type": "String"}}},
+  "routineAppLimitHint": "Limita só este app. O tempo dele continua contando para o tempo compartilhado.",
+  "routineReasonShared": "{routine}: tempo compartilhado esgotado",
+  "@routineReasonShared": {"placeholders": {"routine": {"type": "String"}}},
+  "routineReasonApp": "{routine}: limite do app atingido",
+  "@routineReasonApp": {"placeholders": {"routine": {"type": "String"}}},
+  "reasonDailyAppLimit": "Limite diário do app atingido",
+  "reasonScheduleUntil": "Bloqueado pelo horário até {time}",
+  "@reasonScheduleUntil": {"placeholders": {"time": {"type": "String"}}},
+  "reasonTemporaryUntil": "Bloqueio temporário até {time}",
+  "@reasonTemporaryUntil": {"placeholders": {"time": {"type": "String"}}},
+  "routineOpenDetails": "Abrir detalhes de {app}",
+  "@routineOpenDetails": {"placeholders": {"app": {"type": "String"}}},
+  "usageTimelineHint": "Toque ou arraste para ver horários exatos · segure para restringir um intervalo",
+  "rxRangeQuestion": "Restringir este intervalo?",
+  "rxRangeHint": "Arraste ou toque no anel para mover o fim",
+  "rxRangeAction": "Restringir",
+  "rxScheduleDialHint": "Arraste uma das pontas vermelhas ou toque onde ela deve ficar"
 }

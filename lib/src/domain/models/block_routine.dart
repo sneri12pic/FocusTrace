@@ -5,21 +5,29 @@ class RoutineApp {
     required this.appKey,
     required this.appName,
     this.isIncludedInLimit = true,
+    this.limitMinutes,
   });
 
   final String appKey;
   final String appName;
   final bool isIncludedInLimit;
 
+  /// Optional daily cap for this app alone. It caps the app; it does not
+  /// reserve part of the routine's shared allowance. Null means no cap.
+  final int? limitMinutes;
+
   RoutineApp copyWith({
     String? appKey,
     String? appName,
     bool? isIncludedInLimit,
+    int? limitMinutes,
+    bool clearLimit = false,
   }) {
     return RoutineApp(
       appKey: appKey ?? this.appKey,
       appName: appName ?? this.appName,
       isIncludedInLimit: isIncludedInLimit ?? this.isIncludedInLimit,
+      limitMinutes: clearLimit ? null : limitMinutes ?? this.limitMinutes,
     );
   }
 
@@ -28,6 +36,7 @@ class RoutineApp {
       'appKey': appKey,
       'appName': appName,
       'isIncludedInLimit': isIncludedInLimit,
+      if (limitMinutes != null) 'limitMinutes': limitMinutes,
     };
   }
 
@@ -49,6 +58,7 @@ class RoutineApp {
       isIncludedInLimit: value['isIncludedInLimit'] is bool
           ? value['isIncludedInLimit'] as bool
           : true,
+      limitMinutes: _positiveInt(value['limitMinutes']),
     );
   }
 }
@@ -77,6 +87,18 @@ class BlockRoutine {
     return apps
         .where((app) => app.isIncludedInLimit)
         .fold(0, (total, app) => total + (usageByAppKey[app.appKey] ?? 0));
+  }
+
+  /// Mirrors native enforcement: only an enabled routine blocks.
+  bool isSharedAllowanceReached(Map<String, int> usageByAppKey) =>
+      isEnabled &&
+      canEnforceLimit &&
+      usageSeconds(usageByAppKey) >= dailyLimitMinutes! * 60;
+
+  bool isAppCapReached(String appKey, Map<String, int> usageByAppKey) {
+    if (!isEnabled || !canEnforceLimit) return false;
+    final cap = apps.where((a) => a.appKey == appKey).firstOrNull?.limitMinutes;
+    return cap != null && (usageByAppKey[appKey] ?? 0) >= cap * 60;
   }
 
   BlockRoutine copyWith({
@@ -135,9 +157,8 @@ class BlockRoutine {
         appsByKey[app.appKey] = app;
       }
     }
-    if (appsByKey.isEmpty) {
-      return null;
-    }
+    // An empty routine is kept until the user deletes it; it simply cannot
+    // be enabled until apps are added again.
     final dailyLimitMinutes = _positiveInt(value['dailyLimitMinutes']);
     final canEnforce =
         dailyLimitMinutes != null &&

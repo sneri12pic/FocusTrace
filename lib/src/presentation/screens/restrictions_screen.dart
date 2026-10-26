@@ -1,20 +1,82 @@
+import 'dart:math' as math;
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 
 import '../../domain/models/app_usage_summary.dart';
 import '../../domain/models/block_routine.dart';
 import '../../domain/models/restriction_rule.dart';
+import '../../domain/models/usage_item.dart';
 import '../../domain/models/usage_session.dart';
+import '../../domain/repositories/usage_repository.dart';
 import '../localization/app_localizations_x.dart';
 import '../providers.dart';
-import '../view_models/app_usage_details_view_model.dart';
+import '../widgets/app_category_widgets.dart';
 import '../widgets/app_icon_avatar.dart';
+import '../widgets/trend_color.dart';
+import '../widgets/restriction_discovery.dart';
+import '../view_models/restriction_insights.dart';
 import 'restriction_editor_sheet.dart';
 import 'routine_editor_sheet.dart';
 import 'routine_details_screen.dart';
-import 'usage_details_screen.dart';
+
+/// Rules under their app's category, in category order. An app with no
+/// usage summary is classified from its stored name and key.
+@visibleForTesting
+List<MapEntry<UsageCategory, List<RestrictionRule>>> groupRulesByCategory(
+  List<RestrictionRule> rules,
+  Map<String, AppUsageSummary> appsByKey,
+  Map<String, UsageCategory> overrides,
+) {
+  final groups = <UsageCategory, List<RestrictionRule>>{};
+  for (final rule in rules) {
+    final summary =
+        appsByKey[rule.appKey] ??
+        AppUsageSummary(
+          appName: rule.appName,
+          packageName: rule.appKey,
+          totalDurationSeconds: 0,
+          percentageOfTotal: 0,
+        );
+    groups
+        .putIfAbsent(resolveUsageCategory(summary, overrides), () => [])
+        .add(rule);
+  }
+  return [
+    for (final category in UsageCategory.values)
+      if (groups[category] case final rules?) MapEntry(category, rules),
+  ];
+}
+
+/// Icons for just the restricted apps, keyed by app key. Waiting for every
+/// installed app's icon (the full list) made these cards show letters first.
+final restrictedAppIconsProvider = FutureProvider.autoDispose
+    .family<Map<String, Uint8List>, String>((ref, joinedKeys) async {
+      final keys = joinedKeys.split(',').where((k) => k.isNotEmpty).toList();
+      final repository = ref.watch(usageRepositoryProvider);
+      if (keys.isEmpty || repository is! AppMetadataRepository) return const {};
+      try {
+        final hydrated = await (repository as AppMetadataRepository)
+            .hydrateAppMetadata([
+              for (final key in keys)
+                AppUsageSummary(
+                  appName: key,
+                  packageName: key,
+                  totalDurationSeconds: 0,
+                  percentageOfTotal: 0,
+                ),
+            ]);
+        return {
+          for (final app in hydrated)
+            if (app.iconBytes != null) app.appKey: app.iconBytes!,
+        };
+      } catch (_) {
+        // Icons are decoration; the letter avatar stays.
+        return const {};
+      }
+    });
 
 class RestrictionsScreen extends ConsumerWidget {
   const RestrictionsScreen({super.key});
@@ -25,78 +87,76 @@ class RestrictionsScreen extends ConsumerWidget {
     final viewModel = ref.read(restrictionsViewModelProvider.notifier);
     final dashboardState = ref.watch(dashboardViewModelProvider);
     final summaries = dashboardState.summaries;
-    final topApps = dashboardState.allTimeTopApps;
+
     final installedApps =
         ref.watch(installedAppsProvider).valueOrNull ?? const [];
     final appCandidates = _mergeAppCandidates(summaries, installedApps);
     final appsByKey = {for (final app in appCandidates) app.appKey: app};
+    final restrictedKeys = {
+      for (final rule in state.rules) rule.appKey,
+      for (final routine in state.routines)
+        for (final app in routine.apps) app.appKey,
+    }.toList()..sort();
+    final quickIcons =
+        ref
+            .watch(restrictedAppIconsProvider(restrictedKeys.join(',')))
+            .valueOrNull ??
+        const <String, Uint8List>{};
     final routineAppsByKey = <String, AppUsageSummary>{
       ...appsByKey,
-      for (final app in state.todayUsage) app.appKey: app,
+      // Today's usage rows can lack icons; keep one already known.
+      for (final app in state.todayUsage)
+        app.appKey: app.iconBytes != null
+            ? app
+            : app.copyWith(iconBytes: appsByKey[app.appKey]?.iconBytes),
     };
+    for (final key in restrictedKeys) {
+      final icon = quickIcons[key];
+      final known = routineAppsByKey[key];
+      if (icon == null || known?.iconBytes != null) continue;
+      routineAppsByKey[key] =
+          (known ??
+                  AppUsageSummary(
+                    appName: key,
+                    packageName: key,
+                    totalDurationSeconds: 0,
+                    percentageOfTotal: 0,
+                  ))
+              .copyWith(iconBytes: icon);
+    }
+    final categoryOverrides =
+        ref.watch(appCategoriesViewModelProvider).asData?.value ??
+        const <String, UsageCategory>{};
     final todayUsageByKey = {
       for (final app in state.todayUsage) app.appKey: app.totalDurationSeconds,
     };
 
+    void chooseApp({bool search = false}) => _chooseAppAndCreateRule(
+      context,
+      ref,
+      apps: appCandidates,
+      rules: state.rules,
+      search: search,
+    );
+    final theme = Theme.of(context);
     return Scaffold(
       appBar: AppBar(
-        title: Text(context.l10n.restrictionsTitle),
-        actions: [
-          IconButton(
-            tooltip: context.l10n.restrictionsSearchApps,
-            onPressed: () => _chooseAppAndCreateRule(
-              context,
-              ref,
-              apps: appCandidates,
-              rules: state.rules,
-            ),
-            icon: const Icon(Icons.search),
-          ),
-        ],
+        title: Text(
+          context.l10n.restrictionsTitle,
+          style: const TextStyle(fontWeight: FontWeight.w700),
+        ),
       ),
       body: RefreshIndicator(
-        onRefresh: viewModel.load,
+        onRefresh: () async {
+          ref.invalidate(restrictionPeriodInsightsProvider);
+          await viewModel.load();
+        },
         child: ListView(
           key: const ValueKey('restrictions-scroll-view'),
           physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.fromLTRB(16, 4, 16, 48),
           children: [
-            if (topApps.isNotEmpty) ...[
-              _TopUsedCard(
-                apps: topApps,
-                onAppTap: (app) => _openUsageDetails(
-                  context,
-                  app: app,
-                  selectedDayApps: summaries,
-                  selectedDate: dashboardState.selectedDate,
-                  platform: dashboardState.platform,
-                ),
-                onAppLongPress: (app) => createRestrictionForApp(
-                  context,
-                  ref,
-                  appKey: app.appKey,
-                  appName: app.appName,
-                ),
-              ),
-              const SizedBox(height: 12),
-            ],
-            FilledButton.icon(
-              onPressed: () => _chooseAppAndCreateRule(
-                context,
-                ref,
-                apps: appCandidates,
-                rules: state.rules,
-              ),
-              icon: const Icon(Icons.search),
-              label: Text(context.l10n.restrictionsAddRestriction),
-            ),
-            const SizedBox(height: 8),
-            OutlinedButton.icon(
-              onPressed: () => _createRoutine(context, ref, appCandidates),
-              icon: const Icon(Icons.playlist_add),
-              label: Text(context.l10n.restrictionsAddRoutine),
-            ),
-            const SizedBox(height: 12),
+            // Permission and platform problems stay at the very top.
             if (state.platform == UsagePlatform.android &&
                 !state.hasOverlayPermission) ...[
               _OverlayPermissionCard(
@@ -114,85 +174,156 @@ class RestrictionsScreen extends ConsumerWidget {
             ],
             if (state.errorMessage != null) ...[
               Text(
-                context.l10n.commonUnexpectedError,
+                restrictionErrorText(context, state.errorMessage!),
                 style: TextStyle(color: Theme.of(context).colorScheme.error),
               ),
               const SizedBox(height: 12),
             ],
+            _SectionTitle(
+              title: context.l10n.rxYourRules,
+              badge: state.isLoading ? null : _CountBadge(state.rules.length),
+              action: FilledButton(
+                key: const ValueKey('restriction-add'),
+                style: FilledButton.styleFrom(
+                  minimumSize: const Size(64, 40),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                onPressed: chooseApp,
+                child: Text(context.l10n.rxAdd),
+              ),
+            ),
             if (state.isLoading)
               const Padding(
                 padding: EdgeInsets.symmetric(vertical: 40),
                 child: Center(child: CircularProgressIndicator()),
               )
-            else if (state.rules.isEmpty && state.routines.isEmpty)
-              _InfoCard(
-                title: context.l10n.restrictionsEmptyTitle,
-                body: context.l10n.restrictionsEmptyBody,
+            else if (state.rules.isEmpty)
+              Card(
+                elevation: 0,
+                margin: EdgeInsets.zero,
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Text(
+                    context.l10n.rxNoRulesYet,
+                    style: TextStyle(color: theme.colorScheme.onSurfaceVariant),
+                  ),
+                ),
               )
             else ...[
-              _SectionTitle(
-                title: context.l10n.restrictionsRoutinesTitle,
-                onAdd: () => _createRoutine(context, ref, appCandidates),
-              ),
-              if (state.routines.isEmpty)
-                _InfoCard(
-                  title: context.l10n.restrictionsRoutinesEmptyTitle,
-                  body: context.l10n.restrictionsRoutinesEmptyBody,
-                )
-              else
-                for (final routine in state.routines)
-                  _RoutineTile(
-                    routine: routine,
-                    appsByKey: routineAppsByKey,
-                    usageSeconds: routine.usageSeconds(todayUsageByKey),
-                    isSaving: state.isSaving,
-                    onToggle: (enabled) =>
-                        viewModel.setRoutineEnabled(routine, enabled),
-                    onTap: () => _openRoutineDetails(
-                      context,
-                      routine: routine,
-                      apps: appCandidates,
-                    ),
-                  ),
-              const SizedBox(height: 14),
-              if (state.rules.isNotEmpty)
+              // Rules grouped under their app's category, in category order.
+              for (final group in groupRulesByCategory(
+                state.rules,
+                appsByKey,
+                categoryOverrides,
+              )) ...[
                 Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: Text(
-                    context.l10n.restrictionsIndividualRulesTitle,
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
+                  padding: const EdgeInsets.only(top: 4, bottom: 8),
+                  child: Align(
+                    alignment: AlignmentDirectional.centerStart,
+                    child: CategoryPill(
+                      group.key,
+                      key: ValueKey('restriction-group-${group.key.name}'),
+                      compact: true,
                     ),
                   ),
                 ),
-              for (final rule in state.rules)
-                _RestrictionRuleTile(
-                  rule: rule,
-                  summary: appsByKey[rule.appKey],
-                  isSaving: state.isSaving,
-                  onUnblockNow: () => viewModel.unblockAppNow(
-                    appKey: rule.appKey,
-                    usageSecondsToday:
-                        appsByKey[rule.appKey]?.totalDurationSeconds ?? 0,
+                for (final rule in group.value)
+                  _RestrictionRuleTile(
+                    rule: rule,
+                    summary: routineAppsByKey[rule.appKey]?.copyWith(
+                      totalDurationSeconds: todayUsageByKey[rule.appKey] ?? 0,
+                    ),
+                    isSaving: state.isSaving,
+                    onUnblockNow: () async {
+                      if (!await confirmRestrictionChange(
+                        context,
+                        body: rule.difficulty == RestrictionDifficulty.moderate
+                            ? context.l10n.rxModerateUnblockBody
+                            : null,
+                      )) {
+                        return;
+                      }
+                      await viewModel.unblockAppNow(
+                        appKey: rule.appKey,
+                        usageSecondsToday: todayUsageByKey[rule.appKey] ?? 0,
+                      );
+                      if (context.mounted) {
+                        await showRestrictionResult(context, ref);
+                      }
+                    },
+                    onTap: () async {
+                      final updated = await showRestrictionEditor(
+                        context,
+                        appKey: rule.appKey,
+                        appName: rule.appName,
+                        existing: rule,
+                        iconBytes: appsByKey[rule.appKey]?.iconBytes,
+                        averageSeconds: ref.read(restrictionWeekProvider)
+                            ? ref
+                                  .read(restrictionInsightsProvider)
+                                  .asData
+                                  ?.value
+                                  .apps
+                                  .where((a) => a.appKey == rule.appKey)
+                                  .firstOrNull
+                                  ?.totalDurationSeconds
+                            : null,
+                      );
+                      if (updated == null || !context.mounted) return;
+                      await viewModel.saveRule(updated, replacing: rule);
+                      if (context.mounted) {
+                        await showRestrictionResult(context, ref);
+                      }
+                    },
+                    onDelete: () async {
+                      if (!await confirmRestrictionChange(context)) return;
+                      await viewModel.deleteRule(rule.appKey, rule.type);
+                      if (context.mounted) {
+                        await showRestrictionResult(context, ref);
+                      }
+                    },
                   ),
-                  onTap: () async {
-                    final updated = await showRestrictionEditor(
-                      context,
-                      appKey: rule.appKey,
-                      appName: rule.appName,
-                      existing: rule,
-                    );
-                    if (updated == null || !context.mounted) {
-                      return;
-                    }
-                    await viewModel.saveRule(updated);
-                    if (context.mounted) {
-                      await promptRestrictionPermissionsIfNeeded(context, ref);
-                    }
-                  },
-                  onDelete: () => viewModel.deleteRule(rule.appKey, rule.type),
-                ),
+              ],
             ],
+            const SizedBox(height: 28),
+            ChooseAppsSection(onSearch: () => chooseApp(search: true)),
+            const SizedBox(height: 24),
+            const BusiestHoursCard(),
+            const SizedBox(height: 28),
+            _SectionTitle(
+              title: context.l10n.restrictionsRoutinesTitle,
+              action: Tooltip(
+                message: context.l10n.restrictionsAddRoutine,
+                child: TextButton.icon(
+                  onPressed: () => _createRoutine(context, ref, appCandidates),
+                  icon: const Icon(Icons.add),
+                  label: Text(context.l10n.rxCreate),
+                ),
+              ),
+            ),
+            if (state.routines.isEmpty)
+              _InfoCard(
+                title: context.l10n.restrictionsRoutinesEmptyTitle,
+                body: context.l10n.restrictionsRoutinesEmptyBody,
+              )
+            else
+              for (final routine in state.routines)
+                _RoutineTile(
+                  routine: routine,
+                  appsByKey: routineAppsByKey,
+                  usageSeconds: routine.usageSeconds(todayUsageByKey),
+                  isSaving: state.isSaving,
+                  onToggle: (enabled) =>
+                      viewModel.setRoutineEnabled(routine, enabled),
+                  onTap: () => _openRoutineDetails(
+                    context,
+                    routine: routine,
+                    apps: appCandidates,
+                  ),
+                ),
+            const SizedBox(height: 14),
           ],
         ),
       ),
@@ -211,36 +342,6 @@ class RestrictionsScreen extends ConsumerWidget {
       byKey[app.appKey] = app;
     }
     return byKey.values.toList();
-  }
-
-  Future<void> _openUsageDetails(
-    BuildContext context, {
-    required AppUsageSummary app,
-    required List<AppUsageSummary> selectedDayApps,
-    required DateTime selectedDate,
-    required UsagePlatform platform,
-  }) {
-    final selectedDaySummary = selectedDayApps
-        .where((summary) => summary.appKey == app.appKey)
-        .firstOrNull;
-    final detailsSummary =
-        selectedDaySummary ??
-        app.copyWith(
-          totalDurationSeconds: 0,
-          percentageOfTotal: 0,
-          launchCount: 0,
-        );
-    return Navigator.of(context).push<void>(
-      MaterialPageRoute(
-        builder: (context) => UsageDetailsScreen(
-          request: AppUsageDetailsRequest(
-            summary: detailsSummary,
-            selectedDate: selectedDate,
-            platform: platform,
-          ),
-        ),
-      ),
-    );
   }
 
   Future<void> _createRoutine(
@@ -276,13 +377,15 @@ class RestrictionsScreen extends ConsumerWidget {
     WidgetRef ref, {
     required List<AppUsageSummary> apps,
     required List<RestrictionRule> rules,
+    bool search = false,
   }) async {
     final candidates = _appCandidates(apps, rules);
     final selected = await showModalBottomSheet<_AppCandidate>(
       context: context,
       isScrollControlled: true,
       backgroundColor: const Color(0xFF0D111A),
-      builder: (context) => _AppSearchSheet(candidates: candidates),
+      builder: (context) =>
+          _AppSearchSheet(candidates: candidates, autofocus: search),
     );
     if (selected == null || !context.mounted) {
       return;
@@ -327,111 +430,141 @@ class RestrictionsScreen extends ConsumerWidget {
   }
 }
 
-class _TopUsedCard extends StatelessWidget {
-  const _TopUsedCard({
-    required this.apps,
-    required this.onAppTap,
-    required this.onAppLongPress,
-  });
+/// A section heading with its one action. Large text stacks the action
+/// under the heading instead of squeezing the heading mid-word.
+class _SectionTitle extends StatelessWidget {
+  const _SectionTitle({required this.title, required this.action, this.badge});
 
-  final List<AppUsageSummary> apps;
-  final ValueChanged<AppUsageSummary> onAppTap;
-  final ValueChanged<AppUsageSummary> onAppLongPress;
+  final String title;
+  final Widget action;
+  final Widget? badge;
+
+  @override
+  Widget build(BuildContext context) {
+    final heading = Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Flexible(
+          child: Text(
+            title,
+            style: Theme.of(
+              context,
+            ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
+          ),
+        ),
+        if (badge != null) ...[const SizedBox(width: 8), badge!],
+      ],
+    );
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: MediaQuery.textScalerOf(context).scale(1) > 1.3
+          ? Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [heading, const SizedBox(height: 6), action],
+            )
+          : Row(
+              children: [
+                Expanded(child: heading),
+                const SizedBox(width: 8),
+                action,
+              ],
+            ),
+    );
+  }
+}
+
+class _CountBadge extends StatelessWidget {
+  const _CountBadge(this.count);
+
+  final int count;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Card(
-      elevation: 0,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-              child: Text(
-                context.l10n.dashboardAllTimeMostUsedTitle,
-                style: theme.textTheme.labelLarge?.copyWith(
-                  color: theme.colorScheme.primary,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
-            for (var index = 0; index < apps.length; index++)
-              ListTile(
-                key: ValueKey('top-used-${apps[index].appKey}'),
-                dense: true,
-                onTap: () => onAppTap(apps[index]),
-                onLongPress: () => onAppLongPress(apps[index]),
-                leading: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    SizedBox(
-                      width: 24,
-                      child: Text(
-                        '#${index + 1}',
-                        style: theme.textTheme.titleSmall?.copyWith(
-                          color: theme.colorScheme.primary,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 4),
-                    AppIconAvatar(
-                      appName: apps[index].appName,
-                      iconBytes: apps[index].iconBytes,
-                      size: 32,
-                    ),
-                  ],
-                ),
-                title: Text(
-                  apps[index].appName,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                trailing: Text(
-                  context.l10n.compactDuration(apps[index].totalDuration),
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ),
-          ],
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 2),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(99),
+      ),
+      child: Text(
+        '$count',
+        style: theme.textTheme.labelLarge?.copyWith(
+          fontWeight: FontWeight.w700,
         ),
       ),
     );
   }
 }
 
-class _SectionTitle extends StatelessWidget {
-  const _SectionTitle({required this.title, required this.onAdd});
+/// A small rounded label, such as a rule's difficulty or "Paused".
+class _Tag extends StatelessWidget {
+  const _Tag(this.label, {this.color});
 
-  final String title;
-  final VoidCallback onAdd;
+  final String label;
+
+  /// Tints the tag, as for a difficulty; neutral when null.
+  final Color? color;
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color:
+            color?.withValues(alpha: .16) ??
+            theme.colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text(
+        label,
+        style: theme.textTheme.labelMedium?.copyWith(
+          color: color ?? theme.colorScheme.onSurface,
+          fontWeight: color == null ? null : FontWeight.w700,
+        ),
+      ),
+    );
+  }
+}
+
+/// "12m used" on the left, "33m left" on the right, under a progress bar.
+class _UsageCaption extends StatelessWidget {
+  const _UsageCaption({required this.usedSeconds, required this.limitSeconds});
+
+  final int usedSeconds;
+  final int limitSeconds;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = context.l10n;
+    final style = Theme.of(context).textTheme.bodyMedium;
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.only(top: 6),
       child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Expanded(
+          Flexible(
             child: Text(
-              title,
-              style: Theme.of(
-                context,
-              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+              l.rxUsed(l.compactDuration(Duration(seconds: usedSeconds))),
+              style: style,
             ),
           ),
-          IconButton(
-            tooltip: context.l10n.restrictionsAddRoutine,
-            onPressed: onAdd,
-            icon: const Icon(Icons.add),
-          ),
+          // Once the limit is reached the status line says what happens.
+          if (usedSeconds < limitSeconds) ...[
+            const SizedBox(width: 12),
+            Flexible(
+              child: Text(
+                l.rxLeft(
+                  l.compactDuration(
+                    Duration(seconds: math.max(0, limitSeconds - usedSeconds)),
+                  ),
+                ),
+                textAlign: TextAlign.end,
+                style: style,
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -457,38 +590,102 @@ class _RoutineTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = context.l10n;
+    final theme = Theme.of(context);
+    final muted = theme.textTheme.bodyMedium?.copyWith(
+      color: theme.colorScheme.onSurfaceVariant,
+    );
     final limit = routine.dailyLimitMinutes;
-    final usage = context.l10n.compactDuration(Duration(seconds: usageSeconds));
-    final status = limit == null
-        ? context.l10n.routineUsageOnly(usage)
-        : context.l10n.routineUsageOfLimit(
-            usage,
-            context.l10n.compactDuration(Duration(minutes: limit)),
-          );
+    final names = routine.apps.take(2).map((a) => a.appName).join(', ');
+    final apps = routine.apps.isEmpty
+        ? l.routineNoAppsShort
+        : routine.apps.length > 2
+        ? l.rxMoreApps(names, routine.apps.length - 2)
+        : names;
     return Card(
       elevation: 0,
       margin: const EdgeInsets.only(bottom: 10),
-      child: ListTile(
-        leading: _RoutineIconStack(routine: routine, appsByKey: appsByKey),
-        title: Text(routine.name, maxLines: 1, overflow: TextOverflow.ellipsis),
-        subtitle: Text(
-          '${context.l10n.restrictionsRoutineAppCount(routine.apps.length)} · $status',
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-        ),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
         onTap: onTap,
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (limit != null)
-              Switch(
-                value: routine.isEnabled,
-                onChanged: isSaving || !routine.canEnforceLimit
-                    ? null
-                    : onToggle,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 14, 8, 14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  if (MediaQuery.textScalerOf(context).scale(1) <= 1.3) ...[
+                    _RoutineIconStack(routine: routine, appsByKey: appsByKey),
+                    const SizedBox(width: 12),
+                  ],
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          routine.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        Text(
+                          apps,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: muted,
+                        ),
+                        Text(
+                          limit == null
+                              ? l.routineUsageOnly(
+                                  l.compactDuration(
+                                    Duration(seconds: usageSeconds),
+                                  ),
+                                )
+                              : l.rxSharedLimit(
+                                  l.compactDuration(Duration(minutes: limit)),
+                                ),
+                          style: muted,
+                        ),
+                        if (limit != null && !routine.isEnabled)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 6),
+                            child: _Tag(l.rxPaused),
+                          ),
+                      ],
+                    ),
+                  ),
+                  if (limit != null)
+                    Switch(
+                      value: routine.isEnabled,
+                      onChanged: isSaving || !routine.canEnforceLimit
+                          ? null
+                          : onToggle,
+                    ),
+                  const Icon(Icons.chevron_right),
+                ],
               ),
-            const Icon(Icons.chevron_right),
-          ],
+              if (limit != null && routine.isEnabled)
+                Padding(
+                  padding: const EdgeInsets.only(top: 12, right: 8),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      _LimitProgress(
+                        usedSeconds: usageSeconds,
+                        limitSeconds: limit * 60,
+                      ),
+                      _UsageCaption(
+                        usedSeconds: usageSeconds,
+                        limitSeconds: limit * 60,
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
         ),
       ),
     );
@@ -504,6 +701,13 @@ class _RoutineIconStack extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final apps = routine.apps.take(3).toList();
+    if (apps.isEmpty) {
+      return CircleAvatar(
+        radius: 20,
+        backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+        child: const Icon(Icons.apps, size: 20),
+      );
+    }
     return SizedBox(
       width: 40 + (apps.length - 1) * 12,
       height: 40,
@@ -539,9 +743,10 @@ class _AppCandidate {
 }
 
 class _AppSearchSheet extends StatefulWidget {
-  const _AppSearchSheet({required this.candidates});
+  const _AppSearchSheet({required this.candidates, this.autofocus = false});
 
   final List<_AppCandidate> candidates;
+  final bool autofocus;
 
   @override
   State<_AppSearchSheet> createState() => _AppSearchSheetState();
@@ -565,6 +770,7 @@ class _AppSearchSheetState extends State<_AppSearchSheet> {
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 18, 16, 8),
                 child: TextField(
+                  autofocus: widget.autofocus,
                   decoration: InputDecoration(
                     prefixIcon: const Icon(Icons.search),
                     hintText: context.l10n.restrictionsSearchApps,
@@ -660,47 +866,239 @@ class _RestrictionRuleTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = context.l10n;
     final usageSeconds = summary?.totalDurationSeconds ?? 0;
-    final isBlocked = rule.blocksAt(DateTime.now(), usageSeconds);
-
+    final now = DateTime.now();
+    final blockedUntil = rule.blockedUntil(
+      now,
+      usageSecondsToday: usageSeconds,
+    );
+    final isBlocked = rule.blocksAt(now, usageSeconds);
+    final theme = Theme.of(context);
+    final muted = theme.textTheme.bodyMedium?.copyWith(
+      color: theme.colorScheme.onSurfaceVariant,
+    );
+    final (status, statusColor) = _status(context, rule, usageSeconds);
+    final difficulty = [
+      l.rxEasy,
+      l.rxModerate,
+      l.rxHard,
+    ][rule.difficulty.index];
+    final isLimit =
+        rule.type == RestrictionRuleType.dailyLimit &&
+        (rule.limitMinutes ?? 0) > 0;
+    // Hard rules cannot be unblocked or removed while they block, so the
+    // menu says so instead of offering an action that would be refused.
+    final locked = isBlocked && rule.difficulty == RestrictionDifficulty.hard;
+    final lockedUntil = blockedUntil == null
+        ? null
+        : _formatTime(context, TimeOfDay.fromDateTime(blockedUntil));
+    final summaryLine = rule.type == RestrictionRuleType.schedule
+        ? '${_ruleSummary(context, rule)} · ${_days(context, rule.weekdays)}'
+        : _ruleSummary(context, rule);
+    // One compact row: icon, name with difficulty, what the rule is, and its
+    // live status on the right; a thin limit bar underneath when it has one.
     return Card(
       elevation: 0,
-      margin: const EdgeInsets.only(bottom: 10),
-      child: Column(
-        children: [
-          ListTile(
-            leading: AppIconAvatar(
-              appName: rule.appName,
-              iconBytes: summary?.iconBytes,
-            ),
-            title: Text(
-              rule.appName,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-            subtitle: Text(_statusText(context, rule, summary)),
-            onTap: onTap,
-            trailing: IconButton(
-              tooltip: context.l10n.restrictionsDeleteRule,
-              onPressed: isSaving ? null : onDelete,
-              icon: const Icon(Icons.delete_outline),
-            ),
-          ),
-          if (isBlocked)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-              child: Align(
-                alignment: AlignmentDirectional.centerStart,
-                child: FilledButton.tonalIcon(
-                  onPressed: isSaving ? null : onUnblockNow,
-                  icon: const Icon(Icons.lock_open_outlined),
-                  label: Text(context.l10n.restrictionsUnblockNow),
-                ),
+      margin: const EdgeInsets.only(bottom: 8),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(12, 10, 0, 10),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  AppIconAvatar(
+                    appName: rule.appName,
+                    iconBytes: summary?.iconBytes,
+                    size: 36,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Flexible(
+                              child: Text(
+                                rule.appName,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: theme.textTheme.titleSmall?.copyWith(
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            _Tag(
+                              difficulty,
+                              color: difficultyColor(
+                                theme,
+                                rule.difficulty.index,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          summaryLine,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.bodySmall?.merge(muted),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 108),
+                    child: Text(
+                      status,
+                      textAlign: TextAlign.end,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.labelMedium?.copyWith(
+                        color: statusColor,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                  PopupMenuButton<String>(
+                    enabled: !isSaving,
+                    icon: const Icon(Icons.more_vert),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    color: theme.colorScheme.surfaceContainerHigh,
+                    onSelected: (action) => switch (action) {
+                      'edit' => onTap(),
+                      'unblock' => onUnblockNow(),
+                      _ => onDelete(),
+                    },
+                    itemBuilder: (context) => [
+                      PopupMenuItem(value: 'edit', child: Text(l.rxEdit)),
+                      if (isBlocked && !locked)
+                        PopupMenuItem(
+                          value: 'unblock',
+                          child: Text(
+                            rule.difficulty == RestrictionDifficulty.moderate
+                                ? l.rxUnblockAfterWait
+                                : l.restrictionsUnblockNow,
+                          ),
+                        ),
+                      if (locked && lockedUntil != null)
+                        PopupMenuItem(
+                          enabled: false,
+                          child: Text(l.rxLockedUntil(lockedUntil)),
+                        ),
+                      PopupMenuItem(
+                        value: 'delete',
+                        enabled: !locked,
+                        child: Text(l.restrictionsDeleteRule),
+                      ),
+                    ],
+                  ),
+                ],
               ),
-            ),
-        ],
+              if (isLimit)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(48, 8, 16, 0),
+                  child: _LimitProgress(
+                    usedSeconds: usageSeconds,
+                    limitSeconds: rule.limitMinutes! * 60,
+                  ),
+                ),
+            ],
+          ),
+        ),
       ),
     );
+  }
+
+  /// "Mon–Fri", "Every day", or the selected days in order.
+  String _days(BuildContext context, List<int> weekdays) {
+    final days = [...weekdays]..sort();
+    if (days.length == 7) return context.l10n.rxEveryDay;
+    final names = DateFormat.E(
+      Localizations.localeOf(context).toString(),
+    ).dateSymbols.SHORTWEEKDAYS;
+    String name(int day) => names[day % 7];
+    final consecutive =
+        days.length >= 3 && days.last - days.first == days.length - 1;
+    return consecutive
+        ? '${name(days.first)}–${name(days.last)}'
+        : days.map(name).join(', ');
+  }
+
+  /// What the rule is: "Daily limit · 1h 30m", "Schedule · 9:00 PM – 7:00 AM",
+  /// "Block now · Until 3:00 PM".
+  String _ruleSummary(BuildContext context, RestrictionRule rule) {
+    final l = context.l10n;
+    return switch (rule.type) {
+      // Short enough for one line beside the status: the value says the type.
+      RestrictionRuleType.dailyLimit => l.rxPerDay(
+        l.compactDuration(Duration(minutes: rule.limitMinutes ?? 0)),
+      ),
+      RestrictionRuleType.schedule =>
+        '${_minuteTime(context, rule.startMinute)}–${_minuteTime(context, rule.endMinute)}',
+      RestrictionRuleType.blockNow => l.rxBlockNow,
+    };
+  }
+
+  /// Where the rule stands now, with the colour that status reads in.
+  (String, Color) _status(
+    BuildContext context,
+    RestrictionRule rule,
+    int usageSeconds,
+  ) {
+    final theme = Theme.of(context);
+    final now = DateTime.now();
+    final blockedUntil = rule.blockedUntil(
+      now,
+      usageSecondsToday: usageSeconds,
+    );
+    final red = trendColor(theme, isFlat: false, isIncrease: true);
+    if (blockedUntil != null) {
+      return (
+        context.l10n.restrictionsBlockedUntil(
+          _formatTime(context, TimeOfDay.fromDateTime(blockedUntil)),
+        ),
+        red,
+      );
+    }
+    switch (rule.type) {
+      case RestrictionRuleType.dailyLimit:
+        final left = (rule.limitMinutes ?? 0) * 60 - usageSeconds;
+        return (
+          context.l10n.rxLeftToday(
+            context.l10n.compactDuration(Duration(seconds: left)),
+          ),
+          theme.colorScheme.primary,
+        );
+      case RestrictionRuleType.schedule:
+        final next = rule.nextScheduledStart(now);
+        if (next == null) {
+          return (_statusText(context, rule, null), theme.colorScheme.primary);
+        }
+        final sameDay =
+            next.year == now.year &&
+            next.month == now.month &&
+            next.day == now.day;
+        final time = _formatTime(context, TimeOfDay.fromDateTime(next));
+        final when = sameDay
+            ? time
+            : '${DateFormat.E(Localizations.localeOf(context).toString()).format(next)} $time';
+        return (context.l10n.rxStarts(when), theme.colorScheme.primary);
+      case RestrictionRuleType.blockNow:
+        return (
+          context.l10n.restrictionsTemporaryBlockExpired,
+          theme.colorScheme.onSurfaceVariant,
+        );
+    }
   }
 
   String _statusText(
@@ -732,10 +1130,15 @@ class _RestrictionRuleTile extends StatelessWidget {
         );
         return context.l10n.restrictionsDailyLimitStatus(limit, used);
       case RestrictionRuleType.schedule:
-        return context.l10n.restrictionsScheduleStatus(
+        final next = rule.nextScheduledStart(now);
+        final range = context.l10n.restrictionsScheduleStatus(
           _minuteTime(context, rule.startMinute),
           _minuteTime(context, rule.endMinute),
         );
+        if (next == null) return range;
+        final formatted =
+            '${MaterialLocalizations.of(context).formatShortDate(next)} ${TimeOfDay.fromDateTime(next).format(context)}';
+        return '$range · ${context.l10n.rxNextBlock(formatted)}';
     }
   }
 
@@ -753,6 +1156,39 @@ class _RestrictionRuleTile extends StatelessWidget {
     return _formatTime(
       context,
       TimeOfDay(hour: minute ~/ 60, minute: minute % 60),
+    );
+  }
+}
+
+/// Today's use against a daily limit: green, then amber past three
+/// quarters, then red once the limit is reached.
+class _LimitProgress extends StatelessWidget {
+  const _LimitProgress({required this.usedSeconds, required this.limitSeconds});
+
+  final int usedSeconds;
+  final int limitSeconds;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final fraction = (usedSeconds / limitSeconds).clamp(0.0, 1.0);
+    final green = trendColor(theme, isFlat: false, isIncrease: false);
+    final red = trendColor(theme, isFlat: false, isIncrease: true);
+    // The amber is the palette's existing yellow (Entertainment's tag).
+    final color = fraction >= 1
+        ? red
+        : fraction >= 0.75
+        ? UsageCategory.entertainment.color
+        : green;
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(4),
+      child: LinearProgressIndicator(
+        key: const ValueKey('restriction-limit-progress'),
+        value: fraction,
+        minHeight: 6,
+        color: color,
+        backgroundColor: theme.colorScheme.surfaceContainerHighest,
+      ),
     );
   }
 }
@@ -818,6 +1254,7 @@ class _InfoCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Card(
       elevation: 0,
+      margin: EdgeInsets.zero,
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(

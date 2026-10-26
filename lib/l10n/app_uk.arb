@@ -668,5 +668,202 @@
         "type": "String"
       }
     }
-  }
+  },
+  "restrictionsTimeLeft": "Залишилося {duration}",
+  "@restrictionsTimeLeft": {
+    "placeholders": {
+      "duration": {
+        "type": "String"
+      }
+    }
+  },
+  "restrictionsLimitReached": "Ліміт вичерпано",
+  "rxWeek": "Цього тижня",
+  "rxTopApps": "Найуживаніші застосунки",
+  "rxAverage": "Середнє за день · {days} днів із записами",
+  "@rxAverage": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "rxBusiest": "Найактивніші години",
+  "rxPeak": "Найбільше записаного використання — з {start} до {end}.",
+  "@rxPeak": {
+    "placeholders": {
+      "start": {
+        "type": "String"
+      },
+      "end": {
+        "type": "String"
+      }
+    }
+  },
+  "rxNoInsights": "Ще недостатньо записів, щоб запропонувати час.",
+  "rxPlanBlock": "Запланувати розклад",
+  "rxYourRules": "Ваші обмеження",
+  "rxLimit": "Ліміт",
+  "rxEdit": "Змінити",
+  "rxRestrict": "Обмежити {app}",
+  "@rxRestrict": {
+    "placeholders": {
+      "app": {
+        "type": "String"
+      }
+    }
+  },
+  "rxAverageApp": "У середньому {duration} / день",
+  "@rxAverageApp": {
+    "placeholders": {
+      "duration": {
+        "type": "String"
+      }
+    }
+  },
+  "rxType": "Тип обмеження",
+  "rxDailyLimit": "Денний ліміт",
+  "rxBlockNow": "Заблокувати зараз",
+  "rxDifficulty": "Складність розблокування",
+  "rxEasy": "Легко",
+  "rxModerate": "Помірно",
+  "rxHard": "Складно",
+  "rxEasyHint": "Підтвердьте розблокування",
+  "rxModerateHint": "Зачекайте 5 хвилин для розблокування",
+  "rxHardHint": "Без дострокового розблокування у FocusTrace",
+  "rxProtectionNote": "Це також стосується зміни або видалення активного правила.",
+  "rxSetLimit": "Установити денний ліміт",
+  "rxSetSchedule": "Установити розклад",
+  "rxStartBlock": "Почати блокування",
+  "rxBelowAverage": "На {duration} менше за денне середнє",
+  "@rxBelowAverage": {
+    "placeholders": {
+      "duration": {
+        "type": "String"
+      }
+    }
+  },
+  "rxRepeat": "Повторювати",
+  "rxNextDay": "Закінчується наступного дня",
+  "rxEndsAt": "Закінчується о {time}",
+  "@rxEndsAt": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "rxHardConfirm": "Поки це правило блокує застосунок, ви не можете достроково розблокувати його, змінити чи видалити правило у FocusTrace.",
+  "rxConfirm": "Підтвердити",
+  "rxChangeTitle": "Змінити обмеження?",
+  "rxChangeBody": "Легкі правила можна змінити одразу. Помірні потребують п’яти хвилин очікування. Складні заблоковані до кінця поточного блокування.",
+  "rxCooldown": "Почалося п’ятихвилинне очікування. Спробуйте після його завершення; застосунок залишається заблокованим до повторного підтвердження.",
+  "rxHardLocked": "Це правило заблоковане до завершення поточного блокування.",
+  "rxUnavailable": "Не вдалося перевірити обмеження. Перевірте доступ до статистики використання та повторіть спробу.",
+  "rxMinutes": "Тривалість у хвилинах",
+  "rxRetry": "Повторити",
+  "rxScheduleInvalid": "Виберіть різний час початку й завершення та принаймні один день.",
+  "rxNoUsage": "За цей період немає записів. Ви все одно можете вибрати застосунок для обмеження.",
+  "rxNextBlock": "Наступне: {time}",
+  "@rxNextBlock": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "rxPerDay": "{duration} / день",
+  "@rxPerDay": {
+    "placeholders": {
+      "duration": {
+        "type": "String"
+      }
+    }
+  },
+  "rxUntil": "До {time}",
+  "@rxUntil": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "rxLeftToday": "Сьогодні залишилося {duration}",
+  "@rxLeftToday": {
+    "placeholders": {
+      "duration": {
+        "type": "String"
+      }
+    }
+  },
+  "rxStarts": "Почнеться о {time}",
+  "@rxStarts": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "rxStartLabel": "Початок",
+  "rxEndLabel": "Кінець",
+  "rxHoursField": "Години",
+  "rxMinutesField": "Хвилини",
+  "rxAdd": "Додати",
+  "rxNoRulesYet": "Обмежень ще немає. Виберіть застосунок нижче або натисніть «Додати».",
+  "rxChooseApps": "Виберіть застосунки для обмеження",
+  "rxSearchAll": "Шукати серед усіх застосунків",
+  "rxTodayUsage": "Використання за сьогодні",
+  "rxCreate": "Створити",
+  "rxSharedLimit": "Спільний денний ліміт · {duration}",
+  "rxMoreApps": "{names} + {count, plural, one{1 застосунок} few{{count} застосунки} many{{count} застосунків} other{{count} застосунку}}",
+  "rxPaused": "Призупинено",
+  "rxUsed": "Використано {duration}",
+  "rxLeft": "Залишилось {duration}",
+  "rxEveryDay": "Щодня",
+  "rxUnblockAfterWait": "Розблокувати після 5 хвилин очікування",
+  "rxLockedUntil": "Заблоковано до {time}",
+  "rxEditDuration": "Змінити тривалість",
+  "rxSaveChanges": "Зберегти зміни",
+  "rxEasyExplain": "Можна розблокувати раніше після підтвердження. Зміна або видалення правила під час блокування теж потребує підтвердження.",
+  "rxModerateExplain": "Дострокове розблокування, зміна чи видалення правила під час блокування запускає п’ятихвилинне очікування. Увесь цей час застосунок лишається заблокованим. Після очікування повторіть дію й підтвердьте ще раз. Нічого не розблоковується само.",
+  "rxHardExplain": "Поки це правило блокує, FocusTrace не розблокує застосунок раніше, а змінити чи видалити правило можна лише після завершення блокування. Поза блокуванням його можна змінювати як зазвичай.",
+  "rxModerateUnblockBody": "Почнеться п’ятихвилинне очікування. До його завершення застосунок лишається заблокованим. Потім знову виберіть «Розблокувати» і підтвердьте.",
+  "@rxSharedLimit": {"placeholders": {"duration": {"type": "String"}}},
+  "@rxMoreApps": {"placeholders": {"names": {"type": "String"}, "count": {"type": "int"}}},
+  "@rxUsed": {"placeholders": {"duration": {"type": "String"}}},
+  "@rxLeft": {"placeholders": {"duration": {"type": "String"}}},
+  "@rxLockedUntil": {"placeholders": {"time": {"type": "String"}}},
+  "routineLastAppPrompt": "У цій рутині не лишилося застосунків. Видалити рутину?",
+  "routineKeepRoutine": "Залишити рутину",
+  "routineNamePrompt": "Додайте назву рутини",
+  "routineEmpty": "У цій рутині ще немає застосунків. Додайте їх, щоб знову користуватися лімітами.",
+  "routineNoAppsShort": "Ще немає застосунків",
+  "routinePickerAll": "Усі",
+  "routinePickerSelectCategory": "Вибрати все в категорії {category}",
+  "@routinePickerSelectCategory": {"placeholders": {"category": {"type": "String"}}},
+  "routineAddApps": "Додати застосунки",
+  "routineAddSelected": "{count, plural, one{Додати {count} застосунок} few{Додати {count} застосунки} many{Додати {count} застосунків} other{Додати {count} застосунку}}",
+  "@routineAddSelected": {"placeholders": {"count": {"type": "int"}}},
+  "routineAppLimit": "Ліміт застосунку {duration}",
+  "@routineAppLimit": {"placeholders": {"duration": {"type": "String"}}},
+  "routineNoAppLimit": "Без ліміту застосунку",
+  "routineAppLimitTitle": "Денний ліміт для {app}",
+  "@routineAppLimitTitle": {"placeholders": {"app": {"type": "String"}}},
+  "routineAppLimitHint": "Обмежує лише цей застосунок. Його час і далі враховується у спільному часі.",
+  "routineReasonShared": "{routine}: спільний час вичерпано",
+  "@routineReasonShared": {"placeholders": {"routine": {"type": "String"}}},
+  "routineReasonApp": "{routine}: ліміт застосунку вичерпано",
+  "@routineReasonApp": {"placeholders": {"routine": {"type": "String"}}},
+  "reasonDailyAppLimit": "Денний ліміт застосунку вичерпано",
+  "reasonScheduleUntil": "Заблоковано розкладом до {time}",
+  "@reasonScheduleUntil": {"placeholders": {"time": {"type": "String"}}},
+  "reasonTemporaryUntil": "Тимчасове блокування до {time}",
+  "@reasonTemporaryUntil": {"placeholders": {"time": {"type": "String"}}},
+  "routineOpenDetails": "Відкрити подробиці {app}",
+  "@routineOpenDetails": {"placeholders": {"app": {"type": "String"}}},
+  "usageTimelineHint": "Торкніться або проведіть, щоб побачити точний час · утримуйте, щоб обмежити проміжок",
+  "rxRangeQuestion": "Обмежити цей проміжок часу?",
+  "rxRangeHint": "Проведіть або торкніться кільця, щоб змінити кінець",
+  "rxRangeAction": "Обмежити",
+  "rxScheduleDialHint": "Перетягніть будь-який червоний кінець або торкніться, де він має бути"
 }

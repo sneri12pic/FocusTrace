@@ -133,4 +133,35 @@ void main() {
       isTrue,
     );
   });
+
+  test('rules group under their category in category order', () {
+    final tiktok = RestrictionRule.dailyLimit(
+      appKey: 'com.zhiliaoapp.musically',
+      appName: 'TikTok',
+      limitMinutes: 60,
+    );
+    final slack = RestrictionRule.schedule(
+      appKey: 'com.Slack',
+      appName: 'Slack',
+      startMinute: 0,
+      endMinute: 60,
+    );
+    final notes = RestrictionRule.dailyLimit(
+      appKey: 'com.example.notes',
+      appName: 'Notes',
+      limitMinutes: 30,
+    );
+    final groups = groupRulesByCategory(
+      [slack, tiktok, notes],
+      const {},
+      {'com.example.notes': UsageCategory.productivity},
+    );
+    expect(groups.map((group) => group.key), [
+      UsageCategory.entertainment,
+      UsageCategory.productivity,
+      UsageCategory.communication,
+    ]);
+    expect(groups.first.value, [tiktok]);
+    expect(groups[1].value, [notes]);
+  });
 }

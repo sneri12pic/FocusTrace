@@ -43,6 +43,11 @@ abstract class PlatformUsageDataSource {
   Future<List<AppUsageSummary>> getInstalledApps();
 }
 
+abstract interface class RestrictionChangeDataSource {
+  Future<String> requestRestrictionChange(String appKey, String type);
+  Future<String?> readRestrictionConfiguration();
+}
+
 abstract interface class AppMetadataDataSource {
   /// Current metadata for the requested app keys. Missing/uninstalled apps are
   /// omitted.
@@ -73,6 +78,7 @@ class AndroidUsageDataSource
     implements
         PlatformUsageDataSource,
         AppMetadataDataSource,
+        RestrictionChangeDataSource,
         UsageHistoryRecoveryDataSource,
         OsUsageHistoryDataSource,
         UsageIntervalDataSource {
@@ -81,6 +87,18 @@ class AndroidUsageDataSource
   }) : _channel = channel;
 
   final MethodChannel _channel;
+
+  @override
+  Future<String?> readRestrictionConfiguration() =>
+      _channel.invokeMethod<String>('readRestrictionConfiguration');
+
+  @override
+  Future<String> requestRestrictionChange(String appKey, String type) async =>
+      await _channel.invokeMethod<String>('requestRestrictionChange', {
+        'appKey': appKey,
+        'type': type,
+      }) ??
+      'unavailable';
 
   @override
   Future<void> recoverUsageHistory(

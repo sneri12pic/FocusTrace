@@ -1,27 +1,102 @@
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'restriction_setup_form.dart';
+import '../view_models/restriction_insights.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../domain/models/restriction_rule.dart';
 import '../../domain/models/usage_session.dart';
 import '../localization/app_localizations_x.dart';
 import '../providers.dart';
+import '../widgets/usage_calendar.dart';
 
 const _sheetColor = Color(0xFF0D111A);
+
+/// Days of history behind the schedule dial.
+const scheduleUsageDays = 7;
+
+/// This app's usage per quarter-hour over the last [scheduleUsageDays] days,
+/// summed, so the schedule dial shows when it is usually used.
+final appScheduleUsageProvider = FutureProvider.autoDispose
+    .family<List<int>, String>((ref, appKey) async {
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day);
+      final from = DateTime(
+        today.year,
+        today.month,
+        today.day - scheduleUsageDays + 1,
+      );
+      final source = await ref
+          .watch(reportRepositoryProvider)
+          .loadSourceData(from, now);
+      final intervals = [
+        for (final interval in source.intervals)
+          if (interval.appKey == appKey) interval,
+      ];
+      final total = List.filled(24 * 4, 0);
+      for (var d = 0; d < scheduleUsageDays; d++) {
+        final day = DateTime(from.year, from.month, from.day + d);
+        final slots = usageBySlot(day, intervals);
+        for (var i = 0; i < total.length; i++) {
+          total[i] += slots[i];
+        }
+      }
+      return total;
+    });
 
 Future<RestrictionRule?> showRestrictionEditor(
   BuildContext context, {
   required String appKey,
   required String appName,
   RestrictionRule? existing,
+  RestrictionRule? initial,
+  Uint8List? iconBytes,
+  int? averageSeconds,
 }) {
   return showModalBottomSheet<RestrictionRule>(
     context: context,
     isScrollControlled: true,
+    useSafeArea: true,
     backgroundColor: _sheetColor,
-    builder: (context) => _RestrictionEditorSheet(
-      appKey: appKey,
-      appName: appName,
-      existing: existing,
+    // Slides up over part of the screen; drag the handle, the header, or the
+    // content from its top down to close it.
+    showDragHandle: true,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+    ),
+    builder: (context) => DraggableScrollableSheet(
+      expand: false,
+      initialChildSize: 0.86,
+      minChildSize: 0.4,
+      maxChildSize: 0.94,
+      builder: (context, scrollController) => Consumer(
+        builder: (context, ref, _) {
+          final weekly = ref
+              .watch(restrictionPeriodInsightsProvider(true))
+              .asData
+              ?.value;
+          final app = weekly?.apps.where((a) => a.appKey == appKey).firstOrNull;
+          final installed = ref
+              .watch(installedAppsProvider)
+              .valueOrNull
+              ?.where((a) => a.appKey == appKey)
+              .firstOrNull;
+          final scheduleUsage = ref
+              .watch(appScheduleUsageProvider(appKey))
+              .asData
+              ?.value;
+          return RestrictionSetupForm(
+            appKey: appKey,
+            appName: appName,
+            existing: existing,
+            initial: initial,
+            iconBytes: iconBytes ?? app?.iconBytes ?? installed?.iconBytes,
+            averageSeconds: averageSeconds ?? app?.totalDurationSeconds,
+            scrollController: scrollController,
+            scheduleUsage: scheduleUsage,
+          );
+        },
+      ),
     ),
   );
 }
@@ -32,17 +107,39 @@ Future<void> createRestrictionForApp(
   WidgetRef ref, {
   required String appKey,
   required String appName,
+  RestrictionRule? initial,
 }) async {
+  final existing = ref
+      .read(restrictionsViewModelProvider)
+      .rules
+      .where(
+        (r) =>
+            r.appKey == appKey && (initial == null || r.type == initial.type),
+      )
+      .firstOrNull;
+  final prefill = initial == null
+      ? null
+      : existing?.copyWith(
+              startMinute: initial.startMinute,
+              endMinute: initial.endMinute,
+            ) ??
+            initial;
   final rule = await showRestrictionEditor(
     context,
     appKey: appKey,
     appName: appName,
+    existing: existing,
+    initial: prefill,
   );
   if (rule == null || !context.mounted) {
     return;
   }
-  await ref.read(restrictionsViewModelProvider.notifier).saveRule(rule);
-  if (context.mounted) {
+  await ref
+      .read(restrictionsViewModelProvider.notifier)
+      .saveRule(rule, replacing: existing);
+  if (context.mounted) await showRestrictionResult(context, ref);
+  if (context.mounted &&
+      ref.read(restrictionsViewModelProvider).errorMessage == null) {
     await promptRestrictionPermissionsIfNeeded(context, ref);
   }
 }
@@ -84,304 +181,41 @@ Future<void> promptRestrictionPermissionsIfNeeded(
   await viewModel.requestNotificationsPermission();
 }
 
-class _RestrictionEditorSheet extends StatefulWidget {
-  const _RestrictionEditorSheet({
-    required this.appKey,
-    required this.appName,
-    this.existing,
-  });
-
-  final String appKey;
-  final String appName;
-  final RestrictionRule? existing;
-
-  @override
-  State<_RestrictionEditorSheet> createState() =>
-      _RestrictionEditorSheetState();
+Future<void> showRestrictionResult(BuildContext context, WidgetRef ref) async {
+  final error = ref.read(restrictionsViewModelProvider).errorMessage;
+  if (error == null || !context.mounted) return;
+  final message = restrictionErrorText(context, error);
+  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
 }
 
-class _RestrictionEditorSheetState extends State<_RestrictionEditorSheet> {
-  late RestrictionRuleType _type =
-      widget.existing?.type ?? RestrictionRuleType.blockNow;
-  late Duration _blockNowDuration =
-      _durationFromExisting() ?? const Duration(hours: 1);
-  late double _limitMinutes = (widget.existing?.limitMinutes ?? 60)
-      .clamp(5, 480)
-      .toDouble();
-  late TimeOfDay _start = _timeOfDayFromMinute(
-    widget.existing?.startMinute ?? 22 * 60,
-  );
-  late TimeOfDay _end = _timeOfDayFromMinute(
-    widget.existing?.endMinute ?? 7 * 60,
-  );
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return SafeArea(
-      child: SingleChildScrollView(
-        key: const ValueKey('restriction-editor-scroll-view'),
-        padding: EdgeInsets.fromLTRB(
-          16,
-          18,
-          16,
-          16 + MediaQuery.viewInsetsOf(context).bottom,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              widget.appName,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              widget.appKey,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: theme.textTheme.bodySmall,
-            ),
-            const SizedBox(height: 16),
-            SegmentedButton<RestrictionRuleType>(
-              segments: [
-                ButtonSegment(
-                  value: RestrictionRuleType.blockNow,
-                  icon: const Icon(Icons.lock_clock_outlined),
-                  label: Text(context.l10n.restrictionEditorTypeNow),
-                ),
-                ButtonSegment(
-                  value: RestrictionRuleType.dailyLimit,
-                  icon: const Icon(Icons.timer_outlined),
-                  label: Text(context.l10n.restrictionEditorTypeLimit),
-                ),
-                ButtonSegment(
-                  value: RestrictionRuleType.schedule,
-                  icon: const Icon(Icons.bedtime_outlined),
-                  label: Text(context.l10n.restrictionEditorTypeSchedule),
-                ),
-              ],
-              selected: {_type},
-              onSelectionChanged: (value) {
-                setState(() => _type = value.single);
-              },
-            ),
-            const SizedBox(height: 16),
-            AnimatedSwitcher(
-              duration: const Duration(milliseconds: 160),
-              child: switch (_type) {
-                RestrictionRuleType.blockNow => _BlockNowEditor(
-                  duration: _blockNowDuration,
-                  onChanged: (duration) {
-                    setState(() => _blockNowDuration = duration);
-                  },
-                ),
-                RestrictionRuleType.dailyLimit => _DailyLimitEditor(
-                  value: _limitMinutes,
-                  onChanged: (value) {
-                    setState(() => _limitMinutes = value);
-                  },
-                ),
-                RestrictionRuleType.schedule => _ScheduleEditor(
-                  start: _start,
-                  end: _end,
-                  onPickStart: () => _pickTime(isStart: true),
-                  onPickEnd: () => _pickTime(isStart: false),
-                ),
-              },
-            ),
-            const SizedBox(height: 18),
-            FilledButton.icon(
-              onPressed: () => Navigator.of(context).pop(_buildRule()),
-              icon: const Icon(Icons.save_outlined),
-              label: Text(context.l10n.restrictionEditorSaveRule),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Future<void> _pickTime({required bool isStart}) async {
-    final selected = await showTimePicker(
+Future<bool> confirmRestrictionChange(
+  BuildContext context, {
+  String? body,
+}) async =>
+    await showDialog<bool>(
       context: context,
-      initialTime: isStart ? _start : _end,
-    );
-    if (selected == null) {
-      return;
-    }
-    setState(() {
-      if (isStart) {
-        _start = selected;
-      } else {
-        _end = selected;
-      }
-    });
-  }
-
-  RestrictionRule _buildRule() {
-    switch (_type) {
-      case RestrictionRuleType.blockNow:
-        return RestrictionRule.blockNow(
-          appKey: widget.appKey,
-          appName: widget.appName,
-          until: DateTime.now().add(_blockNowDuration),
-        );
-      case RestrictionRuleType.dailyLimit:
-        return RestrictionRule.dailyLimit(
-          appKey: widget.appKey,
-          appName: widget.appName,
-          limitMinutes: _limitMinutes.round(),
-        );
-      case RestrictionRuleType.schedule:
-        return RestrictionRule.schedule(
-          appKey: widget.appKey,
-          appName: widget.appName,
-          startMinute: _minuteFromTimeOfDay(_start),
-          endMinute: _minuteFromTimeOfDay(_end),
-        );
-    }
-  }
-
-  Duration? _durationFromExisting() {
-    final untilMs = widget.existing?.untilMs;
-    if (untilMs == null) {
-      return null;
-    }
-    final remaining = DateTime.fromMillisecondsSinceEpoch(
-      untilMs,
-    ).difference(DateTime.now());
-    if (remaining.isNegative) {
-      return null;
-    }
-    return remaining;
-  }
-}
-
-class _BlockNowEditor extends StatelessWidget {
-  const _BlockNowEditor({required this.duration, required this.onChanged});
-
-  final Duration duration;
-  final ValueChanged<Duration> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    final tomorrow = DateTime.now().add(const Duration(days: 1));
-    final untilTomorrow = DateTime(
-      tomorrow.year,
-      tomorrow.month,
-      tomorrow.day,
-    ).difference(DateTime.now());
-    final presets = <({String label, Duration duration})>[
-      (
-        label: context.l10n.compactDuration(const Duration(minutes: 30)),
-        duration: const Duration(minutes: 30),
-      ),
-      (
-        label: context.l10n.compactDuration(const Duration(hours: 1)),
-        duration: const Duration(hours: 1),
-      ),
-      (
-        label: context.l10n.compactDuration(const Duration(hours: 2)),
-        duration: const Duration(hours: 2),
-      ),
-      (label: context.l10n.restrictionEditorTomorrow, duration: untilTomorrow),
-    ];
-    return Wrap(
-      key: const ValueKey('blockNow'),
-      spacing: 8,
-      runSpacing: 8,
-      children: [
-        for (final preset in presets)
-          ChoiceChip(
-            label: Text(preset.label),
-            selected: _sameMinute(duration, preset.duration),
-            onSelected: (_) => onChanged(preset.duration),
+      builder: (context) => AlertDialog(
+        title: Text(context.l10n.rxChangeTitle),
+        content: Text(body ?? context.l10n.rxChangeBody),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(context.l10n.commonCancel),
           ),
-      ],
-    );
-  }
-
-  bool _sameMinute(Duration first, Duration second) {
-    return first.inMinutes == second.inMinutes;
-  }
-}
-
-class _DailyLimitEditor extends StatelessWidget {
-  const _DailyLimitEditor({required this.value, required this.onChanged});
-
-  final double value;
-  final ValueChanged<double> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    final formattedDuration = context.l10n.compactDuration(
-      Duration(minutes: value.round()),
-    );
-    return Column(
-      key: const ValueKey('dailyLimit'),
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(context.l10n.restrictionEditorDailyLimitPerDay(formattedDuration)),
-        Slider(
-          value: value.clamp(5, 480),
-          min: 5,
-          max: 480,
-          divisions: 95,
-          label: formattedDuration,
-          onChanged: onChanged,
-        ),
-      ],
-    );
-  }
-}
-
-class _ScheduleEditor extends StatelessWidget {
-  const _ScheduleEditor({
-    required this.start,
-    required this.end,
-    required this.onPickStart,
-    required this.onPickEnd,
-  });
-
-  final TimeOfDay start;
-  final TimeOfDay end;
-  final VoidCallback onPickStart;
-  final VoidCallback onPickEnd;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      key: const ValueKey('schedule'),
-      children: [
-        Expanded(
-          child: OutlinedButton.icon(
-            onPressed: onPickStart,
-            icon: const Icon(Icons.play_arrow_outlined),
-            label: Text(start.format(context)),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(context.l10n.rxConfirm),
           ),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: OutlinedButton.icon(
-            onPressed: onPickEnd,
-            icon: const Icon(Icons.stop_outlined),
-            label: Text(end.format(context)),
-          ),
-        ),
-      ],
-    );
-  }
-}
+        ],
+      ),
+    ) ??
+    false;
 
-TimeOfDay _timeOfDayFromMinute(int minute) {
-  return TimeOfDay(hour: minute ~/ 60, minute: minute % 60);
-}
-
-int _minuteFromTimeOfDay(TimeOfDay time) {
-  return time.hour * 60 + time.minute;
+String restrictionErrorText(BuildContext context, String error) {
+  final l = context.l10n;
+  return error.contains('restriction:hard')
+      ? l.rxHardLocked
+      : error.contains('restriction:cooldown')
+      ? l.rxCooldown
+      : l.rxUnavailable;
 }

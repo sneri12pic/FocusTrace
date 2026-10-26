@@ -25,12 +25,16 @@ data class RestrictionRule(
     val limitMinutes: Int? = null,
     val startMinute: Int? = null,
     val endMinute: Int? = null,
+    val difficulty: String = "easy",
+    val weekdays: List<Int> = (1..7).toList(),
 )
 
 data class RoutineMember(
     val appKey: String,
     val appName: String,
     val isIncludedInLimit: Boolean,
+    /** Optional cap for this app alone; it never reserves shared time. */
+    val limitMinutes: Int? = null,
 )
 
 data class RoutineLimit(
@@ -42,11 +46,34 @@ data class RoutineLimit(
     val includedApps: List<RoutineMember>
         get() = apps.filter { it.isIncludedInLimit }
 
+    /** Each member counted once, whatever its cap. */
     fun usageSeconds(usageByAppKey: Map<String, Long>): Long =
         includedApps.sumOf { usageByAppKey[it.appKey] ?: 0L }
 
     fun isReached(usageByAppKey: Map<String, Long>): Boolean =
         usageSeconds(usageByAppKey) >= limitMinutes * 60L
+
+    fun isAppCapReached(appKey: String, usageByAppKey: Map<String, Long>): Boolean {
+        val cap = apps.firstOrNull { it.appKey == appKey }?.limitMinutes ?: return false
+        return (usageByAppKey[appKey] ?: 0L) >= cap * 60L
+    }
+}
+
+/** One active reason an app is blocked. An app may have several at once. */
+data class BlockReason(
+    val kind: Kind,
+    val untilMs: Long?,
+    val rule: RestrictionRule? = null,
+    val routine: RoutineLimit? = null,
+) {
+    enum class Kind { BlockNow, DailyLimit, Schedule, RoutineBlock, RoutineShared, RoutineApp }
+
+    val eventName: String
+        get() = when (kind) {
+            Kind.RoutineShared -> "routineLimit:${routine?.id}"
+            Kind.RoutineApp -> "routineAppLimit:${routine?.id}"
+            else -> rule?.type?.jsonName ?: kind.name
+        }
 }
 
 data class RestrictionConfiguration(
@@ -61,6 +88,7 @@ data class RestrictionConfiguration(
             addAll(rules.map { it.appKey })
             routines.forEach { routine ->
                 addAll(routine.includedApps.map { it.appKey })
+                addAll(routine.apps.filter { it.limitMinutes != null }.map { it.appKey })
             }
         }
 
@@ -70,6 +98,38 @@ data class RestrictionConfiguration(
     ): RoutineLimit? = routines.firstOrNull { routine ->
         routine.includedApps.any { it.appKey == appKey } &&
             routine.isReached(usageByAppKey)
+    }
+
+    /**
+     * Every restriction blocking [appKey] now. Any one is enough to block;
+     * removing one never unblocks the app while another remains.
+     */
+    fun blockReasons(
+        appKey: String,
+        nowMs: Long,
+        usageByAppKey: Map<String, Long>,
+    ): List<BlockReason> = buildList {
+        val usage = usageByAppKey[appKey] ?: 0L
+        for (rule in rules) {
+            if (rule.appKey != appKey || !RestrictionRules.isBlocked(rule, nowMs, usage)) continue
+            val kind = when (rule.type) {
+                RestrictionRuleType.BlockNow -> BlockReason.Kind.BlockNow
+                RestrictionRuleType.DailyLimit -> BlockReason.Kind.DailyLimit
+                RestrictionRuleType.Schedule -> BlockReason.Kind.Schedule
+                RestrictionRuleType.RoutineBlock -> BlockReason.Kind.RoutineBlock
+            }
+            add(BlockReason(kind, RestrictionRules.blockedUntilMs(rule, nowMs, usage), rule = rule))
+        }
+        val midnight = RestrictionRules.startOfTomorrowMs(nowMs)
+        for (routine in routines) {
+            val member = routine.apps.firstOrNull { it.appKey == appKey } ?: continue
+            if (member.isIncludedInLimit && routine.isReached(usageByAppKey)) {
+                add(BlockReason(BlockReason.Kind.RoutineShared, midnight, routine = routine))
+            }
+            if (routine.isAppCapReached(appKey, usageByAppKey)) {
+                add(BlockReason(BlockReason.Kind.RoutineApp, midnight, routine = routine))
+            }
+        }
     }
 }
 
@@ -191,6 +251,10 @@ object RestrictionRules {
             limitMinutes = limitMinutes,
             startMinute = startMinute,
             endMinute = endMinute,
+            difficulty = row.optString("difficulty", "easy"),
+            weekdays = row.optJSONArray("weekdays")?.let { days ->
+                (0 until days.length()).map { days.optInt(it) }.filter { it in 1..7 }.distinct()
+            } ?: (1..7).toList(),
         )
     }
 
@@ -212,6 +276,7 @@ object RestrictionRules {
                         appKey = appKey,
                         appName = appName,
                         isIncludedInLimit = app.optBoolean("isIncludedInLimit", true),
+                        limitMinutes = optionalInt(app, "limitMinutes")?.takeIf { it > 0 },
                     )
                 )
             }
@@ -233,6 +298,9 @@ object RestrictionRules {
         if (start == end) return false
         val calendar = Calendar.getInstance().apply { timeInMillis = nowMs }
         val current = calendar.get(Calendar.HOUR_OF_DAY) * 60 + calendar.get(Calendar.MINUTE)
+        if (end < start && current < end) calendar.add(Calendar.DAY_OF_YEAR, -1)
+        val isoDay = (calendar.get(Calendar.DAY_OF_WEEK) + 5) % 7 + 1
+        if (isoDay !in rule.weekdays) return false
         return if (end < start) {
             current >= start || current < end
         } else {
