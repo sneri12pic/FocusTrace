@@ -8,8 +8,41 @@ import '../../domain/models/restriction_rule.dart';
 import '../../domain/models/usage_session.dart';
 import '../localization/app_localizations_x.dart';
 import '../providers.dart';
+import '../widgets/usage_calendar.dart';
 
 const _sheetColor = Color(0xFF0D111A);
+
+/// Days of history behind the schedule dial.
+const scheduleUsageDays = 7;
+
+/// This app's usage per quarter-hour over the last [scheduleUsageDays] days,
+/// summed, so the schedule dial shows when it is usually used.
+final appScheduleUsageProvider = FutureProvider.autoDispose
+    .family<List<int>, String>((ref, appKey) async {
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day);
+      final from = DateTime(
+        today.year,
+        today.month,
+        today.day - scheduleUsageDays + 1,
+      );
+      final source = await ref
+          .watch(reportRepositoryProvider)
+          .loadSourceData(from, now);
+      final intervals = [
+        for (final interval in source.intervals)
+          if (interval.appKey == appKey) interval,
+      ];
+      final total = List.filled(24 * 4, 0);
+      for (var d = 0; d < scheduleUsageDays; d++) {
+        final day = DateTime(from.year, from.month, from.day + d);
+        final slots = usageBySlot(day, intervals);
+        for (var i = 0; i < total.length; i++) {
+          total[i] += slots[i];
+        }
+      }
+      return total;
+    });
 
 Future<RestrictionRule?> showRestrictionEditor(
   BuildContext context, {
@@ -25,27 +58,45 @@ Future<RestrictionRule?> showRestrictionEditor(
     isScrollControlled: true,
     useSafeArea: true,
     backgroundColor: _sheetColor,
-    builder: (context) => Consumer(
-      builder: (context, ref, _) {
-        final weekly = ref
-            .watch(restrictionPeriodInsightsProvider(true))
-            .asData
-            ?.value;
-        final app = weekly?.apps.where((a) => a.appKey == appKey).firstOrNull;
-        final installed = ref
-            .watch(installedAppsProvider)
-            .valueOrNull
-            ?.where((a) => a.appKey == appKey)
-            .firstOrNull;
-        return RestrictionSetupForm(
-          appKey: appKey,
-          appName: appName,
-          existing: existing,
-          initial: initial,
-          iconBytes: iconBytes ?? app?.iconBytes ?? installed?.iconBytes,
-          averageSeconds: averageSeconds ?? app?.totalDurationSeconds,
-        );
-      },
+    // Slides up over part of the screen; drag the handle, the header, or the
+    // content from its top down to close it.
+    showDragHandle: true,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+    ),
+    builder: (context) => DraggableScrollableSheet(
+      expand: false,
+      initialChildSize: 0.86,
+      minChildSize: 0.4,
+      maxChildSize: 0.94,
+      builder: (context, scrollController) => Consumer(
+        builder: (context, ref, _) {
+          final weekly = ref
+              .watch(restrictionPeriodInsightsProvider(true))
+              .asData
+              ?.value;
+          final app = weekly?.apps.where((a) => a.appKey == appKey).firstOrNull;
+          final installed = ref
+              .watch(installedAppsProvider)
+              .valueOrNull
+              ?.where((a) => a.appKey == appKey)
+              .firstOrNull;
+          final scheduleUsage = ref
+              .watch(appScheduleUsageProvider(appKey))
+              .asData
+              ?.value;
+          return RestrictionSetupForm(
+            appKey: appKey,
+            appName: appName,
+            existing: existing,
+            initial: initial,
+            iconBytes: iconBytes ?? app?.iconBytes ?? installed?.iconBytes,
+            averageSeconds: averageSeconds ?? app?.totalDurationSeconds,
+            scrollController: scrollController,
+            scheduleUsage: scheduleUsage,
+          );
+        },
+      ),
     ),
   );
 }

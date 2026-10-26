@@ -161,10 +161,10 @@ class ChooseAppsSection extends ConsumerWidget {
                         ),
                       ),
                       const SizedBox(width: 12),
-                      OutlinedButton(
+                      OutlinedButton.icon(
                         style: OutlinedButton.styleFrom(
                           minimumSize: const Size(0, 40),
-                          padding: const EdgeInsets.symmetric(horizontal: 14),
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(10),
                           ),
@@ -175,10 +175,16 @@ class ChooseAppsSection extends ConsumerWidget {
                           appKey: app.appKey,
                           appName: app.appName,
                         ),
-                        child: Text(
+                        icon: Icon(
+                          rules.any((r) => r.appKey == app.appKey)
+                              ? Icons.edit_outlined
+                              : Icons.lock_outline,
+                          size: 18,
+                        ),
+                        label: Text(
                           rules.any((r) => r.appKey == app.appKey)
                               ? l.rxEdit
-                              : '+ ${l.rxLimit}',
+                              : l.rxLimit,
                         ),
                       ),
                     ],

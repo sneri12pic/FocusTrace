@@ -17,6 +17,14 @@ Color trendColor(
       : const Color(0xFF19703A);
 }
 
+/// Green for Easy, amber for Moderate, red for Hard (index order).
+Color difficultyColor(ThemeData theme, int difficultyIndex) =>
+    switch (difficultyIndex) {
+      0 => trendColor(theme, isFlat: false, isIncrease: false),
+      1 => const Color(0xFFFFD166),
+      _ => trendColor(theme, isFlat: false, isIncrease: true),
+    };
+
 /// Calendar legend buckets: <30m, 30m-1h, 1h-2h, 2h-3h, >3h.
 int usageHeatBucket(int seconds) {
   const upperBounds = [30 * 60, 60 * 60, 2 * 60 * 60, 3 * 60 * 60];

@@ -860,5 +860,10 @@
   "reasonTemporaryUntil": "Bloqueo temporal hasta las {time}",
   "@reasonTemporaryUntil": {"placeholders": {"time": {"type": "String"}}},
   "routineOpenDetails": "Abrir detalles de {app}",
-  "@routineOpenDetails": {"placeholders": {"app": {"type": "String"}}}
+  "@routineOpenDetails": {"placeholders": {"app": {"type": "String"}}},
+  "usageTimelineHint": "Toca o arrastra para ver horas exactas · mantén pulsado para restringir una franja",
+  "rxRangeQuestion": "¿Restringir esta franja horaria?",
+  "rxRangeHint": "Arrastra o toca el anillo para mover el final",
+  "rxRangeAction": "Restringir",
+  "rxScheduleDialHint": "Arrastra cualquiera de los extremos rojos o toca dónde debe ir"
 }

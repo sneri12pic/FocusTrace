@@ -325,9 +325,9 @@ void main() {
     expect(find.text('Choose apps to limit'), findsOneWidget);
     expect(find.text('Reader'), findsOneWidget);
     expect(find.text('This week'), findsOneWidget);
-    await tester.ensureVisible(find.text('+ Limit'));
+    await tester.ensureVisible(find.text('Limit').first);
     await tester.pump();
-    await tester.tap(find.text('+ Limit'));
+    await tester.tap(find.text('Limit').first);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 500));
     expect(
@@ -405,6 +405,16 @@ void main() {
     await tester.pump(const Duration(seconds: 1));
 
     expect(find.text('Time tracked'), findsNothing);
+    expect(find.text('#1 most used'), findsOneWidget);
+    expect(find.text('50% more than yesterday'), findsOneWidget);
+    // The day's usage dial now sits above the column chart.
+    expect(find.byKey(const ValueKey('usage-timeline-card')), findsOneWidget);
+    await tester.dragUntilVisible(
+      find.byKey(const ValueKey('usage-period-dropdown')),
+      find.byType(ListView).first,
+      const Offset(0, -200),
+    );
+    await tester.pump(const Duration(milliseconds: 300));
     expect(find.byKey(const ValueKey('usage-period-dropdown')), findsOneWidget);
     expect(find.text('7 days'), findsOneWidget);
     expect(
@@ -422,8 +432,6 @@ void main() {
     expect(find.text('2h 5m'), findsOneWidget);
 
     expect(find.byKey(const ValueKey('usage-trend-line')), findsOneWidget);
-    expect(find.text('#1 most used'), findsOneWidget);
-    expect(find.text('50% more than yesterday'), findsOneWidget);
 
     // Chart selection travels through the real screen/ViewModel/provider flow
     // and is restored when a new details route is opened.
@@ -448,8 +456,15 @@ void main() {
     await tester.tap(find.text('Editor'));
     await tester.pump();
     await tester.pump(const Duration(seconds: 1));
+    // Let the month load, which adds the usage dial above the chart.
+    await tester.pumpAndSettle();
+    await tester.dragUntilVisible(
+      find.byKey(const ValueKey('usage-chart-pages')),
+      find.byType(ListView).first,
+      const Offset(0, -200),
+    );
     await tester.ensureVisible(find.byKey(const ValueKey('usage-chart-pages')));
-    await tester.pump();
+    await tester.pumpAndSettle();
     expect(
       find.byKey(const ValueKey('usage-area-chart')).hitTestable(),
       findsOneWidget,
@@ -890,7 +905,8 @@ class _FakeUsageRepository implements UsageRepository {
         ),
       ),
       DailyAppUsage(
-        day: today.subtract(const Duration(days: 1)),
+        // Calendar arithmetic, so a DST change does not shift it off midnight.
+        day: DateTime(today.year, today.month, today.day - 1),
         summary: const AppUsageSummary(
           appName: 'Editor',
           processName: 'editor.exe',

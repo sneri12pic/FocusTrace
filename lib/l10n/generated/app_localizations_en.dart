@@ -1515,4 +1515,21 @@ class AppLocalizationsEn extends AppLocalizations {
   String routineOpenDetails(String app) {
     return 'Open details for $app';
   }
+
+  @override
+  String get usageTimelineHint =>
+      'Tap or drag for exact times · hold to restrict a time frame';
+
+  @override
+  String get rxRangeQuestion => 'Restrict this time frame?';
+
+  @override
+  String get rxRangeHint => 'Drag or tap the ring to move the end';
+
+  @override
+  String get rxRangeAction => 'Restrict';
+
+  @override
+  String get rxScheduleDialHint =>
+      'Drag either red end, or tap where it should go';
 }

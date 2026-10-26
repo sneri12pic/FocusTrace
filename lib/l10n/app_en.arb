@@ -860,5 +860,10 @@
   "reasonTemporaryUntil": "Temporary block until {time}",
   "@reasonTemporaryUntil": {"placeholders": {"time": {"type": "String"}}},
   "routineOpenDetails": "Open details for {app}",
-  "@routineOpenDetails": {"placeholders": {"app": {"type": "String"}}}
+  "@routineOpenDetails": {"placeholders": {"app": {"type": "String"}}},
+  "usageTimelineHint": "Tap or drag for exact times · hold to restrict a time frame",
+  "rxRangeQuestion": "Restrict this time frame?",
+  "rxRangeHint": "Drag or tap the ring to move the end",
+  "rxRangeAction": "Restrict",
+  "rxScheduleDialHint": "Drag either red end, or tap where it should go"
 }

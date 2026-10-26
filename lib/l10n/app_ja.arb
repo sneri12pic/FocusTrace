@@ -860,5 +860,10 @@
   "reasonTemporaryUntil": "{time} まで一時ブロック",
   "@reasonTemporaryUntil": {"placeholders": {"time": {"type": "String"}}},
   "routineOpenDetails": "{app} の詳細を開く",
-  "@routineOpenDetails": {"placeholders": {"app": {"type": "String"}}}
+  "@routineOpenDetails": {"placeholders": {"app": {"type": "String"}}},
+  "usageTimelineHint": "タップまたはなぞると正確な時刻 · 長押しで時間帯を制限",
+  "rxRangeQuestion": "この時間帯を制限しますか？",
+  "rxRangeHint": "リングをなぞるかタップして終了時刻を変更",
+  "rxRangeAction": "制限する",
+  "rxScheduleDialHint": "赤い端をドラッグするか、移動先をタップ"
 }

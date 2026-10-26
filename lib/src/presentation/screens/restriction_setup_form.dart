@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
+import '../../domain/models/app_usage_summary.dart';
 import '../../domain/models/restriction_rule.dart';
 import '../localization/app_localizations_x.dart';
+import '../widgets/app_category_widgets.dart';
 import '../widgets/app_icon_avatar.dart';
 import '../widgets/trend_color.dart';
+import '../widgets/usage_calendar.dart';
 import 'restriction_editor_sheet.dart';
 
 class RestrictionSetupForm extends StatefulWidget {
@@ -16,11 +19,19 @@ class RestrictionSetupForm extends StatefulWidget {
     this.initial,
     this.iconBytes,
     this.averageSeconds,
+    this.scrollController,
+    this.scheduleUsage,
   });
   final String appKey, appName;
   final RestrictionRule? existing, initial;
   final Uint8List? iconBytes;
   final int? averageSeconds;
+
+  /// The sheet's controller, so pulling down from the top drags it closed.
+  final ScrollController? scrollController;
+
+  /// This app's recent usage per quarter-hour, drawn under the schedule.
+  final List<int>? scheduleUsage;
   @override
   State<RestrictionSetupForm> createState() => _RestrictionSetupFormState();
 }
@@ -83,6 +94,18 @@ class _RestrictionSetupFormState extends State<RestrictionSetupForm> {
                     fontWeight: FontWeight.w700,
                   ),
                 ),
+                // The app's category, shown and changeable here too.
+                Padding(
+                  padding: const EdgeInsets.only(top: 6),
+                  child: AppCategoryTag(
+                    AppUsageSummary(
+                      appName: widget.appName,
+                      packageName: widget.appKey,
+                      totalDurationSeconds: 0,
+                      percentageOfTotal: 0,
+                    ),
+                  ),
+                ),
                 if (widget.averageSeconds != null)
                   Text(
                     l.rxAverageApp(
@@ -103,9 +126,10 @@ class _RestrictionSetupFormState extends State<RestrictionSetupForm> {
         ],
       ),
     );
-    return SizedBox(
-      height: MediaQuery.sizeOf(context).height * .94,
+    // Sized by the draggable sheet around it.
+    return SizedBox.expand(
       child: SafeArea(
+        top: false,
         child: Column(
           children: [
             // One header: the app, its average, and Close. Large text lets it
@@ -114,6 +138,7 @@ class _RestrictionSetupFormState extends State<RestrictionSetupForm> {
             Expanded(
               child: SingleChildScrollView(
                 key: const ValueKey('restriction-editor-scroll-view'),
+                controller: widget.scrollController,
                 padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -270,40 +295,26 @@ class _RestrictionSetupFormState extends State<RestrictionSetupForm> {
                           ),
                         ),
                     ] else ...[
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _TimeTile(
-                              label: l.rxStartLabel,
-                              value: time(start).format(context),
-                              onTap: () => pickTime(true),
-                            ),
-                          ),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 8),
-                            child: Icon(
-                              Icons.arrow_forward,
-                              color: colors.onSurfaceVariant,
-                            ),
-                          ),
-                          Expanded(
-                            child: _TimeTile(
-                              label: l.rxEndLabel,
-                              value: time(end).format(context),
-                              onTap: () => pickTime(false),
-                            ),
-                          ),
-                        ],
+                      // The time frame is picked on the dial, over when this
+                      // app is usually used; there is no manual time entry.
+                      ScheduleRangeDial(
+                        startMinute: start,
+                        endMinute: end,
+                        slotSeconds: widget.scheduleUsage,
+                        slotCapacitySeconds: scheduleUsageDays * 15 * 60,
+                        onChanged: (from, to) => setState(() {
+                          start = from;
+                          end = to;
+                        }),
                       ),
-                      if (end < start)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 8),
-                          child: Text(
-                            l.rxNextDay,
-                            textAlign: TextAlign.center,
-                            style: muted,
-                          ),
+                      Padding(
+                        padding: const EdgeInsets.only(top: 6),
+                        child: Text(
+                          l.rxScheduleDialHint,
+                          textAlign: TextAlign.center,
+                          style: theme.textTheme.bodySmall?.merge(muted),
                         ),
+                      ),
                       const SizedBox(height: 20),
                       Text(l.rxRepeat, style: titleStyle),
                       const SizedBox(height: 10),
@@ -349,6 +360,10 @@ class _RestrictionSetupFormState extends State<RestrictionSetupForm> {
                     Text(l.rxDifficulty, style: titleStyle),
                     const SizedBox(height: 10),
                     _Choice<RestrictionDifficulty>(
+                      accents: {
+                        for (final d in RestrictionDifficulty.values)
+                          d: difficultyColor(theme, d.index),
+                      },
                       selected: difficulty,
                       onSelected: (d) => setState(() => difficulty = d),
                       options: [
@@ -378,7 +393,7 @@ class _RestrictionSetupFormState extends State<RestrictionSetupForm> {
                               RestrictionDifficulty.hard => Icons.lock_outline,
                             },
                             size: 20,
-                            color: colors.primary,
+                            color: difficultyColor(theme, difficulty.index),
                           ),
                           const SizedBox(width: 12),
                           Expanded(
@@ -564,20 +579,6 @@ class _RestrictionSetupFormState extends State<RestrictionSetupForm> {
     if (value != null && mounted) setDuration(value);
   }
 
-  Future<void> pickTime(bool isStart) async {
-    final picked = await showTimePicker(
-      context: context,
-      initialTime: time(isStart ? start : end),
-    );
-    if (picked != null && mounted) {
-      setState(() {
-        isStart
-            ? start = picked.hour * 60 + picked.minute
-            : end = picked.hour * 60 + picked.minute;
-      });
-    }
-  }
-
   Future<void> submit() async {
     if (widget.existing != null && !await confirmRestrictionChange(context)) {
       return;
@@ -622,51 +623,6 @@ class _RestrictionSetupFormState extends State<RestrictionSetupForm> {
         endMinute: type == RestrictionRuleType.schedule ? end : null,
         difficulty: difficulty,
         weekdays: days.toList()..sort(),
-      ),
-    );
-  }
-}
-
-class _TimeTile extends StatelessWidget {
-  const _TimeTile({
-    required this.label,
-    required this.value,
-    required this.onTap,
-  });
-
-  final String label, value;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colors = theme.colorScheme;
-    return Material(
-      color: colors.surfaceContainerHigh,
-      borderRadius: BorderRadius.circular(16),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(16),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
-          child: Column(
-            children: [
-              Text(
-                label,
-                style: theme.textTheme.labelLarge?.copyWith(
-                  color: colors.onSurfaceVariant,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                value,
-                style: theme.textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ],
-          ),
-        ),
       ),
     );
   }
@@ -764,9 +720,13 @@ class _Choice<T> extends StatelessWidget {
     required this.options,
     required this.selected,
     required this.onSelected,
+    this.accents,
   });
 
   final List<(T, IconData?, String)> options;
+
+  /// A colour per option for its selected state; the theme accent otherwise.
+  final Map<T, Color>? accents;
   final T selected;
   final ValueChanged<T> onSelected;
 
@@ -781,18 +741,19 @@ class _Choice<T> extends StatelessWidget {
     Widget option((T, IconData?, String) o) {
       final (value, icon, label) = o;
       final isSelected = value == selected;
-      final color = isSelected ? colors.primary : colors.onSurfaceVariant;
+      final accent = accents?[value] ?? colors.primary;
+      final color = isSelected ? accent : colors.onSurfaceVariant;
       return Semantics(
         selected: isSelected,
         button: true,
         child: Material(
           color: isSelected
-              ? colors.primary.withValues(alpha: .14)
+              ? accent.withValues(alpha: .14)
               : Colors.transparent,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
             side: BorderSide(
-              color: isSelected ? colors.primary : colors.outlineVariant,
+              color: isSelected ? accent : colors.outlineVariant,
             ),
           ),
           child: InkWell(
@@ -816,7 +777,7 @@ class _Choice<T> extends StatelessWidget {
                         label,
                         textAlign: TextAlign.center,
                         style: TextStyle(
-                          color: isSelected ? colors.primary : colors.onSurface,
+                          color: isSelected ? accent : colors.onSurface,
                           fontWeight: isSelected
                               ? FontWeight.w700
                               : FontWeight.w500,

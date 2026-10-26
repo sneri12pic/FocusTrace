@@ -860,5 +860,10 @@
   "reasonTemporaryUntil": "Vorübergehend gesperrt bis {time}",
   "@reasonTemporaryUntil": {"placeholders": {"time": {"type": "String"}}},
   "routineOpenDetails": "Details zu {app} öffnen",
-  "@routineOpenDetails": {"placeholders": {"app": {"type": "String"}}}
+  "@routineOpenDetails": {"placeholders": {"app": {"type": "String"}}},
+  "usageTimelineHint": "Tippen oder ziehen für genaue Zeiten · halten, um einen Zeitraum einzuschränken",
+  "rxRangeQuestion": "Diesen Zeitraum einschränken?",
+  "rxRangeHint": "Ziehe oder tippe auf den Ring, um das Ende zu verschieben",
+  "rxRangeAction": "Einschränken",
+  "rxScheduleDialHint": "Ziehe eines der roten Enden oder tippe, wohin es soll"
 }

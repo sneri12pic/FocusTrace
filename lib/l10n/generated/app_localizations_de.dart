@@ -1532,4 +1532,22 @@ class AppLocalizationsDe extends AppLocalizations {
   String routineOpenDetails(String app) {
     return 'Details zu $app öffnen';
   }
+
+  @override
+  String get usageTimelineHint =>
+      'Tippen oder ziehen für genaue Zeiten · halten, um einen Zeitraum einzuschränken';
+
+  @override
+  String get rxRangeQuestion => 'Diesen Zeitraum einschränken?';
+
+  @override
+  String get rxRangeHint =>
+      'Ziehe oder tippe auf den Ring, um das Ende zu verschieben';
+
+  @override
+  String get rxRangeAction => 'Einschränken';
+
+  @override
+  String get rxScheduleDialHint =>
+      'Ziehe eines der roten Enden oder tippe, wohin es soll';
 }

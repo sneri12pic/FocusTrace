@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../domain/models/app_usage_summary.dart';
+import '../../domain/models/restriction_rule.dart';
 import '../../domain/models/usage_details_chart.dart';
 import '../../domain/models/usage_item.dart';
 import '../../domain/models/usage_session.dart';
@@ -14,6 +15,7 @@ import '../widgets/app_category_widgets.dart';
 import '../widgets/trend_color.dart';
 import '../widgets/usage_calendar.dart';
 import '../widgets/usage_details_charts.dart';
+import 'restriction_editor_sheet.dart';
 
 class UsageDetailsScreen extends ConsumerWidget {
   const UsageDetailsScreen({required this.request, super.key});
@@ -70,6 +72,8 @@ class UsageDetailsScreen extends ConsumerWidget {
                       isGood: isGood,
                     ),
                     const SizedBox(height: 16),
+                    _TimelineCard(request: request),
+                    const SizedBox(height: 12),
                     UsageDetailsCharts(
                       points: state.points,
                       period: state.period,
@@ -454,7 +458,75 @@ class _ComparisonBadge extends StatelessWidget {
   }
 }
 
-/// Month stats, the usage calendar, and the selected day's details.
+/// The selected calendar day's usage as a 24-hour dial.
+class _TimelineCard extends ConsumerWidget {
+  const _TimelineCard({required this.request});
+
+  final AppUsageDetailsRequest request;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final state = ref.watch(appUsageCalendarViewModelProvider(request));
+    // Nothing to show until the first month has loaded, or if it failed.
+    if (state.errorMessage != null ||
+        (state.isLoading && state.days.isEmpty && state.previousDays.isEmpty)) {
+      return const SizedBox.shrink();
+    }
+    final theme = Theme.of(context);
+    final day = state.selectedDay ?? request.selectedDate;
+    // Schedules already restricting this app on that weekday, shown faintly.
+    final frames = [
+      for (final rule in ref.watch(restrictionsViewModelProvider).rules)
+        if (rule.appKey == request.summary.appKey &&
+            rule.type == RestrictionRuleType.schedule &&
+            rule.startMinute != null &&
+            rule.endMinute != null &&
+            rule.weekdays.contains(day.weekday))
+          (rule.startMinute!, rule.endMinute!),
+    ];
+    return Card(
+      key: const ValueKey('usage-timeline-card'),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              '${context.l10n.usageCalendarTimeline} · '
+              '${DateFormat.MMMd(Localizations.localeOf(context).toString()).format(day)}',
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 12),
+            UsageDayTimeline(
+              day: day,
+              intervals: state.intervalsOn(day),
+              emptyLabel: context.l10n.usageCalendarNoTimeline,
+              restrictedFrames: frames,
+              // Opens the schedule sheet prefilled; nothing is saved until
+              // the user confirms there.
+              onRestrictRange: (start, end) => createRestrictionForApp(
+                context,
+                ref,
+                appKey: request.summary.appKey,
+                appName: request.summary.appName,
+                initial: RestrictionRule.schedule(
+                  appKey: request.summary.appKey,
+                  appName: request.summary.appName,
+                  startMinute: start,
+                  endMinute: end,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// The usage calendar; picking a day updates the usage dial.
 class _CalendarSection extends ConsumerWidget {
   const _CalendarSection({required this.request, required this.isGood});
 
@@ -473,25 +545,13 @@ class _CalendarSection extends ConsumerWidget {
         child: _ErrorPanel(onRetry: viewModel.load),
       );
     }
-    final selectedDay = state.selectedDay;
-    final showDay =
-        selectedDay != null &&
-        selectedDay.year == state.month.year &&
-        selectedDay.month == state.month.month;
-    return Column(
-      children: [
-        UsageCalendar(
-          state: state,
-          isGood: isGood,
-          onPreviousMonth: viewModel.showPreviousMonth,
-          onNextMonth: viewModel.showNextMonth,
-          onDaySelected: viewModel.selectDay,
-        ),
-        if (showDay) ...[
-          const SizedBox(height: 12),
-          UsageDayPanel(state: state, day: selectedDay, isGood: isGood),
-        ],
-      ],
+    // The picked day drives the usage dial above; no panel repeats it here.
+    return UsageCalendar(
+      state: state,
+      isGood: isGood,
+      onPreviousMonth: viewModel.showPreviousMonth,
+      onNextMonth: viewModel.showNextMonth,
+      onDaySelected: viewModel.selectDay,
     );
   }
 }

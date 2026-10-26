@@ -1461,4 +1461,19 @@ class AppLocalizationsJa extends AppLocalizations {
   String routineOpenDetails(String app) {
     return '$app の詳細を開く';
   }
+
+  @override
+  String get usageTimelineHint => 'タップまたはなぞると正確な時刻 · 長押しで時間帯を制限';
+
+  @override
+  String get rxRangeQuestion => 'この時間帯を制限しますか？';
+
+  @override
+  String get rxRangeHint => 'リングをなぞるかタップして終了時刻を変更';
+
+  @override
+  String get rxRangeAction => '制限する';
+
+  @override
+  String get rxScheduleDialHint => '赤い端をドラッグするか、移動先をタップ';
 }

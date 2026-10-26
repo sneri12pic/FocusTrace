@@ -1543,4 +1543,22 @@ class AppLocalizationsFr extends AppLocalizations {
   String routineOpenDetails(String app) {
     return 'Ouvrir les détails de $app';
   }
+
+  @override
+  String get usageTimelineHint =>
+      'Touchez ou glissez pour les heures exactes · maintenez pour restreindre une plage';
+
+  @override
+  String get rxRangeQuestion => 'Restreindre cette plage horaire ?';
+
+  @override
+  String get rxRangeHint =>
+      'Faites glisser ou touchez l’anneau pour déplacer la fin';
+
+  @override
+  String get rxRangeAction => 'Restreindre';
+
+  @override
+  String get rxScheduleDialHint =>
+      'Faites glisser une extrémité rouge ou touchez l’endroit voulu';
 }

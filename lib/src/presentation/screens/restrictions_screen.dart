@@ -10,6 +10,7 @@ import '../../domain/models/block_routine.dart';
 import '../../domain/models/restriction_rule.dart';
 import '../../domain/models/usage_item.dart';
 import '../../domain/models/usage_session.dart';
+import '../../domain/repositories/usage_repository.dart';
 import '../localization/app_localizations_x.dart';
 import '../providers.dart';
 import '../widgets/app_category_widgets.dart';
@@ -49,6 +50,34 @@ List<MapEntry<UsageCategory, List<RestrictionRule>>> groupRulesByCategory(
   ];
 }
 
+/// Icons for just the restricted apps, keyed by app key. Waiting for every
+/// installed app's icon (the full list) made these cards show letters first.
+final restrictedAppIconsProvider = FutureProvider.autoDispose
+    .family<Map<String, Uint8List>, String>((ref, joinedKeys) async {
+      final keys = joinedKeys.split(',').where((k) => k.isNotEmpty).toList();
+      final repository = ref.watch(usageRepositoryProvider);
+      if (keys.isEmpty || repository is! AppMetadataRepository) return const {};
+      try {
+        final hydrated = await (repository as AppMetadataRepository)
+            .hydrateAppMetadata([
+              for (final key in keys)
+                AppUsageSummary(
+                  appName: key,
+                  packageName: key,
+                  totalDurationSeconds: 0,
+                  percentageOfTotal: 0,
+                ),
+            ]);
+        return {
+          for (final app in hydrated)
+            if (app.iconBytes != null) app.appKey: app.iconBytes!,
+        };
+      } catch (_) {
+        // Icons are decoration; the letter avatar stays.
+        return const {};
+      }
+    });
+
 class RestrictionsScreen extends ConsumerWidget {
   const RestrictionsScreen({super.key});
 
@@ -63,10 +92,38 @@ class RestrictionsScreen extends ConsumerWidget {
         ref.watch(installedAppsProvider).valueOrNull ?? const [];
     final appCandidates = _mergeAppCandidates(summaries, installedApps);
     final appsByKey = {for (final app in appCandidates) app.appKey: app};
+    final restrictedKeys = {
+      for (final rule in state.rules) rule.appKey,
+      for (final routine in state.routines)
+        for (final app in routine.apps) app.appKey,
+    }.toList()..sort();
+    final quickIcons =
+        ref
+            .watch(restrictedAppIconsProvider(restrictedKeys.join(',')))
+            .valueOrNull ??
+        const <String, Uint8List>{};
     final routineAppsByKey = <String, AppUsageSummary>{
       ...appsByKey,
-      for (final app in state.todayUsage) app.appKey: app,
+      // Today's usage rows can lack icons; keep one already known.
+      for (final app in state.todayUsage)
+        app.appKey: app.iconBytes != null
+            ? app
+            : app.copyWith(iconBytes: appsByKey[app.appKey]?.iconBytes),
     };
+    for (final key in restrictedKeys) {
+      final icon = quickIcons[key];
+      final known = routineAppsByKey[key];
+      if (icon == null || known?.iconBytes != null) continue;
+      routineAppsByKey[key] =
+          (known ??
+                  AppUsageSummary(
+                    appName: key,
+                    packageName: key,
+                    totalDurationSeconds: 0,
+                    percentageOfTotal: 0,
+                  ))
+              .copyWith(iconBytes: icon);
+    }
     final categoryOverrides =
         ref.watch(appCategoriesViewModelProvider).asData?.value ??
         const <String, UsageCategory>{};
@@ -442,9 +499,12 @@ class _CountBadge extends StatelessWidget {
 
 /// A small rounded label, such as a rule's difficulty or "Paused".
 class _Tag extends StatelessWidget {
-  const _Tag(this.label);
+  const _Tag(this.label, {this.color});
 
   final String label;
+
+  /// Tints the tag, as for a difficulty; neutral when null.
+  final Color? color;
 
   @override
   Widget build(BuildContext context) {
@@ -452,13 +512,16 @@ class _Tag extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest,
+        color:
+            color?.withValues(alpha: .16) ??
+            theme.colorScheme.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(8),
       ),
       child: Text(
         label,
         style: theme.textTheme.labelMedium?.copyWith(
-          color: theme.colorScheme.onSurface,
+          color: color ?? theme.colorScheme.onSurface,
+          fontWeight: color == null ? null : FontWeight.w700,
         ),
       ),
     );
@@ -830,47 +893,87 @@ class _RestrictionRuleTile extends StatelessWidget {
     final lockedUntil = blockedUntil == null
         ? null
         : _formatTime(context, TimeOfDay.fromDateTime(blockedUntil));
+    final summaryLine = rule.type == RestrictionRuleType.schedule
+        ? '${_ruleSummary(context, rule)} · ${_days(context, rule.weekdays)}'
+        : _ruleSummary(context, rule);
+    // One compact row: icon, name with difficulty, what the rule is, and its
+    // live status on the right; a thin limit bar underneath when it has one.
     return Card(
       elevation: 0,
-      margin: const EdgeInsets.only(bottom: 10),
+      margin: const EdgeInsets.only(bottom: 8),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 14, 4, 14),
+          padding: const EdgeInsets.fromLTRB(12, 10, 0, 10),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   AppIconAvatar(
                     appName: rule.appName,
                     iconBytes: summary?.iconBytes,
-                    size: 44,
+                    size: 36,
                   ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        Row(
+                          children: [
+                            Flexible(
+                              child: Text(
+                                rule.appName,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: theme.textTheme.titleSmall?.copyWith(
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            _Tag(
+                              difficulty,
+                              color: difficultyColor(
+                                theme,
+                                rule.difficulty.index,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 2),
                         Text(
-                          rule.appName,
+                          summaryLine,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w600,
-                          ),
+                          style: theme.textTheme.bodySmall?.merge(muted),
                         ),
-                        Text(_ruleSummary(context, rule), style: muted),
-                        if (rule.type == RestrictionRuleType.schedule)
-                          Text(_days(context, rule.weekdays), style: muted),
                       ],
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 108),
+                    child: Text(
+                      status,
+                      textAlign: TextAlign.end,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.labelMedium?.copyWith(
+                        color: statusColor,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ),
                   PopupMenuButton<String>(
                     enabled: !isSaving,
                     icon: const Icon(Icons.more_vert),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    color: theme.colorScheme.surfaceContainerHigh,
                     onSelected: (action) => switch (action) {
                       'edit' => onTap(),
                       'unblock' => onUnblockNow(),
@@ -901,53 +1004,14 @@ class _RestrictionRuleTile extends StatelessWidget {
                   ),
                 ],
               ),
-              Padding(
-                padding: const EdgeInsets.only(top: 12, right: 12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    if (isLimit) ...[
-                      _LimitProgress(
-                        usedSeconds: usageSeconds,
-                        limitSeconds: rule.limitMinutes! * 60,
-                      ),
-                      _UsageCaption(
-                        usedSeconds: usageSeconds,
-                        limitSeconds: rule.limitMinutes! * 60,
-                      ),
-                      const SizedBox(height: 10),
-                    ],
-                    Row(
-                      children: [
-                        // A limit with time left reads from its caption;
-                        // anything else gets a status line.
-                        if (!isLimit || blockedUntil != null) ...[
-                          Icon(
-                            blockedUntil != null
-                                ? Icons.lock_outline
-                                : Icons.schedule,
-                            size: 18,
-                            color: statusColor,
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              status,
-                              style: theme.textTheme.bodyMedium?.copyWith(
-                                color: statusColor,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                        ] else
-                          const Spacer(),
-                        _Tag(difficulty),
-                      ],
-                    ),
-                  ],
+              if (isLimit)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(48, 8, 16, 0),
+                  child: _LimitProgress(
+                    usedSeconds: usageSeconds,
+                    limitSeconds: rule.limitMinutes! * 60,
+                  ),
                 ),
-              ),
             ],
           ),
         ),
@@ -975,12 +1039,13 @@ class _RestrictionRuleTile extends StatelessWidget {
   String _ruleSummary(BuildContext context, RestrictionRule rule) {
     final l = context.l10n;
     return switch (rule.type) {
-      RestrictionRuleType.dailyLimit =>
-        '${l.rxDailyLimit} · ${l.compactDuration(Duration(minutes: rule.limitMinutes ?? 0))}',
+      // Short enough for one line beside the status: the value says the type.
+      RestrictionRuleType.dailyLimit => l.rxPerDay(
+        l.compactDuration(Duration(minutes: rule.limitMinutes ?? 0)),
+      ),
       RestrictionRuleType.schedule =>
-        '${l.restrictionEditorTypeSchedule} · ${_minuteTime(context, rule.startMinute)} – ${_minuteTime(context, rule.endMinute)}',
-      RestrictionRuleType.blockNow =>
-        '${l.rxBlockNow} · ${l.rxUntil(_formatTime(context, TimeOfDay.fromDateTime(DateTime.fromMillisecondsSinceEpoch(rule.untilMs ?? 0))))}',
+        '${_minuteTime(context, rule.startMinute)}–${_minuteTime(context, rule.endMinute)}',
+      RestrictionRuleType.blockNow => l.rxBlockNow,
     };
   }
 

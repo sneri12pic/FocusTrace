@@ -1533,4 +1533,22 @@ class AppLocalizationsUk extends AppLocalizations {
   String routineOpenDetails(String app) {
     return 'Відкрити подробиці $app';
   }
+
+  @override
+  String get usageTimelineHint =>
+      'Торкніться або проведіть, щоб побачити точний час · утримуйте, щоб обмежити проміжок';
+
+  @override
+  String get rxRangeQuestion => 'Обмежити цей проміжок часу?';
+
+  @override
+  String get rxRangeHint =>
+      'Проведіть або торкніться кільця, щоб змінити кінець';
+
+  @override
+  String get rxRangeAction => 'Обмежити';
+
+  @override
+  String get rxScheduleDialHint =>
+      'Перетягніть будь-який червоний кінець або торкніться, де він має бути';
 }

@@ -2618,6 +2618,36 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Open details for {app}'**
   String routineOpenDetails(String app);
+
+  /// No description provided for @usageTimelineHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap or drag for exact times · hold to restrict a time frame'**
+  String get usageTimelineHint;
+
+  /// No description provided for @rxRangeQuestion.
+  ///
+  /// In en, this message translates to:
+  /// **'Restrict this time frame?'**
+  String get rxRangeQuestion;
+
+  /// No description provided for @rxRangeHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Drag or tap the ring to move the end'**
+  String get rxRangeHint;
+
+  /// No description provided for @rxRangeAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Restrict'**
+  String get rxRangeAction;
+
+  /// No description provided for @rxScheduleDialHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Drag either red end, or tap where it should go'**
+  String get rxScheduleDialHint;
 }
 
 class _AppLocalizationsDelegate

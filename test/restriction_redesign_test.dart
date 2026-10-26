@@ -254,10 +254,14 @@ void main() {
     expect(find.text('Save changes'), findsOneWidget);
     expect(find.text('Set daily limit'), findsNothing);
     expect(find.textContaining('asks for confirmation'), findsOneWidget);
+    await tester.ensureVisible(find.text('Moderate'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Moderate'));
     await tester.pumpAndSettle();
     expect(find.textContaining('five-minute wait'), findsOneWidget);
     expect(find.textContaining('asks for confirmation'), findsNothing);
+    await tester.ensureVisible(find.text('30m'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('30m'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Save changes'));
@@ -268,6 +272,45 @@ void main() {
     expect(saved?.limitMinutes, 30);
     expect(saved?.difficulty, RestrictionDifficulty.moderate);
   });
+
+  testWidgets('the restriction sheet slides up and pulls down to close', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      testScope(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          locale: const Locale('en'),
+          home: Scaffold(
+            body: Builder(
+              builder: (context) => TextButton(
+                onPressed: () => showRestrictionEditor(
+                  context,
+                  appKey: 'a',
+                  appName: 'Sample',
+                ),
+                child: const Text('Open'),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('Open'));
+    await tester.pumpAndSettle();
+    final sheet = find.byType(DraggableScrollableSheet);
+    expect(sheet, findsOneWidget);
+    // Partial height: the screen behind stays visible above it.
+    expect(tester.getTopLeft(sheet).dy, greaterThan(0));
+    await tester.fling(
+      find.byKey(const ValueKey('restriction-editor-scroll-view')),
+      const Offset(0, 500),
+      1500,
+    );
+    await tester.pumpAndSettle();
+    expect(find.byType(DraggableScrollableSheet), findsNothing);
+  });
 }
 
 Widget testScope(Widget child) => ProviderScope(
@@ -277,6 +320,9 @@ Widget testScope(Widget child) => ProviderScope(
           const RestrictionInsights(apps: [], recordedDays: 0, hours: []),
     ),
     installedAppsProvider.overrideWith((ref) async => []),
+    appScheduleUsageProvider.overrideWith(
+      (ref, appKey) async => List.filled(96, 0),
+    ),
   ],
   child: child,
 );

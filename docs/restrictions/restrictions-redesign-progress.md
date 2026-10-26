@@ -51,3 +51,21 @@ Completed:
 Verification: PASS `dart format --set-exit-if-changed lib test`; PASS `flutter analyze`; PASS `flutter test` (354, 1 skipped; new `routine_experience_test.dart`, updated `block_routine_test.dart` and `routine_editor_sheet_test.dart`); PASS `gradlew :app:testDebugUnitTest` (142, including new cap, overlap and legacy tests). Device (SM-A366B, .dev, `adb install -r` after `flutter clean`): created a throwaway routine without a shared limit, checked category select and partial state, the name prompt, app details navigation and back, setting an app limit, Keep (empty routine survived a force-stop and relaunch), adding an app back, and Delete. The user's existing routine was not touched and the throwaway routine was deleted.
 Remaining: see the plan. A real on-device block from a per-app cap or a used-up shared allowance was not triggered, to avoid blocking the user's apps.
 Relevant commit: none. Uncommitted as requested.
+
+---
+
+Date: 2026-10-23
+Agent: Claude Code
+Goal: Redesign tweaks: difficulty colours, lock icon, rounded rule menu, app category in the restriction popup, swipeable calendar, readable usage timeline.
+Completed: Easy / Moderate / Hard read green / amber / red on rule cards and in the popup selector and explanation (`difficultyColor`). "+ Limit" became a lock-icon "Limit" button (Edit keeps a pencil). The rule ⋮ menu has 16 dp rounded corners. The popup header shows the app's category tag, which opens the existing category picker. The month grid swipes left/right (next only when allowed). The day timeline is taller, has three-hourly guides, and tap or drag selects the nearest session, highlights it and shows its exact start, end and length; the caption line is always reserved so the card height stays fixed. New string `usageTimelineHint` in seven ARBs.
+Verification: PASS format, `flutter analyze`, `flutter test` (356, 1 skipped, new swipe and timeline tests). Renders of the overview, open menu, popup and timeline inspected. Device check not done: the phone was not connected over ADB ("no devices/emulators found").
+Relevant commit: none. Uncommitted.
+
+---
+
+Date: 2026-10-26
+Agent: Claude Code
+Goal: Publish the pending redesign work and fix the regression found while verifying it.
+Completed: Committed the uncommitted work after the 2026-10-23 entry. Beyond that entry, the app detail screen now shows the selected day's usage as a 24-hour dial card above the column chart (the calendar's day panel was removed; picking a day drives the dial), faintly marks schedule restrictions for that weekday, and a long press on a time range opens the schedule editor prefilled with it (nothing is saved until confirmed). Fixed a DST bug in `app_usage_details_view_model.dart`: period starts, the chart's day keys and yesterday's comparison used `Duration(days: n)`, which lands an hour off midnight across a clock change, so on the day after one the comparison showed "No yesterday comparison yet" and the 7-day total dropped yesterday. It now uses calendar arithmetic; the widget-test fixture had the same bug.
+Verification: PASS `dart format --set-exit-if-changed lib test`; PASS `flutter analyze`; PASS `flutter test` (363, 1 skipped). The DST failure reproduced on the committed HEAD on 2026-10-26 (Europe/London, the day after BST ended) and passes after the fix. No device check in this pass.
+Relevant commit: see `git log` on `feature/restriction-limit-progress`.

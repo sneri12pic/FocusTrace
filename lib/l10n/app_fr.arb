@@ -860,5 +860,10 @@
   "reasonTemporaryUntil": "Blocage temporaire jusqu’à {time}",
   "@reasonTemporaryUntil": {"placeholders": {"time": {"type": "String"}}},
   "routineOpenDetails": "Ouvrir les détails de {app}",
-  "@routineOpenDetails": {"placeholders": {"app": {"type": "String"}}}
+  "@routineOpenDetails": {"placeholders": {"app": {"type": "String"}}},
+  "usageTimelineHint": "Touchez ou glissez pour les heures exactes · maintenez pour restreindre une plage",
+  "rxRangeQuestion": "Restreindre cette plage horaire ?",
+  "rxRangeHint": "Faites glisser ou touchez l’anneau pour déplacer la fin",
+  "rxRangeAction": "Restreindre",
+  "rxScheduleDialHint": "Faites glisser une extrémité rouge ou touchez l’endroit voulu"
 }

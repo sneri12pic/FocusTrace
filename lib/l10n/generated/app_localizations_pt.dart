@@ -1529,4 +1529,21 @@ class AppLocalizationsPt extends AppLocalizations {
   String routineOpenDetails(String app) {
     return 'Abrir detalhes de $app';
   }
+
+  @override
+  String get usageTimelineHint =>
+      'Toque ou arraste para ver horários exatos · segure para restringir um intervalo';
+
+  @override
+  String get rxRangeQuestion => 'Restringir este intervalo?';
+
+  @override
+  String get rxRangeHint => 'Arraste ou toque no anel para mover o fim';
+
+  @override
+  String get rxRangeAction => 'Restringir';
+
+  @override
+  String get rxScheduleDialHint =>
+      'Arraste uma das pontas vermelhas ou toque onde ela deve ficar';
 }

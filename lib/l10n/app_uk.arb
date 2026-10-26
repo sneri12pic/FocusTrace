@@ -860,5 +860,10 @@
   "reasonTemporaryUntil": "Тимчасове блокування до {time}",
   "@reasonTemporaryUntil": {"placeholders": {"time": {"type": "String"}}},
   "routineOpenDetails": "Відкрити подробиці {app}",
-  "@routineOpenDetails": {"placeholders": {"app": {"type": "String"}}}
+  "@routineOpenDetails": {"placeholders": {"app": {"type": "String"}}},
+  "usageTimelineHint": "Торкніться або проведіть, щоб побачити точний час · утримуйте, щоб обмежити проміжок",
+  "rxRangeQuestion": "Обмежити цей проміжок часу?",
+  "rxRangeHint": "Проведіть або торкніться кільця, щоб змінити кінець",
+  "rxRangeAction": "Обмежити",
+  "rxScheduleDialHint": "Перетягніть будь-який червоний кінець або торкніться, де він має бути"
 }

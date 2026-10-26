@@ -7,6 +7,17 @@ import 'package:focustrace/src/presentation/widgets/bubble_chart.dart';
 import 'package:focustrace/l10n/generated/app_localizations.dart';
 
 void main() {
+  test('recorded entrance frames replay the simulation step by step', () {
+    const radii = [72.0, 50.0, 40.0, 30.0, 26.0];
+    const size = Size(400, 360);
+    final frames = <List<Offset>>[];
+    final packed = packBubbles(radii, size, frames: frames);
+    expect(frames, hasLength(packSteps + 1));
+    expect(frames.first, packBubbles(radii, size, steps: 0));
+    expect(frames[40], packBubbles(radii, size, steps: 40));
+    expect(frames.last, packed);
+  });
+
   test(
     'packBubbles resolves collisions and keeps the biggest at the center',
     () {
