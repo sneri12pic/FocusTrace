@@ -79,6 +79,8 @@ The category mapping is our interpretation of the payloads using Google's defini
 
 **Shared: No** describes the current first-party sync flow. Confirm any hosting/service-provider arrangements before submitting; there are no advertising or analytics SDKs in the current app. Usage summaries are an app feature, not developer analytics. Do not select advertising, marketing, personalization or developer communications for these flows. Do not claim an independent security review.
 
+**Health Connect workout import (optional):** imported exercise sessions never leave the device (not synced, not in backups, excluded from Android backup), so by our reading of Google's definition (data processed only on the device is not collected) they are **not "collected"** and need no new Data safety row. Confirm against the Health Connect policy at submission. Re-check this if workouts are ever synced or exported.
+
 Implementation references: `lib/src/data/datasources/focus_trace_sync_api.dart`, `lib/src/domain/models/sync_usage.dart`, `server/src/main/java/com/stepandemianenko/focustrace/sync/auth/AuthRateLimiter.java`, and `docs/backend/backend-sync-architecture.md` sections 5.1 and 11. The public policy is `docs/privacy.html`.
 
 ## 5. Permission declaration forms (App content → Sensitive permissions)
@@ -98,6 +100,11 @@ Implementation references: `lib/src/data/datasources/focus_trace_sync_api.dart`,
 > Used for optional account registration, sign-in, session refresh, logout, account deletion and cloud sync. Account requests send credentials even before usage sync is enabled. Daily usage uploads require opt-in. Release builds use HTTPS; local tracking, limits and blocking do not depend on the network.
 
 **Notifications (POST_NOTIFICATIONS), foreground service and run at boot (RECEIVE_BOOT_COMPLETED):** support local restriction enforcement and its status notification. Periodic cloud sync uses WorkManager separately; the restriction service does not require cloud access.
+
+**Health Connect (App content → Health apps declaration / Health Connect data types):** declare read access to **Exercise** (`android.permission.health.READ_EXERCISE`) and **background read** (`READ_HEALTH_DATA_IN_BACKGROUND`). No write access, no exercise routes, no history access. Suggested justification:
+> FocusTrace optionally imports the user's exercise sessions (type, name, start/end time and source app) recorded by fitness apps such as Hevy, so the user can see their workouts in FocusTrace. The import is off by default and turned on by the user in Settings or onboarding. Background read is requested only when the user turns on automatic import, which checks for new sessions every few hours. Data is stored only on the device; it is not uploaded, shared, or used for advertising. FocusTrace writes no data to Health Connect.
+
+The declared types must match the manifest, and the in-app rationale link (`HealthConnectRationaleActivity`) opens the privacy policy URL from section 3, so publish the updated `docs/privacy.html` before submitting a build with Health Connect. Google reviews Health Connect access; a rejected declaration blocks the release, not the app's other features.
 
 ## 6. App content declarations
 - Content rating questionnaire: utility/productivity, no user-generated content, no violence → expect "Everyone".
