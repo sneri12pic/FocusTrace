@@ -29,4 +29,6 @@
     <string name="restriction_reason_block_now_until">Temporary block until %1$s</string>
     <string name="restriction_reason_routine_shared">%1$s: shared allowance reached</string>
     <string name="restriction_reason_routine_app">%1$s: app limit reached</string>
+    <string name="short_form_service_label">FocusTrace Shorts &amp; Reels blocker</string>
+    <string name="short_form_service_description">Blocks YouTube Shorts and Instagram Reels when you restrict them. It reads which screen is open only in YouTube and Instagram. Nothing is stored or sent off the device.</string>
 </resources>

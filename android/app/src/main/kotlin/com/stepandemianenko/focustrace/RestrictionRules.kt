@@ -83,6 +83,7 @@ data class RestrictionConfiguration(
     val isEmpty: Boolean
         get() = rules.isEmpty() && routines.isEmpty()
 
+    /** Package names BlockerService watches; surface rules belong to the accessibility service. */
     val appKeys: Set<String>
         get() = buildSet {
             addAll(rules.map { it.appKey })
@@ -90,7 +91,12 @@ data class RestrictionConfiguration(
                 addAll(routine.includedApps.map { it.appKey })
                 addAll(routine.apps.filter { it.limitMinutes != null }.map { it.appKey })
             }
-        }
+        }.filterNotTo(mutableSetOf(), RestrictionRules::isSurfaceKey)
+
+    // ponytail: no usage is measured inside a surface, so daily limits and
+    // routine allowances never trip for one; pass surface usage here once tracked.
+    fun surfaceBlockReasons(surfaceKey: String, nowMs: Long): List<BlockReason> =
+        blockReasons(surfaceKey, nowMs, emptyMap())
 
     fun blockingRoutine(
         appKey: String,
@@ -163,6 +169,9 @@ internal class RestrictionConfigurationCache(
 object RestrictionRules {
     const val PREFS_NAME = "focustrace_restrictions"
     const val PREFS_RULES_KEY = "rules_json"
+    const val SURFACE_KEY_PREFIX = "surface:"
+
+    fun isSurfaceKey(appKey: String): Boolean = appKey.startsWith(SURFACE_KEY_PREFIX)
 
     fun parseRules(json: String?): List<RestrictionRule> {
         return parseConfiguration(json).rules
@@ -221,6 +230,9 @@ object RestrictionRules {
     }
 
     fun hasRules(json: String?): Boolean = !parseConfiguration(json).isEmpty
+
+    /** Whether BlockerService has anything to watch; surface-only rules need no polling. */
+    fun hasPackageRules(json: String?): Boolean = parseConfiguration(json).appKeys.isNotEmpty()
 
     private fun parseRule(row: JSONObject?): RestrictionRule? {
         if (row == null) return null

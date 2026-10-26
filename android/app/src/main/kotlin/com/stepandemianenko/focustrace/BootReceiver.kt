@@ -20,7 +20,7 @@ class BootReceiver : BroadcastReceiver() {
         val json = context
             .getSharedPreferences(RestrictionRules.PREFS_NAME, Context.MODE_PRIVATE)
             .getString(RestrictionRules.PREFS_RULES_KEY, null)
-        if (!RestrictionRules.hasRules(json) ||
+        if (!RestrictionRules.hasPackageRules(json) ||
             !FocusTracePermissions.hasOverlayPermission(context) ||
             !FocusTracePermissions.hasUsageAccess(context)
         ) {

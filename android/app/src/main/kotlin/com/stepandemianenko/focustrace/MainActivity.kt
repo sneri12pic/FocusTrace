@@ -2,6 +2,7 @@ package com.stepandemianenko.focustrace
 
 import android.Manifest
 import android.content.ActivityNotFoundException
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -46,6 +47,11 @@ class MainActivity : FlutterActivity() {
                     }
                     "openOverlaySettings" -> {
                         openOverlaySettings()
+                        result.success(null)
+                    }
+                    "hasShortFormAccessibility" -> result.success(hasShortFormAccessibility())
+                    "openAccessibilitySettings" -> {
+                        openAccessibilitySettings()
                         result.success(null)
                     }
                     "requestNotificationsPermission" -> {
@@ -253,6 +259,31 @@ class MainActivity : FlutterActivity() {
         }
     }
 
+    private fun hasShortFormAccessibility(): Boolean {
+        val component = ComponentName(this, ShortFormAccessibilityService::class.java)
+        val enabled = Settings.Secure.getString(
+            contentResolver,
+            Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES,
+        ) ?: return false
+        return enabled.split(':').any {
+            ComponentName.unflattenFromString(it) == component
+        }
+    }
+
+    private fun openAccessibilitySettings() {
+        try {
+            startActivity(
+                Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            )
+        } catch (_: ActivityNotFoundException) {
+            startActivity(
+                Intent(Settings.ACTION_SETTINGS)
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            )
+        }
+    }
+
     private fun openOverlaySettings() {
         val intent = Intent(
             Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
@@ -347,7 +378,7 @@ class MainActivity : FlutterActivity() {
 
         val serviceIntent = Intent(this, BlockerService::class.java)
         if (
-            RestrictionRules.hasRules(json) &&
+            RestrictionRules.hasPackageRules(json) &&
             FocusTracePermissions.hasOverlayPermission(this) &&
             hasUsageAccess()
         ) {
