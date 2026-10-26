@@ -4,7 +4,9 @@ import android.app.Activity
 import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.health.connect.HealthConnectManager
 import android.net.Uri
+import android.os.Build
 import androidx.health.connect.client.HealthConnectClient
 import androidx.health.connect.client.PermissionController
 import androidx.health.connect.client.records.ExerciseSessionRecord
@@ -189,9 +191,14 @@ class HealthConnectBridge(private val activity: Activity) {
     }
 
     private fun openPermissionSettings() {
-        val intent = when (importer.sdkStatus()) {
-            HealthConnectImporter.STATUS_AVAILABLE ->
-                HealthConnectClient.getHealthConnectManageDataIntent(activity)
+        val available = importer.sdkStatus() == HealthConnectImporter.STATUS_AVAILABLE
+        val intent = when {
+            // Android 14+: straight to FocusTrace's own access page.
+            available && Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE ->
+                Intent(HealthConnectManager.ACTION_MANAGE_HEALTH_PERMISSIONS)
+                    .putExtra(Intent.EXTRA_PACKAGE_NAME, activity.packageName)
+            // The Health Connect app has no per-app link: its home, with "App permissions".
+            available -> Intent(HealthConnectClient.ACTION_HEALTH_CONNECT_SETTINGS)
             // Older Android without the module, or an outdated provider: its Play page.
             else -> Intent(
                 Intent.ACTION_VIEW,
@@ -201,6 +208,11 @@ class HealthConnectBridge(private val activity: Activity) {
         try {
             activity.startActivity(intent)
         } catch (_: ActivityNotFoundException) {
+            if (!available) return
+            try {
+                activity.startActivity(HealthConnectClient.getHealthConnectManageDataIntent(activity))
+            } catch (_: ActivityNotFoundException) {
+            }
         }
     }
 
