@@ -2648,6 +2648,294 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Drag either red end, or tap where it should go'**
   String get rxScheduleDialHint;
+
+  /// No description provided for @healthConnectTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Health Connect'**
+  String get healthConnectTitle;
+
+  /// No description provided for @healthConnectSettingsOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Off · import workouts from apps like Hevy'**
+  String get healthConnectSettingsOff;
+
+  /// No description provided for @healthConnectSettingsOn.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{On · no workouts imported yet} =1{On · 1 workout imported} other{On · {count} workouts imported}}'**
+  String healthConnectSettingsOn(int count);
+
+  /// No description provided for @healthConnectIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'Import your workouts from apps like Hevy through Android\'s Health Connect. It\'s optional and off by default. Tracking, limits and blocking never depend on it.'**
+  String get healthConnectIntro;
+
+  /// No description provided for @healthConnectDataTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'What FocusTrace reads'**
+  String get healthConnectDataTitle;
+
+  /// No description provided for @healthConnectDataBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Only exercise sessions: the kind of workout, its name, when it started and ended, and which app recorded it. Nothing else, such as heart rate, routes or sets, is read, and FocusTrace writes nothing to Health Connect. Imported workouts stay on this device: sync doesn\'t upload them and backups don\'t include them.'**
+  String get healthConnectDataBody;
+
+  /// No description provided for @healthConnectImportSwitch.
+  ///
+  /// In en, this message translates to:
+  /// **'Import workouts'**
+  String get healthConnectImportSwitch;
+
+  /// No description provided for @healthConnectAutoImport.
+  ///
+  /// In en, this message translates to:
+  /// **'Import automatically'**
+  String get healthConnectAutoImport;
+
+  /// No description provided for @healthConnectAutoImportBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Checks for new workouts every few hours. Apps sync to Health Connect on their own schedule, so a workout can take a while to show up.'**
+  String get healthConnectAutoImportBody;
+
+  /// No description provided for @healthConnectAutoImportUnsupported.
+  ///
+  /// In en, this message translates to:
+  /// **'Automatic import needs a newer version of Health Connect. Import now still works.'**
+  String get healthConnectAutoImportUnsupported;
+
+  /// No description provided for @healthConnectAutoImportBlocked.
+  ///
+  /// In en, this message translates to:
+  /// **'Health Connect doesn\'t allow FocusTrace to read in the background, so automatic import can\'t run. Allow it in Health Connect, or use Import now.'**
+  String get healthConnectAutoImportBlocked;
+
+  /// No description provided for @healthConnectImportNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Import now'**
+  String get healthConnectImportNow;
+
+  /// No description provided for @healthConnectLastSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Last successful import: {time}'**
+  String healthConnectLastSuccess(String time);
+
+  /// No description provided for @healthConnectNeverImported.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing imported yet'**
+  String get healthConnectNeverImported;
+
+  /// No description provided for @healthConnectOutcomeImported.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{Last check: 1 workout added or updated} other{Last check: {count} workouts added or updated}}'**
+  String healthConnectOutcomeImported(int count);
+
+  /// No description provided for @healthConnectOutcomeNoNew.
+  ///
+  /// In en, this message translates to:
+  /// **'Last check: no new workouts'**
+  String get healthConnectOutcomeNoNew;
+
+  /// No description provided for @healthConnectOutcomeUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Last check failed: Health Connect isn\'t available'**
+  String get healthConnectOutcomeUnavailable;
+
+  /// No description provided for @healthConnectOutcomePermission.
+  ///
+  /// In en, this message translates to:
+  /// **'Last check failed: access to exercise data is off in Health Connect'**
+  String get healthConnectOutcomePermission;
+
+  /// No description provided for @healthConnectOutcomeBackground.
+  ///
+  /// In en, this message translates to:
+  /// **'Last automatic check couldn\'t run in the background'**
+  String get healthConnectOutcomeBackground;
+
+  /// No description provided for @healthConnectOutcomeFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Last check didn\'t finish. It will be tried again.'**
+  String get healthConnectOutcomeFailed;
+
+  /// No description provided for @healthConnectUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Health Connect isn\'t available on this device. It needs Android 9 or newer.'**
+  String get healthConnectUnavailable;
+
+  /// No description provided for @healthConnectUpdateRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Install or update Health Connect from Google Play to use this.'**
+  String get healthConnectUpdateRequired;
+
+  /// No description provided for @healthConnectGetApp.
+  ///
+  /// In en, this message translates to:
+  /// **'Open Google Play'**
+  String get healthConnectGetApp;
+
+  /// No description provided for @healthConnectRevoked.
+  ///
+  /// In en, this message translates to:
+  /// **'FocusTrace no longer has access to your exercise data. Grant it again to keep importing.'**
+  String get healthConnectRevoked;
+
+  /// No description provided for @healthConnectGrantAgain.
+  ///
+  /// In en, this message translates to:
+  /// **'Grant access'**
+  String get healthConnectGrantAgain;
+
+  /// No description provided for @healthConnectManage.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage access in Health Connect'**
+  String get healthConnectManage;
+
+  /// No description provided for @healthConnectOffNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Turning this off stops every read and scheduled import. It doesn\'t remove FocusTrace\'s permission or change anything in Health Connect; manage that there. Workouts already imported stay on this device until you delete them.'**
+  String get healthConnectOffNote;
+
+  /// No description provided for @healthConnectDeleteImported.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete imported workouts'**
+  String get healthConnectDeleteImported;
+
+  /// No description provided for @healthConnectDeleteTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete imported workouts?'**
+  String get healthConnectDeleteTitle;
+
+  /// No description provided for @healthConnectDeleteBody.
+  ///
+  /// In en, this message translates to:
+  /// **'This removes the workouts FocusTrace copied to this device. Nothing in Health Connect or the apps that recorded them changes.'**
+  String get healthConnectDeleteBody;
+
+  /// No description provided for @healthConnectDelete.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get healthConnectDelete;
+
+  /// No description provided for @healthConnectWorkoutsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Imported workouts'**
+  String get healthConnectWorkoutsTitle;
+
+  /// No description provided for @healthConnectNoWorkouts.
+  ///
+  /// In en, this message translates to:
+  /// **'No workouts yet. The first import covers the last 30 days; older workouts aren\'t imported.'**
+  String get healthConnectNoWorkouts;
+
+  /// No description provided for @healthConnectWorkoutSource.
+  ///
+  /// In en, this message translates to:
+  /// **'{duration} · from {app}'**
+  String healthConnectWorkoutSource(String duration, String app);
+
+  /// No description provided for @workoutStrength.
+  ///
+  /// In en, this message translates to:
+  /// **'Strength training'**
+  String get workoutStrength;
+
+  /// No description provided for @workoutRunning.
+  ///
+  /// In en, this message translates to:
+  /// **'Running'**
+  String get workoutRunning;
+
+  /// No description provided for @workoutWalking.
+  ///
+  /// In en, this message translates to:
+  /// **'Walking'**
+  String get workoutWalking;
+
+  /// No description provided for @workoutCycling.
+  ///
+  /// In en, this message translates to:
+  /// **'Cycling'**
+  String get workoutCycling;
+
+  /// No description provided for @workoutSwimming.
+  ///
+  /// In en, this message translates to:
+  /// **'Swimming'**
+  String get workoutSwimming;
+
+  /// No description provided for @workoutYoga.
+  ///
+  /// In en, this message translates to:
+  /// **'Yoga'**
+  String get workoutYoga;
+
+  /// No description provided for @workoutOther.
+  ///
+  /// In en, this message translates to:
+  /// **'Workout'**
+  String get workoutOther;
+
+  /// No description provided for @onboardingHealthTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Bring in your workouts'**
+  String get onboardingHealthTitle;
+
+  /// No description provided for @onboardingHealthBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Optional. Import workouts from apps like Hevy through Health Connect. FocusTrace only reads exercise sessions and keeps them on this device. You can change this anytime in Settings.'**
+  String get onboardingHealthBody;
+
+  /// No description provided for @onboardingHealthConnect.
+  ///
+  /// In en, this message translates to:
+  /// **'Connect Health Connect'**
+  String get onboardingHealthConnect;
+
+  /// No description provided for @onboardingHealthSkip.
+  ///
+  /// In en, this message translates to:
+  /// **'Not now'**
+  String get onboardingHealthSkip;
+
+  /// No description provided for @onboardingHealthConnected.
+  ///
+  /// In en, this message translates to:
+  /// **'Connected. Your workouts are in Settings, under Health Connect.'**
+  String get onboardingHealthConnected;
+
+  /// No description provided for @onboardingHealthDenied.
+  ///
+  /// In en, this message translates to:
+  /// **'No access was given. You can connect later in Settings.'**
+  String get onboardingHealthDenied;
+
+  /// No description provided for @settingsClearDataHealth.
+  ///
+  /// In en, this message translates to:
+  /// **'Health Connect import turns off and imported workouts are deleted. Nothing in Health Connect changes.'**
+  String get settingsClearDataHealth;
 }
 
 class _AppLocalizationsDelegate

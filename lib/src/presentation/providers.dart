@@ -8,6 +8,7 @@ import '../data/datasources/focus_trace_local_data_source.dart';
 import '../data/datasources/backup_document_data_source.dart';
 import '../data/datasources/platform_locale_data_source.dart';
 import '../data/datasources/focus_trace_sync_api.dart';
+import '../data/datasources/health_connect_channel.dart';
 import '../data/datasources/platform_usage_data_source.dart';
 import '../data/datasources/secure_sync_credential_store.dart';
 import '../data/datasources/sync_execution_gate.dart';
@@ -34,6 +35,7 @@ import '../domain/models/usage_item.dart';
 import 'view_models/app_usage_calendar_view_model.dart';
 import 'view_models/app_usage_details_view_model.dart';
 import 'view_models/dashboard_view_model.dart';
+import 'view_models/health_connect_view_model.dart';
 import 'view_models/onboarding_view_model.dart';
 import 'view_models/reports_view_model.dart';
 import 'view_models/restrictions_view_model.dart';
@@ -374,5 +376,28 @@ final reportsViewModelProvider =
         generationService: ref.watch(reportGenerationServiceProvider),
       );
       viewModel.load();
+      return viewModel;
+    });
+
+/// Health Connect is Android-only; elsewhere its settings and onboarding
+/// step are hidden rather than shown as unavailable.
+final healthConnectSupportedProvider = Provider<bool>(
+  (ref) => ref.watch(usagePlatformProvider) == UsagePlatform.android,
+);
+
+final healthConnectChannelProvider = Provider<HealthConnectChannel>(
+  (ref) => const HealthConnectChannel(),
+);
+
+final healthConnectViewModelProvider =
+    StateNotifierProvider<HealthConnectViewModel, HealthConnectViewState>((
+      ref,
+    ) {
+      final viewModel = HealthConnectViewModel(
+        ref.watch(healthConnectChannelProvider),
+      );
+      if (ref.watch(healthConnectSupportedProvider)) {
+        viewModel.load();
+      }
       return viewModel;
     });

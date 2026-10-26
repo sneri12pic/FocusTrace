@@ -7,6 +7,7 @@ import '../localization/app_localizations_x.dart';
 import '../providers.dart';
 import '../view_models/settings_view_model.dart';
 import '../widgets/sync_account_card.dart';
+import 'health_connect_screen.dart';
 import 'reports_screen.dart';
 
 class SettingsScreen extends ConsumerWidget {
@@ -74,6 +75,10 @@ class SettingsScreen extends ConsumerWidget {
               ),
             ),
           ),
+          if (ref.watch(healthConnectSupportedProvider)) ...[
+            const SizedBox(height: 12),
+            const _HealthConnectTile(),
+          ],
           const SizedBox(height: 12),
           Card(
             elevation: 0,
@@ -301,6 +306,7 @@ class SettingsScreen extends ConsumerWidget {
   ) async {
     final l10n = context.l10n;
     final syncSupported = ref.read(syncSupportedProvider);
+    final healthConnectSupported = ref.read(healthConnectSupportedProvider);
     final deleted = await _ConfirmSheet.show(
       context,
       key: const ValueKey('settings-clear-data-sheet'),
@@ -308,6 +314,7 @@ class SettingsScreen extends ConsumerWidget {
       paragraphs: [
         l10n.settingsClearDataDeletes,
         if (syncSupported) l10n.settingsClearDataKeepsSync,
+        if (healthConnectSupported) l10n.settingsClearDataHealth,
         l10n.settingsClearDataKeeps,
       ],
       confirmLabel: l10n.settingsClearLocalData,
@@ -322,6 +329,14 @@ class SettingsScreen extends ConsumerWidget {
             .read(appLanguageViewModelProvider.notifier)
             .restoreAfterDataClear();
         await ref.read(restrictionsViewModelProvider.notifier).load();
+        // Imported workouts live outside the app database; delete them too.
+        if (healthConnectSupported) {
+          final healthConnect = ref.read(
+            healthConnectViewModelProvider.notifier,
+          );
+          await healthConnect.disable();
+          await healthConnect.deleteImported();
+        }
         // This device's sync opt-in was a local setting too.
         if (syncSupported) {
           await ref.read(syncViewModelProvider.notifier).load();
@@ -385,6 +400,33 @@ class SettingsScreen extends ConsumerWidget {
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(SnackBar(content: Text(context.l10n.settingsImportSuccess)));
+  }
+}
+
+class _HealthConnectTile extends ConsumerWidget {
+  const _HealthConnectTile();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final status = ref.watch(healthConnectViewModelProvider).status;
+    final l10n = context.l10n;
+    return Card(
+      elevation: 0,
+      child: ListTile(
+        key: const ValueKey('settings-health-connect'),
+        leading: const Icon(Icons.fitness_center),
+        title: Text(l10n.healthConnectTitle),
+        subtitle: Text(
+          status.enabled
+              ? l10n.healthConnectSettingsOn(status.workoutCount)
+              : l10n.healthConnectSettingsOff,
+        ),
+        trailing: const Icon(Icons.chevron_right),
+        onTap: () => Navigator.of(context).push<void>(
+          MaterialPageRoute(builder: (context) => const HealthConnectScreen()),
+        ),
+      ),
+    );
   }
 }
 

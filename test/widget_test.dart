@@ -6,6 +6,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:focustrace/focus_trace.dart';
 import 'package:focustrace/src/presentation/widgets/app_category_widgets.dart';
 
+import 'health_connect_test.dart' show FakeHealthConnectChannel;
+
 void main() {
   for (final historical in [false, true]) {
     testWidgets(
@@ -564,6 +566,53 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('onboarding Health Connect step can be skipped', (tester) async {
+    tester.view.physicalSize = const Size(430, 1000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final healthConnect = FakeHealthConnectChannel();
+    final settingsRepository = _FakeSettingsRepository()
+      .._onboardingCompleted = false;
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          usagePlatformProvider.overrideWithValue(UsagePlatform.android),
+          usageRepositoryProvider.overrideWithValue(_FakeUsageRepository()),
+          reportRepositoryProvider.overrideWithValue(_FakeReportRepository()),
+          platformDataSourceProvider.overrideWithValue(
+            _FakePlatformDataSource(),
+          ),
+          settingsRepositoryProvider.overrideWithValue(settingsRepository),
+          appLanguageRepositoryProvider.overrideWithValue(
+            _FakeAppLanguageRepository(),
+          ),
+          healthConnectChannelProvider.overrideWithValue(healthConnect),
+        ],
+        child: const FocusTraceApp(),
+      ),
+    );
+    for (var i = 0; i < 3; i++) {
+      await tester.pump(const Duration(seconds: 1));
+    }
+
+    await tester.tap(find.text('Get started'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+    await tester.tap(find.text('Continue'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(find.text('Bring in your workouts'), findsOneWidget);
+    expect(find.text('Connect Health Connect'), findsOneWidget);
+
+    // Skipping asks for nothing and moves on to choosing apps.
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey('onboarding-health-skip')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(find.text('Choose what to limit'), findsOneWidget);
+    expect(healthConnect.calls, isNot(contains('enable')));
+    expect(tester.takeException(), isNull);
+  });
   group('settings', () {
     Future<_FakeUsageRepository> openSettings(
       WidgetTester tester, {

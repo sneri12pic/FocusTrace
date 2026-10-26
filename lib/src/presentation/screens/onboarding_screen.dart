@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../domain/models/app_usage_summary.dart';
+import '../../domain/models/health_connect.dart';
 import '../../domain/models/usage_session.dart';
 import '../localization/app_localizations_x.dart';
 import '../providers.dart';
@@ -47,6 +48,10 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen>
   final PageController _pageController = PageController();
   int _page = 0;
   String _query = '';
+
+  /// The optional Health Connect step sits before choosing apps, on Android.
+  bool get _hasHealthPage => ref.read(healthConnectSupportedProvider);
+  int get _pickAppsPage => _hasHealthPage ? 3 : 2;
 
   @override
   void initState() {
@@ -116,12 +121,13 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen>
                   children: [
                     const _WelcomePage(),
                     const _AccessPage(),
+                    if (_hasHealthPage) const _HealthConnectPage(),
                     _buildPickAppsPage(),
                   ],
                 ),
               ),
               const SizedBox(height: 12),
-              _DotsIndicator(page: _page),
+              _DotsIndicator(page: _page, count: _pickAppsPage + 1),
               Padding(
                 padding: const EdgeInsets.fromLTRB(24, 16, 24, 20),
                 child: _buildCta(),
@@ -148,6 +154,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen>
           label: context.l10n.onboardingContinue,
           onPressed: () => _goTo(2),
         );
+      case 2 when _hasHealthPage:
+        return _HealthConnectCta(onNext: () => _goTo(_pickAppsPage));
       default:
         return Column(
           mainAxisSize: MainAxisSize.min,
@@ -597,6 +605,124 @@ class _AccessPage extends ConsumerWidget {
 
 /// Once usage access is granted, imports what Android kept from before and
 /// says how far back it goes, so new users know their charts aren't empty.
+/// Optional Health Connect step. Uses the same view model and permission flow
+/// as Settings; skipping or denying never blocks onboarding.
+class _HealthConnectPage extends ConsumerWidget {
+  const _HealthConnectPage();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final state = ref.watch(healthConnectViewModelProvider);
+    final status = state.status;
+    final theme = Theme.of(context);
+    final mutedStyle = theme.textTheme.bodyMedium?.copyWith(
+      color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+    );
+    final String? note;
+    if (state.isLoading) {
+      note = null;
+    } else if (status.availability == HealthConnectAvailability.unavailable) {
+      note = context.l10n.healthConnectUnavailable;
+    } else if (status.availability ==
+        HealthConnectAvailability.updateRequired) {
+      note = context.l10n.healthConnectUpdateRequired;
+    } else if (status.enabled) {
+      note = context.l10n.onboardingHealthConnected;
+    } else if (state.attemptedEnable) {
+      note = context.l10n.onboardingHealthDenied;
+    } else {
+      note = null;
+    }
+
+    return ListView(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      children: [
+        const SizedBox(height: 16),
+        Text(
+          context.l10n.onboardingHealthTitle,
+          textAlign: TextAlign.center,
+          style: theme.textTheme.headlineMedium?.copyWith(
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          context.l10n.onboardingHealthBody,
+          textAlign: TextAlign.center,
+          style: mutedStyle,
+        ),
+        const SizedBox(height: 28),
+        Center(
+          child: Container(
+            width: 132,
+            height: 132,
+            decoration: const BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: _ctaGradient,
+            ),
+            child: const Icon(
+              Icons.fitness_center,
+              size: 60,
+              color: Colors.white,
+            ),
+          ),
+        ),
+        if (note != null) ...[
+          const SizedBox(height: 28),
+          _OnboardingInfoCard(
+            title: context.l10n.healthConnectTitle,
+            body: note,
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _HealthConnectCta extends ConsumerWidget {
+  const _HealthConnectCta({required this.onNext});
+
+  final VoidCallback onNext;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final state = ref.watch(healthConnectViewModelProvider);
+    final status = state.status;
+    final canConnect =
+        !state.isLoading &&
+        !state.isBusy &&
+        status.availability == HealthConnectAvailability.available &&
+        !status.enabled;
+    if (status.enabled ||
+        (!state.isLoading &&
+            status.availability != HealthConnectAvailability.available)) {
+      return _GradientButton(
+        label: context.l10n.onboardingContinue,
+        onPressed: onNext,
+      );
+    }
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _GradientButton(
+          key: const ValueKey('onboarding-health-connect'),
+          label: context.l10n.onboardingHealthConnect,
+          onPressed: canConnect
+              ? () => ref.read(healthConnectViewModelProvider.notifier).enable()
+              : null,
+        ),
+        const SizedBox(height: 4),
+        // As prominent as connecting: this step is optional.
+        TextButton(
+          key: const ValueKey('onboarding-health-skip'),
+          onPressed: state.isBusy ? null : onNext,
+          child: Text(context.l10n.onboardingHealthSkip),
+        ),
+      ],
+    );
+  }
+}
+
 class _HistoryImportNote extends ConsumerWidget {
   const _HistoryImportNote();
 
@@ -717,6 +843,7 @@ class _PermissionTile extends StatelessWidget {
 
 class _GradientButton extends StatelessWidget {
   const _GradientButton({
+    super.key,
     required this.label,
     required this.onPressed,
     this.compact = false,
@@ -757,9 +884,10 @@ class _GradientButton extends StatelessWidget {
 }
 
 class _DotsIndicator extends StatelessWidget {
-  const _DotsIndicator({required this.page});
+  const _DotsIndicator({required this.page, required this.count});
 
   final int page;
+  final int count;
 
   @override
   Widget build(BuildContext context) {
@@ -767,7 +895,7 @@ class _DotsIndicator extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        for (var i = 0; i < 3; i++)
+        for (var i = 0; i < count; i++)
           AnimatedContainer(
             duration: const Duration(milliseconds: 200),
             margin: const EdgeInsets.symmetric(horizontal: 5),

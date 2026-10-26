@@ -65,7 +65,7 @@ class SyncInstallationMarkerTest {
         )
     }
 
-    /** Section name -> excluded sharedpref paths; fails on any include or other domain. */
+    /** Section name -> excluded "domain:path" entries; fails on any include. */
     private fun exclusions(resource: Int): Map<String, Set<String>> {
         val parser = context.resources.getXml(resource)
         val result = mutableMapOf<String, MutableSet<String>>()
@@ -78,8 +78,10 @@ class SyncInstallationMarkerTest {
                     result.getOrPut(parser.name) { mutableSetOf() }
                 }
                 "exclude" -> {
-                    assertEquals("sharedpref", parser.getAttributeValue(null, "domain"))
-                    result.getValue(section!!).add(parser.getAttributeValue(null, "path"))
+                    result.getValue(section!!).add(
+                        parser.getAttributeValue(null, "domain") + ":" +
+                            parser.getAttributeValue(null, "path"),
+                    )
                 }
                 "data-extraction-rules" -> Unit
                 else -> assertTrue("unexpected rule <${parser.name}>", false)
@@ -90,8 +92,11 @@ class SyncInstallationMarkerTest {
 
     private companion object {
         val EXCLUDED = setOf(
-            "focustrace_sync_credentials.xml",
-            "${SyncInstallationMarker.PREFS_NAME}.xml",
+            "sharedpref:focustrace_sync_credentials.xml",
+            "sharedpref:${SyncInstallationMarker.PREFS_NAME}.xml",
+            // Health Connect data never leaves the device through backups.
+            "sharedpref:${HealthConnectStore.PREFS}.xml",
+            "database:${HealthConnectStore.DB_NAME}",
         )
     }
 }

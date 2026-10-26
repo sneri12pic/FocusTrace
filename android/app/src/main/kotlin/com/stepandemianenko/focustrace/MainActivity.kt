@@ -24,11 +24,14 @@ class MainActivity : FlutterActivity() {
         DataTransferDocumentBridge(this)
     }
 
+    private val healthConnectBridge by lazy { HealthConnectBridge(this) }
+
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
         attachSyncChannels(flutterEngine, applicationContext)
         UsageSnapshotScheduler.schedule(this)
         dataTransferDocumentBridge.configure(flutterEngine.dartExecutor.binaryMessenger)
+        healthConnectBridge.configure(flutterEngine.dartExecutor.binaryMessenger)
 
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL_NAME)
             .setMethodCallHandler { call, result ->
@@ -228,7 +231,9 @@ class MainActivity : FlutterActivity() {
 
     @Deprecated("Deprecated in Android; retained for the Storage Access Framework bridge.")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        if (dataTransferDocumentBridge.onActivityResult(requestCode, resultCode, data)) {
+        if (dataTransferDocumentBridge.onActivityResult(requestCode, resultCode, data) ||
+            healthConnectBridge.onActivityResult(requestCode, resultCode, data)
+        ) {
             return
         }
         super.onActivityResult(requestCode, resultCode, data)
@@ -695,6 +700,11 @@ class MainActivity : FlutterActivity() {
         } catch (_: PackageManager.NameNotFoundException) {
             null
         }
+    }
+
+    override fun onDestroy() {
+        healthConnectBridge.dispose()
+        super.onDestroy()
     }
 
     override fun onPause() {

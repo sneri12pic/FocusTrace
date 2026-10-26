@@ -1532,4 +1532,189 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get rxScheduleDialHint =>
       'Drag either red end, or tap where it should go';
+
+  @override
+  String get healthConnectTitle => 'Health Connect';
+
+  @override
+  String get healthConnectSettingsOff =>
+      'Off · import workouts from apps like Hevy';
+
+  @override
+  String healthConnectSettingsOn(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'On · $count workouts imported',
+      one: 'On · 1 workout imported',
+      zero: 'On · no workouts imported yet',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get healthConnectIntro =>
+      'Import your workouts from apps like Hevy through Android\'s Health Connect. It\'s optional and off by default. Tracking, limits and blocking never depend on it.';
+
+  @override
+  String get healthConnectDataTitle => 'What FocusTrace reads';
+
+  @override
+  String get healthConnectDataBody =>
+      'Only exercise sessions: the kind of workout, its name, when it started and ended, and which app recorded it. Nothing else, such as heart rate, routes or sets, is read, and FocusTrace writes nothing to Health Connect. Imported workouts stay on this device: sync doesn\'t upload them and backups don\'t include them.';
+
+  @override
+  String get healthConnectImportSwitch => 'Import workouts';
+
+  @override
+  String get healthConnectAutoImport => 'Import automatically';
+
+  @override
+  String get healthConnectAutoImportBody =>
+      'Checks for new workouts every few hours. Apps sync to Health Connect on their own schedule, so a workout can take a while to show up.';
+
+  @override
+  String get healthConnectAutoImportUnsupported =>
+      'Automatic import needs a newer version of Health Connect. Import now still works.';
+
+  @override
+  String get healthConnectAutoImportBlocked =>
+      'Health Connect doesn\'t allow FocusTrace to read in the background, so automatic import can\'t run. Allow it in Health Connect, or use Import now.';
+
+  @override
+  String get healthConnectImportNow => 'Import now';
+
+  @override
+  String healthConnectLastSuccess(String time) {
+    return 'Last successful import: $time';
+  }
+
+  @override
+  String get healthConnectNeverImported => 'Nothing imported yet';
+
+  @override
+  String healthConnectOutcomeImported(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Last check: $count workouts added or updated',
+      one: 'Last check: 1 workout added or updated',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get healthConnectOutcomeNoNew => 'Last check: no new workouts';
+
+  @override
+  String get healthConnectOutcomeUnavailable =>
+      'Last check failed: Health Connect isn\'t available';
+
+  @override
+  String get healthConnectOutcomePermission =>
+      'Last check failed: access to exercise data is off in Health Connect';
+
+  @override
+  String get healthConnectOutcomeBackground =>
+      'Last automatic check couldn\'t run in the background';
+
+  @override
+  String get healthConnectOutcomeFailed =>
+      'Last check didn\'t finish. It will be tried again.';
+
+  @override
+  String get healthConnectUnavailable =>
+      'Health Connect isn\'t available on this device. It needs Android 9 or newer.';
+
+  @override
+  String get healthConnectUpdateRequired =>
+      'Install or update Health Connect from Google Play to use this.';
+
+  @override
+  String get healthConnectGetApp => 'Open Google Play';
+
+  @override
+  String get healthConnectRevoked =>
+      'FocusTrace no longer has access to your exercise data. Grant it again to keep importing.';
+
+  @override
+  String get healthConnectGrantAgain => 'Grant access';
+
+  @override
+  String get healthConnectManage => 'Manage access in Health Connect';
+
+  @override
+  String get healthConnectOffNote =>
+      'Turning this off stops every read and scheduled import. It doesn\'t remove FocusTrace\'s permission or change anything in Health Connect; manage that there. Workouts already imported stay on this device until you delete them.';
+
+  @override
+  String get healthConnectDeleteImported => 'Delete imported workouts';
+
+  @override
+  String get healthConnectDeleteTitle => 'Delete imported workouts?';
+
+  @override
+  String get healthConnectDeleteBody =>
+      'This removes the workouts FocusTrace copied to this device. Nothing in Health Connect or the apps that recorded them changes.';
+
+  @override
+  String get healthConnectDelete => 'Delete';
+
+  @override
+  String get healthConnectWorkoutsTitle => 'Imported workouts';
+
+  @override
+  String get healthConnectNoWorkouts =>
+      'No workouts yet. The first import covers the last 30 days; older workouts aren\'t imported.';
+
+  @override
+  String healthConnectWorkoutSource(String duration, String app) {
+    return '$duration · from $app';
+  }
+
+  @override
+  String get workoutStrength => 'Strength training';
+
+  @override
+  String get workoutRunning => 'Running';
+
+  @override
+  String get workoutWalking => 'Walking';
+
+  @override
+  String get workoutCycling => 'Cycling';
+
+  @override
+  String get workoutSwimming => 'Swimming';
+
+  @override
+  String get workoutYoga => 'Yoga';
+
+  @override
+  String get workoutOther => 'Workout';
+
+  @override
+  String get onboardingHealthTitle => 'Bring in your workouts';
+
+  @override
+  String get onboardingHealthBody =>
+      'Optional. Import workouts from apps like Hevy through Health Connect. FocusTrace only reads exercise sessions and keeps them on this device. You can change this anytime in Settings.';
+
+  @override
+  String get onboardingHealthConnect => 'Connect Health Connect';
+
+  @override
+  String get onboardingHealthSkip => 'Not now';
+
+  @override
+  String get onboardingHealthConnected =>
+      'Connected. Your workouts are in Settings, under Health Connect.';
+
+  @override
+  String get onboardingHealthDenied =>
+      'No access was given. You can connect later in Settings.';
+
+  @override
+  String get settingsClearDataHealth =>
+      'Health Connect import turns off and imported workouts are deleted. Nothing in Health Connect changes.';
 }

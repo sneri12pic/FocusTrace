@@ -8,4 +8,7 @@
 <full-backup-content>
     <exclude domain="sharedpref" path="focustrace_sync_credentials.xml" />
     <exclude domain="sharedpref" path="focustrace_sync_installation.xml" />
+    <!-- Health Connect data never leaves the device through backups. -->
+    <exclude domain="sharedpref" path="focustrace_health_connect.xml" />
+    <exclude domain="database" path="focustrace_health_connect.db" />
 </full-backup-content>
