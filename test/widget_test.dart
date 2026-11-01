@@ -348,10 +348,13 @@ void main() {
     await tester.scrollUntilVisible(
       find.text('Editor'),
       -300,
-      scrollable: find.descendant(
-        of: find.byKey(const ValueKey('restrictions-scroll-view')),
-        matching: find.byType(Scrollable),
-      ),
+      // First, because the busiest hours chart holds a sideways PageView.
+      scrollable: find
+          .descendant(
+            of: find.byKey(const ValueKey('restrictions-scroll-view')),
+            matching: find.byType(Scrollable),
+          )
+          .first,
     );
     await tester.pump(const Duration(milliseconds: 300));
     expect(find.text('Editor'), findsOneWidget);
