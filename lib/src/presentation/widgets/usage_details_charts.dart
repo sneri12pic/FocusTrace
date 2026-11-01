@@ -85,8 +85,11 @@ class _UsageDetailsChartsState extends State<UsageDetailsCharts> {
                 if (selector != null) selector,
                 const Spacer(),
                 for (final chart in UsageDetailsChart.values)
-                  _PageDot(
-                    chart: chart,
+                  ChartPageDot(
+                    inkKey: ValueKey('usage-chart-dot-${chart.name}'),
+                    label: chart == UsageDetailsChart.bars
+                        ? context.l10n.usageDetailsBarChart
+                        : context.l10n.usageDetailsAreaChart,
                     selected: chart == widget.chart,
                     onTap: () => _showChart(chart),
                   ),
@@ -128,14 +131,17 @@ class _UsageDetailsChartsState extends State<UsageDetailsCharts> {
 }
 
 /// A compact page indicator: the active chart is a short blue pill.
-class _PageDot extends StatelessWidget {
-  const _PageDot({
-    required this.chart,
+class ChartPageDot extends StatelessWidget {
+  const ChartPageDot({
+    required this.inkKey,
+    required this.label,
     required this.selected,
     required this.onTap,
+    super.key,
   });
 
-  final UsageDetailsChart chart;
+  final Key inkKey;
+  final String label;
   final bool selected;
   final VoidCallback onTap;
 
@@ -145,11 +151,9 @@ class _PageDot extends StatelessWidget {
       selected: selected,
       button: true,
       child: Tooltip(
-        message: chart == UsageDetailsChart.bars
-            ? context.l10n.usageDetailsBarChart
-            : context.l10n.usageDetailsAreaChart,
+        message: label,
         child: InkWell(
-          key: ValueKey('usage-chart-dot-${chart.name}'),
+          key: inkKey,
           onTap: onTap,
           customBorder: const StadiumBorder(),
           // A 32px target around a 6px mark keeps the dots tappable.
@@ -372,7 +376,7 @@ class _UsageBarChart extends StatelessWidget {
 
 /// Horizontal tangents join neighboring values smoothly without overshooting
 /// their range, which would imply usage above/below the actual observations.
-Path _smoothSegment(Offset start, Offset end) {
+Path smoothChartSegment(Offset start, Offset end) {
   final middleX = (start.dx + end.dx) / 2;
   return Path()
     ..moveTo(start.dx, start.dy)
@@ -411,7 +415,7 @@ class _UsageTrendLinePainter extends CustomPainter {
         ..strokeCap = StrokeCap.round
         ..style = PaintingStyle.stroke;
       canvas.drawPath(
-        _smoothSegment(
+        smoothChartSegment(
           Offset(
             columnWidth * (index + 0.5),
             size.height - 23 - _UsageBarChart._barHeight(current, maxSeconds),
@@ -540,7 +544,7 @@ class _UsageAreaPainter extends CustomPainter {
     final line = Path()..moveTo(positions.first.dx, positions.first.dy);
     for (var index = 1; index < positions.length; index++) {
       line.extendWithPath(
-        _smoothSegment(positions[index - 1], positions[index]),
+        smoothChartSegment(positions[index - 1], positions[index]),
         Offset.zero,
       );
     }

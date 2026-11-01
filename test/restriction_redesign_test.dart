@@ -10,6 +10,7 @@ import 'package:focustrace/src/domain/models/restriction_rule.dart';
 import 'package:focustrace/src/domain/repositories/report_repository.dart';
 import 'package:focustrace/src/presentation/screens/restriction_editor_sheet.dart';
 import 'package:focustrace/src/presentation/view_models/restriction_insights.dart';
+import 'package:focustrace/src/presentation/widgets/busiest_hours_chart.dart';
 
 void main() {
   test('legacy JSON keeps easy difficulty and all weekdays', () {
@@ -76,11 +77,45 @@ void main() {
     );
     expect(result.recordedDays, 2);
     expect(result.apps.first.totalDurationSeconds, 1800);
-    expect(result.hours[21], 1800);
-    expect(result.hours[22], 1800);
-    expect(result.hours.reduce((a, b) => a + b), 3600);
+    expect(result.hours[21], 900);
+    expect(result.hours[22], 900);
+    expect(result.hours.reduce((a, b) => a + b), 1800);
     expect(result.suggestedApp?.appKey, 'a');
   });
+
+  testWidgets(
+    'busiest hours swipe between bars and a midnight-crossing curve',
+    (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          locale: const Locale('en'),
+          home: Scaffold(
+            body: BusiestHoursChart(
+              hours: [for (var hour = 0; hour < 24; hour++) hour * 60],
+              peak: 23,
+              hourLabel: (hour) => 'h$hour',
+              header: const Text('header'),
+            ),
+          ),
+        ),
+      );
+      final bars = find.byType(FractionallySizedBox);
+      expect(bars, findsNWidgets(23));
+      await tester.fling(
+        find.byKey(const ValueKey('busiest-chart-pages')),
+        const Offset(-400, 0),
+        1000,
+      );
+      await tester.pumpAndSettle();
+      expect(bars, findsNothing);
+      expect(tester.takeException(), isNull);
+      await tester.tap(find.byKey(const ValueKey('busiest-chart-dot-0')));
+      await tester.pumpAndSettle();
+      expect(bars, findsNWidgets(23));
+    },
+  );
 
   for (final scale in [1.0, 2.0]) {
     testWidgets('dark editor is usable at 360px and text scale $scale', (
