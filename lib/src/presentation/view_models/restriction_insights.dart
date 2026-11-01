@@ -129,7 +129,9 @@ class RestrictionInsights {
     return RestrictionInsights(
       apps: apps,
       recordedDays: days.length,
-      hours: hours,
+      hours: average && days.isNotEmpty
+          ? [for (final seconds in hours) (seconds / days.length).round()]
+          : hours,
       peakHour: peak,
       suggestedApp: suggested,
     );

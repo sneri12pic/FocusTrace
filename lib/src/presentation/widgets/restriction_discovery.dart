@@ -1,4 +1,3 @@
-import 'dart:math' as math;
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -10,6 +9,7 @@ import '../providers.dart';
 import '../screens/restriction_editor_sheet.dart';
 import '../view_models/restriction_insights.dart';
 import 'app_icon_avatar.dart';
+import 'busiest_hours_chart.dart';
 
 /// Icons for usage rows: installed-app metadata first, then dashboard rows.
 Map<String, Uint8List> _icons(WidgetRef ref) => {
@@ -260,7 +260,14 @@ class BusiestHoursCard extends ConsumerWidget {
         : DateFormat.j(Localizations.localeOf(context).toString());
     String hourLabel(int hour) => hourFormat.format(DateTime(2000, 1, 1, hour));
     final peak = data.peakHour;
-    final max = data.hours.fold(0, math.max);
+    final week = ref.watch(restrictionWeekProvider);
+    final window = Duration(
+      seconds: peak == null
+          ? 0
+          : [
+              for (var i = 0; i < 3; i++) data.hours[(peak + i) % 24],
+            ].fold(0, (sum, seconds) => sum + seconds),
+    );
     return Card(
       elevation: 0,
       margin: EdgeInsets.zero,
@@ -315,87 +322,33 @@ class BusiestHoursCard extends ConsumerWidget {
               padding: const EdgeInsets.only(right: 8),
               child: peak == null
                   ? Text(l.rxNoInsights, style: TextStyle(color: muted))
-                  : Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Text(
-                          '${hourLabel(peak)} – ${hourLabel((peak + 3) % 24)}',
-                          semanticsLabel: l.rxPeak(
-                            hourLabel(peak),
-                            hourLabel((peak + 3) % 24),
+                  : BusiestHoursChart(
+                      hours: data.hours,
+                      peak: peak,
+                      hourLabel: hourLabel,
+                      header: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '${hourLabel(peak)} – ${hourLabel((peak + 3) % 24)}',
+                            semanticsLabel: l.rxPeak(
+                              hourLabel(peak),
+                              hourLabel((peak + 3) % 24),
+                            ),
+                            style: theme.textTheme.titleLarge?.copyWith(
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
-                          style: theme.textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.w700,
+                          Text(
+                            week
+                                ? l.rxPerDay(l.compactDuration(window))
+                                : l.compactDuration(window),
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: muted,
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 12),
-                        SizedBox(
-                          height: 48,
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            children: [
-                              for (var hour = 0; hour < 24; hour++)
-                                Expanded(
-                                  child: Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 1.5,
-                                    ),
-                                    child: Tooltip(
-                                      message:
-                                          '${hourLabel(hour)}: ${l.compactDuration(Duration(seconds: data.hours[hour]))}',
-                                      child: Container(
-                                        height: math.max(
-                                          4,
-                                          48 *
-                                              data.hours[hour] /
-                                              math.max(1, max),
-                                        ),
-                                        decoration: BoxDecoration(
-                                          borderRadius: BorderRadius.circular(
-                                            99,
-                                          ),
-                                          color: (hour - peak + 24) % 24 < 3
-                                              ? theme.colorScheme.primary
-                                              : theme
-                                                    .colorScheme
-                                                    .surfaceContainerHighest,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        // A label every six hours, centred under its own bar.
-                        Row(
-                          children: [
-                            for (var hour = 0; hour < 24; hour++)
-                              Expanded(
-                                child: SizedBox(
-                                  height: MediaQuery.textScalerOf(
-                                    context,
-                                  ).scale(16),
-                                  child: hour % 6 == 0
-                                      ? OverflowBox(
-                                          maxWidth: 56,
-                                          alignment: hour == 0
-                                              ? AlignmentDirectional.centerStart
-                                              : Alignment.center,
-                                          child: Text(
-                                            hourLabel(hour),
-                                            maxLines: 1,
-                                            style: theme.textTheme.labelSmall
-                                                ?.copyWith(color: muted),
-                                          ),
-                                        )
-                                      : null,
-                                ),
-                              ),
-                          ],
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
             ),
           ],
