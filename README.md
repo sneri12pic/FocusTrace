@@ -6,11 +6,11 @@
 FocusTrace is a transparent, local-first screen-time tracker for Android and Windows, built with Flutter, Riverpod, SQLite, and native Kotlin integration on Android.
 
 ## Demo
-<img width="380" height="600" alt="photo_2026-11-04_00-31-57" src="https://github.com/user-attachments/assets/3dd2336c-2605-405e-a2a5-7d7c1d839752" />
+<img width="380" height="800" alt="photo_2026-11-04_00-31-57" src="https://github.com/user-attachments/assets/3dd2336c-2605-405e-a2a5-7d7c1d839752" />
 
-<img width="380" height="600" alt="photo_2026-11-04_00-31-57 (2)" src="https://github.com/user-attachments/assets/207e5fb2-824f-4ec1-ac42-c4592cfb6df1" />
+<img width="380" height="800" alt="photo_2026-11-04_00-31-57 (2)" src="https://github.com/user-attachments/assets/207e5fb2-824f-4ec1-ac42-c4592cfb6df1" />
 
-<img width="380" height="600" alt="photo_2026-11-04_00-31-53" src="https://github.com/user-attachments/assets/e355021a-e5b6-417f-b588-e4aa51a977db" />
+<img width="380" height="800" alt="photo_2026-11-04_00-31-53" src="https://github.com/user-attachments/assets/e355021a-e5b6-417f-b588-e4aa51a977db" />
 
 ## Features
 
