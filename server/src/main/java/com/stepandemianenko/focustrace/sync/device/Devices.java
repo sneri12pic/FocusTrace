@@ -116,7 +116,8 @@ class Devices {
 
         Optional<DeviceResponse> updated = jdbc.sql("""
                         UPDATE devices
-                           SET display_name = :displayName,
+                           SET display_name = CASE WHEN display_name_by_user THEN display_name
+                                                   ELSE :displayName END,
                                last_seen_at = now()
                          WHERE id = :id
                            AND user_id = :userId
@@ -132,6 +133,60 @@ class Devices {
 
         securityLog.warn("event=device_id_conflict userId={} deviceId={}", userId, deviceId);
         throw ApiException.conflict("This device ID is already registered to another account.");
+    }
+
+    /**
+     * Architecture 9.5: the account holder names the device. The name then survives
+     * re-registration, which otherwise refreshes it from the client on every sync run.
+     * Owner-scoped (D16): a foreign or unknown id is the same empty result, and the
+     * caller answers 404. {@code last_seen_at} is untouched: renaming from another
+     * phone says nothing about when this device last synced.
+     */
+    Optional<DeviceResponse> rename(UUID userId, UUID deviceId, String displayName) {
+        return jdbc.sql("""
+                        UPDATE devices
+                           SET display_name = :displayName,
+                               display_name_by_user = true
+                         WHERE id = :id
+                           AND user_id = :userId
+                        RETURNING\s""" + COLUMNS)
+                .param("id", deviceId)
+                .param("userId", userId)
+                .param("displayName", displayName)
+                .query(Devices::toResponse)
+                .optional();
+    }
+
+    /**
+     * Architecture 9.5: removes a device and, through {@code ON DELETE CASCADE}, every
+     * usage day and app row it synced. False for a foreign or unknown id (D16).
+     *
+     * <p>D19 lock order: the account row first, {@code FOR UPDATE}, as account deletion
+     * does. That conflicts with the {@code KEY SHARE} every upload takes before touching
+     * a device, so an upload in flight finishes first and a later one finds the device
+     * gone (404); neither holds a device or day row while waiting on the other. A weaker
+     * lock would deadlock with an upload's stored-day budget check, which upgrades its
+     * account lock after it already holds the device.
+     *
+     * <p>Removal frees the device's quota slot (D18) and its stored days. An installation
+     * that is still signed in registers again on its next sync, as a device with no
+     * history, and uploads only days newer than its watermark.
+     */
+    @Transactional
+    boolean remove(UUID userId, UUID deviceId) {
+        jdbc.sql("SELECT 1 FROM users WHERE id = :userId FOR UPDATE")
+                .param("userId", userId)
+                .query(Integer.class)
+                .optional()
+                .orElseThrow(ApiException::unauthorized);
+        boolean removed = jdbc.sql("DELETE FROM devices WHERE id = :id AND user_id = :userId")
+                .param("id", deviceId)
+                .param("userId", userId)
+                .update() == 1;
+        if (removed) {
+            securityLog.info("event=device_removed userId={} deviceId={}", userId, deviceId);
+        }
+        return removed;
     }
 
     private int activeDevices(UUID userId) {

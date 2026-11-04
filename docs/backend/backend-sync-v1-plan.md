@@ -361,12 +361,12 @@ Before public release (backend):
   registration return `429` past their per-account limit with no write and no
   effect on another account. All proven against PostgreSQL (`DeviceQuotaIT`,
   `StorageBudgetIT`, `PerUserRateLimitIT`).
-- Device lifecycle beyond D18: explicit retirement or deletion. D18 frees a slot
-  after 90 days of inactivity, but device rows and their history are never
-  removed. A hard delete cascades the device's synced history and must take the
-  D18 account lock.
-- Session and refresh-token retention: every login adds an `auth_sessions` row and
-  every refresh a `refresh_tokens` row, never reclaimed (review brief, 2026-09-19).
+- ~~Device lifecycle beyond D18~~: server side resolved 2026-11-04 as
+  architecture 9.5. `PATCH`/`DELETE /api/v1/devices/{id}` rename or remove a
+  device, removal cascading its history under the account lock
+  (`DeviceManagementIT`). The app has no UI for it yet.
+- ~~Session and refresh-token retention~~: resolved 2026-11-04 as architecture
+  6.4, a nightly purge of rows dead for more than 7 days (`AuthRetentionIT`).
 - ~~A page bound for the worst-case history response~~: resolved 2026-09-26 as a
   hard bound of 20,000 result rows (architecture 9.3); with the
   `refresh_tokens(session_id)` index (V4, architecture 6.3). Accepted when a read

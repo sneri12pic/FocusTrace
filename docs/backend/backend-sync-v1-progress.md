@@ -5,6 +5,45 @@ session reads to continue safely.
 
 ---
 
+## 2026-11-04 — Server maintenance: auth retention, device rename/remove, health probe
+
+Date: 2026-11-04
+Agent: Claude Code
+Goal: Close the plan's two lifecycle items (session/refresh-token retention,
+device deletion) and add basic operability, on `feature/server-maintenance`
+from `develop` (`6a8f33a`).
+Completed:
+- V5 migration: `devices.display_name_by_user`, indexes on
+  `refresh_tokens(expires_at)` and `auth_sessions(absolute_expires_at)`
+  (architecture 6.4).
+- `AuthRetention`: nightly purge at 03:30 UTC of tokens expired more than 7 days
+  ago, and of sessions revoked, absolutely expired or inactive more than 7 days
+  ago. Batched, one short transaction per statement, no account lock. Why it
+  cannot change an outcome is in architecture 6.4.
+- `PATCH /api/v1/devices/{id}` (rename; survives re-registration) and
+  `DELETE /api/v1/devices/{id}` (cascades history; account row `FOR UPDATE`
+  first), both owner-scoped 404 (architecture 9.5). No app UI yet.
+- `GET /api/v1/health`: public, status only, 503 when PostgreSQL is down
+  (architecture 9.6). Actuator added, with nothing else exposed and probe
+  groups off.
+- Dockerfile is now two stages and builds the jar itself. `.dockerignore`
+  admits only the build inputs. Compose: app healthcheck on the probe, and the
+  proxy waits for `service_healthy`.
+Verification: `./gradlew test` against PostgreSQL 16 (Testcontainers) PASS,
+292 tests, 0 failures. New: `AuthRetentionIT` (6), `DeviceManagementIT` (9,
+including the upload/removal lock-order races), `HealthIT` (3),
+`FlywayBaselineIT` V5 check. Docker image built and run read-only with
+`cap_drop ALL`: healthcheck `healthy`, probe 200 `{"status":"UP"}`, then 503
+`{"status":"DOWN"}` after stopping PostgreSQL. `docker compose config` PASS.
+Staging NOT redeployed.
+Decisions made: retention 7 days; rename/remove share the
+`device-register-per-user` bucket; a removed but still signed-in installation
+re-registers as an empty device on its next run.
+Remaining: app UI for rename/remove; redeploy staging (`docker compose up -d
+--build`; no separate `bootJar` step any more); email verification and
+password reset (account readiness section of the plan).
+Relevant commit: see `feature/server-maintenance`.
+
 ## 2026-10-11 — Audit fixes: session-loss consent, backup validation, update recovery
 
 Date: 2026-10-11

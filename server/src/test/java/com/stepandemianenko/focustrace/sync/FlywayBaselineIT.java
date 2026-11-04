@@ -75,7 +75,7 @@ class FlywayBaselineIT extends IntegrationTest {
                 "SELECT version FROM flyway_schema_history WHERE success = true ORDER BY installed_rank",
                 String.class);
 
-        assertThat(versions).containsExactly("1", "2", "3", "4");
+        assertThat(versions).containsExactly("1", "2", "3", "4", "5");
     }
 
     /**
@@ -89,6 +89,22 @@ class FlywayBaselineIT extends IntegrationTest {
         assertThat(indexDefinition("refresh_tokens_one_current_per_session"))
                 .isEqualTo("CREATE UNIQUE INDEX refresh_tokens_one_current_per_session ON public.refresh_tokens"
                         + " USING btree (session_id) WHERE (revoked_at IS NULL)");
+    }
+
+    /** V5: the rename flag defaults to false for existing rows; retention scans are indexed (architecture 6.4). */
+    @Test
+    void v5AddsTheRenameFlagAndRetentionIndexes() {
+        assertThat(jdbc.queryForMap("""
+                SELECT data_type, is_nullable, column_default FROM information_schema.columns
+                 WHERE table_name = 'devices' AND column_name = 'display_name_by_user'"""))
+                .containsEntry("data_type", "boolean")
+                .containsEntry("is_nullable", "NO")
+                .containsEntry("column_default", "false");
+        assertThat(indexDefinition("refresh_tokens_expires_at_idx"))
+                .isEqualTo("CREATE INDEX refresh_tokens_expires_at_idx ON public.refresh_tokens USING btree (expires_at)");
+        assertThat(indexDefinition("auth_sessions_absolute_expires_at_idx"))
+                .isEqualTo("CREATE INDEX auth_sessions_absolute_expires_at_idx ON public.auth_sessions"
+                        + " USING btree (absolute_expires_at)");
     }
 
     private String indexDefinition(String index) {

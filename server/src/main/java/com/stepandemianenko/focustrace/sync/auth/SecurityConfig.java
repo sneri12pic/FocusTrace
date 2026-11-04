@@ -57,7 +57,9 @@ public class SecurityConfig {
     static final RequestMatcher PUBLIC_ENDPOINTS = new OrRequestMatcher(
             pathPattern(HttpMethod.POST, "/api/v1/auth/register"),
             pathPattern(HttpMethod.POST, "/api/v1/auth/login"),
-            pathPattern(HttpMethod.POST, "/api/v1/auth/refresh"));
+            pathPattern(HttpMethod.POST, "/api/v1/auth/refresh"),
+            // Architecture 9.6: status only, no details (application.yml).
+            pathPattern(HttpMethod.GET, "/api/v1/health"));
 
     static final int MIN_SECRET_BYTES = 32;
 

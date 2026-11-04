@@ -1,7 +1,7 @@
+# Build context: only what the build stage copies. Never secrets, logs or backups.
 *
-!build/
-build/*
-!build/libs/
-build/libs/*
-!build/libs/*-SNAPSHOT.jar
-!Dockerfile
+!gradlew
+!gradle/
+!settings.gradle.kts
+!build.gradle.kts
+!src/main/
