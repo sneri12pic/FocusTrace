@@ -26,6 +26,8 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
     implementation("org.springframework.boot:spring-boot-starter-validation")
     implementation("org.springframework.boot:spring-boot-starter-flyway")
+    // GET /api/v1/health only (application.yml); no other actuator endpoint is exposed.
+    implementation("org.springframework.boot:spring-boot-starter-actuator")
     implementation("org.springframework.boot:spring-boot-starter-security")
     // Bearer JWT support (Nimbus JOSE) without Boot's resource-server auto-configuration:
     // the decoder is built explicitly in SecurityConfig.

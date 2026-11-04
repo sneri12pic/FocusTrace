@@ -13,7 +13,10 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -35,11 +38,17 @@ class DeviceController {
         this.devices = devices;
     }
 
+    /** Same bounds as registration's {@code displayName}. */
+    static final String DISPLAY_NAME = "[^\\p{Cc}\\p{Cs}]*";
+
+    record RenameDeviceRequest(@NotBlank @Size(max = 100) @Pattern(regexp = DISPLAY_NAME) String displayName) {
+    }
+
     record RegisterDeviceRequest(
             @NotNull UUID deviceId,
             // No control characters, no unpaired UTF-16 surrogate: the JDBC driver
             // would store a lone surrogate as '?' rather than what was sent.
-            @NotBlank @Size(max = 100) @Pattern(regexp = "[^\\p{Cc}\\p{Cs}]*") String displayName,
+            @NotBlank @Size(max = 100) @Pattern(regexp = DISPLAY_NAME) String displayName,
             @NotNull @Pattern(regexp = "android|windows") String platform) {
     }
 
@@ -65,5 +74,32 @@ class DeviceController {
     @GetMapping
     List<Devices.DeviceResponse> list(@AuthenticationPrincipal Jwt principal) {
         return devices.list(UUID.fromString(principal.getSubject()));
+    }
+
+    /**
+     * Architecture 9.5. 200 with the renamed device; 404 for an unknown or foreign id
+     * (D16). Charged to the same per-account bucket as registration.
+     */
+    @PatchMapping("/{deviceId}")
+    @AuthRateLimiter.PerUser(AuthRateLimiter.Bucket.DEVICE_REGISTER_PER_USER)
+    Devices.DeviceResponse rename(
+            @PathVariable UUID deviceId,
+            @Valid @RequestBody RenameDeviceRequest request,
+            @AuthenticationPrincipal Jwt principal) {
+        return devices.rename(UUID.fromString(principal.getSubject()), deviceId, request.displayName())
+                .orElseThrow(ApiException::notFound);
+    }
+
+    /**
+     * Architecture 9.5. 204 once the device and its synced history are gone; 404 for an
+     * unknown, foreign or already-removed id (D16).
+     */
+    @DeleteMapping("/{deviceId}")
+    @AuthRateLimiter.PerUser(AuthRateLimiter.Bucket.DEVICE_REGISTER_PER_USER)
+    ResponseEntity<Void> remove(@PathVariable UUID deviceId, @AuthenticationPrincipal Jwt principal) {
+        if (!devices.remove(UUID.fromString(principal.getSubject()), deviceId)) {
+            throw ApiException.notFound();
+        }
+        return ResponseEntity.noContent().build();
     }
 }

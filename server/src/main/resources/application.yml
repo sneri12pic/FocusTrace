@@ -44,6 +44,24 @@ server:
     include-binding-errors: never
     include-exception: false
 
+# Architecture 9.6: one public, unauthenticated probe at GET /api/v1/health, so the
+# proxy, Docker and an uptime monitor can tell "process up and database reachable"
+# (200 {"status":"UP"}) from "process up, database down" (503 {"status":"DOWN"}).
+# Status only: no components, details, versions or other actuator endpoints.
+management:
+  endpoints:
+    web:
+      base-path: /api/v1
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never
+      show-components: never
+      # No liveness/readiness groups: they would be listed in the body and add paths.
+      probes:
+        enabled: false
+
 focustrace:
   network:
     # D20. direct: the client is the socket peer; forwarding headers are ignored.
@@ -86,6 +104,11 @@ focustrace:
     # Architecture 9.3: rows in one history response (app rows, plus one per
     # app-less day). Bounds what one read sorts, holds and serialises.
     max-history-rows: 20000
+  # Architecture 6.4: dead login sessions and refresh tokens are deleted once they
+  # have been dead this long (kept briefly so security-log entries still resolve).
+  maintenance:
+    auth-retention: P7D
+    auth-cleanup-cron: "0 30 3 * * *"  # 03:30 UTC daily
 
 logging:
   level:

@@ -1502,6 +1502,37 @@ from `auth_sessions` also finds tokens by `session_id`. `session_id` alone is
 selective - one session holds at most a few hundred tokens - so no composite. No
 constraint, token semantics or session behaviour changes.
 
+### 6.4 `V5` - device rename and auth-row retention (`V5__device_name_and_retention.sql`)
+
+```sql
+ALTER TABLE devices ADD COLUMN display_name_by_user BOOLEAN NOT NULL DEFAULT false;
+CREATE INDEX refresh_tokens_expires_at_idx ON refresh_tokens (expires_at);
+CREATE INDEX auth_sessions_absolute_expires_at_idx ON auth_sessions (absolute_expires_at);
+```
+
+`display_name_by_user` is set by a rename (9.5). Registration then keeps
+`display_name` instead of replacing it with the client's `Build.MODEL`.
+
+Retention (`AuthRetention`, nightly at 03:30 UTC, `focustrace.maintenance.*`).
+Every login adds a session and every refresh adds a token, so without this both
+tables only grow. The purge deletes, in batches of 5,000 and one short
+transaction per statement:
+
+- refresh tokens whose `expires_at` is more than `auth-retention` (default 7
+  days) in the past;
+- sessions revoked, or past `absolute_expires_at`, more than `auth-retention`
+  ago, and sessions older than that with no token valid within it (D06
+  inactivity). Their tokens go by cascade.
+
+Why this cannot change an outcome: `rotate` already rejects an expired token,
+or any token of an ended session, without any D08 replay action. Within a
+session `expires_at` never decreases, so the replay check for a newer token
+never reads a deleted older one. Presenting a purged token is the same 401,
+logged as `unknown_token` instead of `token_expired`/`session_ended`. The job
+takes no account lock and holds no child row while waiting for another, so it
+cannot deadlock with deletion (D19). A failed run is logged and redone the
+next night.
+
 ---
 
 ## 7. Idempotency and versioning
@@ -1949,6 +1980,10 @@ POST /api/v1/auth/logout          {refreshToken}                   -> 204 (idemp
 POST /api/v1/devices              {deviceId, displayName, platform} -> 200/201 {device}
                                   (403 past the device quota, D18)
 GET  /api/v1/devices                                                -> 200 [{device}]
+PATCH  /api/v1/devices/{deviceId} {displayName}                     -> 200 {device} (9.5; 404 not owned)
+DELETE /api/v1/devices/{deviceId}                                   -> 204 (9.5; 404 not owned)
+
+GET  /api/v1/health                                                 -> 200 {status:"UP"} / 503 (9.6; public)
 
 PUT  /api/v1/sync/usage-days      {deviceId, days:[...]}            -> 200 {results:[...]}
                                   (403 past the stored-day budget, D18)
@@ -2152,6 +2187,35 @@ The shape `GET /api/v1/sync/changes?since=<cursor>` is left room for by
 `usage_days.received_at`: a server-side monotonic timestamp is a sufficient cursor
 when it is needed. **Not implemented in v1.** No change feed, no cursor table, no
 tombstones until the vertical slice works end to end.
+
+
+### 9.5 Device rename and removal
+
+`PATCH /devices/{deviceId}` sets `displayName` (same bounds as registration)
+and marks it as chosen by the user (6.4), so later re-registrations keep it.
+`last_seen_at` does not change. `DELETE /devices/{deviceId}` removes the device
+and, by cascade, every usage day and app row it synced, and frees its D18 slot
+and stored days. Both are owner-scoped (D16): an unknown or foreign id is 404
+and nothing is written. Both are charged to the `device-register-per-user`
+bucket.
+
+Removal locks the account row `FOR UPDATE` first (D19 order), as account
+deletion does. An upload in flight holds `KEY SHARE` on that row, so removal
+waits for it. A later upload queues behind removal and gets 404. A weaker lock
+would deadlock with the upload's stored-day budget check, which upgrades its
+account lock while already holding the device. An installation that is still
+signed in registers again on its next run, as a new device row with no
+history, and uploads only days past its watermark. The client UI for this is
+not built yet.
+
+### 9.6 Health probe
+
+`GET /api/v1/health` is public (the only addition to the allow-list) and
+returns `{"status":"UP"}` while the process runs and PostgreSQL answers, and
+503 `{"status":"DOWN"}` otherwise. No components, details or other actuator
+endpoints are exposed. The compose `app` healthcheck calls it from inside the
+container, and the proxy only starts once the app is healthy. An external
+uptime monitor can use it through the proxy.
 
 ---
 

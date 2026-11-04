@@ -658,7 +658,8 @@ For Step 2:
 - The `SecurityFilterChain` is explicit and is the only source of HTTP
   authorization rules.
 - Public endpoints are an explicit allow-list: `/api/v1/auth/register`,
-  `/api/v1/auth/login`, `/api/v1/auth/refresh`. Nothing else.
+  `/api/v1/auth/login`, `/api/v1/auth/refresh`, and `GET /api/v1/health`
+  (status only, architecture 9.6). Nothing else.
 - `anyRequest().authenticated()` is the terminal rule. A new endpoint is
   protected by default; making it public is a visible diff in one place.
 - The JWT filter must not silently bypass a protected endpoint. Absent or invalid
