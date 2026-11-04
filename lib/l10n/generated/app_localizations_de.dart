@@ -1736,4 +1736,34 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get settingsClearDataHealth =>
       'Der Health-Connect-Import wird ausgeschaltet und importierte Trainings werden gelöscht. In Health Connect ändert sich nichts.';
+
+  @override
+  String get preferredUsageTitle => 'Bevorzugte Nutzungszeit';
+
+  @override
+  String get preferredUsageBody =>
+      'Lege fest, wie lange du täglich mit einer Kategorie oder App verbringen möchtest. Nichts wird blockiert: Ein roter Rand erscheint um den Bildschirm, wenn du dieser Zeit nahekommst und wenn du sie erreichst.';
+
+  @override
+  String get preferredUsageAddCategory => 'Kategorie hinzufügen';
+
+  @override
+  String get preferredUsageAddApp => 'App hinzufügen';
+
+  @override
+  String preferredUsagePerDay(String duration) {
+    return '$duration pro Tag';
+  }
+
+  @override
+  String get preferredUsageRemove => 'Entfernen';
+
+  @override
+  String get usageByCategory => 'Nutzung nach Kategorie';
+
+  @override
+  String get usageCategoryOther => 'Sonstige';
+
+  @override
+  String get usageListShowMore => 'Mehr anzeigen';
 }

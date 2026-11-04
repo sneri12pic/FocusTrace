@@ -917,5 +917,15 @@
   "@healthConnectSettingsOn": {"placeholders": {"count": {"type": "int"}}},
   "@healthConnectLastSuccess": {"placeholders": {"time": {"type": "String"}}},
   "@healthConnectOutcomeImported": {"placeholders": {"count": {"type": "int"}}},
-  "@healthConnectWorkoutSource": {"placeholders": {"duration": {"type": "String"}, "app": {"type": "String"}}}
+  "@healthConnectWorkoutSource": {"placeholders": {"duration": {"type": "String"}, "app": {"type": "String"}}},
+  "preferredUsageTitle": "Tempo de uso preferido",
+  "preferredUsageBody": "Escolha quanto tempo você quer passar por dia em uma categoria ou um app. Nada é bloqueado: um contorno vermelho aparece ao redor da tela quando você se aproxima desse tempo e quando o atinge.",
+  "preferredUsageAddCategory": "Adicionar categoria",
+  "preferredUsageAddApp": "Adicionar app",
+  "preferredUsagePerDay": "{duration} por dia",
+  "@preferredUsagePerDay": {"placeholders": {"duration": {"type": "String"}}},
+  "preferredUsageRemove": "Remover",
+  "usageByCategory": "Uso por categoria",
+  "usageCategoryOther": "Outros",
+  "usageListShowMore": "Mostrar mais"
 }

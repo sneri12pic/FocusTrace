@@ -10,6 +10,7 @@ import '../providers.dart';
 import '../view_models/usage_bubble_view_model.dart';
 import '../widgets/bubble_chart.dart';
 import '../widgets/app_category_widgets.dart';
+import '../widgets/category_usage_section.dart';
 import '../widgets/summary_tile.dart';
 import 'restriction_editor_sheet.dart';
 
@@ -18,12 +19,20 @@ class UsageBubbleScreen extends ConsumerWidget {
     required this.summaries,
     required this.trendsByAppKey,
     required this.isToday,
+    required this.selectedDate,
+    required this.categoriesExpanded,
+    required this.onCategoriesToggled,
     super.key,
   });
 
   final List<AppUsageSummary> summaries;
   final Map<String, UsageTrend> trendsByAppKey;
   final bool isToday;
+  final DateTime selectedDate;
+
+  /// Owned by the dashboard: this screen leaves the tree while a day loads.
+  final bool categoriesExpanded;
+  final VoidCallback onCategoriesToggled;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -33,6 +42,10 @@ class UsageBubbleScreen extends ConsumerWidget {
         ref.watch(appCategoriesViewModelProvider).asData?.value ??
         const <String, UsageCategory>{};
     final items = viewModel.itemsFor(summaries, categoryOverrides: overrides);
+    final categoryUsage = viewModel.categoryUsageFor(
+      summaries,
+      categoryOverrides: overrides,
+    );
     final categorySeconds = <UsageCategory, int>{};
     for (final summary in summaries) {
       final category = resolveUsageCategory(summary, overrides);
@@ -117,7 +130,17 @@ class UsageBubbleScreen extends ConsumerWidget {
                   ),
                 ],
               ),
-              const SizedBox(height: 12),
+              if (categoryUsage.isEmpty)
+                const SizedBox(height: 12)
+              else
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: CategoryUsageSection(
+                    rows: categoryUsage,
+                    expanded: categoriesExpanded,
+                    onToggle: onCategoriesToggled,
+                  ),
+                ),
               _SectionCard(
                 children: [
                   Text(
@@ -142,15 +165,19 @@ class UsageBubbleScreen extends ConsumerWidget {
                     ],
                   ),
                   const SizedBox(height: 10),
-                  for (final summary in summaries)
-                    if (selectedCategory == null ||
-                        resolveUsageCategory(summary, overrides) ==
-                            selectedCategory)
-                      SummaryTile(
-                        summary,
-                        isToday: isToday,
-                        trend: trendsByAppKey[summary.appKey],
-                      ),
+                  _CurrentAppList(
+                    // A new day starts again from its first ten apps.
+                    key: ValueKey(selectedDate),
+                    summaries: [
+                      for (final summary in summaries)
+                        if (selectedCategory == null ||
+                            resolveUsageCategory(summary, overrides) ==
+                                selectedCategory)
+                          summary,
+                    ],
+                    trendsByAppKey: trendsByAppKey,
+                    isToday: isToday,
+                  ),
                 ],
               ),
             ],
@@ -243,6 +270,64 @@ class UsageBubbleScreen extends ConsumerWidget {
 }
 
 enum _BubbleAction { unblockNow, restrict }
+
+class _CurrentAppList extends StatefulWidget {
+  const _CurrentAppList({
+    required this.summaries,
+    required this.trendsByAppKey,
+    required this.isToday,
+    super.key,
+  });
+
+  static const _collapsedCount = 10;
+
+  final List<AppUsageSummary> summaries;
+  final Map<String, UsageTrend> trendsByAppKey;
+  final bool isToday;
+
+  @override
+  State<_CurrentAppList> createState() => _CurrentAppListState();
+}
+
+class _CurrentAppListState extends State<_CurrentAppList> {
+  bool _showAll = false;
+
+  @override
+  Widget build(BuildContext context) {
+    // The app key breaks ties, so equal rows keep their place across refreshes.
+    final sorted = [...widget.summaries]
+      ..sort((first, second) {
+        final bySeconds = second.totalDurationSeconds.compareTo(
+          first.totalDurationSeconds,
+        );
+        return bySeconds != 0
+            ? bySeconds
+            : first.appKey.compareTo(second.appKey);
+      });
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (final summary
+            in _showAll ? sorted : sorted.take(_CurrentAppList._collapsedCount))
+          SummaryTile(
+            summary,
+            isToday: widget.isToday,
+            trend: widget.trendsByAppKey[summary.appKey],
+          ),
+        if (sorted.length > _CurrentAppList._collapsedCount)
+          TextButton(
+            key: const ValueKey('current-list-toggle'),
+            onPressed: () => setState(() => _showAll = !_showAll),
+            child: Text(
+              _showAll
+                  ? context.l10n.usageListShowLess
+                  : context.l10n.usageListShowMore,
+            ),
+          ),
+      ],
+    );
+  }
+}
 
 /// Scrolls through the card's side padding to its border and fades out there,
 /// so chips slide away softly instead of being cut at the content edge.

@@ -29,4 +29,13 @@
     <string name="restriction_reason_block_now_until">Temporary block until %1$s</string>
     <string name="restriction_reason_routine_shared">%1$s: shared allowance reached</string>
     <string name="restriction_reason_routine_app">%1$s: app limit reached</string>
+    <string name="preferred_nudge_reached">You\'ve reached your time</string>
+    <plurals name="preferred_nudge_minutes_left">
+        <item quantity="one">%1$d min left</item>
+        <item quantity="other">%1$d min left</item>
+    </plurals>
+    <plurals name="preferred_nudge_minutes_over">
+        <item quantity="one">%1$d min over</item>
+        <item quantity="other">%1$d min over</item>
+    </plurals>
 </resources>

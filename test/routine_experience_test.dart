@@ -7,6 +7,16 @@ import 'package:focustrace/src/presentation/screens/routine_details_screen.dart'
 import 'package:focustrace/src/presentation/widgets/routine_app_picker.dart';
 
 class _Settings implements SettingsRepository {
+  @override
+  Future<List<PreferredLimit>> preferredLimits() async => preferredLimitsStore;
+
+  @override
+  Future<void> setPreferredLimits(List<PreferredLimit> limits) async {
+    preferredLimitsStore = limits;
+  }
+
+  List<PreferredLimit> preferredLimitsStore = const [];
+
   final routines = <BlockRoutine>[];
   final rules = <RestrictionRule>[];
   Map<String, UsageCategory> categories = {};

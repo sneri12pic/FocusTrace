@@ -1741,4 +1741,34 @@ class AppLocalizationsUk extends AppLocalizations {
   @override
   String get settingsClearDataHealth =>
       'Імпорт із Health Connect вимкнеться, а імпортовані тренування буде видалено. У Health Connect нічого не зміниться.';
+
+  @override
+  String get preferredUsageTitle => 'Бажаний час використання';
+
+  @override
+  String get preferredUsageBody =>
+      'Виберіть, скільки часу на день ви хочете проводити в категорії чи застосунку. Нічого не блокується: коли ви наближаєтеся до цього часу і коли досягаєте його, навколо екрана з’являється червона рамка.';
+
+  @override
+  String get preferredUsageAddCategory => 'Додати категорію';
+
+  @override
+  String get preferredUsageAddApp => 'Додати застосунок';
+
+  @override
+  String preferredUsagePerDay(String duration) {
+    return '$duration на день';
+  }
+
+  @override
+  String get preferredUsageRemove => 'Вилучити';
+
+  @override
+  String get usageByCategory => 'Використання за категоріями';
+
+  @override
+  String get usageCategoryOther => 'Інше';
+
+  @override
+  String get usageListShowMore => 'Показати більше';
 }

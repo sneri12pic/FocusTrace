@@ -504,6 +504,9 @@ class _TimelineCard extends ConsumerWidget {
               intervals: state.intervalsOn(day),
               emptyLabel: context.l10n.usageCalendarNoTimeline,
               restrictedFrames: frames,
+              onSwipeDay: ref
+                  .read(appUsageCalendarViewModelProvider(request).notifier)
+                  .selectAdjacentDay,
               // Opens the schedule sheet prefilled; nothing is saved until
               // the user confirms there.
               onRestrictRange: (start, end) => createRestrictionForApp(

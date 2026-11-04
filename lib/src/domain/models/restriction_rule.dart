@@ -274,8 +274,9 @@ String encodeRules(List<RestrictionRule> rules) {
 
 String encodeRestrictionConfiguration(
   List<RestrictionRule> rules,
-  List<BlockRoutine> routines,
-) {
+  List<BlockRoutine> routines, {
+  List<Map<String, Object>> preferredLimits = const [],
+}) {
   return jsonEncode({
     'version': 3,
     'rules': rules.map((rule) => rule.toJson()).toList(),
@@ -283,6 +284,7 @@ String encodeRestrictionConfiguration(
         .where((routine) => routine.isEnabled && routine.canEnforceLimit)
         .map((routine) => routine.toJson())
         .toList(),
+    'preferredLimits': preferredLimits,
   });
 }
 

@@ -22,6 +22,10 @@ the existing design and all usage/tracking/restriction behavior.
 - [x] Reuse translated category names; localize new controls in all seven locales.
 - [x] Verify today/historical filtering, cross-screen updates, failed writes,
   persistence/reset, invalid settings, backup/import, and existing regressions.
+- [x] Add a collapsed "Usage by category" breakdown between the bubbles and the
+  Current list, following the dashboard's selected day and usage source.
+- [x] Limit the Current list to its ten most-used apps with Show more and Show
+  less; reset on day change; leave bubbles, totals and categories untruncated.
 
 ## Non-goals
 

@@ -1,5 +1,43 @@
 # App categories — progress
 
+Date: 2026-11-01
+Agent: Claude Code
+Goal: Color the usage by category section by category (Ypo's follow-up).
+Completed: rows now use category colors and icons instead of blue, and the
+section carries a semi-transparent gradient of the top category's color. The
+title row also shows a dot and name for that category.
+Files materially changed: `category_usage_section.dart`, new
+`test/category_usage_section_test.dart`.
+Verification: PASS `flutter analyze`; PASS full `flutter test` on the working tree
+(389 passed, 1 skipped live-backend test). Device check NOT RUN.
+Decisions made: labels stay white for legibility; Other is neutral gray.
+Remaining: phone check of how the tint reads for each category.
+Relevant commit: None; uncommitted as requested.
+
+Date: 2026-11-01
+Agent: Claude Code
+Goal: Add collapsible usage by category and a ten-app Current list to the dashboard.
+Completed: collapsed "Usage by category" row with animated progress-bar breakdown
+(name, duration, share), expanded/collapsed semantics, Show more and Show less
+after the tenth row, and seven-locale strings. Existing unused `usageListShowLess`
+is now used. Bubble chart code is unchanged.
+Files materially changed: `usage_item.dart`, `usage_bubble_view_model.dart`,
+`usage_bubble_screen.dart`, `dashboard_screen.dart`, new
+`category_usage_section.dart`, ARBs/generated output, `test/widget_test.dart`,
+`test/usage_bubble_view_model_test.dart`.
+Verification: PASS `flutter analyze`; PASS full `flutter test` on the working tree
+(387 passed, 1 skipped live-backend test). A
+temporary test (deleted) rendered the breakdown in Ukrainian at 360dp at 1x and
+2x text with no overflow. All of this ran alongside uncommitted preferred-usage
+work in the same tree.
+Decisions made: see architecture, "Usage by category". Other is a breakdown-only
+label for apps that fall through to Activity.
+Remaining: physical device check NOT RUN (animation, TalkBack, real fonts).
+Risks / unresolved questions: Other in the breakdown and Activity on the filter
+chips cover the same apps, so the two can look inconsistent. Unifying them needs
+a product decision.
+Relevant commit: None; uncommitted as requested.
+
 Date: 2026-10-11
 Agent: Claude Code
 Goal: Redesign the category tags (user asked to "redesign the tags").

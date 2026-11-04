@@ -29,4 +29,13 @@
     <string name="restriction_reason_block_now_until">Bloqueio temporário até %1$s</string>
     <string name="restriction_reason_routine_shared">%1$s: tempo compartilhado esgotado</string>
     <string name="restriction_reason_routine_app">%1$s: limite do app atingido</string>
+    <string name="preferred_nudge_reached">Você atingiu seu tempo</string>
+    <plurals name="preferred_nudge_minutes_left">
+        <item quantity="one">Falta %1$d min</item>
+        <item quantity="other">Faltam %1$d min</item>
+    </plurals>
+    <plurals name="preferred_nudge_minutes_over">
+        <item quantity="one">%1$d min a mais</item>
+        <item quantity="other">%1$d min a mais</item>
+    </plurals>
 </resources>

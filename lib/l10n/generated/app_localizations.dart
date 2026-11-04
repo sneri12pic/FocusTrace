@@ -2936,6 +2936,60 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Health Connect import turns off and imported workouts are deleted. Nothing in Health Connect changes.'**
   String get settingsClearDataHealth;
+
+  /// No description provided for @preferredUsageTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Preferred usage time'**
+  String get preferredUsageTitle;
+
+  /// No description provided for @preferredUsageBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose how long you want to spend each day on a category or an app. Nothing gets blocked: a red outline appears around the screen when you get close to that time and when you reach it.'**
+  String get preferredUsageBody;
+
+  /// No description provided for @preferredUsageAddCategory.
+  ///
+  /// In en, this message translates to:
+  /// **'Add category'**
+  String get preferredUsageAddCategory;
+
+  /// No description provided for @preferredUsageAddApp.
+  ///
+  /// In en, this message translates to:
+  /// **'Add app'**
+  String get preferredUsageAddApp;
+
+  /// No description provided for @preferredUsagePerDay.
+  ///
+  /// In en, this message translates to:
+  /// **'{duration} a day'**
+  String preferredUsagePerDay(String duration);
+
+  /// No description provided for @preferredUsageRemove.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove'**
+  String get preferredUsageRemove;
+
+  /// No description provided for @usageByCategory.
+  ///
+  /// In en, this message translates to:
+  /// **'Usage by category'**
+  String get usageByCategory;
+
+  /// No description provided for @usageCategoryOther.
+  ///
+  /// In en, this message translates to:
+  /// **'Other'**
+  String get usageCategoryOther;
+
+  /// No description provided for @usageListShowMore.
+  ///
+  /// In en, this message translates to:
+  /// **'Show more'**
+  String get usageListShowMore;
 }
 
 class _AppLocalizationsDelegate

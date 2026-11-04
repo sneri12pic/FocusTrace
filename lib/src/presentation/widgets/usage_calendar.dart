@@ -629,8 +629,12 @@ class UsageDayTimeline extends StatefulWidget {
     this.emptyLabel,
     this.onRestrictRange,
     this.restrictedFrames = const [],
+    this.onSwipeDay,
     super.key,
   });
+
+  /// Called with +1 for a left fling (the next day), -1 for a right one.
+  final void Function(int days)? onSwipeDay;
 
   /// Schedules already restricting this app on [day], as (start, end)
   /// minutes; shown faintly behind the usage.
@@ -946,6 +950,16 @@ class _UsageDayTimelineState extends State<UsageDayTimeline> {
                 onPanUpdate: (d) => _range == null
                     ? _pick(d.localPosition, size)
                     : _moveRangeEnd(d.localPosition, size),
+                // A quick sideways fling changes the day, like the calendar
+                // swipe; slower drags keep scrubbing the ring.
+                onPanEnd: (d) {
+                  final v = d.velocity.pixelsPerSecond;
+                  if (_range == null &&
+                      v.dx.abs() > 800 &&
+                      v.dx.abs() > 2 * v.dy.abs()) {
+                    widget.onSwipeDay?.call(v.dx < 0 ? 1 : -1);
+                  }
+                },
                 onLongPressStart: widget.onRestrictRange == null
                     ? null
                     : (d) => _startRange(d.localPosition, size),

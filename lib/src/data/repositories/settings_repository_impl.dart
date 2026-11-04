@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import '../../domain/models/block_routine.dart';
+import '../../domain/models/preferred_limit.dart';
 import '../../domain/models/restriction_rule.dart';
 import '../../domain/models/usage_details_chart.dart';
 import '../../domain/models/usage_item.dart';
@@ -18,6 +19,7 @@ class SettingsRepositoryImpl implements SettingsRepository {
   static const _blockRoutinesKey = 'block_routines';
   static const _onboardingCompletedKey = 'onboarding_completed';
   static const _usageDetailsChartKey = 'usage_details_chart';
+  static const _preferredLimitsKey = 'preferred_limits';
 
   final FocusTraceLocalDataSource _localDataSource;
 
@@ -224,6 +226,21 @@ class SettingsRepositoryImpl implements SettingsRepository {
     final routines = await blockRoutines();
     await _writeBlockRoutines(
       routines.where((routine) => routine.id != id).toList(),
+    );
+  }
+
+  @override
+  Future<List<PreferredLimit>> preferredLimits() async {
+    return decodePreferredLimits(
+      await _localDataSource.readSetting(_preferredLimitsKey),
+    );
+  }
+
+  @override
+  Future<void> setPreferredLimits(List<PreferredLimit> limits) {
+    return _localDataSource.writeSetting(
+      _preferredLimitsKey,
+      encodePreferredLimits(limits),
     );
   }
 

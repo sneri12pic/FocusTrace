@@ -141,6 +141,58 @@ void main() {
     viewModel.dispose();
   });
 
+  test(
+    'swiping days steps the selection and follows into other months',
+    () async {
+      final viewModel = AppUsageCalendarViewModel(
+        reportRepository: _CalendarReportRepository(),
+        request: _request(DateTime(2025, 3, 1)),
+        clock: () => DateTime(2025, 3, 1, 12),
+      );
+      await viewModel.load();
+      // Tomorrow hasn't happened yet.
+      await viewModel.selectAdjacentDay(1);
+      expect(viewModel.state.selectedDay, DateTime(2025, 3, 1));
+      // Back past the 1st shows February with its last day picked.
+      await viewModel.selectAdjacentDay(-1);
+      expect(viewModel.state.month, DateTime(2025, 2));
+      expect(viewModel.state.selectedDay, DateTime(2025, 2, 28));
+      await viewModel.selectAdjacentDay(1);
+      expect(viewModel.state.month, DateTime(2025, 3));
+      expect(viewModel.state.selectedDay, DateTime(2025, 3, 1));
+      viewModel.dispose();
+    },
+  );
+
+  testWidgets('a sideways fling on the dial asks for another day', (
+    tester,
+  ) async {
+    final swipes = <int>[];
+    await tester.pumpWidget(
+      MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Scaffold(
+          body: SizedBox(
+            width: 480,
+            child: UsageDayTimeline(
+              day: DateTime(2025, 3, 4),
+              intervals: const [],
+              onSwipeDay: swipes.add,
+            ),
+          ),
+        ),
+      ),
+    );
+    final dial = find.byKey(const ValueKey('usage-day-timeline'));
+    await tester.fling(dial, const Offset(-200, 0), 1500);
+    await tester.fling(dial, const Offset(200, 0), 1500);
+    // A slow drag scrubs the ring instead.
+    await tester.drag(dial, const Offset(200, 0));
+    await tester.pumpAndSettle();
+    expect(swipes, [1, -1]);
+  });
+
   test('a slower earlier month cannot overwrite the latest month', () async {
     final reports = _CalendarReportRepository();
     final viewModel = AppUsageCalendarViewModel(

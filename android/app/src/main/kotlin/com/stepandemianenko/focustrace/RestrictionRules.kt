@@ -59,6 +59,67 @@ data class RoutineLimit(
     }
 }
 
+/** A soft daily limit over one app or a category's apps. It never blocks. */
+data class PreferredLimit(
+    val limitMinutes: Int,
+    val appKeys: Set<String>,
+) {
+    fun usedSeconds(usageByAppKey: Map<String, Long>): Long =
+        appKeys.sumOf { usageByAppKey[it] ?: 0L }
+
+    fun secondsLeft(usageByAppKey: Map<String, Long>): Long =
+        limitMinutes * 60L - usedSeconds(usageByAppKey)
+}
+
+/**
+ * A gentle reminder for [appKey]. [minutesLeft] rounds up while time remains,
+ * is 0 in the first minute at the limit, and goes negative once over it.
+ */
+data class PreferredNudge(
+    val appKey: String,
+    val minutesLeft: Int,
+) {
+    /** Within [RestrictionRules.NUDGE_RED_MINUTES] of the limit, or past it. */
+    val red: Boolean
+        get() = minutesLeft <= RestrictionRules.NUDGE_RED_MINUTES
+}
+
+/**
+ * Decides when a nudge shows, so it stays rare enough to be noticed:
+ * - on every return to the app while it is in the amber or red zone;
+ * - live, once, when usage crosses into a zone while the app stays open;
+ * - every [RestrictionRules.NUDGE_RED_REPEAT_MS] while the app stays open in red.
+ *
+ * A return means a different app (or the launcher) was in front in between.
+ * Windows that are not activities, such as the notification shade, the
+ * keyboard or this nudge, never change the foreground app, and a null
+ * foreground (screen off, mid-transition) is not a different app.
+ */
+internal class NudgeSchedule {
+    private var frontApp: String? = null
+    private var frontZoneRed: Boolean? = null
+    private var shownAtMs = 0L
+
+    fun isDue(foregroundApp: String?, nudge: PreferredNudge?, nowMs: Long): Boolean {
+        val app = foregroundApp?.takeUnless { it in RestrictionRules.NUDGE_IGNORED_FOREGROUND }
+        if (app != null && app != frontApp) {
+            // A return: forgetting the zone makes it show again.
+            frontApp = app
+            frontZoneRed = null
+        }
+        if (nudge == null || nudge.appKey != frontApp) {
+            if (nudge == null && app != null) frontZoneRed = null
+            return false
+        }
+        val crossed = frontZoneRed != nudge.red
+        val repeat = nudge.red && nowMs - shownAtMs >= RestrictionRules.NUDGE_RED_REPEAT_MS
+        frontZoneRed = nudge.red
+        if (!crossed && !repeat) return false
+        shownAtMs = nowMs
+        return true
+    }
+}
+
 /** One active reason an app is blocked. An app may have several at once. */
 data class BlockReason(
     val kind: Kind,
@@ -79,9 +140,10 @@ data class BlockReason(
 data class RestrictionConfiguration(
     val rules: List<RestrictionRule> = emptyList(),
     val routines: List<RoutineLimit> = emptyList(),
+    val preferredLimits: List<PreferredLimit> = emptyList(),
 ) {
     val isEmpty: Boolean
-        get() = rules.isEmpty() && routines.isEmpty()
+        get() = rules.isEmpty() && routines.isEmpty() && preferredLimits.isEmpty()
 
     val appKeys: Set<String>
         get() = buildSet {
@@ -90,7 +152,21 @@ data class RestrictionConfiguration(
                 addAll(routine.includedApps.map { it.appKey })
                 addAll(routine.apps.filter { it.limitMinutes != null }.map { it.appKey })
             }
+            preferredLimits.forEach { addAll(it.appKeys) }
         }
+
+    /**
+     * The reminder for [appKey] from its tightest limit, the one with the least
+     * time left; null while more than [RestrictionRules.NUDGE_AMBER_MINUTES] remain.
+     */
+    fun preferredNudge(appKey: String, usageByAppKey: Map<String, Long>): PreferredNudge? {
+        val secondsLeft = preferredLimits
+            .filter { appKey in it.appKeys }
+            .minOfOrNull { it.secondsLeft(usageByAppKey) } ?: return null
+        if (secondsLeft > RestrictionRules.NUDGE_AMBER_MINUTES * 60L) return null
+        val minutesLeft = if (secondsLeft > 0) (secondsLeft + 59) / 60 else secondsLeft / 60
+        return PreferredNudge(appKey, minutesLeft.toInt())
+    }
 
     fun blockingRoutine(
         appKey: String,
@@ -163,6 +239,15 @@ internal class RestrictionConfigurationCache(
 object RestrictionRules {
     const val PREFS_NAME = "focustrace_restrictions"
     const val PREFS_RULES_KEY = "rules_json"
+    /** Amber from this many minutes left. */
+    const val NUDGE_AMBER_MINUTES = 5
+
+    /** Red from this many minutes left, and once over the limit. */
+    const val NUDGE_RED_MINUTES = 1
+    const val NUDGE_RED_REPEAT_MS = 10 * 60 * 1000L
+
+    /** Never counted as a different app in front, so they cannot fake a return. */
+    val NUDGE_IGNORED_FOREGROUND = setOf("com.android.systemui")
 
     fun parseRules(json: String?): List<RestrictionRule> {
         return parseConfiguration(json).rules
@@ -174,6 +259,7 @@ object RestrictionRules {
             val root = JSONObject(json)
             val rules = root.optJSONArray("rules") ?: JSONArray()
             val routines = root.optJSONArray("routines") ?: JSONArray()
+            val preferredLimits = root.optJSONArray("preferredLimits") ?: JSONArray()
             RestrictionConfiguration(
                 rules = buildList {
                     for (index in 0 until rules.length()) {
@@ -183,6 +269,11 @@ object RestrictionRules {
                 routines = buildList {
                     for (index in 0 until routines.length()) {
                         parseRoutine(routines.optJSONObject(index))?.let(::add)
+                    }
+                },
+                preferredLimits = buildList {
+                    for (index in 0 until preferredLimits.length()) {
+                        parsePreferredLimit(preferredLimits.optJSONObject(index))?.let(::add)
                     }
                 },
             )
@@ -288,6 +379,14 @@ object RestrictionRules {
             limitMinutes = limitMinutes,
             apps = apps,
         )
+    }
+
+    private fun parsePreferredLimit(row: JSONObject?): PreferredLimit? {
+        if (row == null) return null
+        val limitMinutes = optionalInt(row, "limitMinutes")?.takeIf { it > 0 } ?: return null
+        val apps = row.optJSONArray("apps") ?: return null
+        val appKeys = (0 until apps.length()).map { apps.optString(it) }.filter { it.isNotBlank() }
+        return PreferredLimit(limitMinutes, appKeys.toSet()).takeIf { appKeys.isNotEmpty() }
     }
 
     fun startOfTomorrowMs(nowMs: Long): Long = startOfTomorrow(nowMs)

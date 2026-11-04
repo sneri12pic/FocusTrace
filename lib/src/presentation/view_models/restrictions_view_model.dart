@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/datasources/platform_usage_data_source.dart';
 import '../../domain/models/app_usage_summary.dart';
 import '../../domain/models/block_routine.dart';
+import '../../domain/models/preferred_limit.dart';
 import '../../domain/models/restriction_rule.dart';
 import '../../domain/models/restriction_event.dart';
 import '../../domain/models/usage_session.dart';
@@ -15,6 +16,7 @@ class RestrictionsState {
     required this.platform,
     this.rules = const <RestrictionRule>[],
     this.routines = const <BlockRoutine>[],
+    this.preferredLimits = const <PreferredLimit>[],
     this.todayUsage = const <AppUsageSummary>[],
     this.hasOverlayPermission = true,
     this.hasNotificationsPermission = true,
@@ -35,6 +37,7 @@ class RestrictionsState {
   final UsagePlatform platform;
   final List<RestrictionRule> rules;
   final List<BlockRoutine> routines;
+  final List<PreferredLimit> preferredLimits;
   final List<AppUsageSummary> todayUsage;
   final bool hasOverlayPermission;
   final bool hasNotificationsPermission;
@@ -45,6 +48,7 @@ class RestrictionsState {
   RestrictionsState copyWith({
     List<RestrictionRule>? rules,
     List<BlockRoutine>? routines,
+    List<PreferredLimit>? preferredLimits,
     List<AppUsageSummary>? todayUsage,
     bool? hasOverlayPermission,
     bool? hasNotificationsPermission,
@@ -57,6 +61,7 @@ class RestrictionsState {
       platform: platform,
       rules: rules ?? this.rules,
       routines: routines ?? this.routines,
+      preferredLimits: preferredLimits ?? this.preferredLimits,
       todayUsage: todayUsage ?? this.todayUsage,
       hasOverlayPermission: hasOverlayPermission ?? this.hasOverlayPermission,
       hasNotificationsPermission:
@@ -90,10 +95,11 @@ class RestrictionsViewModel extends StateNotifier<RestrictionsState> {
     if (state.isSaving) return;
     state = state.copyWith(isLoading: true, clearError: true);
     try {
-      final (rules, routines, todayUsage) = await (
+      final (rules, routines, todayUsage, preferredLimits) = await (
         _readRules(),
         _settingsRepository.blockRoutines(),
         _loadTodayUsage(),
+        _settingsRepository.preferredLimits(),
       ).wait;
       final (hasOverlayPermission, hasNotificationsPermission) = await (
         _platformDataSource.hasOverlayPermission(),
@@ -102,6 +108,7 @@ class RestrictionsViewModel extends StateNotifier<RestrictionsState> {
       state = state.copyWith(
         rules: rules,
         routines: routines,
+        preferredLimits: preferredLimits,
         todayUsage: todayUsage,
         hasOverlayPermission: hasOverlayPermission,
         hasNotificationsPermission: hasNotificationsPermission,
@@ -351,9 +358,77 @@ class RestrictionsViewModel extends StateNotifier<RestrictionsState> {
     }
   }
 
-  Future<void> _sync(List<RestrictionRule> rules, List<BlockRoutine> routines) {
+  Future<void> savePreferredLimit(PreferredLimit limit) =>
+      _replacePreferredLimit(limit, keep: true);
+
+  Future<void> removePreferredLimit(PreferredLimit limit) =>
+      _replacePreferredLimit(limit, keep: false);
+
+  Future<void> _replacePreferredLimit(
+    PreferredLimit limit, {
+    required bool keep,
+  }) async {
+    if (state.isSaving || state.isLoading) return;
+    state = state.copyWith(isSaving: true, clearError: true);
+    try {
+      final limits = [
+        ...await _settingsRepository.preferredLimits().then(
+          (saved) => saved.where((other) => !other.hasSameTarget(limit)),
+        ),
+        if (keep) limit,
+      ];
+      await _settingsRepository.setPreferredLimits(limits);
+      state = state.copyWith(preferredLimits: limits, isSaving: false);
+      await _sync(state.rules, state.routines);
+    } catch (error) {
+      state = state.copyWith(isSaving: false, errorMessage: error.toString());
+    }
+  }
+
+  /// A category limit follows the apps in that category, so moving an app
+  /// between categories must reach the blocker.
+  Future<void> resyncPreferredLimits() async {
+    if (state.isSaving || state.isLoading) return;
+    try {
+      await _sync(state.rules, state.routines);
+    } catch (_) {
+      // Nothing to show: the next sync carries the same data.
+    }
+  }
+
+  Future<void> _sync(
+    List<RestrictionRule> rules,
+    List<BlockRoutine> routines,
+  ) async {
     return _platformDataSource.syncRestrictions(
-      encodeRestrictionConfiguration(rules, routines),
+      encodeRestrictionConfiguration(
+        rules,
+        routines,
+        preferredLimits: await _preferredLimitsForBlocker(),
+      ),
     );
+  }
+
+  // ponytail: the app list is read once per launch, so an app installed later
+  // joins its category limit from the next launch.
+  List<AppUsageSummary> _installedApps = const [];
+
+  /// Soft limits never stand in the way of enforcement: on any failure the
+  /// rules and routines still sync.
+  Future<List<Map<String, Object>>> _preferredLimitsForBlocker() async {
+    try {
+      final limits = await _settingsRepository.preferredLimits();
+      if (_installedApps.isEmpty && limits.any((l) => l.category != null)) {
+        _installedApps = await _platformDataSource.getInstalledApps();
+      }
+      return preferredLimitsForBlocker(
+        limits,
+        installedApps: _installedApps,
+        categoryOverrides: await _settingsRepository.appCategoryOverrides(),
+        excludedApps: await _settingsRepository.excludedApps(),
+      );
+    } catch (_) {
+      return const [];
+    }
   }
 }

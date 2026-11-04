@@ -29,4 +29,13 @@
     <string name="restriction_reason_block_now_until">Bloqueo temporal hasta las %1$s</string>
     <string name="restriction_reason_routine_shared">%1$s: tiempo compartido agotado</string>
     <string name="restriction_reason_routine_app">%1$s: límite de la app alcanzado</string>
+    <string name="preferred_nudge_reached">Has alcanzado tu tiempo</string>
+    <plurals name="preferred_nudge_minutes_left">
+        <item quantity="one">Queda %1$d min</item>
+        <item quantity="other">Quedan %1$d min</item>
+    </plurals>
+    <plurals name="preferred_nudge_minutes_over">
+        <item quantity="one">%1$d min de más</item>
+        <item quantity="other">%1$d min de más</item>
+    </plurals>
 </resources>

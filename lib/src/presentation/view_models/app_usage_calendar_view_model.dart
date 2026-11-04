@@ -221,6 +221,17 @@ class AppUsageCalendarViewModel extends StateNotifier<AppUsageCalendarState> {
     state = state.copyWith(selectedDay: _day(day));
   }
 
+  /// Moves the selection by [offset] days, never past today; crossing into
+  /// another month loads it, so the calendar follows.
+  Future<void> selectAdjacentDay(int offset) {
+    final selected = state.selectedDay ?? state.today;
+    final day = DateTime(selected.year, selected.month, selected.day + offset);
+    if (day.isAfter(state.today)) return Future<void>.value();
+    state = state.copyWith(selectedDay: day);
+    final month = DateTime(day.year, day.month);
+    return month == state.month ? Future<void>.value() : load(month: month);
+  }
+
   Future<void> showPreviousMonth() => load(month: state.previousMonth);
 
   Future<void> showNextMonth() {

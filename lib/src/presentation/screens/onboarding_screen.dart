@@ -10,6 +10,7 @@ import '../../domain/models/health_connect.dart';
 import '../../domain/models/usage_session.dart';
 import '../localization/app_localizations_x.dart';
 import '../providers.dart';
+import '../widgets/preferred_limits_editor.dart';
 import 'home_shell.dart';
 import 'restriction_editor_sheet.dart';
 
@@ -51,7 +52,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen>
 
   /// The optional Health Connect step sits before choosing apps, on Android.
   bool get _hasHealthPage => ref.read(healthConnectSupportedProvider);
-  int get _pickAppsPage => _hasHealthPage ? 3 : 2;
+  int get _preferredUsagePage => _hasHealthPage ? 3 : 2;
+  int get _pickAppsPage => _preferredUsagePage + 1;
 
   @override
   void initState() {
@@ -122,6 +124,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen>
                     const _WelcomePage(),
                     const _AccessPage(),
                     if (_hasHealthPage) const _HealthConnectPage(),
+                    const _PreferredUsagePage(),
                     _buildPickAppsPage(),
                   ],
                 ),
@@ -155,7 +158,13 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen>
           onPressed: () => _goTo(2),
         );
       case 2 when _hasHealthPage:
-        return _HealthConnectCta(onNext: () => _goTo(_pickAppsPage));
+        return _HealthConnectCta(onNext: () => _goTo(_preferredUsagePage));
+      case final page when page == _preferredUsagePage:
+        return _GradientButton(
+          key: const ValueKey('onboarding-preferred-continue'),
+          label: context.l10n.onboardingContinue,
+          onPressed: () => _goTo(_pickAppsPage),
+        );
       default:
         return Column(
           mainAxisSize: MainAxisSize.min,
@@ -674,6 +683,39 @@ class _HealthConnectPage extends ConsumerWidget {
             body: note,
           ),
         ],
+      ],
+    );
+  }
+}
+
+/// Optional: Continue works with no preferred usage time set.
+class _PreferredUsagePage extends StatelessWidget {
+  const _PreferredUsagePage();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return ListView(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      children: [
+        const SizedBox(height: 16),
+        Text(
+          context.l10n.preferredUsageTitle,
+          textAlign: TextAlign.center,
+          style: theme.textTheme.headlineMedium?.copyWith(
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          context.l10n.preferredUsageBody,
+          textAlign: TextAlign.center,
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+          ),
+        ),
+        const SizedBox(height: 24),
+        const PreferredLimitsEditor(),
       ],
     );
   }

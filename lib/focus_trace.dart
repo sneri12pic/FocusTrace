@@ -18,6 +18,7 @@ export 'src/data/repositories/sync_repository_impl.dart';
 export 'src/data/repositories/usage_repository_impl.dart';
 export 'src/domain/models/app_usage_summary.dart';
 export 'src/domain/models/block_routine.dart';
+export 'src/domain/models/preferred_limit.dart';
 export 'src/domain/models/daily_app_usage.dart';
 export 'src/domain/models/app_language.dart';
 export 'src/domain/models/app_usage_interval.dart';

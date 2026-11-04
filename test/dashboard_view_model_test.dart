@@ -699,6 +699,16 @@ String _dayKey(DateTime day) =>
 
 class _DashboardSettingsRepository implements SettingsRepository {
   @override
+  Future<List<PreferredLimit>> preferredLimits() async => preferredLimitsStore;
+
+  @override
+  Future<void> setPreferredLimits(List<PreferredLimit> limits) async {
+    preferredLimitsStore = limits;
+  }
+
+  List<PreferredLimit> preferredLimitsStore = const [];
+
+  @override
   Future<List<String>> excludedApps() async => const [];
 
   @override

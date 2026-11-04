@@ -36,6 +36,26 @@ Filtering changes only the `SummaryTile` list. Bubble items use every original
 summary with the shared category resolver; chart layout, colors, totals,
 percentages, ranks, analytics, tracking, and restrictions remain unchanged.
 
+`UsageBubbleViewModel.categoryUsageFor` builds the dashboard's "Usage by
+category" rows from the same `DashboardState.summaries` as the bubbles, so the
+selected day, exclusions and hidden apps match and each app counts once. Rows
+sort by usage descending; shares divide by the sum of those summaries. The
+classifier has no uncategorized result: its fallback is Activity. The breakdown
+therefore shows an app as Other when it resolves to Activity without an
+override, and as Activity only when the user chose that category. Filter chips,
+list tags and bubbles keep showing such apps as Activity.
+
+Each breakdown row uses its category's palette color and icon; Other has its own
+neutral gray and icon in `category_usage_section.dart`. The top row's color
+tints the whole section as a semi-transparent gradient, and the title row names
+that category with a dot in its color, so it reads while collapsed.
+
+`_DashboardScreenState` owns the expanded flag, because `UsageBubbleScreen`
+leaves the tree while a day loads; the flag survives refreshes and day changes
+and starts collapsed each time the app starts. `_CurrentAppList` owns Show more
+and is keyed by the selected date, so a new day returns to the first ten. It
+limits only its own rows, applied after the category filter.
+
 `app_category_widgets.dart` owns the shared palette, per-category icons, the
 `CategoryPill` tag (tinted stadium pill: icon plus name; compact in list rows,
 full size with an edit icon and a 48dp touch target on the details screen),

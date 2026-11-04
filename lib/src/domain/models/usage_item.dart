@@ -51,6 +51,21 @@ class UsageItem {
   Duration get totalDuration => Duration(seconds: totalDurationSeconds);
 }
 
+/// A category's share of one day's usage; a null [category] is "Other".
+class CategoryUsage {
+  const CategoryUsage({
+    required this.category,
+    required this.seconds,
+    required this.share,
+  });
+
+  final UsageCategory? category;
+  final int seconds;
+
+  /// Fraction of the day's total, from 0 to 1.
+  final double share;
+}
+
 String _initialsFor(String name) {
   final parts = name
       .trim()

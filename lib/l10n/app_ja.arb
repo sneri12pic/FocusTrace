@@ -917,5 +917,15 @@
   "@healthConnectSettingsOn": {"placeholders": {"count": {"type": "int"}}},
   "@healthConnectLastSuccess": {"placeholders": {"time": {"type": "String"}}},
   "@healthConnectOutcomeImported": {"placeholders": {"count": {"type": "int"}}},
-  "@healthConnectWorkoutSource": {"placeholders": {"duration": {"type": "String"}, "app": {"type": "String"}}}
+  "@healthConnectWorkoutSource": {"placeholders": {"duration": {"type": "String"}, "app": {"type": "String"}}},
+  "preferredUsageTitle": "希望の利用時間",
+  "preferredUsageBody": "カテゴリやアプリごとに、1日に使いたい時間を選びます。ブロックはされません。その時間に近づいたときと達したときに、画面の周りに赤い枠が表示されます。",
+  "preferredUsageAddCategory": "カテゴリを追加",
+  "preferredUsageAddApp": "アプリを追加",
+  "preferredUsagePerDay": "1日 {duration}",
+  "@preferredUsagePerDay": {"placeholders": {"duration": {"type": "String"}}},
+  "preferredUsageRemove": "削除",
+  "usageByCategory": "カテゴリ別の使用時間",
+  "usageCategoryOther": "その他",
+  "usageListShowMore": "もっと見る"
 }

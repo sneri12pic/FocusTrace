@@ -29,4 +29,13 @@
     <string name="restriction_reason_block_now_until">Vorübergehend gesperrt bis %1$s</string>
     <string name="restriction_reason_routine_shared">%1$s: gemeinsames Kontingent aufgebraucht</string>
     <string name="restriction_reason_routine_app">%1$s: App-Limit erreicht</string>
+    <string name="preferred_nudge_reached">Deine Zeit ist erreicht</string>
+    <plurals name="preferred_nudge_minutes_left">
+        <item quantity="one">Noch %1$d Min.</item>
+        <item quantity="other">Noch %1$d Min.</item>
+    </plurals>
+    <plurals name="preferred_nudge_minutes_over">
+        <item quantity="one">%1$d Min. drüber</item>
+        <item quantity="other">%1$d Min. drüber</item>
+    </plurals>
 </resources>

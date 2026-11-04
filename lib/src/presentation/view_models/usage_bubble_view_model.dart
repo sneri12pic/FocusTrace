@@ -55,6 +55,43 @@ class UsageBubbleViewModel extends StateNotifier<UsageBubbleState> {
     return items.take(10).toList();
   }
 
+  /// Every app counts once, so the rows add up to the day's total.
+  List<CategoryUsage> categoryUsageFor(
+    List<AppUsageSummary> summaries, {
+    Map<String, UsageCategory> categoryOverrides = const {},
+  }) {
+    final seconds = <UsageCategory?, int>{};
+    var total = 0;
+    for (final summary in summaries) {
+      final duration = summary.totalDurationSeconds;
+      if (duration <= 0) continue;
+      final category = resolveUsageCategory(summary, categoryOverrides);
+      // Activity is the classifier's fallback: without an override it means
+      // the app has no category.
+      final uncategorized =
+          category == UsageCategory.activity &&
+          !categoryOverrides.containsKey(summary.appKey);
+      final key = uncategorized ? null : category;
+      seconds[key] = (seconds[key] ?? 0) + duration;
+      total += duration;
+    }
+    int order(UsageCategory? category) =>
+        category?.index ?? UsageCategory.values.length;
+    return [
+      for (final MapEntry(key: category, value: duration) in seconds.entries)
+        CategoryUsage(
+          category: category,
+          seconds: duration,
+          share: duration / total,
+        ),
+    ]..sort((first, second) {
+      final bySeconds = second.seconds.compareTo(first.seconds);
+      return bySeconds != 0
+          ? bySeconds
+          : order(first.category).compareTo(order(second.category));
+    });
+  }
+
   UsageItem? selectedItemFor(List<UsageItem> items, String? selectedItemId) {
     if (selectedItemId == null) {
       return null;

@@ -1717,4 +1717,34 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get settingsClearDataHealth =>
       'Health Connect import turns off and imported workouts are deleted. Nothing in Health Connect changes.';
+
+  @override
+  String get preferredUsageTitle => 'Preferred usage time';
+
+  @override
+  String get preferredUsageBody =>
+      'Choose how long you want to spend each day on a category or an app. Nothing gets blocked: a red outline appears around the screen when you get close to that time and when you reach it.';
+
+  @override
+  String get preferredUsageAddCategory => 'Add category';
+
+  @override
+  String get preferredUsageAddApp => 'Add app';
+
+  @override
+  String preferredUsagePerDay(String duration) {
+    return '$duration a day';
+  }
+
+  @override
+  String get preferredUsageRemove => 'Remove';
+
+  @override
+  String get usageByCategory => 'Usage by category';
+
+  @override
+  String get usageCategoryOther => 'Other';
+
+  @override
+  String get usageListShowMore => 'Show more';
 }

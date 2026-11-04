@@ -6,9 +6,30 @@ import '../../domain/models/app_language.dart';
 import '../localization/app_localizations_x.dart';
 import '../providers.dart';
 import '../view_models/settings_view_model.dart';
+import '../widgets/preferred_limits_editor.dart';
 import '../widgets/sync_account_card.dart';
 import 'health_connect_screen.dart';
 import 'reports_screen.dart';
+
+class _PreferredUsageScreen extends StatelessWidget {
+  const _PreferredUsageScreen();
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    return Scaffold(
+      appBar: AppBar(title: Text(l10n.preferredUsageTitle)),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          Text(l10n.preferredUsageBody),
+          const SizedBox(height: 16),
+          const PreferredLimitsEditor(),
+        ],
+      ),
+    );
+  }
+}
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -79,6 +100,21 @@ class SettingsScreen extends ConsumerWidget {
             const SizedBox(height: 12),
             const _HealthConnectTile(),
           ],
+          const SizedBox(height: 12),
+          Card(
+            elevation: 0,
+            child: ListTile(
+              key: const ValueKey('settings-preferred-usage'),
+              leading: const Icon(Icons.timelapse),
+              title: Text(l10n.preferredUsageTitle),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => Navigator.of(context).push<void>(
+                MaterialPageRoute(
+                  builder: (context) => const _PreferredUsageScreen(),
+                ),
+              ),
+            ),
+          ),
           const SizedBox(height: 12),
           Card(
             elevation: 0,

@@ -917,5 +917,15 @@
   "@healthConnectSettingsOn": {"placeholders": {"count": {"type": "int"}}},
   "@healthConnectLastSuccess": {"placeholders": {"time": {"type": "String"}}},
   "@healthConnectOutcomeImported": {"placeholders": {"count": {"type": "int"}}},
-  "@healthConnectWorkoutSource": {"placeholders": {"duration": {"type": "String"}, "app": {"type": "String"}}}
+  "@healthConnectWorkoutSource": {"placeholders": {"duration": {"type": "String"}, "app": {"type": "String"}}},
+  "preferredUsageTitle": "Бажаний час використання",
+  "preferredUsageBody": "Виберіть, скільки часу на день ви хочете проводити в категорії чи застосунку. Нічого не блокується: коли ви наближаєтеся до цього часу і коли досягаєте його, навколо екрана з’являється червона рамка.",
+  "preferredUsageAddCategory": "Додати категорію",
+  "preferredUsageAddApp": "Додати застосунок",
+  "preferredUsagePerDay": "{duration} на день",
+  "@preferredUsagePerDay": {"placeholders": {"duration": {"type": "String"}}},
+  "preferredUsageRemove": "Вилучити",
+  "usageByCategory": "Використання за категоріями",
+  "usageCategoryOther": "Інше",
+  "usageListShowMore": "Показати більше"
 }

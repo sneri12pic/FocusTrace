@@ -9,6 +9,7 @@ import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.graphics.Color
 import android.graphics.PixelFormat
+import android.graphics.drawable.GradientDrawable
 import android.os.Build
 import android.os.Handler
 import android.os.IBinder
@@ -17,6 +18,7 @@ import android.view.Gravity
 import android.view.View
 import android.view.WindowManager
 import android.widget.Button
+import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
@@ -39,6 +41,11 @@ class BlockerService : Service() {
     private val configurationCache = RestrictionConfigurationCache()
     private var overlayView: View? = null
     private var overlayAppKey: String? = null
+    private var nudgeView: View? = null
+    private var pendingNudge: PreferredNudge? = null
+    private var nudgeForeground: String? = null
+    private val nudgeSchedule = NudgeSchedule()
+    private val hideNudge = Runnable { removeNudge() }
     private var lastBlockedAppKey: String? = null
     private var dayKey: String = ""
     private val warnedDailyLimitKeys = mutableSetOf<String>()
@@ -67,6 +74,7 @@ class BlockerService : Service() {
         handler.removeCallbacks(tickRunnable)
         usageState.invalidate()
         removeOverlay()
+        removeNudge()
         super.onDestroy()
     }
 
@@ -76,7 +84,13 @@ class BlockerService : Service() {
         val performance = BlockerPerformance.startTick(this)
         val queryMetrics = performance?.let { UsageStats.QueryMetrics() }
         try {
+            // Only an open, unblocked app near its preferred limit sets pendingNudge.
+            pendingNudge = null
+            nudgeForeground = null
             tick(performance, queryMetrics)
+            val nudge = pendingNudge
+            if (nudge == null) removeNudge()
+            if (nudgeSchedule.isDue(nudgeForeground, nudge, System.currentTimeMillis())) showNudge(nudge!!)
         } finally {
             performance?.finish(queryMetrics)
         }
@@ -130,6 +144,7 @@ class BlockerService : Service() {
         maybeNotifyDailyLimitWarnings(usageSeconds, now)
 
         val foregroundPackage = snapshot.currentForegroundPackage
+        nudgeForeground = foregroundPackage
 
         // Our own block screen (TikTok path) is foreground while active.
         if (foregroundPackage == null || foregroundPackage == packageName) {
@@ -150,6 +165,7 @@ class BlockerService : Service() {
         if (reasons.isEmpty()) {
             lastBlockedAppKey = null
             removeOverlay()
+            pendingNudge = configuration.preferredNudge(foregroundPackage, usageSeconds)
             return
         }
 
@@ -389,16 +405,10 @@ class BlockerService : Service() {
         )
         BlockerPerformance.logFirstDraw(root, performance)
 
-        val overlayType = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
-        } else {
-            @Suppress("DEPRECATION")
-            WindowManager.LayoutParams.TYPE_PHONE
-        }
         val params = WindowManager.LayoutParams(
             WindowManager.LayoutParams.MATCH_PARENT,
             WindowManager.LayoutParams.MATCH_PARENT,
-            overlayType,
+            overlayType(),
             WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
             PixelFormat.TRANSLUCENT,
         ).apply {
@@ -423,6 +433,116 @@ class BlockerService : Service() {
         } finally {
             overlayView = null
             overlayAppKey = null
+        }
+    }
+
+    private fun overlayType(): Int =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
+        } else {
+            @Suppress("DEPRECATION")
+            WindowManager.LayoutParams.TYPE_PHONE
+        }
+
+    /** A soft edge glow and a time label that fade away; touches pass through. */
+    private fun showNudge(nudge: PreferredNudge) {
+        removeNudge()
+        val density = resources.displayMetrics.density
+        val color = if (nudge.red) NUDGE_RED_COLOR else NUDGE_AMBER_COLOR
+        val glowSize = (NUDGE_GLOW_DP * density).toInt()
+        // Drawn fully opaque from the first frame. While FocusTrace is in the
+        // background its process gets no further frames, so an in-app fade
+        // never progressed and the nudge stayed invisible. The system fades
+        // the window in and out instead (see nudgeParams).
+        val root = FrameLayout(this)
+        for ((gravity, orientation) in listOf(
+            Gravity.TOP to GradientDrawable.Orientation.TOP_BOTTOM,
+            Gravity.BOTTOM to GradientDrawable.Orientation.BOTTOM_TOP,
+            Gravity.LEFT to GradientDrawable.Orientation.LEFT_RIGHT,
+            Gravity.RIGHT to GradientDrawable.Orientation.RIGHT_LEFT,
+        )) {
+            val isHorizontal = gravity == Gravity.TOP || gravity == Gravity.BOTTOM
+            root.addView(
+                View(this).apply {
+                    background = GradientDrawable(orientation, intArrayOf(color, Color.TRANSPARENT))
+                },
+                FrameLayout.LayoutParams(
+                    if (isHorizontal) FrameLayout.LayoutParams.MATCH_PARENT else glowSize,
+                    if (isHorizontal) glowSize else FrameLayout.LayoutParams.MATCH_PARENT,
+                    gravity,
+                ),
+            )
+        }
+        root.addView(
+            TextView(this).apply {
+                val minutes = nudge.minutesLeft
+                text = if (minutes == 0) {
+                    FocusTraceLocale.getString(this@BlockerService, R.string.preferred_nudge_reached)
+                } else {
+                    FocusTraceLocale.getQuantityString(
+                        this@BlockerService,
+                        if (minutes > 0) {
+                            R.plurals.preferred_nudge_minutes_left
+                        } else {
+                            R.plurals.preferred_nudge_minutes_over
+                        },
+                        kotlin.math.abs(minutes),
+                        kotlin.math.abs(minutes).toLong(),
+                    )
+                }
+                setTextColor(Color.WHITE)
+                textSize = 14f
+                val padding = (10 * density).toInt()
+                setPadding(padding * 2, padding, padding * 2, padding)
+                background = GradientDrawable().apply {
+                    setColor(Color.argb(220, 13, 17, 26))
+                    setStroke(density.toInt().coerceAtLeast(1), color)
+                    cornerRadius = 24 * density
+                }
+            },
+            FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.WRAP_CONTENT,
+                FrameLayout.LayoutParams.WRAP_CONTENT,
+                Gravity.TOP or Gravity.CENTER_HORIZONTAL,
+            ).apply { topMargin = (NUDGE_LABEL_TOP_DP * density).toInt() },
+        )
+        try {
+            windowManager.addView(root, nudgeParams())
+        } catch (_: Exception) {
+            return
+        }
+        nudgeView = root
+        // On the handler: no frame or animation is needed to take it down.
+        handler.postDelayed(hideNudge, NUDGE_HOLD_MS)
+    }
+
+    private fun removeNudge() {
+        handler.removeCallbacks(hideNudge)
+        val view = nudgeView ?: return
+        nudgeView = null
+        try {
+            windowManager.removeView(view)
+        } catch (_: Exception) {
+        }
+    }
+
+    private fun nudgeParams() = WindowManager.LayoutParams(
+        WindowManager.LayoutParams.MATCH_PARENT,
+        WindowManager.LayoutParams.MATCH_PARENT,
+        overlayType(),
+        WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+            WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
+            WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+        PixelFormat.TRANSLUCENT,
+    ).apply {
+        // Android 12+ drops touches under an overlay more opaque than 0.8.
+        alpha = NUDGE_WINDOW_ALPHA
+        // A system fade, run by the window manager rather than this process.
+        windowAnimations = android.R.style.Animation_Toast
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            layoutInDisplayCutoutMode =
+                WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
         }
     }
 
@@ -547,6 +667,12 @@ class BlockerService : Service() {
         const val WARNING_CHANNEL_ID = "focustrace_restriction_warnings"
         const val SERVICE_NOTIFICATION_ID = 7301
         const val WARNING_NOTIFICATION_BASE_ID = 7400
+        const val NUDGE_WINDOW_ALPHA = 0.75f
+        const val NUDGE_GLOW_DP = 32
+        const val NUDGE_LABEL_TOP_DP = 48
+        const val NUDGE_HOLD_MS = 3000L
+        const val NUDGE_AMBER_COLOR = 0xFFFFB74D.toInt()
+        const val NUDGE_RED_COLOR = 0xFFE53935.toInt()
         val TIKTOK_PACKAGES = setOf(
             "com.zhiliaoapp.musically",
             "com.ss.android.ugc.trill",

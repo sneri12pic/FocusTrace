@@ -6,6 +6,16 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:focustrace/focus_trace.dart';
 
 class _FakeSettingsRepository implements SettingsRepository {
+  @override
+  Future<List<PreferredLimit>> preferredLimits() async => preferredLimitsStore;
+
+  @override
+  Future<void> setPreferredLimits(List<PreferredLimit> limits) async {
+    preferredLimitsStore = limits;
+  }
+
+  List<PreferredLimit> preferredLimitsStore = const [];
+
   Map<String, UsageCategory> categories = {};
 
   @override

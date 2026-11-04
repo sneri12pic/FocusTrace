@@ -917,5 +917,15 @@
   "onboardingHealthSkip": "Not now",
   "onboardingHealthConnected": "Connected. Your workouts are in Settings, under Health Connect.",
   "onboardingHealthDenied": "No access was given. You can connect later in Settings.",
-  "settingsClearDataHealth": "Health Connect import turns off and imported workouts are deleted. Nothing in Health Connect changes."
+  "settingsClearDataHealth": "Health Connect import turns off and imported workouts are deleted. Nothing in Health Connect changes.",
+  "preferredUsageTitle": "Preferred usage time",
+  "preferredUsageBody": "Choose how long you want to spend each day on a category or an app. Nothing gets blocked: a red outline appears around the screen when you get close to that time and when you reach it.",
+  "preferredUsageAddCategory": "Add category",
+  "preferredUsageAddApp": "Add app",
+  "preferredUsagePerDay": "{duration} a day",
+  "@preferredUsagePerDay": {"placeholders": {"duration": {"type": "String"}}},
+  "preferredUsageRemove": "Remove",
+  "usageByCategory": "Usage by category",
+  "usageCategoryOther": "Other",
+  "usageListShowMore": "Show more"
 }

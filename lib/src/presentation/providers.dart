@@ -366,6 +366,10 @@ final restrictionsViewModelProvider =
         reportRepository: ref.watch(reportRepositoryProvider),
       );
       viewModel.load();
+      ref.listen(
+        appCategoriesViewModelProvider,
+        (_, _) => viewModel.resyncPreferredLimits(),
+      );
       return viewModel;
     });
 

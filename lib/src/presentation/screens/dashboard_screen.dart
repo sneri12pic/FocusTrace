@@ -20,6 +20,9 @@ class DashboardScreen extends ConsumerStatefulWidget {
 
 class _DashboardScreenState extends ConsumerState<DashboardScreen>
     with WidgetsBindingObserver {
+  // Kept here so it survives refreshes and days loading.
+  bool _categoriesExpanded = false;
+
   @override
   void initState() {
     super.initState();
@@ -98,6 +101,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                           summaries: dashboardState.summaries,
                           trendsByAppKey: dashboardState.trendsByAppKey,
                           isToday: dashboardState.isToday,
+                          selectedDate: dashboardState.selectedDate,
+                          categoriesExpanded: _categoriesExpanded,
+                          onCategoriesToggled: () => setState(
+                            () => _categoriesExpanded = !_categoriesExpanded,
+                          ),
                         ),
                         const SizedBox(height: 12),
                       ],

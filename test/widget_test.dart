@@ -476,6 +476,205 @@ void main() {
     );
   });
 
+  group('dashboard additions', () {
+    AppUsageSummary app(int index, {int seconds = 60}) => AppUsageSummary(
+      appName: 'Tool $index',
+      processName: 'tool$index.exe',
+      totalDurationSeconds: seconds,
+      percentageOfTotal: 0,
+    );
+    final toggle = find.byKey(const ValueKey('current-list-toggle'));
+    final categoryToggle = find.byKey(const ValueKey('category-usage-toggle'));
+
+    Future<ProviderContainer> pumpDashboard(
+      WidgetTester tester,
+      _FakeUsageRepository usage,
+    ) async {
+      tester.view.physicalSize = const Size(800, 6000);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            usagePlatformProvider.overrideWithValue(UsagePlatform.windows),
+            usageRepositoryProvider.overrideWithValue(usage),
+            reportRepositoryProvider.overrideWithValue(_FakeReportRepository()),
+            platformDataSourceProvider.overrideWithValue(
+              _FakePlatformDataSource(),
+            ),
+            settingsRepositoryProvider.overrideWithValue(
+              _FakeSettingsRepository(),
+            ),
+            appLanguageRepositoryProvider.overrideWithValue(
+              _FakeAppLanguageRepository(),
+            ),
+          ],
+          child: const FocusTraceApp(),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+      await tester.pump(const Duration(seconds: 1));
+      await tester.pump(const Duration(seconds: 1));
+      return ProviderScope.containerOf(
+        tester.element(find.byType(DashboardScreen)),
+      );
+    }
+
+    Future<void> settle(WidgetTester tester) async {
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.pump(const Duration(milliseconds: 300));
+    }
+
+    testWidgets('categories open on tap, survive refreshes, follow the day', (
+      tester,
+    ) async {
+      final usage = _FakeUsageRepository();
+      final container = await pumpDashboard(tester, usage);
+      final viewModel = container.read(dashboardViewModelProvider.notifier);
+
+      expect(find.text('Usage by category'), findsOneWidget);
+      expect(find.text('100%'), findsWidgets);
+      final closedRows = find.byType(LinearProgressIndicator).evaluate().length;
+      expect(
+        tester.getSemantics(categoryToggle),
+        containsSemantics(
+          isButton: true,
+          hasExpandedState: true,
+          isExpanded: false,
+          hasTapAction: true,
+          label: 'Usage by category\nProductivity',
+        ),
+      );
+
+      await tester.tap(categoryToggle);
+      await settle(tester);
+      expect(
+        find.byType(LinearProgressIndicator).evaluate().length,
+        closedRows + 1,
+      );
+      expect(
+        tester.getSemantics(categoryToggle),
+        containsSemantics(
+          isButton: true,
+          hasExpandedState: true,
+          isExpanded: true,
+          hasTapAction: true,
+          label: 'Usage by category\nProductivity',
+        ),
+      );
+
+      // Live refreshes change the numbers, never the disclosure.
+      usage.todayDurationSeconds = 9000;
+      await viewModel.refresh();
+      await settle(tester);
+      expect(
+        find.byType(LinearProgressIndicator).evaluate().length,
+        closedRows + 1,
+      );
+      expect(find.text('2h 30m'), findsWidgets);
+
+      // A past day shows its own usage and stays open.
+      usage
+        ..serveHistory = true
+        ..todayDurationSeconds = 1800
+        ..extraSummaries = [app(1, seconds: 1800)];
+      await viewModel.previousDay();
+      await settle(tester);
+      expect(find.text('Productivity'), findsWidgets);
+      expect(find.text('Other'), findsOneWidget);
+      expect(find.textContaining('30m  50%', findRichText: true), findsWidgets);
+
+      await tester.tap(categoryToggle);
+      await settle(tester);
+      expect(find.text('Other'), findsNothing);
+    });
+
+    for (final (count, hasButton) in [(9, false), (10, false), (12, true)]) {
+      testWidgets('$count apps list up to ten rows', (tester) async {
+        final usage = _FakeUsageRepository()
+          ..extraSummaries = [
+            for (var index = 2; index <= count; index++)
+              app(index, seconds: 1000 - index),
+          ];
+        await pumpDashboard(tester, usage);
+        expect(
+          find.byType(SummaryTile),
+          findsNWidgets(count > 10 ? 10 : count),
+        );
+        expect(toggle, hasButton ? findsOneWidget : findsNothing);
+      });
+    }
+
+    testWidgets('more apps than ten expand inline and reset with the day', (
+      tester,
+    ) async {
+      // Listed out of order: the list itself ranks them.
+      final usage = _FakeUsageRepository()
+        ..serveHistory = true
+        ..extraSummaries = [
+          for (var index = 2; index <= 12; index++)
+            app(index, seconds: 100 * index),
+        ];
+      final container = await pumpDashboard(tester, usage);
+
+      expect(find.text('Show more'), findsOneWidget);
+      expect(find.text('Tool 4'), findsWidgets);
+      expect(find.text('Tool 3'), findsNothing);
+      expect(
+        tester.getTopLeft(find.text('Tool 12').last).dy,
+        lessThan(tester.getTopLeft(find.text('Tool 4').last).dy),
+      );
+      expect(
+        tester.getTopLeft(toggle).dy,
+        greaterThan(tester.getTopLeft(find.byType(SummaryTile).last).dy),
+      );
+
+      await tester.tap(toggle);
+      await settle(tester);
+      expect(find.byType(SummaryTile), findsNWidgets(12));
+      expect(find.text('Show less'), findsOneWidget);
+      await tester.tap(toggle);
+      await settle(tester);
+      expect(find.byType(SummaryTile), findsNWidgets(10));
+
+      await tester.tap(toggle);
+      await settle(tester);
+      await container.read(dashboardViewModelProvider.notifier).refresh();
+      await settle(tester);
+      expect(find.byType(SummaryTile), findsNWidgets(12));
+
+      await container.read(dashboardViewModelProvider.notifier).previousDay();
+      await settle(tester);
+      expect(find.byType(SummaryTile), findsNWidgets(10));
+      expect(find.text('Show more'), findsOneWidget);
+    });
+
+    testWidgets('the list limit leaves the totals and categories alone', (
+      tester,
+    ) async {
+      final usage = _FakeUsageRepository()
+        ..todayDurationSeconds = 600
+        ..extraSummaries = [
+          for (var index = 2; index <= 13; index++) app(index),
+        ];
+      final container = await pumpDashboard(tester, usage);
+
+      expect(find.byType(SummaryTile), findsNWidgets(10));
+      final state = container.read(dashboardViewModelProvider);
+      expect(state.summaries, hasLength(13));
+      expect(state.totalDurationSeconds, 600 + 12 * 60);
+      await tester.tap(categoryToggle);
+      await settle(tester);
+      expect(
+        find.textContaining('12m  55%', findRichText: true),
+        findsOneWidget,
+      );
+    });
+  });
+
   testWidgets('language picker applies and persists locale immediately', (
     tester,
   ) async {
@@ -607,9 +806,15 @@ void main() {
     expect(find.text('Bring in your workouts'), findsOneWidget);
     expect(find.text('Connect Health Connect'), findsOneWidget);
 
-    // Skipping asks for nothing and moves on to choosing apps.
+    // Skipping asks for nothing and moves on to preferred usage, then apps.
     await tester.pump();
     await tester.tap(find.byKey(const ValueKey('onboarding-health-skip')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(find.text('Preferred usage time'), findsOneWidget);
+    await tester.tap(
+      find.byKey(const ValueKey('onboarding-preferred-continue')),
+    );
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 500));
     expect(find.text('Choose what to limit'), findsOneWidget);
@@ -1070,6 +1275,16 @@ class _FakePlatformDataSource implements PlatformUsageDataSource {
 }
 
 class _FakeSettingsRepository implements SettingsRepository {
+  @override
+  Future<List<PreferredLimit>> preferredLimits() async => preferredLimitsStore;
+
+  @override
+  Future<void> setPreferredLimits(List<PreferredLimit> limits) async {
+    preferredLimitsStore = limits;
+  }
+
+  List<PreferredLimit> preferredLimitsStore = const [];
+
   Map<String, UsageCategory> categories = {};
   bool failCategoryWrites = false;
 

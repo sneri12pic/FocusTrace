@@ -28,4 +28,11 @@
     <string name="restriction_reason_block_now_until">%1$s まで一時ブロック</string>
     <string name="restriction_reason_routine_shared">%1$s：共有の時間を使い切りました</string>
     <string name="restriction_reason_routine_app">%1$s：アプリの上限に達しました</string>
+    <string name="preferred_nudge_reached">設定した時間に達しました</string>
+    <plurals name="preferred_nudge_minutes_left">
+        <item quantity="other">残り%1$d分</item>
+    </plurals>
+    <plurals name="preferred_nudge_minutes_over">
+        <item quantity="other">%1$d分オーバー</item>
+    </plurals>
 </resources>

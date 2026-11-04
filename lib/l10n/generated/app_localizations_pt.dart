@@ -1732,4 +1732,34 @@ class AppLocalizationsPt extends AppLocalizations {
   @override
   String get settingsClearDataHealth =>
       'A importação do Health Connect é desativada e os treinos importados são excluídos. Nada muda no Health Connect.';
+
+  @override
+  String get preferredUsageTitle => 'Tempo de uso preferido';
+
+  @override
+  String get preferredUsageBody =>
+      'Escolha quanto tempo você quer passar por dia em uma categoria ou um app. Nada é bloqueado: um contorno vermelho aparece ao redor da tela quando você se aproxima desse tempo e quando o atinge.';
+
+  @override
+  String get preferredUsageAddCategory => 'Adicionar categoria';
+
+  @override
+  String get preferredUsageAddApp => 'Adicionar app';
+
+  @override
+  String preferredUsagePerDay(String duration) {
+    return '$duration por dia';
+  }
+
+  @override
+  String get preferredUsageRemove => 'Remover';
+
+  @override
+  String get usageByCategory => 'Uso por categoria';
+
+  @override
+  String get usageCategoryOther => 'Outros';
+
+  @override
+  String get usageListShowMore => 'Mostrar mais';
 }

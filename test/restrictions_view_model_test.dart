@@ -1,7 +1,19 @@
+import 'dart:convert';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:focustrace/focus_trace.dart';
 
 class _FakeSettingsRepository implements SettingsRepository {
+  @override
+  Future<List<PreferredLimit>> preferredLimits() async => preferredLimitsStore;
+
+  @override
+  Future<void> setPreferredLimits(List<PreferredLimit> limits) async {
+    preferredLimitsStore = limits;
+  }
+
+  List<PreferredLimit> preferredLimitsStore = const [];
+
   Map<String, UsageCategory> categories = {};
 
   @override
@@ -189,6 +201,39 @@ void main() {
     expect(viewModel.state.rules, hasLength(1));
     expect(decodeRules(dataSource.syncedPayloads.single), hasLength(1));
   });
+
+  test(
+    'preferred limits persist, replace by target and reach the blocker',
+    () async {
+      await viewModel.load();
+
+      await viewModel.savePreferredLimit(
+        const PreferredLimit(appKey: 'app', minutes: 30),
+      );
+      await viewModel.savePreferredLimit(
+        const PreferredLimit(appKey: 'app', minutes: 45),
+      );
+
+      expect(repository.preferredLimitsStore.single.minutes, 45);
+      expect(viewModel.state.preferredLimits.single.minutes, 45);
+      expect(jsonDecode(dataSource.syncedPayloads.last)['preferredLimits'], [
+        {
+          'limitMinutes': 45,
+          'apps': ['app'],
+        },
+      ]);
+
+      await viewModel.removePreferredLimit(
+        const PreferredLimit(appKey: 'app', minutes: 45),
+      );
+
+      expect(repository.preferredLimitsStore, isEmpty);
+      expect(
+        jsonDecode(dataSource.syncedPayloads.last)['preferredLimits'],
+        isEmpty,
+      );
+    },
+  );
 
   test('save upserts and syncs after mutation', () async {
     await viewModel.saveRule(

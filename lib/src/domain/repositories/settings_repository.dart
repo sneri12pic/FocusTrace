@@ -1,4 +1,5 @@
 import '../models/block_routine.dart';
+import '../models/preferred_limit.dart';
 import '../models/restriction_rule.dart';
 import '../models/usage_details_chart.dart';
 import '../models/usage_item.dart';
@@ -48,4 +49,8 @@ abstract class SettingsRepository {
   Future<void> saveBlockRoutine(BlockRoutine routine);
 
   Future<void> removeBlockRoutine(String id);
+
+  Future<List<PreferredLimit>> preferredLimits();
+
+  Future<void> setPreferredLimits(List<PreferredLimit> limits);
 }

@@ -31,4 +31,17 @@
     <string name="restriction_reason_block_now_until">Тимчасове блокування до %1$s</string>
     <string name="restriction_reason_routine_shared">%1$s: спільний час вичерпано</string>
     <string name="restriction_reason_routine_app">%1$s: ліміт застосунку вичерпано</string>
+    <string name="preferred_nudge_reached">Ви досягли свого часу</string>
+    <plurals name="preferred_nudge_minutes_left">
+        <item quantity="one">Залишилась %1$d хв</item>
+        <item quantity="few">Залишилось %1$d хв</item>
+        <item quantity="many">Залишилось %1$d хв</item>
+        <item quantity="other">Залишилось %1$d хв</item>
+    </plurals>
+    <plurals name="preferred_nudge_minutes_over">
+        <item quantity="one">Понад час на %1$d хв</item>
+        <item quantity="few">Понад час на %1$d хв</item>
+        <item quantity="many">Понад час на %1$d хв</item>
+        <item quantity="other">Понад час на %1$d хв</item>
+    </plurals>
 </resources>

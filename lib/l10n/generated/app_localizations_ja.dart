@@ -1655,4 +1655,34 @@ class AppLocalizationsJa extends AppLocalizations {
   @override
   String get settingsClearDataHealth =>
       'Health Connect からの取り込みはオフになり、取り込んだワークアウトは削除されます。Health Connect 内のデータは変わりません。';
+
+  @override
+  String get preferredUsageTitle => '希望の利用時間';
+
+  @override
+  String get preferredUsageBody =>
+      'カテゴリやアプリごとに、1日に使いたい時間を選びます。ブロックはされません。その時間に近づいたときと達したときに、画面の周りに赤い枠が表示されます。';
+
+  @override
+  String get preferredUsageAddCategory => 'カテゴリを追加';
+
+  @override
+  String get preferredUsageAddApp => 'アプリを追加';
+
+  @override
+  String preferredUsagePerDay(String duration) {
+    return '1日 $duration';
+  }
+
+  @override
+  String get preferredUsageRemove => '削除';
+
+  @override
+  String get usageByCategory => 'カテゴリ別の使用時間';
+
+  @override
+  String get usageCategoryOther => 'その他';
+
+  @override
+  String get usageListShowMore => 'もっと見る';
 }

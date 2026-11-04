@@ -917,5 +917,15 @@
   "@healthConnectSettingsOn": {"placeholders": {"count": {"type": "int"}}},
   "@healthConnectLastSuccess": {"placeholders": {"time": {"type": "String"}}},
   "@healthConnectOutcomeImported": {"placeholders": {"count": {"type": "int"}}},
-  "@healthConnectWorkoutSource": {"placeholders": {"duration": {"type": "String"}, "app": {"type": "String"}}}
+  "@healthConnectWorkoutSource": {"placeholders": {"duration": {"type": "String"}, "app": {"type": "String"}}},
+  "preferredUsageTitle": "Bevorzugte Nutzungszeit",
+  "preferredUsageBody": "Lege fest, wie lange du täglich mit einer Kategorie oder App verbringen möchtest. Nichts wird blockiert: Ein roter Rand erscheint um den Bildschirm, wenn du dieser Zeit nahekommst und wenn du sie erreichst.",
+  "preferredUsageAddCategory": "Kategorie hinzufügen",
+  "preferredUsageAddApp": "App hinzufügen",
+  "preferredUsagePerDay": "{duration} pro Tag",
+  "@preferredUsagePerDay": {"placeholders": {"duration": {"type": "String"}}},
+  "preferredUsageRemove": "Entfernen",
+  "usageByCategory": "Nutzung nach Kategorie",
+  "usageCategoryOther": "Sonstige",
+  "usageListShowMore": "Mehr anzeigen"
 }

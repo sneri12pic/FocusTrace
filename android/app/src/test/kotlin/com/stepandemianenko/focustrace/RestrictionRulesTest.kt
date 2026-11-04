@@ -2,6 +2,7 @@ package com.stepandemianenko.focustrace
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.util.Calendar
@@ -20,6 +21,100 @@ class RestrictionRulesTest {
         assertTrue(RestrictionRules.isBlocked(rule, localMs(2026, 7, 4, 13, 59), 0))
         assertFalse(RestrictionRules.isBlocked(rule, until, 0))
         assertFalse(RestrictionRules.isBlocked(rule, localMs(2026, 7, 4, 14, 1), 0))
+    }
+
+    @Test
+    fun nudgeZonesUseMinutesLeftOnTheTightestLimit() {
+        val configuration = RestrictionRules.parseConfiguration(
+            """{"preferredLimits":[
+                {"limitMinutes":30,"apps":["a","b"]},
+                {"limitMinutes":20,"apps":["a"]},
+                {"limitMinutes":0,"apps":["ignored"]},
+                {"limitMinutes":5,"apps":[]}
+            ]}""",
+        )
+
+        assertEquals(2, configuration.preferredLimits.size)
+        assertFalse(configuration.isEmpty)
+        assertEquals(setOf("a", "b"), configuration.appKeys)
+        // More than 5 minutes left on every limit: nothing yet.
+        assertNull(configuration.preferredNudge("a", mapOf("a" to 14 * 60L + 59)))
+        // Amber at exactly 5 minutes left on a's own 20-minute limit.
+        val amber = configuration.preferredNudge("a", mapOf("a" to 15 * 60L))!!
+        assertEquals(PreferredNudge("a", 5), amber)
+        assertFalse(amber.red)
+        assertEquals(PreferredNudge("a", 2), configuration.preferredNudge("a", mapOf("a" to 18 * 60L)))
+        // Red from 1 minute left: "1 minute left", then reached, then over.
+        assertTrue(configuration.preferredNudge("a", mapOf("a" to 19 * 60L))!!.red)
+        assertEquals(PreferredNudge("a", 1), configuration.preferredNudge("a", mapOf("a" to 19 * 60L + 30)))
+        assertEquals(PreferredNudge("a", 0), configuration.preferredNudge("a", mapOf("a" to 20 * 60L + 59)))
+        assertEquals(PreferredNudge("a", -3), configuration.preferredNudge("a", mapOf("a" to 23 * 60L)))
+        // A category limit counts every app in it, whichever one is open.
+        assertEquals(
+            PreferredNudge("b", 4),
+            configuration.preferredNudge("b", mapOf("a" to 6 * 60L, "b" to 20 * 60L)),
+        )
+        assertEquals(
+            PreferredNudge("a", 4),
+            configuration.preferredNudge("a", mapOf("a" to 6 * 60L, "b" to 20 * 60L)),
+        )
+        assertNull(configuration.preferredNudge("c", mapOf("a" to 600L)))
+        assertTrue(configuration.blockReasons("a", 0L, mapOf("a" to 6000L)).isEmpty())
+    }
+
+    @Test
+    fun nudgeShowsLiveOnceWhenCrossingIntoAmberAndNotAgainWhileStaying() {
+        val schedule = NudgeSchedule()
+        assertFalse(schedule.isDue("a", null, 0L))
+        assertTrue(schedule.isDue("a", PreferredNudge("a", 5), 1_000L))
+        assertFalse(schedule.isDue("a", PreferredNudge("a", 4), 61_000L))
+        assertFalse(schedule.isDue("a", PreferredNudge("a", 2), 20 * 60_000L))
+    }
+
+    @Test
+    fun nudgeShowsAgainOnEveryReturnInAmberOrRed() {
+        val schedule = NudgeSchedule()
+        assertTrue(schedule.isDue("a", PreferredNudge("a", 5), 0L))
+        assertFalse(schedule.isDue("launcher", null, 1_000L))
+        // Back 3 minutes later and still amber: shows again.
+        assertTrue(schedule.isDue("a", PreferredNudge("a", 4), 181_000L))
+        assertFalse(schedule.isDue("a", PreferredNudge("a", 4), 182_000L))
+        // Another app in front for a single tick still counts as a return.
+        assertFalse(schedule.isDue("b", null, 183_000L))
+        assertTrue(schedule.isDue("a", PreferredNudge("a", -2), 184_000L))
+        assertFalse(schedule.isDue("other", null, 185_000L))
+        assertTrue(schedule.isDue("a", PreferredNudge("a", -2), 186_000L))
+    }
+
+    @Test
+    fun nudgeShowsLiveWhenCrossingIntoRedThenRepeatsEveryTenMinutes() {
+        val schedule = NudgeSchedule()
+        val repeat = RestrictionRules.NUDGE_RED_REPEAT_MS
+        assertTrue(schedule.isDue("a", PreferredNudge("a", 2), 0L))
+        assertTrue(schedule.isDue("a", PreferredNudge("a", 1), 60_000L))
+        assertFalse(schedule.isDue("a", PreferredNudge("a", 0), 120_000L))
+        assertFalse(schedule.isDue("a", PreferredNudge("a", -8), 60_000L + repeat - 1))
+        assertTrue(schedule.isDue("a", PreferredNudge("a", -9), 60_000L + repeat))
+        assertFalse(schedule.isDue("a", PreferredNudge("a", -10), 120_000L + repeat))
+    }
+
+    @Test
+    fun nudgeIgnoresSystemUiAndUnknownForegroundFlicker() {
+        val schedule = NudgeSchedule()
+        assertTrue(schedule.isDue("a", PreferredNudge("a", 3), 0L))
+        assertFalse(schedule.isDue("com.android.systemui", null, 1_000L))
+        assertFalse(schedule.isDue("a", PreferredNudge("a", 3), 2_000L))
+        assertFalse(schedule.isDue(null, null, 3_000L))
+        assertFalse(schedule.isDue("a", PreferredNudge("a", 3), 4_000L))
+    }
+
+    @Test
+    fun nudgeShowsAgainAfterUsageDropsBelowTheZone() {
+        // For example a raised limit, then crossing into the zone again later.
+        val schedule = NudgeSchedule()
+        assertTrue(schedule.isDue("a", PreferredNudge("a", 1), 0L))
+        assertFalse(schedule.isDue("a", null, 1_000L))
+        assertTrue(schedule.isDue("a", PreferredNudge("a", 5), 2_000L))
     }
 
     @Test

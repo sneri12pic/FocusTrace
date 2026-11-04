@@ -274,6 +274,16 @@ class _HistoryReports implements ReportRepository {
 
 class _ChartSettings implements SettingsRepository {
   @override
+  Future<List<PreferredLimit>> preferredLimits() async => preferredLimitsStore;
+
+  @override
+  Future<void> setPreferredLimits(List<PreferredLimit> limits) async {
+    preferredLimitsStore = limits;
+  }
+
+  List<PreferredLimit> preferredLimitsStore = const [];
+
+  @override
   Future<UsageDetailsChart> usageDetailsChart() async => UsageDetailsChart.bars;
 
   @override
