@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/datasources/platform_usage_data_source.dart';
+import '../../domain/models/platform_capabilities.dart';
 import '../../domain/models/tracking_status.dart';
 import '../../domain/models/usage_session.dart';
 import '../../domain/repositories/settings_repository.dart';
@@ -59,6 +60,8 @@ class TrackingViewModel extends StateNotifier<TrackingState> {
        super(TrackingState.initial(platform));
 
   final UsagePlatform _platform;
+  late final PlatformCapabilities _capabilities =
+      PlatformCapabilities.forPlatform(_platform);
   final PlatformUsageDataSource _platformDataSource;
   final UsageRepository _usageRepository;
   final SettingsRepository _settingsRepository;
@@ -77,7 +80,7 @@ class TrackingViewModel extends StateNotifier<TrackingState> {
   }
 
   Future<void> startTracking() async {
-    if (_platform != UsagePlatform.windows) {
+    if (!_capabilities.activeWindowTracking) {
       state = state.copyWith(
         status: TrackingStatus.error(
           platform: _platform,
@@ -139,7 +142,7 @@ class TrackingViewModel extends StateNotifier<TrackingState> {
   static const int maxSampleGapMultiplier = 2;
 
   Future<void> _sampleActiveWindow({bool force = false}) async {
-    if (_platform != UsagePlatform.windows) {
+    if (!_capabilities.activeWindowTracking) {
       return;
     }
 
