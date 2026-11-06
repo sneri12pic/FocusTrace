@@ -1811,4 +1811,68 @@ class AppLocalizationsUk extends AppLocalizations {
   String shieldNotificationBody(String name) {
     return 'Відкрийте FocusTrace, щоб змінити «$name».';
   }
+
+  @override
+  String shieldLimitWarningTitle(String name) {
+    return 'Ліміт для $name майже вичерпано';
+  }
+
+  @override
+  String shieldRoutineWarningTitle(String name) {
+    return 'Ліміт рутини $name майже вичерпано';
+  }
+
+  @override
+  String shieldLimitWarningBody(int minutes) {
+    String _temp0 = intl.Intl.pluralLogic(
+      minutes,
+      locale: localeName,
+      other: 'Блокування почнеться приблизно через $minutes хвилини.',
+      many: 'Блокування почнеться приблизно через $minutes хвилин.',
+      few: 'Блокування почнеться приблизно через $minutes хвилини.',
+      one: 'Блокування почнеться приблизно через $minutes хвилину.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get shieldNudgeTitle => 'Бажаний час використання';
+
+  @override
+  String get shieldNudgeReached => 'Ви досягли свого часу';
+
+  @override
+  String shieldNudgeMinutesLeft(int minutes) {
+    String _temp0 = intl.Intl.pluralLogic(
+      minutes,
+      locale: localeName,
+      other: 'Залишилось $minutes хв',
+      many: 'Залишилось $minutes хв',
+      few: 'Залишилось $minutes хв',
+      one: 'Залишилась $minutes хв',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String shieldNudgeMinutesOver(int minutes) {
+    String _temp0 = intl.Intl.pluralLogic(
+      minutes,
+      locale: localeName,
+      other: 'Понад час на $minutes хв',
+      many: 'Понад час на $minutes хв',
+      few: 'Понад час на $minutes хв',
+      one: 'Понад час на $minutes хв',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get routinePickNewApps => 'Вибрати нові застосунки';
+
+  @override
+  String get routineAppIncluded => 'Враховується в ліміті';
+
+  @override
+  String get routineAppExcluded => 'Не враховується в ліміті';
 }

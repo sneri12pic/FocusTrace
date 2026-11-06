@@ -56,9 +56,11 @@ void main() {
 
   test('iOS describes Screen Time: no numbers or app list in Flutter', () {
     expect(_enabled(UsagePlatform.ios), {
+      'notificationsPermission',
       'screenTimeAuthorization',
       'nativeAppPicker',
       'appBlocking',
+      'dailyLimits',
     });
   });
 

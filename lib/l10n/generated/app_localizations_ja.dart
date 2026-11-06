@@ -1721,4 +1721,59 @@ class AppLocalizationsJa extends AppLocalizations {
   String shieldNotificationBody(String name) {
     return '$name を変更するには FocusTrace を開いてください。';
   }
+
+  @override
+  String shieldLimitWarningTitle(String name) {
+    return '$nameの制限にまもなく達します';
+  }
+
+  @override
+  String shieldRoutineWarningTitle(String name) {
+    return 'ルーティン$nameの上限にまもなく達します';
+  }
+
+  @override
+  String shieldLimitWarningBody(int minutes) {
+    String _temp0 = intl.Intl.pluralLogic(
+      minutes,
+      locale: localeName,
+      other: '約$minutes分後にブロックを開始します。',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get shieldNudgeTitle => '希望の利用時間';
+
+  @override
+  String get shieldNudgeReached => '設定した時間に達しました';
+
+  @override
+  String shieldNudgeMinutesLeft(int minutes) {
+    String _temp0 = intl.Intl.pluralLogic(
+      minutes,
+      locale: localeName,
+      other: '残り$minutes分',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String shieldNudgeMinutesOver(int minutes) {
+    String _temp0 = intl.Intl.pluralLogic(
+      minutes,
+      locale: localeName,
+      other: '$minutes分オーバー',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get routinePickNewApps => '新しいアプリを選ぶ';
+
+  @override
+  String get routineAppIncluded => '上限に含む';
+
+  @override
+  String get routineAppExcluded => '上限から除外';
 }

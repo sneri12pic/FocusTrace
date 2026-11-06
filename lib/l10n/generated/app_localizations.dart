@@ -3038,6 +3038,66 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Open FocusTrace to change {name}.'**
   String shieldNotificationBody(String name);
+
+  /// No description provided for @shieldLimitWarningTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} limit almost reached'**
+  String shieldLimitWarningTitle(String name);
+
+  /// No description provided for @shieldRoutineWarningTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} routine limit almost reached'**
+  String shieldRoutineWarningTitle(String name);
+
+  /// No description provided for @shieldLimitWarningBody.
+  ///
+  /// In en, this message translates to:
+  /// **'{minutes, plural, one{Blocking starts in about {minutes} minute.} other{Blocking starts in about {minutes} minutes.}}'**
+  String shieldLimitWarningBody(int minutes);
+
+  /// No description provided for @shieldNudgeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Preferred usage time'**
+  String get shieldNudgeTitle;
+
+  /// No description provided for @shieldNudgeReached.
+  ///
+  /// In en, this message translates to:
+  /// **'You\'ve reached your time'**
+  String get shieldNudgeReached;
+
+  /// No description provided for @shieldNudgeMinutesLeft.
+  ///
+  /// In en, this message translates to:
+  /// **'{minutes, plural, one{{minutes} min left} other{{minutes} min left}}'**
+  String shieldNudgeMinutesLeft(int minutes);
+
+  /// No description provided for @shieldNudgeMinutesOver.
+  ///
+  /// In en, this message translates to:
+  /// **'{minutes, plural, one{{minutes} min over} other{{minutes} min over}}'**
+  String shieldNudgeMinutesOver(int minutes);
+
+  /// No description provided for @routinePickNewApps.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose new apps'**
+  String get routinePickNewApps;
+
+  /// No description provided for @routineAppIncluded.
+  ///
+  /// In en, this message translates to:
+  /// **'Included in limit'**
+  String get routineAppIncluded;
+
+  /// No description provided for @routineAppExcluded.
+  ///
+  /// In en, this message translates to:
+  /// **'Excluded from limit'**
+  String get routineAppExcluded;
 }
 
 class _AppLocalizationsDelegate

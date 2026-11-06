@@ -57,13 +57,16 @@ class PlatformCapabilities {
 
   /// Usage is drawn by a native DeviceActivityReport extension and apps are
   /// opaque tokens chosen in Apple's picker, so Flutter never sees numbers,
-  /// names or an installed-app list. Block-now and schedule rules are enforced
-  /// by Screen Time shields; daily limits and routines need DeviceActivity
-  /// thresholds (iOS port phase 3), so `dailyLimits` stays off until then.
+  /// names or an installed-app list. Rules are enforced by Screen Time
+  /// shields; daily limits and routines by DeviceActivity usage thresholds in
+  /// the monitor extension, which also posts the limit warnings as local
+  /// notifications.
   static const ios = PlatformCapabilities(
+    notificationsPermission: true,
     screenTimeAuthorization: true,
     nativeAppPicker: true,
     appBlocking: true,
+    dailyLimits: true,
   );
 
   static const none = PlatformCapabilities();
@@ -93,7 +96,8 @@ class PlatformCapabilities {
   final bool appBlocking;
 
   /// Daily-limit rules and routines (shared daily allowances) can be set up.
-  /// They depend on measured usage, which iOS only offers to extensions.
+  /// Without [usageNumbersInFlutter] (iOS) they are enforced natively and the
+  /// UI shows the limits but no usage against them.
   final bool dailyLimits;
 
   /// Usage is recorded by sampling the foreground window while the app runs,

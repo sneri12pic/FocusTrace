@@ -352,6 +352,16 @@ void main() {
         (screenTime.argumentsOf('setShieldStrings').single as Map)['strings']
             as Map;
     expect(strings['scheduleUntil'], 'Blocked by schedule until {time}');
+    // Texts the monitor extension posts as notifications, pluralized here.
+    expect(strings['limitWarningTitle'], '{name} limit almost reached');
+    expect(
+      strings['limitWarningBody.5'],
+      'Blocking starts in about 5 minutes.',
+    );
+    expect(strings['limitWarningBody.1'], 'Blocking starts in about 1 minute.');
+    expect(strings['routineShared'], '{name}: shared allowance reached');
+    expect(strings['nudgeLeft.1'], '1 min left');
+    expect(strings['nudgeOver.120'], '120 min over');
     expect(screenTime.argumentsOf('pickSelection'), [
       {'doneLabel': 'Done', 'cancelLabel': 'Cancel'},
     ]);
@@ -367,9 +377,12 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('selection-name-confirm')));
     await tester.pumpAndSettle();
 
-    // Daily limits need iOS usage thresholds (phase 3): not offered yet.
-    expect(find.text('Daily limit'), findsNothing);
+    // Daily limits are DeviceActivity thresholds on iOS: offered first.
+    expect(find.text('Daily limit'), findsOneWidget);
+    expect(find.text('Set daily limit'), findsOneWidget);
     expect(find.text('Block now'), findsOneWidget);
+    await tester.tap(find.text('Schedule'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Set schedule'));
     await tester.pumpAndSettle();
 
@@ -380,4 +393,112 @@ void main() {
     expect(_syncedRules(usage).single['appKey'], 'ios-sel:abc');
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('iOS lists limits and routines without usage numbers', (
+    tester,
+  ) async {
+    final usage = _Native(_usage, {
+      'readRestrictionConfiguration': null,
+      'hasNotificationsPermission': true,
+      'takeRestrictionEvents': const [],
+    });
+    final screenTime = _Native(_screenTime, {
+      'authorizationStatus': 'approved',
+    });
+    addTearDown(usage.dispose);
+    addTearDown(screenTime.dispose);
+    final repository = _AnyRepository(
+      [
+        const RestrictionRule(
+          appKey: 'ios-sel:a',
+          appName: 'Social',
+          type: RestrictionRuleType.dailyLimit,
+          limitMinutes: 90,
+        ),
+      ],
+      [
+        const BlockRoutine(
+          id: 'r',
+          name: 'Evening',
+          dailyLimitMinutes: 60,
+          isEnabled: true,
+          apps: [RoutineApp(appKey: 'ios-sel:a', appName: 'Social')],
+        ),
+      ],
+    );
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          usagePlatformProvider.overrideWithValue(UsagePlatform.ios),
+          platformDataSourceProvider.overrideWithValue(IosUsageDataSource()),
+          usageRepositoryProvider.overrideWithValue(repository),
+          reportRepositoryProvider.overrideWithValue(repository),
+          settingsRepositoryProvider.overrideWithValue(repository),
+          restrictionsViewModelProvider.overrideWith(
+            (ref) => RestrictionsViewModel(
+              settingsRepository: repository,
+              platformDataSource: IosUsageDataSource(),
+              platform: UsagePlatform.ios,
+            )..load(),
+          ),
+          restrictionPeriodInsightsProvider.overrideWith(
+            (ref, week) async =>
+                const RestrictionInsights(apps: [], recordedDays: 0, hours: []),
+          ),
+          installedAppsProvider.overrideWith((ref) async => []),
+        ],
+        child: MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          locale: const Locale('en'),
+          home: const RestrictionsScreen(),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+
+    expect(find.text('Social'), findsWidgets);
+    expect(find.text('1h 30m / day'), findsOneWidget);
+    // No "used"/"left" numbers: iOS never gives them to Flutter.
+    expect(find.textContaining('left today'), findsNothing);
+    expect(find.byType(LinearProgressIndicator), findsNothing);
+    await tester.scrollUntilVisible(
+      find.text('Evening'),
+      300,
+      scrollable: find.descendant(
+        of: find.byKey(const ValueKey('restrictions-scroll-view')),
+        matching: find.byType(Scrollable),
+      ),
+    );
+    expect(find.text('Shared daily limit · 1h'), findsOneWidget);
+    expect(find.textContaining('used'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+}
+
+class _AnyRepository extends Fake
+    implements UsageRepository, ReportRepository, SettingsRepository {
+  _AnyRepository(this.rules, this.routines);
+
+  final List<RestrictionRule> rules;
+  final List<BlockRoutine> routines;
+
+  @override
+  Future<List<RestrictionRule>> restrictionRules() async => List.of(rules);
+
+  @override
+  Future<List<BlockRoutine>> blockRoutines() async => List.of(routines);
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) {
+    final name = invocation.memberName.toString();
+    if (name.contains('Summaries') || name.contains('Apps')) {
+      return Future.value(<AppUsageSummary>[]);
+    }
+    if (name.contains('Overrides')) {
+      return Future.value(<String, UsageCategory>{});
+    }
+    return Future<void>.value();
+  }
 }

@@ -5,6 +5,7 @@ import '../view_models/restriction_insights.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/datasources/screen_time_channel.dart';
+import '../../domain/models/app_usage_summary.dart';
 import '../../domain/models/platform_capabilities.dart';
 import '../../domain/models/restriction_rule.dart';
 import '../localization/app_localizations_x.dart';
@@ -151,6 +152,23 @@ Future<void> createRestrictionForApp(
 /// iOS: choose apps in Apple's picker, name the group, then the usual editor.
 /// The rule's app key is `ios-sel:<id>` of the stored selection.
 Future<void> createIosRestriction(BuildContext context, WidgetRef ref) async {
+  final picked = await pickIosAppGroup(context, ref);
+  if (picked == null || !context.mounted) return;
+  await createRestrictionForApp(
+    context,
+    ref,
+    appKey: picked.appKey,
+    appName: picked.appName,
+  );
+}
+
+/// iOS: authorizes Screen Time if needed, shows Apple's picker and asks for a
+/// name. Returns the named group (`ios-sel:<id>` key, no usage), or null.
+/// Routines use it to add apps no rule has picked yet.
+Future<AppUsageSummary?> pickIosAppGroup(
+  BuildContext context,
+  WidgetRef ref,
+) async {
   final l = context.l10n;
   final authorization = ref.read(screenTimeAuthorizationProvider.notifier);
   if (!authorization.isApproved && !await authorization.request()) {
@@ -159,11 +177,11 @@ Future<void> createIosRestriction(BuildContext context, WidgetRef ref) async {
         context,
       ).showSnackBar(SnackBar(content: Text(l.rxScreenTimeNeededBody)));
     }
-    return;
+    return null;
   }
-  if (!context.mounted) return;
+  if (!context.mounted) return null;
   await syncShieldStrings(context, ref);
-  if (!context.mounted) return;
+  if (!context.mounted) return null;
   final ScreenTimeSelection? selection;
   try {
     selection = await ref
@@ -175,16 +193,16 @@ Future<void> createIosRestriction(BuildContext context, WidgetRef ref) async {
         context,
       ).showSnackBar(SnackBar(content: Text(l.rxUnavailable)));
     }
-    return;
+    return null;
   }
-  if (selection == null || !context.mounted) return;
+  if (selection == null || !context.mounted) return null;
   final name = await showSelectionNameDialog(context, selection);
-  if (name == null || !context.mounted) return;
-  await createRestrictionForApp(
-    context,
-    ref,
-    appKey: selection.appKey,
+  if (name == null) return null;
+  return AppUsageSummary(
     appName: name,
+    packageName: selection.appKey,
+    totalDurationSeconds: 0,
+    percentageOfTotal: 0,
   );
 }
 
@@ -265,6 +283,21 @@ Future<void> syncShieldStrings(BuildContext context, WidgetRef ref) async {
       'leave': l.shieldLeave,
       'unblockInApp': l.shieldUnblockInApp,
       'notificationBody': l.shieldNotificationBody(name),
+      'routineShared': l.routineReasonShared(name),
+      'routineApp': l.routineReasonApp(name),
+      'limitWarningTitle': l.shieldLimitWarningTitle(name),
+      'routineWarningTitle': l.shieldRoutineWarningTitle(name),
+      'nudgeTitle': l.shieldNudgeTitle,
+      'nudgeReached': l.shieldNudgeReached,
+      // Texts with a number, pluralized here for every count the monitor
+      // can need (UsageEvents.swift): warnings and nudges come at most five
+      // minutes ahead, over-limit nudges every 10 minutes for 2 hours.
+      for (var minutes = 1; minutes <= 5; minutes++) ...{
+        'limitWarningBody.$minutes': l.shieldLimitWarningBody(minutes),
+        'nudgeLeft.$minutes': l.shieldNudgeMinutesLeft(minutes),
+      },
+      for (var minutes = 10; minutes <= 120; minutes += 10)
+        'nudgeOver.$minutes': l.shieldNudgeMinutesOver(minutes),
     });
   } catch (error) {
     // The shield falls back to English.

@@ -938,5 +938,20 @@
   "shieldLeave": "Quitter",
   "shieldUnblockInApp": "Débloquer dans FocusTrace",
   "shieldNotificationBody": "Ouvrez FocusTrace pour modifier {name}.",
-  "@shieldNotificationBody": {"placeholders": {"name": {"type": "String"}}}
+  "@shieldNotificationBody": {"placeholders": {"name": {"type": "String"}}},
+  "shieldLimitWarningTitle": "La limite de {name} est presque atteinte",
+  "@shieldLimitWarningTitle": {"placeholders": {"name": {"type": "String"}}},
+  "shieldRoutineWarningTitle": "La routine {name} approche de sa limite",
+  "@shieldRoutineWarningTitle": {"placeholders": {"name": {"type": "String"}}},
+  "shieldLimitWarningBody": "{minutes, plural, one{Le blocage commencera dans environ {minutes} minute.} other{Le blocage commencera dans environ {minutes} minutes.}}",
+  "@shieldLimitWarningBody": {"placeholders": {"minutes": {"type": "int"}}},
+  "shieldNudgeTitle": "Temps d’utilisation souhaité",
+  "shieldNudgeReached": "Vous avez atteint votre temps",
+  "shieldNudgeMinutesLeft": "{minutes, plural, one{Encore {minutes} min} other{Encore {minutes} min}}",
+  "@shieldNudgeMinutesLeft": {"placeholders": {"minutes": {"type": "int"}}},
+  "shieldNudgeMinutesOver": "{minutes, plural, one{{minutes} min de plus} other{{minutes} min de plus}}",
+  "@shieldNudgeMinutesOver": {"placeholders": {"minutes": {"type": "int"}}},
+  "routinePickNewApps": "Choisir de nouvelles apps",
+  "routineAppIncluded": "Incluse dans la limite",
+  "routineAppExcluded": "Exclue de la limite"
 }

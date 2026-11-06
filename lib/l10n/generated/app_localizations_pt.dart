@@ -1801,4 +1801,62 @@ class AppLocalizationsPt extends AppLocalizations {
   String shieldNotificationBody(String name) {
     return 'Abra o FocusTrace para alterar $name.';
   }
+
+  @override
+  String shieldLimitWarningTitle(String name) {
+    return 'O limite de $name está quase atingido';
+  }
+
+  @override
+  String shieldRoutineWarningTitle(String name) {
+    return 'O limite da rotina $name está quase atingido';
+  }
+
+  @override
+  String shieldLimitWarningBody(int minutes) {
+    String _temp0 = intl.Intl.pluralLogic(
+      minutes,
+      locale: localeName,
+      other: 'O bloqueio começa em cerca de $minutes minutos.',
+      one: 'O bloqueio começa em cerca de $minutes minuto.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get shieldNudgeTitle => 'Tempo de uso preferido';
+
+  @override
+  String get shieldNudgeReached => 'Você atingiu seu tempo';
+
+  @override
+  String shieldNudgeMinutesLeft(int minutes) {
+    String _temp0 = intl.Intl.pluralLogic(
+      minutes,
+      locale: localeName,
+      other: 'Faltam $minutes min',
+      one: 'Falta $minutes min',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String shieldNudgeMinutesOver(int minutes) {
+    String _temp0 = intl.Intl.pluralLogic(
+      minutes,
+      locale: localeName,
+      other: '$minutes min a mais',
+      one: '$minutes min a mais',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get routinePickNewApps => 'Escolher novos apps';
+
+  @override
+  String get routineAppIncluded => 'Incluído no limite';
+
+  @override
+  String get routineAppExcluded => 'Excluído do limite';
 }

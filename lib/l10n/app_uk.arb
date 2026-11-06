@@ -938,5 +938,20 @@
   "shieldLeave": "Вийти",
   "shieldUnblockInApp": "Розблокувати у FocusTrace",
   "shieldNotificationBody": "Відкрийте FocusTrace, щоб змінити «{name}».",
-  "@shieldNotificationBody": {"placeholders": {"name": {"type": "String"}}}
+  "@shieldNotificationBody": {"placeholders": {"name": {"type": "String"}}},
+  "shieldLimitWarningTitle": "Ліміт для {name} майже вичерпано",
+  "@shieldLimitWarningTitle": {"placeholders": {"name": {"type": "String"}}},
+  "shieldRoutineWarningTitle": "Ліміт рутини {name} майже вичерпано",
+  "@shieldRoutineWarningTitle": {"placeholders": {"name": {"type": "String"}}},
+  "shieldLimitWarningBody": "{minutes, plural, one{Блокування почнеться приблизно через {minutes} хвилину.} few{Блокування почнеться приблизно через {minutes} хвилини.} many{Блокування почнеться приблизно через {minutes} хвилин.} other{Блокування почнеться приблизно через {minutes} хвилини.}}",
+  "@shieldLimitWarningBody": {"placeholders": {"minutes": {"type": "int"}}},
+  "shieldNudgeTitle": "Бажаний час використання",
+  "shieldNudgeReached": "Ви досягли свого часу",
+  "shieldNudgeMinutesLeft": "{minutes, plural, one{Залишилась {minutes} хв} few{Залишилось {minutes} хв} many{Залишилось {minutes} хв} other{Залишилось {minutes} хв}}",
+  "@shieldNudgeMinutesLeft": {"placeholders": {"minutes": {"type": "int"}}},
+  "shieldNudgeMinutesOver": "{minutes, plural, one{Понад час на {minutes} хв} few{Понад час на {minutes} хв} many{Понад час на {minutes} хв} other{Понад час на {minutes} хв}}",
+  "@shieldNudgeMinutesOver": {"placeholders": {"minutes": {"type": "int"}}},
+  "routinePickNewApps": "Вибрати нові застосунки",
+  "routineAppIncluded": "Враховується в ліміті",
+  "routineAppExcluded": "Не враховується в ліміті"
 }

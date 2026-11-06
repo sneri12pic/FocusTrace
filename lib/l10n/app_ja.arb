@@ -938,5 +938,20 @@
   "shieldLeave": "閉じる",
   "shieldUnblockInApp": "FocusTrace でブロック解除",
   "shieldNotificationBody": "{name} を変更するには FocusTrace を開いてください。",
-  "@shieldNotificationBody": {"placeholders": {"name": {"type": "String"}}}
+  "@shieldNotificationBody": {"placeholders": {"name": {"type": "String"}}},
+  "shieldLimitWarningTitle": "{name}の制限にまもなく達します",
+  "@shieldLimitWarningTitle": {"placeholders": {"name": {"type": "String"}}},
+  "shieldRoutineWarningTitle": "ルーティン{name}の上限にまもなく達します",
+  "@shieldRoutineWarningTitle": {"placeholders": {"name": {"type": "String"}}},
+  "shieldLimitWarningBody": "{minutes, plural, other{約{minutes}分後にブロックを開始します。}}",
+  "@shieldLimitWarningBody": {"placeholders": {"minutes": {"type": "int"}}},
+  "shieldNudgeTitle": "希望の利用時間",
+  "shieldNudgeReached": "設定した時間に達しました",
+  "shieldNudgeMinutesLeft": "{minutes, plural, other{残り{minutes}分}}",
+  "@shieldNudgeMinutesLeft": {"placeholders": {"minutes": {"type": "int"}}},
+  "shieldNudgeMinutesOver": "{minutes, plural, other{{minutes}分オーバー}}",
+  "@shieldNudgeMinutesOver": {"placeholders": {"minutes": {"type": "int"}}},
+  "routinePickNewApps": "新しいアプリを選ぶ",
+  "routineAppIncluded": "上限に含む",
+  "routineAppExcluded": "上限から除外"
 }
