@@ -1744,4 +1744,72 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get settingsClearDataHealth =>
       'La importación de Health Connect se desactiva y se borran los entrenamientos importados. No cambia nada en Health Connect.';
+
+  @override
+  String get screenTimeAccessTitle => 'Tiempo de uso';
+
+  @override
+  String get screenTimeAccessSubtitle => 'Para bloquear las apps que elijas';
+
+  @override
+  String get onboardingScreenTimeBody =>
+      'FocusTrace usa Tiempo de uso para bloquear las apps que elijas.\nTodo se queda en tu dispositivo.';
+
+  @override
+  String get onboardingScreenTimeHint =>
+      'Este permiso se gestiona en Ajustes de iOS, en Tiempo de uso.';
+
+  @override
+  String get rxScreenTimeNeededTitle => 'Permitir Tiempo de uso';
+
+  @override
+  String get rxScreenTimeNeededBody =>
+      'FocusTrace necesita acceso a Tiempo de uso para bloquear apps en este iPhone.';
+
+  @override
+  String get rxPickerDone => 'Listo';
+
+  @override
+  String get rxNameAppsTitle => 'Pon nombre a estas apps';
+
+  @override
+  String get rxNameAppsHint => 'Por ejemplo, Redes sociales';
+
+  @override
+  String rxSelectionCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count apps, categorías o sitios web elegidos',
+      one: '1 app, categoría o sitio web elegido',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String shieldBlockNowUntil(String time) {
+    return 'Bloqueo temporal hasta las $time';
+  }
+
+  @override
+  String shieldScheduleUntil(String time) {
+    return 'Bloqueada por horario hasta las $time';
+  }
+
+  @override
+  String get shieldDailyLimit => 'Límite diario de la app alcanzado';
+
+  @override
+  String get shieldRestricted => 'Esta app está restringida ahora mismo.';
+
+  @override
+  String get shieldLeave => 'Salir';
+
+  @override
+  String get shieldUnblockInApp => 'Desbloquear en FocusTrace';
+
+  @override
+  String shieldNotificationBody(String name) {
+    return 'Abre FocusTrace para cambiar $name.';
+  }
 }
