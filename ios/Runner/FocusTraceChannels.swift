@@ -8,10 +8,11 @@ import UserNotifications
 /// - `focustrace/usage`: the restriction methods Android's MainActivity
 ///   implements (syncRestrictions, readRestrictionConfiguration,
 ///   requestRestrictionChange, the notifications permission) plus
-///   takeRestrictionEvents. Usage numbers never come through here on iOS.
+///   takeRestrictionEvents and readReachedLimits. Usage numbers never come through here on iOS.
 /// - `focustrace/screen_time`: Screen Time authorization, the app picker and
 ///   the shield's texts.
-/// - platform view `focustrace/selection_icons`.
+/// - platform view `focustrace/selection_icons` (`focustrace/usage_report` is
+///   registered in AppDelegate).
 final class FocusTraceChannels: NSObject {
   static let shared = FocusTraceChannels()
 
@@ -80,6 +81,12 @@ final class FocusTraceChannels: NSObject {
       }
     case "takeRestrictionEvents":
       queue.async { Self.reply(result, store.takeEvents()) }
+    case "readReachedLimits":
+      // Daily limits the monitor recorded as reached today, as usage seconds
+      // (= the limit) by app key; Flutter shows them as blocked, as Android.
+      queue.async {
+        Self.reply(result, store.reachedLimitUsage().mapValues { NSNumber(value: $0) })
+      }
     case "hasNotificationsPermission":
       UNUserNotificationCenter.current().getNotificationSettings { settings in
         let allowed = Self.allowsNotifications(settings.authorizationStatus)

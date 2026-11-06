@@ -593,5 +593,86 @@ do {
   expectEqual(kept.first, "ft.limit.limit", "a limit is kept ahead of schedules")
 }
 
+// MARK: - Usage reports (UsageReportModels.swift)
+
+do {
+  let week = UsageReportRange.week.interval(endingOn: date(6, 15, 30), calendar: utc)
+  expectEqual(week.start, date(31, 0, 0, month: 10), "a week starts six days back")
+  expectEqual(week.end, date(7, 0, 0), "and ends after the given day")
+  let today = UsageReportRange.today.interval(endingOn: date(6, 15, 30), calendar: utc)
+  expectEqual(today.duration, 86_400, "today is one day")
+  expectEqual(UsageReportRange.month.interval(endingOn: date(6, 1, 0), calendar: utc).duration, 30 * 86_400, "thirty days")
+  expect(UsageReportRange.today.isHourly && !UsageReportRange.week.isHourly, "only a day is hourly")
+  expectEqual(UsageReportKind.appDetail.defaultRange, .today, "details default to today")
+  expectEqual(UsageReportKind.month.defaultRange, .month, "month report")
+  expectEqual(UsageReportKind(rawValue: "hourly"), .hourly, "context names are the raw values")
+
+  var hours = UsageBuckets.hourly(day: date(6, 15, 30), calendar: utc)
+  expectEqual(hours.starts.count, 24, "24 hours")
+  hours.add(600, at: date(6, 13, 0))
+  hours.add(300, at: date(6, 13, 59))
+  hours.add(1200, at: date(6, 0, 0))
+  hours.add(999, at: date(7, 0, 0))
+  hours.add(999, at: date(5, 23, 0))
+  expectEqual(hours.seconds[13], 900, "both segments in 13:00")
+  expectEqual(hours.seconds[0], 1200, "midnight hour")
+  expectEqual(hours.total, 2100, "outside the day is ignored")
+  expectEqual(hours.peakIndex, 0, "busiest hour")
+  expectEqual(hours.activeCount, 2, "two active hours")
+
+  var days = UsageBuckets.daily(interval: week, calendar: utc)
+  expectEqual(days.starts.count, 7, "seven days")
+  days.add(3600, at: date(6, 0, 0))
+  days.add(30, at: date(2, 9, 0))
+  expectEqual(days.seconds[6], 3600, "last day")
+  expectEqual(days.seconds[2], 30, "Monday")
+  expectEqual(days.activeCount, 1, "under a minute is not an active day")
+  expectEqual(days.average, 3630.0 / 7, "average over every day of the range")
+  expectEqual(UsageBuckets.daily(interval: week, calendar: utc).peakIndex, nil, "no use, no peak")
+
+  expectEqual(UsageReportMath.fraction(0, of: 100), 0, "nothing")
+  expectEqual(UsageReportMath.fraction(1, of: 1000), 0.02, "a visible stub")
+  expectEqual(UsageReportMath.fraction(50, of: 100), 0.5, "half")
+  expectEqual(UsageReportMath.fraction(50, of: 0), 0, "no maximum")
+  expectEqual(UsageReportMath.dialShade(1800), 0.5, "half an hour")
+  expectEqual(UsageReportMath.dialShade(7200), 1, "capped")
+
+  let ranked = UsageReportMath.ranked(
+    [("b", 10.0), ("a", 10.0), ("c", 30.0), ("d", 1.0)], limit: 3, seconds: { $0.1 }, name: { $0.0 })
+  expectEqual(ranked.shown.map { $0.0 }, ["c", "a", "b"], "longest first, ties by name")
+  expectEqual(ranked.hidden, 1, "one left out")
+
+  let english = ReportStrings()
+  expectEqual(english.duration(59), "<1m", "under a minute")
+  expectEqual(english.duration(25 * 60 + 59), "25m", "whole minutes")
+  expectEqual(english.duration(7200), "2h", "whole hours")
+  expectEqual(english.duration(5700), "1h 35m", "hours and minutes")
+  expectEqual(english.moreApps(4), "+4 more", "more apps")
+  expectEqual(english.localeIdentifier, nil, "device language by default")
+  let german = ReportStrings(sharedValues: [
+    "report.durationHM": "{h} Std. {m} Min.", "report.locale": "de", "leave": "Verlassen",
+  ])
+  expectEqual(german.duration(5700), "1 Std. 35 Min.", "translated template")
+  expectEqual(german.text("totalTime"), "Total time", "English for a missing text")
+  expectEqual(german.localeIdentifier, "de", "app language")
+  expectEqual(german.values["leave"], nil, "shield texts are not report texts")
+
+  let store = RestrictionStore(defaults: freshDefaults())
+  store.configurationJSON = """
+    {"version":3,"rules":[
+    {"appKey":"ios-sel:g","appName":"G","type":"dailyLimit","limitMinutes":30},
+    {"appKey":"ios-sel:h","appName":"H","type":"dailyLimit","limitMinutes":45},
+    {"appKey":"ios-sel:g","appName":"G","type":"schedule","startMinute":60,"endMinute":120}],"routines":[]}
+    """
+  expectEqual(store.reachedLimitUsage(at: date(2, 15, 0), calendar: utc), [:], "nothing reached")
+  store.markReached("ios-sel:g#dailyLimit", at: date(2, 15, 0), calendar: utc)
+  expectEqual(
+    store.reachedLimitUsage(at: date(2, 16, 0), calendar: utc), ["ios-sel:g": 1800],
+    "a reached limit reports its limit as today's use")
+  expectEqual(store.reachedLimitUsage(at: date(3, 0, 1), calendar: utc), [:], "gone the next day")
+  store.shieldStrings = ShieldStrings(values: ["report.totalTime": "Gesamtzeit", "leave": "L"])
+  expectEqual(store.reportStrings.text("totalTime"), "Gesamtzeit", "report texts from the App Group")
+}
+
 print("\(checks - failures)/\(checks) checks passed")
 exit(failures == 0 ? 0 : 1)

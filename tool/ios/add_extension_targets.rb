@@ -48,7 +48,8 @@ EXTENSIONKIT_TYPE = 'com.apple.product-type.extensionkit-extension'
 RUNNER_FRAMEWORKS = %w[FamilyControls ManagedSettings DeviceActivity SwiftUI UserNotifications].freeze
 
 # Runner's own Swift files besides AppDelegate.swift (which Flutter created).
-RUNNER_SOURCES = %w[FocusTraceChannels.swift ActivityPicker.swift SelectionIconsView.swift].freeze
+RUNNER_SOURCES = %w[FocusTraceChannels.swift ActivityPicker.swift SelectionIconsView.swift
+                    UsageReportView.swift].freeze
 
 # Every target compiles all of FocusTraceKit, so every extension also links
 # FamilyControls, ManagedSettings and DeviceActivity.
@@ -94,8 +95,8 @@ EXTENSIONS = [
     product_type: EXTENSIONKIT_TYPE,
     extension_point: 'com.apple.deviceactivityui.report-extension',
     principal_class: nil,
-    sources: %w[FocusTraceReportExtension.swift],
-    frameworks: %w[DeviceActivity SwiftUI FamilyControls ManagedSettings]
+    sources: %w[FocusTraceReportExtension.swift ReportData.swift ReportViews.swift ReportPalette.swift],
+    frameworks: %w[DeviceActivity SwiftUI Charts FamilyControls ManagedSettings]
   }
 ].freeze
 

@@ -12,6 +12,8 @@ import UIKit
       FocusTraceChannels.shared.register(with: registrar) { [weak self] in
         self?.topViewController()
       }
+      // Usage screens drawn by the FocusTraceReport extension.
+      registrar.register(UsageReportFactory(), withId: "focustrace/usage_report")
     }
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
