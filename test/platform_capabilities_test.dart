@@ -55,7 +55,6 @@ void main() {
     expect(_enabled(UsagePlatform.ios), {
       'screenTimeAuthorization',
       'nativeAppPicker',
-      'appBlocking',
     });
   });
 

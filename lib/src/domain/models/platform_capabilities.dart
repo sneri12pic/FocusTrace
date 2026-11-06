@@ -55,11 +55,12 @@ class PlatformCapabilities {
 
   /// Usage is drawn by a native DeviceActivityReport extension and apps are
   /// opaque tokens chosen in Apple's picker, so Flutter never sees numbers,
-  /// names or an installed-app list.
+  /// names or an installed-app list. `appBlocking` turns on once the Screen
+  /// Time shields exist (iOS port phase 2); until then the restrictions screen
+  /// says blocking is unavailable rather than pretending it works.
   static const ios = PlatformCapabilities(
     screenTimeAuthorization: true,
     nativeAppPicker: true,
-    appBlocking: true,
   );
 
   static const none = PlatformCapabilities();
