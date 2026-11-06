@@ -1736,4 +1736,73 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get settingsClearDataHealth =>
       'Der Health-Connect-Import wird ausgeschaltet und importierte Trainings werden gelöscht. In Health Connect ändert sich nichts.';
+
+  @override
+  String get screenTimeAccessTitle => 'Bildschirmzeit';
+
+  @override
+  String get screenTimeAccessSubtitle =>
+      'Um die von dir gewählten Apps zu sperren';
+
+  @override
+  String get onboardingScreenTimeBody =>
+      'FocusTrace nutzt die Bildschirmzeit, um die von dir gewählten Apps zu sperren.\nAlles bleibt auf deinem Gerät.';
+
+  @override
+  String get onboardingScreenTimeHint =>
+      'Diese Berechtigung verwaltest du in den iOS-Einstellungen unter Bildschirmzeit.';
+
+  @override
+  String get rxScreenTimeNeededTitle => 'Bildschirmzeit erlauben';
+
+  @override
+  String get rxScreenTimeNeededBody =>
+      'FocusTrace braucht Zugriff auf die Bildschirmzeit, um Apps auf diesem iPhone zu sperren.';
+
+  @override
+  String get rxPickerDone => 'Fertig';
+
+  @override
+  String get rxNameAppsTitle => 'Benenne diese Apps';
+
+  @override
+  String get rxNameAppsHint => 'Zum Beispiel: Soziale Medien';
+
+  @override
+  String rxSelectionCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count Apps, Kategorien oder Websites gewählt',
+      one: '1 App, Kategorie oder Website gewählt',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String shieldBlockNowUntil(String time) {
+    return 'Vorübergehend gesperrt bis $time';
+  }
+
+  @override
+  String shieldScheduleUntil(String time) {
+    return 'Durch Zeitplan gesperrt bis $time';
+  }
+
+  @override
+  String get shieldDailyLimit => 'Tageslimit der App erreicht';
+
+  @override
+  String get shieldRestricted => 'Diese App ist gerade eingeschränkt.';
+
+  @override
+  String get shieldLeave => 'Verlassen';
+
+  @override
+  String get shieldUnblockInApp => 'In FocusTrace entsperren';
+
+  @override
+  String shieldNotificationBody(String name) {
+    return 'Öffne FocusTrace, um $name zu ändern.';
+  }
 }

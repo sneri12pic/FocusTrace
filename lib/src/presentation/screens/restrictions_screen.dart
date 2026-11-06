@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
+import '../../data/datasources/screen_time_channel.dart';
 import '../../domain/models/app_usage_summary.dart';
 import '../../domain/models/block_routine.dart';
 import '../../domain/models/platform_capabilities.dart';
@@ -17,6 +18,7 @@ import '../widgets/app_category_widgets.dart';
 import '../widgets/app_icon_avatar.dart';
 import '../widgets/trend_color.dart';
 import '../widgets/restriction_discovery.dart';
+import '../widgets/selection_icons.dart';
 import '../view_models/restriction_insights.dart';
 import 'restriction_editor_sheet.dart';
 import 'routine_editor_sheet.dart';
@@ -132,13 +134,17 @@ class RestrictionsScreen extends ConsumerWidget {
       for (final app in state.todayUsage) app.appKey: app.totalDurationSeconds,
     };
 
-    void chooseApp({bool search = false}) => _chooseAppAndCreateRule(
-      context,
-      ref,
-      apps: appCandidates,
-      rules: state.rules,
-      search: search,
-    );
+    // iOS picks apps in Apple's picker; elsewhere from the app list.
+    void chooseApp({bool search = false}) => capabilities.nativeAppPicker
+        ? createIosRestriction(context, ref)
+        : _chooseAppAndCreateRule(
+            context,
+            ref,
+            apps: appCandidates,
+            rules: state.rules,
+            search: search,
+          );
+    final screenTimeStatus = ref.watch(screenTimeAuthorizationProvider);
     final theme = Theme.of(context);
     return Scaffold(
       appBar: AppBar(
@@ -165,6 +171,18 @@ class RestrictionsScreen extends ConsumerWidget {
                 onRecheck: viewModel.refreshOverlayPermission,
               ),
               const SizedBox(height: 12),
+            ],
+            if (capabilities.screenTimeAuthorization) ...[
+              const _ShieldStringsSync(),
+              if (screenTimeStatus !=
+                  ScreenTimeAuthorizationStatus.approved) ...[
+                _ScreenTimeCard(
+                  onAllow: () => ref
+                      .read(screenTimeAuthorizationProvider.notifier)
+                      .request(),
+                ),
+                const SizedBox(height: 12),
+              ],
             ],
             if (!capabilities.appBlocking) ...[
               _InfoCard(
@@ -292,38 +310,43 @@ class RestrictionsScreen extends ConsumerWidget {
             ChooseAppsSection(onSearch: () => chooseApp(search: true)),
             const SizedBox(height: 24),
             const BusiestHoursCard(),
-            const SizedBox(height: 28),
-            _SectionTitle(
-              title: context.l10n.restrictionsRoutinesTitle,
-              action: Tooltip(
-                message: context.l10n.restrictionsAddRoutine,
-                child: TextButton.icon(
-                  onPressed: () => _createRoutine(context, ref, appCandidates),
-                  icon: const Icon(Icons.add),
-                  label: Text(context.l10n.rxCreate),
-                ),
-              ),
-            ),
-            if (state.routines.isEmpty)
-              _InfoCard(
-                title: context.l10n.restrictionsRoutinesEmptyTitle,
-                body: context.l10n.restrictionsRoutinesEmptyBody,
-              )
-            else
-              for (final routine in state.routines)
-                _RoutineTile(
-                  routine: routine,
-                  appsByKey: routineAppsByKey,
-                  usageSeconds: routine.usageSeconds(todayUsageByKey),
-                  isSaving: state.isSaving,
-                  onToggle: (enabled) =>
-                      viewModel.setRoutineEnabled(routine, enabled),
-                  onTap: () => _openRoutineDetails(
-                    context,
-                    routine: routine,
-                    apps: appCandidates,
+            // Routines are shared daily allowances, which need usage
+            // numbers (iOS: phase 3).
+            if (capabilities.dailyLimits) ...[
+              const SizedBox(height: 28),
+              _SectionTitle(
+                title: context.l10n.restrictionsRoutinesTitle,
+                action: Tooltip(
+                  message: context.l10n.restrictionsAddRoutine,
+                  child: TextButton.icon(
+                    onPressed: () =>
+                        _createRoutine(context, ref, appCandidates),
+                    icon: const Icon(Icons.add),
+                    label: Text(context.l10n.rxCreate),
                   ),
                 ),
+              ),
+              if (state.routines.isEmpty)
+                _InfoCard(
+                  title: context.l10n.restrictionsRoutinesEmptyTitle,
+                  body: context.l10n.restrictionsRoutinesEmptyBody,
+                )
+              else
+                for (final routine in state.routines)
+                  _RoutineTile(
+                    routine: routine,
+                    appsByKey: routineAppsByKey,
+                    usageSeconds: routine.usageSeconds(todayUsageByKey),
+                    isSaving: state.isSaving,
+                    onToggle: (enabled) =>
+                        viewModel.setRoutineEnabled(routine, enabled),
+                    onTap: () => _openRoutineDetails(
+                      context,
+                      routine: routine,
+                      apps: appCandidates,
+                    ),
+                  ),
+            ],
             const SizedBox(height: 14),
           ],
         ),
@@ -912,11 +935,18 @@ class _RestrictionRuleTile extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  AppIconAvatar(
-                    appName: rule.appName,
-                    iconBytes: summary?.iconBytes,
-                    size: 36,
-                  ),
+                  if (isIosSelectionKey(rule.appKey))
+                    SelectionIcons(
+                      appKey: rule.appKey,
+                      appName: rule.appName,
+                      size: 30,
+                    )
+                  else
+                    AppIconAvatar(
+                      appName: rule.appName,
+                      iconBytes: summary?.iconBytes,
+                      size: 36,
+                    ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Column(
@@ -1192,6 +1222,68 @@ class _LimitProgress extends StatelessWidget {
       ),
     );
   }
+}
+
+/// iOS: blocking needs the user's Screen Time authorization.
+class _ScreenTimeCard extends StatelessWidget {
+  const _ScreenTimeCard({required this.onAllow});
+
+  final VoidCallback onAllow;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Card(
+      key: const ValueKey('screen-time-card'),
+      elevation: 0,
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              context.l10n.rxScreenTimeNeededTitle,
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(context.l10n.rxScreenTimeNeededBody),
+            const SizedBox(height: 12),
+            FilledButton(
+              onPressed: onAllow,
+              child: Text(context.l10n.onboardingAllow),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Keeps the iOS block screen's texts in the app's current language.
+class _ShieldStringsSync extends ConsumerStatefulWidget {
+  const _ShieldStringsSync();
+
+  @override
+  ConsumerState<_ShieldStringsSync> createState() => _ShieldStringsSyncState();
+}
+
+class _ShieldStringsSyncState extends ConsumerState<_ShieldStringsSync> {
+  Locale? _sent;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final locale = Localizations.localeOf(context);
+    if (locale == _sent) return;
+    _sent = locale;
+    syncShieldStrings(context, ref);
+  }
+
+  @override
+  Widget build(BuildContext context) => const SizedBox.shrink();
 }
 
 class _OverlayPermissionCard extends StatelessWidget {

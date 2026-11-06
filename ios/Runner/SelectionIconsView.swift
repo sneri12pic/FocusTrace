@@ -54,10 +54,10 @@ struct SelectionIconsView: View {
   let iconSize: CGFloat
 
   init(selection: FamilyActivitySelection, maxIcons: Int, iconSize: CGFloat) {
-    items =
-      selection.applicationTokens.map(Item.app)
-      + selection.categoryTokens.map(Item.category)
-      + selection.webDomainTokens.map(Item.web)
+    var all: [Item] = selection.applicationTokens.map { Item.app($0) }
+    all.append(contentsOf: selection.categoryTokens.map { Item.category($0) })
+    all.append(contentsOf: selection.webDomainTokens.map { Item.web($0) })
+    items = all
     self.maxIcons = maxIcons
     self.iconSize = iconSize
   }

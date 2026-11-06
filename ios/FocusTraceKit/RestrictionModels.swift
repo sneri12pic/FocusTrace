@@ -136,15 +136,15 @@ struct RestrictionRule: Codable, Equatable, Hashable {
 
   /// Stable text of every field, for the change guard's occurrence signature.
   var signature: String {
-    [
-      appKey, appName, type.rawValue,
-      untilMs.map(String.init) ?? "-",
-      limitMinutes.map(String.init) ?? "-",
-      startMinute.map(String.init) ?? "-",
-      endMinute.map(String.init) ?? "-",
-      difficulty,
-      weekdays.map(String.init).joined(separator: ","),
-    ].joined(separator: "|")
+    func text(_ value: Int64?) -> String { value.map { String($0) } ?? "-" }
+    var parts: [String] = [appKey, appName, type.rawValue]
+    parts.append(text(untilMs))
+    parts.append(text(limitMinutes.map { Int64($0) }))
+    parts.append(text(startMinute.map { Int64($0) }))
+    parts.append(text(endMinute.map { Int64($0) }))
+    parts.append(difficulty)
+    parts.append(weekdays.map { String($0) }.joined(separator: ","))
+    return parts.joined(separator: "|")
   }
 
   // MARK: Time logic (RestrictionRules.isBlocked / blockedUntilMs)

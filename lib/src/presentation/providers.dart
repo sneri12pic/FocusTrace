@@ -10,6 +10,7 @@ import '../data/datasources/platform_locale_data_source.dart';
 import '../data/datasources/focus_trace_sync_api.dart';
 import '../data/datasources/health_connect_channel.dart';
 import '../data/datasources/platform_usage_data_source.dart';
+import '../data/datasources/screen_time_channel.dart';
 import '../data/datasources/secure_sync_credential_store.dart';
 import '../data/datasources/sync_execution_gate.dart';
 import '../data/datasources/installation_marker_store.dart';
@@ -40,6 +41,7 @@ import 'view_models/health_connect_view_model.dart';
 import 'view_models/onboarding_view_model.dart';
 import 'view_models/reports_view_model.dart';
 import 'view_models/restrictions_view_model.dart';
+import 'view_models/screen_time_authorization_view_model.dart';
 import 'view_models/sync_view_model.dart';
 import 'view_models/settings_view_model.dart';
 import 'view_models/tracking_view_model.dart';
@@ -140,13 +142,35 @@ final platformDataSourceProvider = Provider<PlatformUsageDataSource>((ref) {
       return AndroidUsageDataSource();
     case UsagePlatform.windows:
       return WindowsUsageDataSource();
-    case UsagePlatform.macos:
     case UsagePlatform.ios:
+      return IosUsageDataSource();
+    case UsagePlatform.macos:
     case UsagePlatform.linux:
     case UsagePlatform.unsupported:
       return const UnsupportedPlatformUsageDataSource();
   }
 });
+
+final screenTimeChannelProvider = Provider<ScreenTimeChannel>(
+  (ref) => const ScreenTimeChannel(),
+);
+
+/// Screen Time authorization on iOS; `approved` elsewhere, where it does not
+/// exist, so nothing asks for it.
+final screenTimeAuthorizationProvider =
+    StateNotifierProvider<
+      ScreenTimeAuthorizationViewModel,
+      ScreenTimeAuthorizationStatus
+    >((ref) {
+      final viewModel = ScreenTimeAuthorizationViewModel(
+        channel: ref.watch(screenTimeChannelProvider),
+        isRequired: ref
+            .watch(platformCapabilitiesProvider)
+            .screenTimeAuthorization,
+      );
+      viewModel.refresh();
+      return viewModel;
+    });
 
 final installedAppsProvider = FutureProvider<List<AppUsageSummary>>((
   ref,
