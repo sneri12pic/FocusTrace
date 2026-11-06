@@ -39,8 +39,8 @@ All targets live in `ios/Runner.xcodeproj`.
 - Every target has Debug, Release and Profile configurations.
 - System frameworks are linked explicitly. Every target links FamilyControls,
   ManagedSettings and DeviceActivity (FocusTraceKit uses them); in addition
-  Runner - SwiftUI, UserNotifications; Shield - ManagedSettingsUI;
-  ShieldAction - UserNotifications; Report - SwiftUI.
+  Runner - SwiftUI, UserNotifications; Monitor - UserNotifications; Shield -
+  ManagedSettingsUI; ShieldAction - UserNotifications; Report - SwiftUI.
 
 ## Shared code: FocusTraceKit
 
@@ -55,8 +55,10 @@ FamilyControls, ManagedSettings and DeviceActivity.
 | `RestrictionModels.swift` | Foundation | Codable mirror of the rule JSON, time logic |
 | `RestrictionChangeGuard.swift` | Foundation | Port of `RestrictionChangeGuard.kt` |
 | `RestrictionStore.swift` | Foundation | App Group store, `RestrictionSync` (sync validation) |
-| `ScheduleMapper.swift` | Foundation | Rules to DeviceActivity monitoring plans |
-| `ShieldStrings.swift` | Foundation | Block screen texts |
+| `ScheduleMapper.swift` | Foundation | Rules to DeviceActivity monitoring plans, activity budget |
+| `UsageEvents.swift` | Foundation | Usage-threshold activities (limits, routines, preferred usage), reached keys, notification texts |
+| `ShieldPlanner.swift` | Foundation | Shield blocks (rule, routine allowance, routine member cap) and whether each holds |
+| `ShieldStrings.swift` | Foundation | Block screen and notification texts |
 | `ScreenTimeEnforcement.swift` | FamilyControls, ManagedSettings, DeviceActivity | Selection codec, `ShieldController`, `ActivityScheduler` |
 
 The Foundation-only files are unit-tested without Xcode:
@@ -76,10 +78,10 @@ Runner-only Swift (UIKit, Flutter): `Runner/FocusTraceChannels.swift`,
 
 | Channel | Method | Behaviour |
 | --- | --- | --- |
-| `focustrace/usage` | `syncRestrictions(json)` | `RestrictionSync.apply`: every removed or changed rule must pass the change guard, else `RESTRICTION_LOCKED` and nothing is stored (as Android). Then unreferenced selections older than a day are dropped, shields reconciled, monitoring re-registered. |
+| `focustrace/usage` | `syncRestrictions(json)` | `RestrictionSync.apply`: every removed or changed rule must pass the change guard, else `RESTRICTION_LOCKED` and nothing is stored (as Android). A limit or routine whose thresholds changed forgets that it was reached today. Then unreferenced selections older than a day are dropped, shields reconciled, monitoring updated. |
 | | `readRestrictionConfiguration` | The JSON last stored, verbatim (or null). |
 | | `requestRestrictionChange({appKey, type})` | Guard with `request: true`; "allowed" / "cooldown" / "hard"; "allowed" when no such rule. |
-| | `hasNotificationsPermission`, `requestNotificationsPermission` | `UNUserNotificationCenter`; also stored in the App Group for the shield. |
+| | `hasNotificationsPermission`, `requestNotificationsPermission` | `UNUserNotificationCenter` (alert, sound); also stored in the App Group for the shield. |
 | | `takeRestrictionEvents` | Block events the shield extension recorded, then forgotten. |
 | `focustrace/screen_time` | `authorizationStatus`, `requestAuthorization` | `AuthorizationCenter`, `.individual`; "notDetermined" / "denied" / "approved". |
 | | `pickSelection({selectionId?, doneLabel, cancelLabel})` | `FamilyActivityPicker` in a `UIHostingController`; returns `{selectionId, appKey, appCount, categoryCount, webDomainCount}` or null when cancelled or empty. With `selectionId` it edits that selection, refused (`RESTRICTION_LOCKED`) while a rule using it is protected. |
@@ -98,56 +100,118 @@ Every other `focustrace/usage` method answers `notImplemented`;
 - App Group keys (`RestrictionStore`): `ft.restrictions.json` (Dart's JSON,
   verbatim), `ft.selection.<id>` / `ft.selectionCreated.<id>`,
   `ft.shield.rules` (rule keys shielded now), `ft.shield.stores`,
-  `ft.events`, `ft.shield.strings`, `ft.notifications.authorized`, and the
-  guard's `ft.change:<appKey>:<type>:rule|ready`.
+  `ft.events`, `ft.shield.strings`, `ft.notifications.authorized`, the
+  guard's `ft.change:<appKey>:<type>:rule|ready`, and for usage thresholds
+  `ft.limits.reached` (block key -> day it was reached), `ft.limits.notices`
+  (notices posted today) and `ft.monitor.plans` (signature per monitored
+  activity).
+- Routine members and preferred limits refer to selections by the same
+  `ios-sel:<uuid>` app keys; such a selection is kept while any rule, routine
+  or preferred limit refers to it.
+- `preferredLimits: [{limitMinutes, apps}]` (wire format of the
+  preferred-usage work, Android `PreferredLimit`) is decoded and planned when
+  present and re-encoded only when non-empty. Dart on develop does not send it.
 
 ### Enforcement
 
-- One named `ManagedSettingsStore` per rule (`ft.<type>.<selectionId>`),
-  shielding the selection's applications, categories (`.specific`) and web
-  domains. iOS shields an app while any store does, so lifting one rule never
-  unblocks an app another rule still blocks.
-- `ShieldController.reconcile` evaluates every rule with the same time logic as
-  Dart/Kotlin (`RestrictionRule.isBlocked`, ISO weekdays, overnight tails
-  belong to the start day) and applies or clears each store. The app runs it
-  after every sync and whenever it becomes active; the monitor extension runs
-  it on `intervalDidStart`, `intervalWillEndWarning` and `intervalDidEnd`,
-  evaluating 30 s ahead because callbacks may come slightly early.
-- `ScheduleMapper` only makes sure the monitor wakes at every boundary:
+- One named `ManagedSettingsStore` per block (`ShieldPlanner`): per rule
+  (`ft.<type>.<selectionId>`), per routine allowance (`ft.routine.<id>`,
+  shielding every included member's selection together) and per routine
+  member cap (`ft.routineApp.<id>.<selectionId>`). iOS shields an app while
+  any store does, so lifting one block never unblocks an app another still
+  blocks.
+- `ShieldController.reconcile` evaluates every block with the same time logic
+  as Dart/Kotlin (`RestrictionRule.isBlocked`, ISO weekdays, overnight tails
+  belong to the start day) and applies or clears each store. A daily limit,
+  routine allowance or cap holds when the monitor recorded it reached today
+  (`ft.limits.reached`, day in the device calendar); for the time logic and
+  the change guard a reached limit counts as usage = limit, else 0. The app
+  runs it after every sync and whenever it becomes active; the monitor
+  extension runs it on `intervalDidStart`, `intervalWillEndWarning` and
+  `intervalDidEnd`, evaluating 30 s ahead because callbacks may come slightly
+  early (so the 00:00 start also lifts yesterday's reached limits), and on
+  `eventDidReachThreshold`.
+- `ScheduleMapper` makes sure the monitor wakes at every boundary:
   block-now = one non-repeating interval from now to `untilMs`; schedule = one
   daily interval, split into `start-23:59` and `00:00-end` over midnight.
   Weekdays are not encoded in the activities (that would cost one per day);
   the reconcile checks them. Intervals shorter than DeviceActivity's 15-minute
-  minimum are widened and the lost boundary is hit with `warningTime`. At most
-  20 activities: block-now rules first (soonest end first), then schedules.
-- Daily limits and routines are stored and synced but not enforced on iOS
-  (phase 3); the guard treats a daily limit as not blocking.
+  minimum are widened and the lost boundary is hit with `warningTime`.
+- Usage thresholds (`UsageEvents`): one repeating `00:00-23:59` activity per
+  daily-limit rule (`ft.limit.<selectionId>`), enabled routine
+  (`ft.routine.<id>`) and preferred limit (`ft.preferred.<hash>`), with
+  `DeviceActivityEvent`s whose threshold is minutes of use since 00:00 of the
+  event's selections (on iOS 17.4+ with `includesPastActivity`, so earlier use
+  today counts after a restart):
+
+  | Activity | Event | Minutes | Monitor does |
+  | --- | --- | --- | --- |
+  | limit | `warning` | limit - 5 | notification "{name} limit almost reached" / "Blocking starts in about 5 minutes." (Android's texts) |
+  | limit | `reached` | limit | records it reached, reconciles (shield until the day ends) |
+  | routine | `warning` | limit - 5, included apps together | routine warning notification |
+  | routine | `reached` | limit, included apps together | shields every included member |
+  | routine | `cap.<selectionId>` | member cap | shields that member |
+  | preferred | `amber`, `red`, `limit`, `over.<n>` | limit - 5, limit - 1, limit, limit + n (n = 10, 20, ... 120) | notification "5 min left" / "1 min left" / "You've reached your time" / "n min over" |
+
+  For a limit of five minutes or less the warning (and amber) fires after the
+  first minute; thresholds after 23:59 are dropped. Daily limits apply every
+  day, as on Android (the editor sets no weekdays for them; Kotlin ignores
+  them). Members whose app key is not an `ios-sel:` selection are ignored.
+- Notifications are posted by the monitor extension, at most once per
+  activity and event per day (a restarted activity re-reports passed
+  thresholds), with one identifier per activity so a newer notice replaces the
+  previous one. Without permission iOS drops them; blocking never depends on
+  them.
+- Activity budget: at most 20 activities, in this order: block-now rules
+  (soonest end first), daily limits and routines, schedules whose weekday is
+  today (or that block now), other schedules, preferred limits. The order is
+  decided whenever the app reschedules (after a sync, when it becomes active).
+  `ActivityScheduler` keeps an activity running when its signature (plan plus
+  a checksum of each selection its events count) is unchanged and only stops
+  and restarts the ones that changed, so a limit's day is not reset by an
+  unrelated edit.
 - The change guard is enforced natively with Android's semantics and result
-  strings; Dart's `RestrictionsViewModel` is unchanged.
+  strings; Dart's `RestrictionsViewModel` is unchanged. Routines are not
+  guarded, as on Android.
 
 ### Block screen
 
 - `FocusTraceShield`: title = the app's `localizedDisplayName` (or the rule
-  name), subtitle = one line per blocking rule ("Temporary block until 15:00 ·
-  Social"), FocusTrace colours (#070A10 background, #5BC0EB accent), "Leave"
-  primary button. It records one block event per rule per minute for Flutter.
+  name), subtitle = one line per blocking rule or routine ("Temporary block
+  until 15:00 · Social", "Daily app limit reached · Games", "Study: shared
+  allowance reached", "Study: app limit reached · Games"), FocusTrace colours
+  (#070A10 background, #5BC0EB accent), "Leave" primary button. It records one
+  block event per app key per minute for Flutter, with Android's reasons
+  (`dailyLimit`, `routineLimit:<id>`, `routineAppLimit:<id>`, ...).
 - `FocusTraceShieldAction`: primary closes the app. A shield cannot open the
   host app, so the secondary button ("Unblock in FocusTrace") is offered only
-  for Easy/Moderate rules and only when notifications are allowed; it posts a
-  local notification that opens FocusTrace, then closes the app.
+  for Easy/Moderate rules and routines and only when notifications are
+  allowed; it posts a local notification that opens FocusTrace, then closes
+  the app.
 
 ### Flutter
 
 - `PlatformCapabilities.ios`: `screenTimeAuthorization`, `nativeAppPicker`,
-  `appBlocking`. New capability `dailyLimits` (Android, Windows): without it
-  the editor does not offer daily limits and the routines section is hidden.
+  `appBlocking`, `dailyLimits`, `notificationsPermission` (no
+  `usageNumbersInFlutter`). Daily limits, routines and the notifications
+  permission tile/prompt therefore appear as on Android. Where
+  `usageNumbersInFlutter` is off, limit rules and routines show their size
+  only: no progress bar, no "used", "left" or "today" numbers (restrictions
+  screen rule and routine tiles, routine details).
+- Routines on iOS hold picked groups: the candidates are the `ios-sel:` keys
+  of rules and routines under their names (`iosRoutineCandidates`), and the
+  routine editor and the add-apps sheet offer "Choose new apps", which runs
+  Apple's picker and the name dialog without creating a rule
+  (`pickIosAppGroup`).
 - Onboarding's access page shows one Screen Time tile on iOS; the restrictions
   screen shows a Screen Time card until authorized, picks apps with
   `createIosRestriction` (authorize, picker, name dialog, usual editor) and
   draws selection icons through `SelectionIcons` (letter avatar elsewhere).
-- Shield texts come from the ARB files (`shield*` keys), sent by
-  `syncShieldStrings` when the restrictions screen's locale changes and before
-  each pick; English defaults live in `ShieldStrings.swift`.
+- Shield and notification texts come from the ARB files (`shield*`,
+  `routineReason*` keys), sent by `syncShieldStrings` when the restrictions
+  screen's locale changes and before each pick; texts with a number are sent
+  pluralized per count (`limitWarningBody.1-5`, `nudgeLeft.1-5`,
+  `nudgeOver.10-120`). English defaults live in `ShieldStrings.swift`.
 
 ## Entitlements and App Group
 
@@ -197,7 +261,14 @@ entitlement provisioning.
 - No overlays over other apps; the only block UI is the system shield, and a
   shield cannot open the host app.
 - DeviceActivity: intervals of at least 15 minutes, about 20 monitored
-  activities per app.
+  activities per app. Usage arrives only as threshold events registered in
+  advance: no per-tick usage, no app-open events, and nothing from the
+  last minute of the day (the interval ends 23:59).
+- Preferred-usage nudges are notifications, not overlays, and cannot repeat
+  "on every app open"; amber/red fire once each per day, then every 10
+  minutes over the limit for two hours.
+- Before iOS 17.4 `DeviceActivityEvent` has no `includesPastActivity`; whether
+  use before a restarted activity counts is then up to the system.
 - No Shorts/Reels (in-app content) detection.
 - The Family Controls entitlement works for development builds but needs
   Apple's approval of the Distribution entitlement, per bundle id, before

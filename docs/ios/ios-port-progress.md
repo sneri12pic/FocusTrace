@@ -2,6 +2,24 @@
 
 Date: 2026-11-06
 Agent: Claude Code
+Goal: Phase 3 - daily limits, routines, limit warnings and preferred-usage nudges on iOS.
+
+Completed:
+- FocusTraceKit: `UsageEvents` (one repeating 00:00-23:59 DeviceActivity activity per daily limit, enabled routine and preferred limit; events: limit warning at limit - 5, reached at limit; routine shared allowance over the combined tokens of all included selections plus one event per member cap; preferred amber/red/limit/over every 10 min for 2 h), `ShieldPlanner` (one store per rule, routine allowance, routine member cap; Android's event reasons), reached-today state, once-a-day notice claims and monitor plan signatures in the App Group. `PreferredLimit` decoded from `preferredLimits` (wire format of the preferred-usage branch), re-encoded only when present.
+- Monitor: `eventDidReachThreshold` records reached blocks and reconciles; warnings/nudges posted as local notifications (Monitor now links UserNotifications). Shield and shield action handle routine blocks.
+- Change guard: a reached limit counts as usage = limit (sync, requestRestrictionChange, picker edit lock); a changed limit or routine is measured again.
+- Activity budget: block-now, then limits and routines, then today's schedules, other schedules, preferred limits; unchanged activities are no longer restarted on every sync.
+- Dart: `dailyLimits` and `notificationsPermission` on for iOS; limit/routine tiles and routine details show the limit only without `usageNumbersInFlutter`; iOS routine candidates are picked groups (`iosRoutineCandidates`) plus "Choose new apps" (`pickIosAppGroup`) in the routine editor and add-apps sheet; shield strings carry routine lines, warnings and nudges (pluralized per count). 10 ARB keys in all 7 languages (warning/nudge translations taken from Android's resources).
+- Preferred usage time: found only on `origin/claude/project-thread-gt9is1` (4468777; not on `fix/busiest-hours-widget-test`, not on develop). Not merged. iOS mirrors its semantics natively; Dart wiring waits for that branch.
+Files materially changed: `ios/FocusTraceKit/{UsageEvents,ShieldPlanner}.swift` (new), `ios/FocusTraceKit/{RestrictionModels,RestrictionStore,ScheduleMapper,ScreenTimeEnforcement,ShieldStrings}.swift`, `ios/Focus*/*Extension.swift`, `ios/Runner/FocusTraceChannels.swift`, `ios/Runner.xcodeproj/project.pbxproj`, `tool/ios/*`, `lib/src/domain/models/platform_capabilities.dart`, `lib/src/presentation/screens/{restrictions_screen,restriction_editor_sheet,routine_editor_sheet,routine_details_screen}.dart`, `lib/l10n/*`, `test/*`.
+Verification: PASS CI run https://github.com/sneri12pic/FocusTrace/actions/runs/42292963319 (all four jobs; `ios-build` compiled Runner and the four extensions, kit tests 160/160). Locally PASS `flutter analyze`, PASS `dart format --set-exit-if-changed lib test`, PASS `flutter test` (393, 1 skipped); project script idempotent. Nothing ran on a device or simulator.
+Decisions made: daily limits ignore weekdays (as Kotlin; the editor sets none); routines on iOS hold picked selections; texts with numbers are pluralized in Dart and sent per count; nudges/warnings are notifications deduplicated per day and replaced per activity; `includesPastActivity: true` on iOS 17.4+.
+Remaining: device verification (phase 2 and 3 acceptance criteria); preferred-usage Dart wiring after that branch merges (it also needs an iOS way to pick apps for a preferred limit; category limits cannot be resolved on iOS); phases 4-5.
+Risks / unresolved questions: unverified on hardware: threshold timing, re-reporting of passed thresholds after a restart (and before iOS 17.4), notifications posted from the monitor extension, the 00:00 interval start lifting reached limits, events per activity (preferred limits register 15). Usage between 23:59 and 00:00 is not counted. Flutter cannot show whether a limit is reached on iOS (no "Blocked until" status for limits, no "Unblock now" for them; delete/edit go through the guard). ManagedSettings allows a limited number of named stores (one per block).
+Relevant commit: 4d5bba1 (native), 974cac2 (Dart/UI).
+
+Date: 2026-11-06
+Agent: Claude Code
 Goal: Phase 2 - Screen Time authorization, app picker, blocking, schedules, change guard.
 
 Completed:
