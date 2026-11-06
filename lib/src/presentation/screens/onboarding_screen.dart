@@ -7,7 +7,7 @@ import 'package:intl/intl.dart';
 
 import '../../domain/models/app_usage_summary.dart';
 import '../../domain/models/health_connect.dart';
-import '../../domain/models/usage_session.dart';
+import '../../domain/models/platform_capabilities.dart';
 import '../localization/app_localizations_x.dart';
 import '../providers.dart';
 import 'home_shell.dart';
@@ -499,7 +499,13 @@ class _AccessPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final dashboardState = ref.watch(dashboardViewModelProvider);
     final restrictionsState = ref.watch(restrictionsViewModelProvider);
-    final isAndroid = dashboardState.platform == UsagePlatform.android;
+    final capabilities = PlatformCapabilities.forPlatform(
+      dashboardState.platform,
+    );
+    final asksPermissions =
+        capabilities.usageAccessPermission ||
+        capabilities.overlayPermission ||
+        capabilities.notificationsPermission;
     final theme = Theme.of(context);
     final mutedStyle = theme.textTheme.bodyMedium?.copyWith(
       color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
@@ -539,45 +545,50 @@ class _AccessPage extends ConsumerWidget {
           ),
         ),
         const SizedBox(height: 28),
-        if (!isAndroid)
+        if (!asksPermissions)
           _OnboardingInfoCard(
             title: context.l10n.onboardingNoPermissionsTitle,
             body: context.l10n.onboardingNoPermissionsBody,
           )
         else ...[
-          _PermissionTile(
-            icon: Icons.insert_chart_outlined,
-            title: context.l10n.onboardingUsageAccessTitle,
-            subtitle: context.l10n.onboardingUsageAccessSubtitle,
-            isGranted: dashboardState.hasUsageAccess,
-            actionLabel: context.l10n.onboardingOpenSettings,
-            onAllow: ref
-                .read(dashboardViewModelProvider.notifier)
-                .openPermissionSettings,
-          ),
-          if (dashboardState.hasUsageAccess) const _HistoryImportNote(),
-          const SizedBox(height: 12),
-          _PermissionTile(
-            icon: Icons.picture_in_picture_alt_outlined,
-            title: context.l10n.onboardingOverlayAccessTitle,
-            subtitle: context.l10n.onboardingOverlayAccessSubtitle,
-            isGranted: restrictionsState.hasOverlayPermission,
-            actionLabel: context.l10n.onboardingOpenSettings,
-            onAllow: () => ref
-                .read(restrictionsViewModelProvider.notifier)
-                .openOverlaySettings(),
-          ),
-          const SizedBox(height: 12),
-          _PermissionTile(
-            icon: Icons.notifications_outlined,
-            title: context.l10n.onboardingNotificationsTitle,
-            subtitle: context.l10n.onboardingNotificationsSubtitle,
-            isGranted: restrictionsState.hasNotificationsPermission,
-            actionLabel: context.l10n.onboardingAllow,
-            onAllow: () => ref
-                .read(restrictionsViewModelProvider.notifier)
-                .requestNotificationsPermission(),
-          ),
+          if (capabilities.usageAccessPermission) ...[
+            _PermissionTile(
+              icon: Icons.insert_chart_outlined,
+              title: context.l10n.onboardingUsageAccessTitle,
+              subtitle: context.l10n.onboardingUsageAccessSubtitle,
+              isGranted: dashboardState.hasUsageAccess,
+              actionLabel: context.l10n.onboardingOpenSettings,
+              onAllow: ref
+                  .read(dashboardViewModelProvider.notifier)
+                  .openPermissionSettings,
+            ),
+            if (dashboardState.hasUsageAccess) const _HistoryImportNote(),
+            const SizedBox(height: 12),
+          ],
+          if (capabilities.overlayPermission) ...[
+            _PermissionTile(
+              icon: Icons.picture_in_picture_alt_outlined,
+              title: context.l10n.onboardingOverlayAccessTitle,
+              subtitle: context.l10n.onboardingOverlayAccessSubtitle,
+              isGranted: restrictionsState.hasOverlayPermission,
+              actionLabel: context.l10n.onboardingOpenSettings,
+              onAllow: () => ref
+                  .read(restrictionsViewModelProvider.notifier)
+                  .openOverlaySettings(),
+            ),
+            const SizedBox(height: 12),
+          ],
+          if (capabilities.notificationsPermission)
+            _PermissionTile(
+              icon: Icons.notifications_outlined,
+              title: context.l10n.onboardingNotificationsTitle,
+              subtitle: context.l10n.onboardingNotificationsSubtitle,
+              isGranted: restrictionsState.hasNotificationsPermission,
+              actionLabel: context.l10n.onboardingAllow,
+              onAllow: () => ref
+                  .read(restrictionsViewModelProvider.notifier)
+                  .requestNotificationsPermission(),
+            ),
         ],
         const SizedBox(height: 20),
         Row(

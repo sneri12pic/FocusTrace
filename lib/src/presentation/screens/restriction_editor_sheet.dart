@@ -4,8 +4,8 @@ import 'restriction_setup_form.dart';
 import '../view_models/restriction_insights.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../domain/models/platform_capabilities.dart';
 import '../../domain/models/restriction_rule.dart';
-import '../../domain/models/usage_session.dart';
 import '../localization/app_localizations_x.dart';
 import '../providers.dart';
 import '../widgets/usage_calendar.dart';
@@ -149,12 +149,11 @@ Future<void> promptRestrictionPermissionsIfNeeded(
   WidgetRef ref,
 ) async {
   final state = ref.read(restrictionsViewModelProvider);
-  if (state.platform != UsagePlatform.android) {
-    return;
-  }
-
+  final capabilities = PlatformCapabilities.forPlatform(state.platform);
   final viewModel = ref.read(restrictionsViewModelProvider.notifier);
-  if (!state.hasOverlayPermission && context.mounted) {
+  if (capabilities.overlayPermission &&
+      !state.hasOverlayPermission &&
+      context.mounted) {
     final openSettings =
         await showDialog<bool>(
           context: context,
@@ -178,7 +177,9 @@ Future<void> promptRestrictionPermissionsIfNeeded(
       await viewModel.openOverlaySettings();
     }
   }
-  await viewModel.requestNotificationsPermission();
+  if (capabilities.notificationsPermission) {
+    await viewModel.requestNotificationsPermission();
+  }
 }
 
 Future<void> showRestrictionResult(BuildContext context, WidgetRef ref) async {

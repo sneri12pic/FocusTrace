@@ -22,6 +22,7 @@ import '../data/repositories/settings_repository_impl.dart';
 import '../data/repositories/sync_repository_impl.dart';
 import '../data/repositories/usage_repository_impl.dart';
 import '../domain/models/app_usage_summary.dart';
+import '../domain/models/platform_capabilities.dart';
 import '../domain/models/usage_session.dart';
 import '../domain/repositories/app_language_repository.dart';
 import '../domain/repositories/data_transfer_repository.dart';
@@ -60,6 +61,10 @@ final usagePlatformProvider = Provider<UsagePlatform>((ref) {
   }
 });
 
+final platformCapabilitiesProvider = Provider<PlatformCapabilities>(
+  (ref) => PlatformCapabilities.forPlatform(ref.watch(usagePlatformProvider)),
+);
+
 final usageAggregationServiceProvider = Provider<UsageAggregationService>(
   (ref) => const UsageAggregationService(),
 );
@@ -87,7 +92,7 @@ final portableLocalDataSourceProvider = Provider<PortableFocusTraceDataSource>((
 });
 
 final dataTransferSupportedProvider = Provider<bool>(
-  (ref) => ref.watch(usagePlatformProvider) == UsagePlatform.android,
+  (ref) => ref.watch(platformCapabilitiesProvider).dataTransfer,
 );
 
 final backupDocumentDataSourceProvider = Provider<BackupDocumentDataSource>((
@@ -113,7 +118,7 @@ final appLanguageRepositoryProvider = Provider<AppLanguageRepository>(
 final platformLocaleDataSourceProvider = Provider<PlatformLocaleDataSource>((
   ref,
 ) {
-  if (ref.watch(usagePlatformProvider) == UsagePlatform.android) {
+  if (ref.watch(platformCapabilitiesProvider).platformLocale) {
     return AndroidPlatformLocaleDataSource();
   }
   return const NoOpPlatformLocaleDataSource();
@@ -176,7 +181,7 @@ final reportRepositoryProvider = Provider<ReportRepository>((ref) {
 final osUsageHistoryRepositoryProvider = Provider<OsUsageHistoryRepository?>((
   ref,
 ) {
-  if (ref.watch(usagePlatformProvider) != UsagePlatform.android) return null;
+  if (!ref.watch(platformCapabilitiesProvider).osHistoryImport) return null;
   return OsUsageHistoryRepository(
     localDataSource: ref.watch(localDataSourceProvider),
     platformDataSource: ref.watch(platformDataSourceProvider),
@@ -222,7 +227,7 @@ bool syncBaseUrlUsable(String url, {bool releaseMode = kReleaseMode}) =>
 final syncSupportedProvider = Provider<bool>(
   (ref) =>
       syncBaseUrlUsable(syncBaseUrl) &&
-      ref.watch(usagePlatformProvider) == UsagePlatform.android,
+      ref.watch(platformCapabilitiesProvider).cloudSync,
 );
 
 /// `null` when sync is not configured for this build. Widgets, screens and view
@@ -256,7 +261,7 @@ final syncRepositoryProvider = Provider<SyncRepository?>((ref) {
 /// schedules users who enabled sync before the scheduler existed. KEEP preserves
 /// an existing request. It never changes consent or blocks the app's startup.
 final syncScheduleBootstrapProvider = FutureProvider<void>((ref) async {
-  if (ref.watch(usagePlatformProvider) != UsagePlatform.android) return;
+  if (!ref.watch(platformCapabilitiesProvider).cloudSync) return;
   final repository = ref.watch(syncRepositoryProvider);
   await const AndroidSyncExecutionGate().run(() async {
     await const AndroidSyncScheduler().reconcile(
@@ -382,7 +387,7 @@ final reportsViewModelProvider =
 /// Health Connect is Android-only; elsewhere its settings and onboarding
 /// step are hidden rather than shown as unavailable.
 final healthConnectSupportedProvider = Provider<bool>(
-  (ref) => ref.watch(usagePlatformProvider) == UsagePlatform.android,
+  (ref) => ref.watch(platformCapabilitiesProvider).workoutsImport,
 );
 
 final healthConnectChannelProvider = Provider<HealthConnectChannel>(

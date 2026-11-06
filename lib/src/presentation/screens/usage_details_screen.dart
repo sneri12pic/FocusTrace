@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../domain/models/app_usage_summary.dart';
+import '../../domain/models/platform_capabilities.dart';
 import '../../domain/models/restriction_rule.dart';
 import '../../domain/models/usage_details_chart.dart';
 import '../../domain/models/usage_item.dart';
@@ -104,7 +105,9 @@ class UsageDetailsScreen extends ConsumerWidget {
                     ),
                     const SizedBox(height: 8),
                     _CalendarSection(request: request, isGood: isGood),
-                    if (request.platform == UsagePlatform.windows) ...[
+                    if (PlatformCapabilities.forPlatform(
+                      request.platform,
+                    ).activeWindowTracking) ...[
                       const SizedBox(height: 20),
                       Text(
                         context.l10n.sessionLongestTitle,
