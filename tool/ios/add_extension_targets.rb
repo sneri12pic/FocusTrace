@@ -62,7 +62,7 @@ EXTENSIONS = [
     extension_point: 'com.apple.deviceactivity.monitor-extension',
     principal_class: 'DeviceActivityMonitorExtension',
     sources: %w[DeviceActivityMonitorExtension.swift],
-    frameworks: %w[DeviceActivity ManagedSettings FamilyControls]
+    frameworks: %w[DeviceActivity ManagedSettings FamilyControls UserNotifications]
   },
   {
     name: 'FocusTraceShield',

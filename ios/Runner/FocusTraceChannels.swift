@@ -154,7 +154,9 @@ final class FocusTraceChannels: NSObject {
       let now = Date()
       let guardian = RestrictionChangeGuard(defaults: store.defaults)
       let locked = store.configuration.rules.contains {
-        $0.selectionId == id && guardian.check($0, now: now) != "allowed"
+        $0.selectionId == id
+          && guardian.check($0, now: now, usageSeconds: store.usageProxy($0, at: now))
+            != "allowed"
       }
       if locked {
         result(

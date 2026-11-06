@@ -7,8 +7,8 @@ import UserNotifications
 ///
 /// Primary ("Leave") closes the blocked app, like Android's Leave button.
 /// iOS gives a shield no way to open FocusTrace, so the secondary button
-/// (offered for Easy and Moderate rules only, and only when notifications are
-/// allowed) posts a notification that opens FocusTrace when tapped, where the
+/// (offered for Easy and Moderate rules and for routines, and only when
+/// notifications are allowed) posts a notification that opens FocusTrace when tapped, where the
 /// rule can be unblocked through the usual difficulty checks. Then it closes
 /// the app as well.
 class ShieldActionExtension: ShieldActionDelegate {
@@ -50,18 +50,12 @@ class ShieldActionExtension: ShieldActionDelegate {
     switch action {
     case .secondaryButtonPressed:
       let store = RestrictionStore.shared
-      let shielded = store.shieldedRuleKeys
-      let rule = store.configuration.rules.first { rule in
-        guard shielded.contains(rule.key), let id = rule.selectionId,
-          let selection = store.selection(id: id)
-        else { return false }
-        return matches(selection)
-      }
-      guard let rule = rule, rule.difficulty != "hard" else {
+      let block = ShieldController.blocks(store: store, now: Date(), matches: matches).first
+      guard let block = block, !block.isHard else {
         completionHandler(.close)
         return
       }
-      postOpenAppNotification(ruleName: rule.appName, strings: store.shieldStrings) {
+      postOpenAppNotification(ruleName: block.appName, strings: store.shieldStrings) {
         completionHandler(.close)
       }
     case .primaryButtonPressed:

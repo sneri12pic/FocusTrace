@@ -49,17 +49,15 @@ extension FamilyActivitySelection {
   }
 }
 
-/// Applies or clears one named ManagedSettingsStore per rule. iOS shields an
-/// app while any store shields it, so lifting one rule never unblocks an app
-/// another rule still blocks (as on Android, where every reason must end).
+/// Applies or clears one named ManagedSettingsStore per block (rule, routine
+/// allowance, routine member cap; see ShieldPlanner). iOS shields an app while
+/// any store shields it, so lifting one block never unblocks an app another
+/// block still holds (as on Android, where every reason must end).
 enum ShieldController {
-  static func storeName(for rule: RestrictionRule) -> String {
-    "ft.\(rule.type.rawValue).\(rule.selectionId ?? rule.appKey)"
-  }
-
-  /// Re-evaluates every rule at `now + tolerance` and makes the shields match.
+  /// Re-evaluates every block at `now + tolerance` and makes the shields match.
   /// The monitor passes a small tolerance because DeviceActivity may wake it a
-  /// moment before an interval boundary.
+  /// moment before an interval boundary (including the day's end, which lifts
+  /// reached limits).
   @discardableResult
   static func reconcile(
     store: RestrictionStore = .shared, now: Date = Date(), tolerance: TimeInterval = 0
@@ -67,16 +65,15 @@ enum ShieldController {
     let at = now.addingTimeInterval(tolerance)
     var shielded = Set<String>()
     var names = Set<String>()
-    for rule in store.configuration.rules {
-      guard let id = rule.selectionId else { continue }
-      let name = storeName(for: rule)
-      names.insert(name)
-      let settings = ManagedSettingsStore(named: ManagedSettingsStore.Name(name))
-      if rule.isBlocked(at: at), let selection = store.selection(id: id),
+    for block in ShieldPlanner.blocks(for: store.configuration) {
+      names.insert(block.storeName)
+      let settings = ManagedSettingsStore(named: ManagedSettingsStore.Name(block.storeName))
+      let selection = combinedSelection(block.selectionIds, store: store)
+      if ShieldPlanner.isActive(block, at: at, isReached: { store.isReached($0, at: at) }),
         !selection.isEmptySelection
       {
         apply(selection, to: settings)
-        shielded.insert(rule.key)
+        shielded.insert(block.key)
       } else {
         settings.clearAllSettings()
       }
@@ -87,6 +84,36 @@ enum ShieldController {
     store.shieldStoreNames = names
     store.shieldedRuleKeys = shielded
     return shielded
+  }
+
+  /// The blocks whose apps include what `matches` accepts, preferring those
+  /// shielded now; for the shield and shield-action extensions.
+  static func blocks(
+    store: RestrictionStore, now: Date, matches: (FamilyActivitySelection) -> Bool
+  ) -> [ShieldBlock] {
+    let candidates = ShieldPlanner.blocks(for: store.configuration).filter { block in
+      block.selectionIds.contains { id in store.selection(id: id).map(matches) ?? false }
+    }
+    let shielded = store.shieldedRuleKeys
+    let current = candidates.filter { shielded.contains($0.key) }
+    if !current.isEmpty { return current }
+    return candidates.filter {
+      ShieldPlanner.isActive($0, at: now, isReached: { store.isReached($0, at: now) })
+    }
+  }
+
+  /// The tokens of several picked selections together (a routine's members).
+  static func combinedSelection(_ ids: [String], store: RestrictionStore)
+    -> FamilyActivitySelection
+  {
+    var combined = FamilyActivitySelection()
+    for id in ids {
+      guard let selection = store.selection(id: id) else { continue }
+      combined.applicationTokens.formUnion(selection.applicationTokens)
+      combined.categoryTokens.formUnion(selection.categoryTokens)
+      combined.webDomainTokens.formUnion(selection.webDomainTokens)
+    }
+    return combined
   }
 
   private static func apply(_ selection: FamilyActivitySelection, to settings: ManagedSettingsStore)
@@ -108,33 +135,87 @@ enum ShieldController {
 
 /// Registers the DeviceActivity monitoring ScheduleMapper plans.
 enum ActivityScheduler {
-  /// Replaces FocusTrace's monitored activities. Returns how many were
-  /// registered; failures are logged and leave the app-side shields in place.
+  /// Makes FocusTrace's monitored activities match the plans. An activity
+  /// whose plan (and picked apps) did not change keeps running: restarting a
+  /// usage activity could change how its usage is counted. Returns how many
+  /// are monitored; failures are logged and leave the app-side shields in place.
   @discardableResult
   static func reschedule(
-    configuration: RestrictionConfiguration, now: Date = Date()
+    configuration: RestrictionConfiguration, store: RestrictionStore = .shared,
+    now: Date = Date()
   ) -> Int {
     let center = DeviceActivityCenter()
-    let ours = center.activities.filter { $0.rawValue.hasPrefix(ScheduleMapper.prefix) }
-    if !ours.isEmpty {
-      center.stopMonitoring(ours)
+    let plans = ScheduleMapper.plans(for: configuration, now: now)
+    let running = Set(center.activities.map(\.rawValue).filter { $0.hasPrefix(ScheduleMapper.prefix) })
+    let previous = store.monitorPlanSignatures
+    var signatures: [String: String] = [:]
+    for plan in plans {
+      signatures[plan.name] = signature(of: plan, store: store)
     }
-    var registered = 0
-    for plan in ScheduleMapper.plans(for: configuration, now: now) {
+    let obsolete = running.filter { signatures[$0] == nil || signatures[$0] != previous[$0] }
+    if !obsolete.isEmpty {
+      center.stopMonitoring(obsolete.map { DeviceActivityName($0) })
+    }
+    var monitored = 0
+    var kept: [String: String] = [:]
+    for plan in plans {
+      let name = plan.name
+      if running.contains(name) && !obsolete.contains(name) {
+        monitored += 1
+        kept[name] = signatures[name]
+        continue
+      }
       let schedule = DeviceActivitySchedule(
         intervalStart: plan.start,
         intervalEnd: plan.end,
         repeats: plan.repeats,
         warningTime: plan.warning
       )
+      var events: [DeviceActivityEvent.Name: DeviceActivityEvent] = [:]
+      for event in plan.events {
+        events[DeviceActivityEvent.Name(event.name)] = deviceActivityEvent(event, store: store)
+      }
       do {
-        try center.startMonitoring(DeviceActivityName(plan.name), during: schedule)
-        registered += 1
+        try center.startMonitoring(DeviceActivityName(name), during: schedule, events: events)
+        monitored += 1
+        kept[name] = signatures[name]
       } catch {
-        NSLog("FocusTrace: could not monitor \(plan.name): \(error)")
+        NSLog("FocusTrace: could not monitor \(name): \(error)")
       }
     }
-    return registered
+    store.monitorPlanSignatures = kept
+    return monitored
+  }
+
+  private static func deviceActivityEvent(_ event: ThresholdPlan, store: RestrictionStore)
+    -> DeviceActivityEvent
+  {
+    let selection = ShieldController.combinedSelection(event.selectionIds, store: store)
+    let threshold = DateComponents(hour: event.minutes / 60, minute: event.minutes % 60)
+    if #available(iOS 17.4, *) {
+      // Use earlier today counts, as Android's limits count the whole day.
+      return DeviceActivityEvent(
+        applications: selection.applicationTokens,
+        categories: selection.categoryTokens,
+        webDomains: selection.webDomainTokens,
+        threshold: threshold,
+        includesPastActivity: true)
+    }
+    return DeviceActivityEvent(
+      applications: selection.applicationTokens,
+      categories: selection.categoryTokens,
+      webDomains: selection.webDomainTokens,
+      threshold: threshold)
+  }
+
+  /// The plan plus a checksum of every selection its events count, so an
+  /// edited selection restarts the activity.
+  private static func signature(of plan: MonitorPlan, store: RestrictionStore) -> String {
+    let ids = UsageEvents.unique(plan.events.flatMap(\.selectionIds))
+    let data = ids.map { id in
+      id + "=" + UsageEvents.stableHash(bytes: Array(store.selectionData(id: id) ?? Data()))
+    }
+    return plan.signature + "|" + data.joined(separator: ",")
   }
 }
 
@@ -142,6 +223,6 @@ enum ActivityScheduler {
 enum RestrictionEnforcer {
   static func refresh(store: RestrictionStore = .shared, now: Date = Date()) {
     ShieldController.reconcile(store: store, now: now)
-    ActivityScheduler.reschedule(configuration: store.configuration, now: now)
+    ActivityScheduler.reschedule(configuration: store.configuration, store: store, now: now)
   }
 }

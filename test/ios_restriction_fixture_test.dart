@@ -40,6 +40,13 @@ final fixtureRules = [
     type: RestrictionRuleType.dailyLimit,
     limitMinutes: 45,
   ),
+  const RestrictionRule(
+    appKey: 'ios-sel:3b241101-e2bb-4255-8caf-4136c566a962',
+    appName: 'Games',
+    type: RestrictionRuleType.dailyLimit,
+    limitMinutes: 30,
+    difficulty: RestrictionDifficulty.moderate,
+  ),
 ];
 
 final fixtureRoutines = [
@@ -55,6 +62,43 @@ final fixtureRoutines = [
         appName: 'Game',
         isIncludedInLimit: false,
         limitMinutes: 15,
+      ),
+    ],
+  ),
+  // A routine over picked selections: its included apps share 90 minutes,
+  // Games is also capped alone, Evenings only has its own cap.
+  const BlockRoutine(
+    id: 'routine-2',
+    name: 'Downtime',
+    dailyLimitMinutes: 90,
+    isEnabled: true,
+    apps: [
+      RoutineApp(
+        appKey: 'ios-sel:0f8fad5b-d9cb-469f-a165-70867728950e',
+        appName: 'Social',
+      ),
+      RoutineApp(
+        appKey: 'ios-sel:3b241101-e2bb-4255-8caf-4136c566a962',
+        appName: 'Games',
+        limitMinutes: 20,
+      ),
+      RoutineApp(
+        appKey: 'ios-sel:7c9e6679-7425-40de-944b-e07fc1f90ae7',
+        appName: 'Evenings',
+        isIncludedInLimit: false,
+        limitMinutes: 10,
+      ),
+    ],
+  ),
+  // Disabled routines are not sent.
+  const BlockRoutine(
+    id: 'routine-3',
+    name: 'Paused',
+    dailyLimitMinutes: 30,
+    apps: [
+      RoutineApp(
+        appKey: 'ios-sel:0f8fad5b-d9cb-469f-a165-70867728950e',
+        appName: 'Social',
       ),
     ],
   ),

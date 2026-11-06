@@ -5,8 +5,9 @@ import ManagedSettingsUI
 import UIKit
 
 /// The block screen iOS shows over shielded apps, styled like FocusTrace's
-/// Android block screen: the app's name, one line per rule blocking it
-/// ("Temporary block until 15:00 · Social"), and a Leave button, in the app's
+/// Android block screen: the app's name, one line per rule or routine blocking
+/// it ("Temporary block until 15:00 · Social", "Study: shared allowance
+/// reached"), and a Leave button, in the app's
 /// dark background and sky-blue accent.
 class ShieldConfigurationExtension: ShieldConfigurationDataSource {
   override func configuration(shielding application: Application) -> ShieldConfiguration {
@@ -48,26 +49,33 @@ class ShieldConfigurationExtension: ShieldConfigurationDataSource {
     let store = RestrictionStore.shared
     let strings = store.shieldStrings
     let now = Date()
-    let shielded = store.shieldedRuleKeys
-    let candidates = store.configuration.rules.filter { rule in
-      guard let id = rule.selectionId, let selection = store.selection(id: id) else { return false }
-      return matches(selection)
-    }
-    // Prefer what the shield state says; fall back to the rules' own clocks.
-    var rules = candidates.filter { shielded.contains($0.key) }
-    if rules.isEmpty {
-      rules = candidates.filter { $0.isBlocked(at: now) }
-    }
+    let blocks = ShieldController.blocks(store: store, now: now, matches: matches)
 
     let formatter = ShieldStrings.timeFormatter()
-    let reasons = rules.map {
-      strings.reason(for: $0, until: $0.blockedUntil(at: now), timeFormatter: formatter)
+    let reasons = blocks.map { block -> String in
+      var until: Date?
+      if case .rule(let rule) = block.kind {
+        until = rule.blockedUntil(
+          at: now, usageSecondsToday: store.usageProxy(rule, at: now))
+      }
+      return strings.reason(for: block, until: until, timeFormatter: formatter)
     }
-    if let first = rules.first {
-      store.recordBlocked(
-        appKey: first.appKey, appName: first.appName, reason: first.type.rawValue, now: now)
+    if let first = blocks.first {
+      // A routine's statistics belong to the member app that was opened.
+      var appKey = first.appKey
+      var appName = first.appName
+      if case .routineShared(let routine) = first.kind,
+        let member = routine.includedApps.first(where: { member in
+          UsageEvents.selectionId(of: member.appKey)
+            .flatMap { store.selection(id: $0) }.map(matches) ?? false
+        })
+      {
+        appKey = member.appKey
+        appName = member.appName
+      }
+      store.recordBlocked(appKey: appKey, appName: appName, reason: first.eventReason, now: now)
     }
-    let unblockable = !rules.isEmpty && rules.allSatisfy { $0.difficulty != "hard" }
+    let unblockable = !blocks.isEmpty && blocks.allSatisfy { !$0.isHard }
 
     return ShieldConfiguration(
       backgroundBlurStyle: .systemUltraThinMaterialDark,
@@ -75,7 +83,7 @@ class ShieldConfigurationExtension: ShieldConfigurationDataSource {
       icon: UIImage(systemName: "hourglass")?
         .withTintColor(Self.accent, renderingMode: .alwaysOriginal),
       title: ShieldConfiguration.Label(
-        text: name ?? rules.first?.appName ?? "FocusTrace", color: .white),
+        text: name ?? blocks.first?.appName ?? "FocusTrace", color: .white),
       subtitle: ShieldConfiguration.Label(
         text: reasons.isEmpty ? strings.text("restricted") : reasons.joined(separator: "\n"),
         color: Self.reasonColor),

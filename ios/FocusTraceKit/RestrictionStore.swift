@@ -26,6 +26,9 @@ struct RestrictionStore {
     static let lastEventPrefix = "ft.events.last."
     static let shieldStrings = "ft.shield.strings"
     static let notificationsAuthorized = "ft.notifications.authorized"
+    static let reached = "ft.limits.reached"
+    static let notices = "ft.limits.notices"
+    static let monitorPlans = "ft.monitor.plans"
   }
 
   // MARK: Configuration
@@ -75,6 +78,9 @@ struct RestrictionStore {
         referenced.insert(String(app.appKey.dropFirst(iosSelectionKeyPrefix.count)))
       }
     }
+    for preferred in config.preferredLimits {
+      referenced.formUnion(preferred.appKeys.compactMap(UsageEvents.selectionId(of:)))
+    }
     for id in selectionIds where !referenced.contains(id) {
       let created = defaults.double(forKey: Key.selectionCreatedPrefix + id)
       if now.timeIntervalSince1970 - created >= grace {
@@ -95,6 +101,61 @@ struct RestrictionStore {
   var shieldStoreNames: Set<String> {
     get { Set(defaults.stringArray(forKey: Key.shieldStores) ?? []) }
     nonmutating set { defaults.set(newValue.sorted(), forKey: Key.shieldStores) }
+  }
+
+  // MARK: Usage thresholds (written by the monitor extension)
+
+  /// The day a reached limit belongs to, in the device's calendar.
+  static func dayStamp(_ date: Date, calendar: Calendar = .current) -> String {
+    let c = calendar.dateComponents([.year, .month, .day], from: date)
+    return String(format: "%04d-%02d-%02d", c.year ?? 0, c.month ?? 0, c.day ?? 0)
+  }
+
+  /// Records that a block's usage threshold was reached today; it holds until
+  /// the day ends, like Android's `usage >= limit` until midnight.
+  func markReached(_ key: String, at now: Date = Date(), calendar: Calendar = .current) {
+    var map = reachedDays
+    map[key] = Self.dayStamp(now, calendar: calendar)
+    let today = Self.dayStamp(now, calendar: calendar)
+    defaults.set(map.filter { $0.value == today }, forKey: Key.reached)
+  }
+
+  func isReached(_ key: String, at now: Date = Date(), calendar: Calendar = .current) -> Bool {
+    reachedDays[key] == Self.dayStamp(now, calendar: calendar)
+  }
+
+  /// Forgets reached thresholds whose rule or routine changed: a new limit is
+  /// measured again (DeviceActivity re-reports past use when it applies).
+  func clearReached(where matches: (String) -> Bool) {
+    defaults.set(reachedDays.filter { !matches($0.key) }, forKey: Key.reached)
+  }
+
+  private var reachedDays: [String: String] {
+    defaults.dictionary(forKey: Key.reached) as? [String: String] ?? [:]
+  }
+
+  /// True the first time `key` is claimed today. A restarted activity may
+  /// report thresholds it already passed; each notice is posted once a day.
+  func claimNotice(_ key: String, at now: Date = Date(), calendar: Calendar = .current) -> Bool {
+    let today = Self.dayStamp(now, calendar: calendar)
+    var map = (defaults.dictionary(forKey: Key.notices) as? [String: String] ?? [:])
+      .filter { $0.value == today }
+    guard map[key] == nil else { return false }
+    map[key] = today
+    defaults.set(map, forKey: Key.notices)
+    return true
+  }
+
+  /// Signatures of the DeviceActivity monitoring FocusTrace registered, by
+  /// activity name, so unchanged activities are left running.
+  var monitorPlanSignatures: [String: String] {
+    get { defaults.dictionary(forKey: Key.monitorPlans) as? [String: String] ?? [:] }
+    nonmutating set { defaults.set(newValue, forKey: Key.monitorPlans) }
+  }
+
+  /// `ShieldPlanner.usageProxy` with this store's reached state.
+  func usageProxy(_ rule: RestrictionRule, at now: Date, calendar: Calendar = .current) -> Int64 {
+    ShieldPlanner.usageProxy(rule, reached: isReached(rule.key, at: now, calendar: calendar))
   }
 
   // MARK: Block events
@@ -163,18 +224,45 @@ enum RestrictionSync {
   static func apply(
     json: String, store: RestrictionStore, now: Date = Date(), calendar: Calendar = .current
   ) throws -> [RestrictionRule] {
-    let previous = store.configuration.rules
-    let next = RestrictionConfiguration.parse(json).rules
+    let previousConfiguration = store.configuration
+    let nextConfiguration = RestrictionConfiguration.parse(json)
+    let previous = previousConfiguration.rules
+    let next = nextConfiguration.rules
     let changed = previous.filter { !next.contains($0) }
     let guardian = RestrictionChangeGuard(defaults: store.defaults)
     for rule in changed {
-      // Daily limits need usage numbers iOS does not give the app (phase 3);
-      // until then a limit never counts as blocking.
-      let status = guardian.check(rule, now: now, calendar: calendar)
+      // iOS has no usage numbers: a daily limit counts as at its limit once
+      // the monitor recorded it reached today, else as unused.
+      let usage = store.usageProxy(rule, at: now, calendar: calendar)
+      let status = guardian.check(rule, now: now, usageSeconds: usage, calendar: calendar)
       if status != "allowed" { throw Locked(rule: rule, status: status) }
     }
     store.configurationJSON = json
     changed.forEach(guardian.clear)
+    // A limit or routine whose thresholds changed is measured again: its
+    // activity restarts and DeviceActivity reports past use against the new
+    // thresholds. Routines are not guarded, as on Android.
+    var remeasured = Set<String>()
+    for rule in previous where rule.type == .dailyLimit {
+      guard let id = rule.selectionId,
+        let updated = next.first(where: { $0.key == rule.key }),
+        UsageEvents.limitPlan(updated, id: id)?.signature != UsageEvents.limitPlan(rule, id: id)?.signature
+      else { continue }
+      remeasured.insert(rule.key)
+    }
+    var remeasuredRoutines = Set<String>()
+    for routine in previousConfiguration.routines {
+      guard let updated = nextConfiguration.routines.first(where: { $0.id == routine.id }),
+        UsageEvents.routinePlan(updated)?.signature != UsageEvents.routinePlan(routine)?.signature
+      else { continue }
+      remeasuredRoutines.insert(routine.id)
+    }
+    store.clearReached { key in
+      remeasured.contains(key)
+        || remeasuredRoutines.contains { id in
+          key == UsageEvents.routineKey(id) || key.hasPrefix("routineApp:\(id):")
+        }
+    }
     return changed
   }
 
@@ -189,6 +277,8 @@ enum RestrictionSync {
       })
     else { return "allowed" }
     return RestrictionChangeGuard(defaults: store.defaults)
-      .check(rule, now: now, request: true, calendar: calendar)
+      .check(
+        rule, now: now, usageSeconds: store.usageProxy(rule, at: now, calendar: calendar),
+        request: true, calendar: calendar)
   }
 }

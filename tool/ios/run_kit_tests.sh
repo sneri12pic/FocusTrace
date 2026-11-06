@@ -14,5 +14,7 @@ swiftc -O -o "$out" \
   "$kit/RestrictionStore.swift" \
   "$kit/ShieldStrings.swift" \
   "$kit/ScheduleMapper.swift" \
+  "$kit/UsageEvents.swift" \
+  "$kit/ShieldPlanner.swift" \
   "$root/tool/ios/kit_tests/main.swift"
 "$out" "$root/test/fixtures/ios_restriction_configuration.json"

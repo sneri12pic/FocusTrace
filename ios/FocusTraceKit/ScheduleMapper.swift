@@ -11,8 +11,35 @@ struct MonitorPlan: Equatable {
   /// DeviceActivitySchedule.warningTime: `intervalWillEndWarning` fires this
   /// long before `end`, giving a third wake-up inside short intervals.
   var warning: DateComponents?
-  /// The `RestrictionRule.key` this plan wakes the monitor for.
+  /// The `RestrictionRule.key` this plan wakes the monitor for, or what the
+  /// usage activity watches ("routine:<id>", "preferred:<hash>").
   var ruleKey: String
+  /// DeviceActivityEvents of a daily usage activity (limits, routines,
+  /// preferred usage time); empty for block-now and schedule wake-ups.
+  var events: [ThresholdPlan] = []
+
+  /// Everything DeviceActivity is given, so an unchanged activity is not
+  /// restarted (a restart could reset how its usage is counted).
+  var signature: String {
+    func text(_ c: DateComponents?) -> String {
+      guard let c = c else { return "-" }
+      return [c.year, c.month, c.day, c.hour, c.minute, c.second]
+        .map { $0.map(String.init) ?? "_" }.joined(separator: ":")
+    }
+    let events = self.events.map { "\($0.name)@\($0.minutes)=\($0.selectionIds.joined(separator: "+"))" }
+    return [name, text(start), text(end), repeats ? "r" : "o", text(warning)]
+      .joined(separator: "|") + "|" + events.joined(separator: ",")
+  }
+}
+
+/// One DeviceActivityEvent: fires once a day when the apps, categories and web
+/// domains of `selectionIds` together have been used `minutes` minutes since
+/// 00:00.
+struct ThresholdPlan: Equatable {
+  /// DeviceActivityEvent.Name raw value, unique within its activity.
+  var name: String
+  var minutes: Int
+  var selectionIds: [String]
 }
 
 /// Turns restriction rules into DeviceActivity monitoring.
@@ -26,23 +53,33 @@ struct MonitorPlan: Equatable {
 ///   into `start-23:59` and `00:00-end`. Weekdays are not encoded in the
 ///   activity (that would cost one activity per day); the monitor checks them,
 ///   so a wake-up on an unselected day changes nothing.
-/// - dailyLimit and routines: not monitored yet (phase 3).
+/// - dailyLimit, routines and preferred usage time: one daily activity
+///   (00:00-23:59, repeating) per rule, routine or preferred limit, whose
+///   DeviceActivityEvents fire at usage thresholds (see `UsageEvents`). The
+///   monitor records a reached limit for the day and reconciles, so the shield
+///   holds until the next day's interval starts. Daily limits apply every day,
+///   as on Android (the editor sets no weekdays for them).
 ///
 /// DeviceActivity rejects intervals under 15 minutes, so a short piece is
 /// widened and the moment that would be lost is covered by `warningTime`.
-/// At most `maxActivities` are monitored (iOS allows about 20); block-now
-/// rules come first, soonest end first, then schedules in rule order.
+/// At most `maxActivities` are monitored (iOS allows about 20), in this order:
+/// block-now rules (soonest end first), daily limits and routines, schedules
+/// that block or start today, the other schedules, then preferred usage time
+/// (soft nudges never displace a block).
 enum ScheduleMapper {
   static let prefix = "ft."
   static let maxActivities = 20
   static let minimumMinutes = 15
-  private static let lastMinute = 23 * 60 + 59
+  static let lastMinute = 23 * 60 + 59
 
   static func plans(
     for configuration: RestrictionConfiguration, now: Date, calendar: Calendar = .current
   ) -> [MonitorPlan] {
     var blockNow: [(Int64, MonitorPlan)] = []
-    var schedules: [MonitorPlan] = []
+    var limits: [MonitorPlan] = []
+    var schedulesToday: [MonitorPlan] = []
+    var schedulesLater: [MonitorPlan] = []
+    let today = calendar.isoWeekday(of: now)
     for rule in configuration.rules {
       guard let id = rule.selectionId else { continue }
       switch rule.type {
@@ -50,13 +87,28 @@ enum ScheduleMapper {
         guard let until = rule.untilMs, until > now.epochMilliseconds else { continue }
         blockNow.append((until, blockNowPlan(rule, id: id, until: until, now: now, calendar: calendar)))
       case .schedule:
-        schedules.append(contentsOf: schedulePlans(rule, id: id))
+        let pieces = schedulePlans(rule, id: id)
+        if rule.weekdays.contains(today) || rule.isBlocked(at: now, calendar: calendar) {
+          schedulesToday.append(contentsOf: pieces)
+        } else {
+          schedulesLater.append(contentsOf: pieces)
+        }
       case .dailyLimit:
-        continue
+        if let plan = UsageEvents.limitPlan(rule, id: id) { limits.append(plan) }
       }
     }
+    limits.append(contentsOf: configuration.routines.compactMap(UsageEvents.routinePlan))
+    let preferred = configuration.preferredLimits.compactMap(UsageEvents.preferredPlan)
     let soonestFirst: [MonitorPlan] = blockNow.sorted { $0.0 < $1.0 }.map { $0.1 }
-    let ordered: [MonitorPlan] = soonestFirst + schedules
+    var ordered: [MonitorPlan] = soonestFirst
+    ordered += limits
+    ordered += schedulesToday
+    ordered += schedulesLater
+    ordered += preferred
+    // Two pieces of one schedule never share a name with anything else; a
+    // duplicate name (two preferred limits over the same apps) is dropped.
+    var seen = Set<String>()
+    ordered = ordered.filter { seen.insert($0.name).inserted }
     return Array(ordered.prefix(maxActivities))
   }
 
