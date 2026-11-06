@@ -9,10 +9,10 @@ Completed:
 - Committed a Podfile (`platform :ios, '16.0'`) and the CocoaPods includes in `Flutter/Debug.xcconfig` / `Release.xcconfig`, as Flutter would generate on a Mac.
 - `tool/ios/add_extension_targets.rb` adds FocusTraceMonitor, FocusTraceShield, FocusTraceShieldAction (app extensions) and FocusTraceReport (ExtensionKit extension), Info.plists, entitlements, FocusTraceKit sources, system frameworks, embed phases before "Thin Binary", and target dependencies.
 - Minimal Swift stubs per extension and `FocusTraceKit/AppGroup.swift`.
-- CI job `ios-build` (macos-15): `flutter build ios --debug --no-codesign`.
+- CI job `ios-build` (macos-15): `flutter build ios --debug --no-codesign`, then checks each extension is embedded, reports its bundle id / version / extension point, and does not link Flutter. Passed on the first push; no Swift fixes were needed.
 Files materially changed: `ios/**`, `tool/ios/add_extension_targets.rb`, `.github/workflows/ci.yml`, `.metadata`, `docs/ios/*`.
-Verification: see the commit's CI run; locally (Linux) the script ran twice with no diff on the second run, all plists/entitlements parsed with Python `plistlib`; PASS `flutter analyze`; PASS `flutter test` (373, 1 skipped). Swift compilation is verified only by the CI job `ios-build`.
+Verification: PASS CI run https://github.com/sneri12pic/FocusTrace/actions/runs/42284125256 (all four jobs; `ios-build` built Runner.app with the three extensions in PlugIns/ and the report in Extensions/, versions 1.1.0, no Flutter linkage). Locally (Linux) the script ran twice with no diff on the second run, all plists/entitlements parsed with Python `plistlib`; PASS `flutter analyze`; PASS `flutter test` (373, 1 skipped). Swift compilation is verified only by the CI job `ios-build`.
 Decisions made: FocusTraceReport is an ExtensionKit extension (Xcode's template), not an NSExtension app extension. Extensions take version numbers from `Generated.xcconfig` via `Config/Extension.xcconfig`.
 Remaining: phases 0 and 2-5 (see plan). No Apple team, provisioning or Distribution entitlement yet.
 Risks / unresolved questions: nothing runs on a device yet; extension discovery (especially the report extension) is only verifiable on hardware with a signed build.
-Relevant commit: see `git log -- docs/ios`.
+Relevant commit: 36cd4f3 (shell), c7b359d (CI embed check).

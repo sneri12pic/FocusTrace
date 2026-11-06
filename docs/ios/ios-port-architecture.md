@@ -79,7 +79,9 @@ ruby tool/ios/add_extension_targets.rb
 ## CI
 
 Job `ios-build` in `.github/workflows/ci.yml` (macos-15, 40 min): Flutter
-3.32.2, `flutter pub get`, `flutter build ios --debug --no-codesign`. It is the
+3.32.2, `flutter pub get`, `flutter build ios --debug --no-codesign`, then a
+check that every extension is embedded (PlugIns/ or Extensions/) and does not
+link Flutter (`otool -L`). It is the
 only place Swift is compiled; the developer machines are Windows/Linux. Code
 signing is off, so the build proves compilation and project wiring, not
 entitlement provisioning.
