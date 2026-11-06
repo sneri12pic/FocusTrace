@@ -10,6 +10,7 @@ import '../data/datasources/platform_locale_data_source.dart';
 import '../data/datasources/focus_trace_sync_api.dart';
 import '../data/datasources/health_connect_channel.dart';
 import '../data/datasources/platform_usage_data_source.dart';
+import '../data/datasources/screen_time_channel.dart';
 import '../data/datasources/secure_sync_credential_store.dart';
 import '../data/datasources/sync_execution_gate.dart';
 import '../data/datasources/installation_marker_store.dart';
@@ -22,6 +23,7 @@ import '../data/repositories/settings_repository_impl.dart';
 import '../data/repositories/sync_repository_impl.dart';
 import '../data/repositories/usage_repository_impl.dart';
 import '../domain/models/app_usage_summary.dart';
+import '../domain/models/platform_capabilities.dart';
 import '../domain/models/usage_session.dart';
 import '../domain/repositories/app_language_repository.dart';
 import '../domain/repositories/data_transfer_repository.dart';
@@ -39,6 +41,7 @@ import 'view_models/health_connect_view_model.dart';
 import 'view_models/onboarding_view_model.dart';
 import 'view_models/reports_view_model.dart';
 import 'view_models/restrictions_view_model.dart';
+import 'view_models/screen_time_authorization_view_model.dart';
 import 'view_models/sync_view_model.dart';
 import 'view_models/settings_view_model.dart';
 import 'view_models/tracking_view_model.dart';
@@ -59,6 +62,10 @@ final usagePlatformProvider = Provider<UsagePlatform>((ref) {
       return UsagePlatform.unsupported;
   }
 });
+
+final platformCapabilitiesProvider = Provider<PlatformCapabilities>(
+  (ref) => PlatformCapabilities.forPlatform(ref.watch(usagePlatformProvider)),
+);
 
 final usageAggregationServiceProvider = Provider<UsageAggregationService>(
   (ref) => const UsageAggregationService(),
@@ -87,7 +94,7 @@ final portableLocalDataSourceProvider = Provider<PortableFocusTraceDataSource>((
 });
 
 final dataTransferSupportedProvider = Provider<bool>(
-  (ref) => ref.watch(usagePlatformProvider) == UsagePlatform.android,
+  (ref) => ref.watch(platformCapabilitiesProvider).dataTransfer,
 );
 
 final backupDocumentDataSourceProvider = Provider<BackupDocumentDataSource>((
@@ -113,7 +120,7 @@ final appLanguageRepositoryProvider = Provider<AppLanguageRepository>(
 final platformLocaleDataSourceProvider = Provider<PlatformLocaleDataSource>((
   ref,
 ) {
-  if (ref.watch(usagePlatformProvider) == UsagePlatform.android) {
+  if (ref.watch(platformCapabilitiesProvider).platformLocale) {
     return AndroidPlatformLocaleDataSource();
   }
   return const NoOpPlatformLocaleDataSource();
@@ -135,13 +142,35 @@ final platformDataSourceProvider = Provider<PlatformUsageDataSource>((ref) {
       return AndroidUsageDataSource();
     case UsagePlatform.windows:
       return WindowsUsageDataSource();
-    case UsagePlatform.macos:
     case UsagePlatform.ios:
+      return IosUsageDataSource();
+    case UsagePlatform.macos:
     case UsagePlatform.linux:
     case UsagePlatform.unsupported:
       return const UnsupportedPlatformUsageDataSource();
   }
 });
+
+final screenTimeChannelProvider = Provider<ScreenTimeChannel>(
+  (ref) => const ScreenTimeChannel(),
+);
+
+/// Screen Time authorization on iOS; `approved` elsewhere, where it does not
+/// exist, so nothing asks for it.
+final screenTimeAuthorizationProvider =
+    StateNotifierProvider<
+      ScreenTimeAuthorizationViewModel,
+      ScreenTimeAuthorizationStatus
+    >((ref) {
+      final viewModel = ScreenTimeAuthorizationViewModel(
+        channel: ref.watch(screenTimeChannelProvider),
+        isRequired: ref
+            .watch(platformCapabilitiesProvider)
+            .screenTimeAuthorization,
+      );
+      viewModel.refresh();
+      return viewModel;
+    });
 
 final installedAppsProvider = FutureProvider<List<AppUsageSummary>>((
   ref,
@@ -176,7 +205,7 @@ final reportRepositoryProvider = Provider<ReportRepository>((ref) {
 final osUsageHistoryRepositoryProvider = Provider<OsUsageHistoryRepository?>((
   ref,
 ) {
-  if (ref.watch(usagePlatformProvider) != UsagePlatform.android) return null;
+  if (!ref.watch(platformCapabilitiesProvider).osHistoryImport) return null;
   return OsUsageHistoryRepository(
     localDataSource: ref.watch(localDataSourceProvider),
     platformDataSource: ref.watch(platformDataSourceProvider),
@@ -222,7 +251,7 @@ bool syncBaseUrlUsable(String url, {bool releaseMode = kReleaseMode}) =>
 final syncSupportedProvider = Provider<bool>(
   (ref) =>
       syncBaseUrlUsable(syncBaseUrl) &&
-      ref.watch(usagePlatformProvider) == UsagePlatform.android,
+      ref.watch(platformCapabilitiesProvider).cloudSync,
 );
 
 /// `null` when sync is not configured for this build. Widgets, screens and view
@@ -256,7 +285,7 @@ final syncRepositoryProvider = Provider<SyncRepository?>((ref) {
 /// schedules users who enabled sync before the scheduler existed. KEEP preserves
 /// an existing request. It never changes consent or blocks the app's startup.
 final syncScheduleBootstrapProvider = FutureProvider<void>((ref) async {
-  if (ref.watch(usagePlatformProvider) != UsagePlatform.android) return;
+  if (!ref.watch(platformCapabilitiesProvider).cloudSync) return;
   final repository = ref.watch(syncRepositoryProvider);
   await const AndroidSyncExecutionGate().run(() async {
     await const AndroidSyncScheduler().reconcile(
@@ -382,7 +411,7 @@ final reportsViewModelProvider =
 /// Health Connect is Android-only; elsewhere its settings and onboarding
 /// step are hidden rather than shown as unavailable.
 final healthConnectSupportedProvider = Provider<bool>(
-  (ref) => ref.watch(usagePlatformProvider) == UsagePlatform.android,
+  (ref) => ref.watch(platformCapabilitiesProvider).workoutsImport,
 );
 
 final healthConnectChannelProvider = Provider<HealthConnectChannel>(

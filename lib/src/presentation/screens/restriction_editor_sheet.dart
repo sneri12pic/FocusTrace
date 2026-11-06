@@ -4,8 +4,10 @@ import 'restriction_setup_form.dart';
 import '../view_models/restriction_insights.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../data/datasources/screen_time_channel.dart';
+import '../../domain/models/app_usage_summary.dart';
+import '../../domain/models/platform_capabilities.dart';
 import '../../domain/models/restriction_rule.dart';
-import '../../domain/models/usage_session.dart';
 import '../localization/app_localizations_x.dart';
 import '../providers.dart';
 import '../widgets/usage_calendar.dart';
@@ -94,6 +96,9 @@ Future<RestrictionRule?> showRestrictionEditor(
             averageSeconds: averageSeconds ?? app?.totalDurationSeconds,
             scrollController: scrollController,
             scheduleUsage: scheduleUsage,
+            allowDailyLimit: ref
+                .watch(platformCapabilitiesProvider)
+                .dailyLimits,
           );
         },
       ),
@@ -144,17 +149,172 @@ Future<void> createRestrictionForApp(
   }
 }
 
+/// iOS: choose apps in Apple's picker, name the group, then the usual editor.
+/// The rule's app key is `ios-sel:<id>` of the stored selection.
+Future<void> createIosRestriction(BuildContext context, WidgetRef ref) async {
+  final picked = await pickIosAppGroup(context, ref);
+  if (picked == null || !context.mounted) return;
+  await createRestrictionForApp(
+    context,
+    ref,
+    appKey: picked.appKey,
+    appName: picked.appName,
+  );
+}
+
+/// iOS: authorizes Screen Time if needed, shows Apple's picker and asks for a
+/// name. Returns the named group (`ios-sel:<id>` key, no usage), or null.
+/// Routines use it to add apps no rule has picked yet.
+Future<AppUsageSummary?> pickIosAppGroup(
+  BuildContext context,
+  WidgetRef ref,
+) async {
+  final l = context.l10n;
+  final authorization = ref.read(screenTimeAuthorizationProvider.notifier);
+  if (!authorization.isApproved && !await authorization.request()) {
+    if (context.mounted) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(l.rxScreenTimeNeededBody)));
+    }
+    return null;
+  }
+  if (!context.mounted) return null;
+  await syncShieldStrings(context, ref);
+  if (!context.mounted) return null;
+  final ScreenTimeSelection? selection;
+  try {
+    selection = await ref
+        .read(screenTimeChannelProvider)
+        .pickSelection(doneLabel: l.rxPickerDone, cancelLabel: l.commonCancel);
+  } catch (error) {
+    if (context.mounted) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(l.rxUnavailable)));
+    }
+    return null;
+  }
+  if (selection == null || !context.mounted) return null;
+  final name = await showSelectionNameDialog(context, selection);
+  if (name == null) return null;
+  return AppUsageSummary(
+    appName: name,
+    packageName: selection.appKey,
+    totalDurationSeconds: 0,
+    percentageOfTotal: 0,
+  );
+}
+
+/// Asks for the name the rule is shown under: iOS never tells FocusTrace
+/// which apps were picked.
+Future<String?> showSelectionNameDialog(
+  BuildContext context,
+  ScreenTimeSelection selection,
+) {
+  final controller = TextEditingController();
+  return showDialog<String>(
+    context: context,
+    builder: (context) {
+      final l = context.l10n;
+      return StatefulBuilder(
+        builder: (context, setState) {
+          final name = controller.text.trim();
+          void submit() {
+            if (name.isNotEmpty) Navigator.pop(context, name);
+          }
+
+          return AlertDialog(
+            title: Text(l.rxNameAppsTitle),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  l.rxSelectionCount(
+                    selection.appCount +
+                        selection.categoryCount +
+                        selection.webDomainCount,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  key: const ValueKey('selection-name-field'),
+                  controller: controller,
+                  autofocus: true,
+                  maxLength: 40,
+                  textCapitalization: TextCapitalization.sentences,
+                  textInputAction: TextInputAction.done,
+                  decoration: InputDecoration(hintText: l.rxNameAppsHint),
+                  onChanged: (_) => setState(() {}),
+                  onSubmitted: (_) => submit(),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text(l.commonCancel),
+              ),
+              FilledButton(
+                key: const ValueKey('selection-name-confirm'),
+                onPressed: name.isEmpty ? null : submit,
+                child: Text(l.rxConfirm),
+              ),
+            ],
+          );
+        },
+      );
+    },
+  );
+}
+
+/// Pushes the block screen's texts to iOS in the app's language.
+Future<void> syncShieldStrings(BuildContext context, WidgetRef ref) async {
+  final l = context.l10n;
+  const time = '{time}';
+  const name = '{name}';
+  try {
+    await ref.read(screenTimeChannelProvider).setShieldStrings({
+      'blockNowUntil': l.shieldBlockNowUntil(time),
+      'scheduleUntil': l.shieldScheduleUntil(time),
+      'dailyLimit': l.shieldDailyLimit,
+      'restricted': l.shieldRestricted,
+      'leave': l.shieldLeave,
+      'unblockInApp': l.shieldUnblockInApp,
+      'notificationBody': l.shieldNotificationBody(name),
+      'routineShared': l.routineReasonShared(name),
+      'routineApp': l.routineReasonApp(name),
+      'limitWarningTitle': l.shieldLimitWarningTitle(name),
+      'routineWarningTitle': l.shieldRoutineWarningTitle(name),
+      'nudgeTitle': l.shieldNudgeTitle,
+      'nudgeReached': l.shieldNudgeReached,
+      // Texts with a number, pluralized here for every count the monitor
+      // can need (UsageEvents.swift): warnings and nudges come at most five
+      // minutes ahead, over-limit nudges every 10 minutes for 2 hours.
+      for (var minutes = 1; minutes <= 5; minutes++) ...{
+        'limitWarningBody.$minutes': l.shieldLimitWarningBody(minutes),
+        'nudgeLeft.$minutes': l.shieldNudgeMinutesLeft(minutes),
+      },
+      for (var minutes = 10; minutes <= 120; minutes += 10)
+        'nudgeOver.$minutes': l.shieldNudgeMinutesOver(minutes),
+    });
+  } catch (error) {
+    // The shield falls back to English.
+    debugPrint('Shield strings not sent: $error');
+  }
+}
+
 Future<void> promptRestrictionPermissionsIfNeeded(
   BuildContext context,
   WidgetRef ref,
 ) async {
   final state = ref.read(restrictionsViewModelProvider);
-  if (state.platform != UsagePlatform.android) {
-    return;
-  }
-
+  final capabilities = PlatformCapabilities.forPlatform(state.platform);
   final viewModel = ref.read(restrictionsViewModelProvider.notifier);
-  if (!state.hasOverlayPermission && context.mounted) {
+  if (capabilities.overlayPermission &&
+      !state.hasOverlayPermission &&
+      context.mounted) {
     final openSettings =
         await showDialog<bool>(
           context: context,
@@ -178,7 +338,9 @@ Future<void> promptRestrictionPermissionsIfNeeded(
       await viewModel.openOverlaySettings();
     }
   }
-  await viewModel.requestNotificationsPermission();
+  if (capabilities.notificationsPermission) {
+    await viewModel.requestNotificationsPermission();
+  }
 }
 
 Future<void> showRestrictionResult(BuildContext context, WidgetRef ref) async {

@@ -7,10 +7,12 @@ import '../localization/app_localizations_x.dart';
 import '../widgets/app_category_widgets.dart';
 import '../widgets/routine_app_picker.dart';
 
+/// [pickNewApps] (iOS) adds a group chosen in Apple's picker to [apps].
 Future<BlockRoutine?> showRoutineEditor(
   BuildContext context, {
   required List<AppUsageSummary> apps,
   BlockRoutine? existing,
+  Future<AppUsageSummary?> Function()? pickNewApps,
 }) {
   return showModalBottomSheet<BlockRoutine>(
     context: context,
@@ -18,16 +20,21 @@ Future<BlockRoutine?> showRoutineEditor(
     backgroundColor: const Color(0xFF0D111A),
     builder: (context) => FractionallySizedBox(
       heightFactor: 0.92,
-      child: _RoutineEditor(apps: apps, existing: existing),
+      child: _RoutineEditor(
+        apps: apps,
+        existing: existing,
+        pickNewApps: pickNewApps,
+      ),
     ),
   );
 }
 
 class _RoutineEditor extends StatefulWidget {
-  const _RoutineEditor({required this.apps, this.existing});
+  const _RoutineEditor({required this.apps, this.existing, this.pickNewApps});
 
   final List<AppUsageSummary> apps;
   final BlockRoutine? existing;
+  final Future<AppUsageSummary?> Function()? pickNewApps;
 
   @override
   State<_RoutineEditor> createState() => _RoutineEditorState();
@@ -36,7 +43,7 @@ class _RoutineEditor extends StatefulWidget {
 class _RoutineEditorState extends State<_RoutineEditor> {
   late final TextEditingController _nameController;
   late final Map<String, RoutineApp> _selectedApps;
-  late final List<AppUsageSummary> _candidates;
+  late List<AppUsageSummary> _candidates;
   bool _hasDailyLimit = false;
   int _dailyLimitMinutes = 180;
 
@@ -157,6 +164,19 @@ class _RoutineEditorState extends State<_RoutineEditor> {
                 ],
               ),
             ),
+          if (widget.pickNewApps != null)
+            Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                child: TextButton.icon(
+                  key: const ValueKey('routine-pick-new-apps'),
+                  onPressed: _pickNewApps,
+                  icon: const Icon(Icons.add),
+                  label: Text(context.l10n.routinePickNewApps),
+                ),
+              ),
+            ),
           Expanded(
             child: RoutineAppPicker(
               apps: _candidates,
@@ -196,6 +216,19 @@ class _RoutineEditorState extends State<_RoutineEditor> {
       );
     }
     return byKey.values.toList();
+  }
+
+  Future<void> _pickNewApps() async {
+    final app = await widget.pickNewApps?.call();
+    if (app == null || !mounted) return;
+    setState(() {
+      // A new list, so the picker re-orders its candidates.
+      _candidates = [..._candidates.where((c) => c.appKey != app.appKey), app];
+      _selectedApps[app.appKey] = RoutineApp(
+        appKey: app.appKey,
+        appName: app.appName,
+      );
+    });
   }
 
   void _select(Set<String> keys) {

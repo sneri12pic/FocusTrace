@@ -1655,4 +1655,125 @@ class AppLocalizationsJa extends AppLocalizations {
   @override
   String get settingsClearDataHealth =>
       'Health Connect からの取り込みはオフになり、取り込んだワークアウトは削除されます。Health Connect 内のデータは変わりません。';
+
+  @override
+  String get screenTimeAccessTitle => 'スクリーンタイム';
+
+  @override
+  String get screenTimeAccessSubtitle => '選んだアプリをブロックするため';
+
+  @override
+  String get onboardingScreenTimeBody =>
+      'FocusTrace はスクリーンタイムを使って、選んだアプリをブロックします。\nデータはすべて端末内に保存されます。';
+
+  @override
+  String get onboardingScreenTimeHint => 'この権限は iOS の設定の「スクリーンタイム」で管理できます。';
+
+  @override
+  String get rxScreenTimeNeededTitle => 'スクリーンタイムを許可';
+
+  @override
+  String get rxScreenTimeNeededBody =>
+      'この iPhone でアプリをブロックするには、スクリーンタイムへのアクセスが必要です。';
+
+  @override
+  String get rxPickerDone => '完了';
+
+  @override
+  String get rxNameAppsTitle => 'このアプリのグループに名前を付ける';
+
+  @override
+  String get rxNameAppsHint => '例: SNS';
+
+  @override
+  String rxSelectionCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count 件のアプリ・カテゴリ・Webサイトを選択',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String shieldBlockNowUntil(String time) {
+    return '$time まで一時ブロック';
+  }
+
+  @override
+  String shieldScheduleUntil(String time) {
+    return 'スケジュールにより $time までブロック';
+  }
+
+  @override
+  String get shieldDailyLimit => 'アプリの1日の上限に達しました';
+
+  @override
+  String get shieldRestricted => 'このアプリは現在制限されています。';
+
+  @override
+  String get shieldLeave => '閉じる';
+
+  @override
+  String get shieldUnblockInApp => 'FocusTrace でブロック解除';
+
+  @override
+  String shieldNotificationBody(String name) {
+    return '$name を変更するには FocusTrace を開いてください。';
+  }
+
+  @override
+  String shieldLimitWarningTitle(String name) {
+    return '$nameの制限にまもなく達します';
+  }
+
+  @override
+  String shieldRoutineWarningTitle(String name) {
+    return 'ルーティン$nameの上限にまもなく達します';
+  }
+
+  @override
+  String shieldLimitWarningBody(int minutes) {
+    String _temp0 = intl.Intl.pluralLogic(
+      minutes,
+      locale: localeName,
+      other: '約$minutes分後にブロックを開始します。',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get shieldNudgeTitle => '希望の利用時間';
+
+  @override
+  String get shieldNudgeReached => '設定した時間に達しました';
+
+  @override
+  String shieldNudgeMinutesLeft(int minutes) {
+    String _temp0 = intl.Intl.pluralLogic(
+      minutes,
+      locale: localeName,
+      other: '残り$minutes分',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String shieldNudgeMinutesOver(int minutes) {
+    String _temp0 = intl.Intl.pluralLogic(
+      minutes,
+      locale: localeName,
+      other: '$minutes分オーバー',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get routinePickNewApps => '新しいアプリを選ぶ';
+
+  @override
+  String get routineAppIncluded => '上限に含む';
+
+  @override
+  String get routineAppExcluded => '上限から除外';
 }
