@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../domain/models/platform_capabilities.dart';
 import '../../domain/models/usage_session.dart';
 import '../localization/app_localizations_x.dart';
 
@@ -20,8 +21,9 @@ class PermissionCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final capabilities = PlatformCapabilities.forPlatform(platform);
 
-    if (platform == UsagePlatform.windows) {
+    if (capabilities.activeWindowTracking) {
       return Card(
         elevation: 0,
         child: ListTile(
@@ -33,7 +35,7 @@ class PermissionCard extends StatelessWidget {
       );
     }
 
-    if (platform != UsagePlatform.android || hasUsageAccess) {
+    if (!capabilities.usageAccessPermission || hasUsageAccess) {
       return const SizedBox.shrink();
     }
 

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/datasources/platform_usage_data_source.dart';
 import '../../domain/models/app_usage_summary.dart';
 import '../../domain/models/block_routine.dart';
+import '../../domain/models/platform_capabilities.dart';
 import '../../domain/models/restriction_rule.dart';
 import '../../domain/models/restriction_event.dart';
 import '../../domain/models/usage_session.dart';
@@ -24,10 +25,11 @@ class RestrictionsState {
   });
 
   factory RestrictionsState.initial(UsagePlatform platform) {
+    final capabilities = PlatformCapabilities.forPlatform(platform);
     return RestrictionsState(
       platform: platform,
-      hasOverlayPermission: platform != UsagePlatform.android,
-      hasNotificationsPermission: platform != UsagePlatform.android,
+      hasOverlayPermission: !capabilities.overlayPermission,
+      hasNotificationsPermission: !capabilities.notificationsPermission,
       isLoading: true,
     );
   }

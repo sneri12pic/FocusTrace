@@ -6,6 +6,7 @@ import '../../application/services/usage_aggregation_service.dart';
 import '../../application/services/usage_trend_service.dart';
 import '../../domain/models/app_usage_summary.dart';
 import '../../domain/models/daily_app_usage.dart';
+import '../../domain/models/platform_capabilities.dart';
 import '../../domain/models/usage_session.dart';
 import '../../domain/repositories/settings_repository.dart';
 import '../../domain/repositories/usage_repository.dart';
@@ -32,7 +33,9 @@ class DashboardState {
       platform: platform,
       summaries: const <AppUsageSummary>[],
       totalDurationSeconds: 0,
-      hasUsageAccess: platform != UsagePlatform.android,
+      hasUsageAccess: !PlatformCapabilities.forPlatform(
+        platform,
+      ).usageAccessPermission,
       isLoading: true,
     );
   }

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
-import '../../domain/models/usage_session.dart';
+import '../../domain/models/platform_capabilities.dart';
 import '../../performance/dashboard_performance.dart';
 import '../localization/app_localizations_x.dart';
 import '../providers.dart';
@@ -46,6 +46,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
   @override
   Widget build(BuildContext context) {
     final dashboardState = ref.watch(dashboardViewModelProvider);
+    final capabilities = PlatformCapabilities.forPlatform(
+      dashboardState.platform,
+    );
     final dashboardViewModel = ref.read(dashboardViewModelProvider.notifier);
     final trackingState = ref.watch(trackingViewModelProvider);
     final trackingViewModel = ref.read(trackingViewModelProvider.notifier);
@@ -108,7 +111,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                             dashboardViewModel.openPermissionSettings,
                         onRecheck: dashboardViewModel.checkPermission,
                       ),
-                      if (dashboardState.platform == UsagePlatform.windows) ...[
+                      if (capabilities.activeWindowTracking) ...[
                         const SizedBox(height: 12),
                         TrackingStatusBanner(status: trackingState.status),
                         const SizedBox(height: 12),
@@ -131,8 +134,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                           textAlign: TextAlign.center,
                         ),
                       ],
-                      if (dashboardState.platform != UsagePlatform.android &&
-                          dashboardState.platform != UsagePlatform.windows) ...[
+                      if (!capabilities.usageNumbersInFlutter) ...[
                         const SizedBox(height: 12),
                         const _UnsupportedPanel(),
                       ],

@@ -7,9 +7,9 @@ import 'package:intl/intl.dart';
 
 import '../../domain/models/app_usage_summary.dart';
 import '../../domain/models/block_routine.dart';
+import '../../domain/models/platform_capabilities.dart';
 import '../../domain/models/restriction_rule.dart';
 import '../../domain/models/usage_item.dart';
-import '../../domain/models/usage_session.dart';
 import '../../domain/repositories/usage_repository.dart';
 import '../localization/app_localizations_x.dart';
 import '../providers.dart';
@@ -84,6 +84,7 @@ class RestrictionsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(restrictionsViewModelProvider);
+    final capabilities = PlatformCapabilities.forPlatform(state.platform);
     final viewModel = ref.read(restrictionsViewModelProvider.notifier);
     final dashboardState = ref.watch(dashboardViewModelProvider);
     final summaries = dashboardState.summaries;
@@ -157,7 +158,7 @@ class RestrictionsScreen extends ConsumerWidget {
           padding: const EdgeInsets.fromLTRB(16, 4, 16, 48),
           children: [
             // Permission and platform problems stay at the very top.
-            if (state.platform == UsagePlatform.android &&
+            if (capabilities.overlayPermission &&
                 !state.hasOverlayPermission) ...[
               _OverlayPermissionCard(
                 onOpenSettings: viewModel.openOverlaySettings,
@@ -165,7 +166,7 @@ class RestrictionsScreen extends ConsumerWidget {
               ),
               const SizedBox(height: 12),
             ],
-            if (state.platform != UsagePlatform.android) ...[
+            if (!capabilities.appBlocking) ...[
               _InfoCard(
                 title: context.l10n.restrictionsPlatformStatusTitle,
                 body: context.l10n.restrictionsPlatformStatusBody,
