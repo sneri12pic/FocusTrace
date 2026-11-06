@@ -1,0 +1,8 @@
+// Base configuration for the FocusTrace app extension targets.
+//
+// Includes only Flutter's generated variables so FLUTTER_BUILD_NAME and
+// FLUTTER_BUILD_NUMBER (from pubspec.yaml) give every extension the same
+// version as the Runner app. Do NOT include Flutter/Debug.xcconfig or
+// Flutter/Release.xcconfig here: those pull in CocoaPods and Flutter linkage,
+// which belong to the Runner target only.
+#include? "../Flutter/Generated.xcconfig"
