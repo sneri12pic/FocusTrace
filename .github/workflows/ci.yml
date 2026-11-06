@@ -151,6 +151,11 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
+      # Pure-Foundation FocusTraceKit logic (rule JSON from Dart, change guard,
+      # schedule mapping) compiled with swiftc and run on the macOS host.
+      - name: FocusTraceKit unit tests
+        run: bash tool/ios/run_kit_tests.sh
+
       - name: Build iOS app and extensions
         run: flutter build ios --debug --no-codesign
 
