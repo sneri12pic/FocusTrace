@@ -153,3 +153,19 @@ jobs:
 
       - name: Build iOS app and extensions
         run: flutter build ios --debug --no-codesign
+
+      # flutter build hides xcodebuild output, so prove the extensions were
+      # built, embedded where iOS looks for them, and do not link Flutter.
+      - name: Check embedded extensions
+        run: |
+          app=build/ios/iphoneos/Runner.app
+          for ext in PlugIns/FocusTraceMonitor PlugIns/FocusTraceShield \
+                     PlugIns/FocusTraceShieldAction Extensions/FocusTraceReport; do
+            bundle="$app/$ext.appex"
+            name=$(basename "$ext")
+            test -f "$bundle/$name" || { echo "::error::missing $bundle/$name"; exit 1; }
+            plutil -p "$bundle/Info.plist" | grep -E 'CFBundleIdentifier|CFBundleShortVersionString|PointIdentifier'
+            if otool -L "$bundle/$name" | grep -q Flutter; then
+              echo "::error::$name links Flutter"; exit 1
+            fi
+          done
