@@ -55,7 +55,8 @@ enum ScheduleMapper {
         continue
       }
     }
-    let ordered = blockNow.sorted { $0.0 < $1.0 }.map { $0.1 } + schedules
+    let soonestFirst: [MonitorPlan] = blockNow.sorted { $0.0 < $1.0 }.map { $0.1 }
+    let ordered: [MonitorPlan] = soonestFirst + schedules
     return Array(ordered.prefix(maxActivities))
   }
 

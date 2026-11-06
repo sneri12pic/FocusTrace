@@ -1,5 +1,6 @@
 import FamilyControls
 import Flutter
+import ManagedSettings
 import SwiftUI
 import UIKit
 
