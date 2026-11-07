@@ -1,5 +1,6 @@
 import Charts
 import FamilyControls
+import Foundation
 import ManagedSettings
 import SwiftUI
 
@@ -532,8 +533,10 @@ struct DialGeometry {
 
   func labelPosition(hour: Int, in size: CGSize) -> CGPoint {
     let angle = -Double.pi / 2 + Double(hour) / 24 * 2 * Double.pi
-    let radius = outer + 24
-    return CGPoint(x: size.width / 2 + cos(angle) * radius, y: size.height / 2 + sin(angle) * radius)
+    let radius = Double(outer + 24)
+    let x = Double(size.width) / 2 + cos(angle) * radius
+    let y = Double(size.height) / 2 + sin(angle) * radius
+    return CGPoint(x: x, y: y)
   }
 
   /// The hour slice under `point`, or nil inside the ring (clears).
