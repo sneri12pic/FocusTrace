@@ -5,6 +5,7 @@ import 'package:focustrace/focus_trace.dart';
 
 Map<String, bool> _fields(PlatformCapabilities c) => {
   'usageNumbersInFlutter': c.usageNumbersInFlutter,
+  'nativeUsageReports': c.nativeUsageReports,
   'usageAccessPermission': c.usageAccessPermission,
   'overlayPermission': c.overlayPermission,
   'notificationsPermission': c.notificationsPermission,
@@ -12,6 +13,7 @@ Map<String, bool> _fields(PlatformCapabilities c) => {
   'installedAppList': c.installedAppList,
   'nativeAppPicker': c.nativeAppPicker,
   'appBlocking': c.appBlocking,
+  'dailyLimits': c.dailyLimits,
   'activeWindowTracking': c.activeWindowTracking,
   'osHistoryImport': c.osHistoryImport,
   'dataTransfer': c.dataTransfer,
@@ -36,6 +38,7 @@ void main() {
       'notificationsPermission',
       'installedAppList',
       'appBlocking',
+      'dailyLimits',
       'osHistoryImport',
       'dataTransfer',
       'workoutsImport',
@@ -47,14 +50,19 @@ void main() {
   test('Windows tracks the active window and needs no permissions', () {
     expect(_enabled(UsagePlatform.windows), {
       'usageNumbersInFlutter',
+      'dailyLimits',
       'activeWindowTracking',
     });
   });
 
   test('iOS describes Screen Time: no numbers or app list in Flutter', () {
     expect(_enabled(UsagePlatform.ios), {
+      'nativeUsageReports',
+      'notificationsPermission',
       'screenTimeAuthorization',
       'nativeAppPicker',
+      'appBlocking',
+      'dailyLimits',
     });
   });
 
@@ -78,10 +86,9 @@ void main() {
       container.read(platformCapabilitiesProvider),
       same(PlatformCapabilities.ios),
     );
-    // iOS has no native data source yet, so it still falls back.
     expect(
       container.read(platformDataSourceProvider),
-      isA<UnsupportedPlatformUsageDataSource>(),
+      isA<IosUsageDataSource>(),
     );
   });
 }

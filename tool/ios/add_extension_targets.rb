@@ -14,8 +14,9 @@
 #
 # What it manages (see docs/ios/ios-port-architecture.md):
 #   * project-wide IPHONEOS_DEPLOYMENT_TARGET = 16.0
-#   * Runner: entitlements file, FocusTraceKit sources, system frameworks,
-#     extension dependencies and embed phases (placed before "Thin Binary")
+#   * Runner: entitlements file, its own Swift sources (RUNNER_SOURCES),
+#     FocusTraceKit sources, system frameworks, extension dependencies and
+#     embed phases (placed before "Thin Binary")
 #   * FocusTraceMonitor / FocusTraceShield / FocusTraceShieldAction /
 #     FocusTraceReport extension targets with Info.plist, entitlements,
 #     FocusTraceKit sources and system frameworks
@@ -44,7 +45,14 @@ EXTENSIONKIT_TYPE = 'com.apple.product-type.extensionkit-extension'
 
 # Runner links these so later phases can call FamilyControls / ManagedSettings /
 # DeviceActivity from the method channels without further project edits.
-RUNNER_FRAMEWORKS = %w[FamilyControls ManagedSettings DeviceActivity].freeze
+RUNNER_FRAMEWORKS = %w[FamilyControls ManagedSettings DeviceActivity SwiftUI UserNotifications].freeze
+
+# Runner's own Swift files besides AppDelegate.swift (which Flutter created).
+RUNNER_SOURCES = %w[FocusTraceChannels.swift ActivityPicker.swift SelectionIconsView.swift
+                    UsageReportView.swift].freeze
+
+# Every target compiles all of FocusTraceKit, so every extension also links
+# FamilyControls, ManagedSettings and DeviceActivity.
 
 EXTENSIONS = [
   {
@@ -55,7 +63,7 @@ EXTENSIONS = [
     extension_point: 'com.apple.deviceactivity.monitor-extension',
     principal_class: 'DeviceActivityMonitorExtension',
     sources: %w[DeviceActivityMonitorExtension.swift],
-    frameworks: %w[DeviceActivity ManagedSettings FamilyControls]
+    frameworks: %w[DeviceActivity ManagedSettings FamilyControls UserNotifications]
   },
   {
     name: 'FocusTraceShield',
@@ -65,7 +73,7 @@ EXTENSIONS = [
     extension_point: 'com.apple.ManagedSettingsUI.shield-configuration-service',
     principal_class: 'ShieldConfigurationExtension',
     sources: %w[ShieldConfigurationExtension.swift],
-    frameworks: %w[ManagedSettings ManagedSettingsUI]
+    frameworks: %w[ManagedSettings ManagedSettingsUI FamilyControls DeviceActivity]
   },
   {
     name: 'FocusTraceShieldAction',
@@ -75,7 +83,7 @@ EXTENSIONS = [
     extension_point: 'com.apple.ManagedSettings.shield-action-service',
     principal_class: 'ShieldActionExtension',
     sources: %w[ShieldActionExtension.swift],
-    frameworks: %w[ManagedSettings]
+    frameworks: %w[ManagedSettings FamilyControls DeviceActivity UserNotifications]
   },
   {
     # DeviceActivityReport extensions are ExtensionKit extensions (as in Xcode's
@@ -87,8 +95,8 @@ EXTENSIONS = [
     product_type: EXTENSIONKIT_TYPE,
     extension_point: 'com.apple.deviceactivityui.report-extension',
     principal_class: nil,
-    sources: %w[FocusTraceReportExtension.swift],
-    frameworks: %w[DeviceActivity SwiftUI]
+    sources: %w[FocusTraceReportExtension.swift ReportData.swift ReportViews.swift ReportPalette.swift],
+    frameworks: %w[DeviceActivity SwiftUI Charts FamilyControls ManagedSettings]
   }
 ].freeze
 
@@ -361,6 +369,9 @@ runner_group = project.main_group.children.find { |c| c.display_name == 'Runner'
 find_or_create_file(runner_group, 'Runner.entitlements')
 runner.build_configuration_list.build_configurations.each do |config|
   config.build_settings['CODE_SIGN_ENTITLEMENTS'] = 'Runner/Runner.entitlements'
+end
+RUNNER_SOURCES.each do |source|
+  ensure_build_file(runner.source_build_phase, find_or_create_file(runner_group, source))
 end
 kit_refs.each { |ref| ensure_build_file(runner.source_build_phase, ref) }
 ensure_frameworks(project, runner, RUNNER_FRAMEWORKS)

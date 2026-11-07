@@ -154,6 +154,14 @@ jobs:
       - name: Build iOS app and extensions
         run: flutter build ios --debug --no-codesign
 
+      # flutter build shows only the first Swift error; list them all.
+      - name: Show every Swift compiler error
+        if: ${{ failure() }}
+        run: |
+          xcodebuild -workspace ios/Runner.xcworkspace -scheme Runner \
+            -configuration Debug -sdk iphoneos -destination 'generic/platform=iOS' \
+            CODE_SIGNING_ALLOWED=NO build 2>&1 | grep -E 'error:' | sort -u | head -100 || true
+
       # flutter build hides xcodebuild output, so prove the extensions were
       # built, embedded, declare the expected extension point and do not link
       # Flutter (also inside an Xcode 16 <Name>.debug.dylib).
@@ -168,3 +176,10 @@ jobs:
 
       - name: Check embedded extensions (Release)
         run: bash tool/ios/check_embedded_extensions.sh build/ios/iphoneos/Runner.app
+
+      # Pure-Foundation FocusTraceKit logic (rule JSON from Dart, change guard,
+      # schedule mapping) compiled with swiftc and run on the macOS host. Runs
+      # even when the app build failed, so both kinds of error show at once.
+      - name: FocusTraceKit unit tests
+        if: ${{ !cancelled() }}
+        run: bash tool/ios/run_kit_tests.sh

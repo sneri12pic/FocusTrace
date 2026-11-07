@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:focustrace/focus_trace.dart';
@@ -254,6 +255,173 @@ void main() {
       }
     });
   }
+
+  test('iOS routines hold the groups picked for rules and routines', () {
+    final candidates = iosRoutineCandidates(
+      const [
+        RestrictionRule(
+          appKey: 'ios-sel:a',
+          appName: 'Social',
+          type: RestrictionRuleType.schedule,
+          startMinute: 60,
+          endMinute: 120,
+        ),
+        RestrictionRule(
+          appKey: 'ios-sel:a',
+          appName: 'Social',
+          type: RestrictionRuleType.dailyLimit,
+          limitMinutes: 30,
+        ),
+        RestrictionRule(
+          appKey: 'com.android.app',
+          appName: 'Imported',
+          type: RestrictionRuleType.dailyLimit,
+          limitMinutes: 30,
+        ),
+      ],
+      const [
+        BlockRoutine(
+          id: 'r',
+          name: 'Evening',
+          apps: [
+            RoutineApp(appKey: 'ios-sel:b', appName: 'Games'),
+            RoutineApp(appKey: 'ios-sel:a', appName: 'Social'),
+          ],
+        ),
+      ],
+    );
+    expect(candidates.map((c) => '${c.appKey}=${c.appName}'), [
+      'ios-sel:a=Social',
+      'ios-sel:b=Games',
+    ]);
+    expect(candidates.every((c) => c.totalDurationSeconds == 0), isTrue);
+  });
+
+  testWidgets('iOS routine details show the limit, never usage', (
+    tester,
+  ) async {
+    final settings = _Settings()
+      ..routines.add(
+        const BlockRoutine(
+          id: 'r',
+          name: 'Evening',
+          dailyLimitMinutes: 90,
+          isEnabled: true,
+          apps: [
+            RoutineApp(appKey: 'ios-sel:a', appName: 'Social'),
+            RoutineApp(
+              appKey: 'ios-sel:b',
+              appName: 'Games',
+              isIncludedInLimit: false,
+            ),
+          ],
+        ),
+      );
+    await tester.pumpWidget(
+      harness(
+        const RoutineDetailsScreen(routineId: 'r', appCandidates: []),
+        overrides: [
+          restrictionsViewModelProvider.overrideWith((ref) {
+            final vm = RestrictionsViewModel(
+              settingsRepository: settings,
+              platformDataSource: _Platform(),
+              platform: UsagePlatform.ios,
+            );
+            vm.load();
+            return vm;
+          }),
+          installedAppsProvider.overrideWith((ref) async => []),
+        ],
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Daily shared limit'), findsOneWidget);
+    expect(find.text('1h 30m'), findsOneWidget);
+    expect(find.text('Counted usage today'), findsNothing);
+    expect(find.byType(LinearProgressIndicator), findsNothing);
+    expect(find.text('Included in limit'), findsOneWidget);
+    expect(find.text('Excluded from limit'), findsOneWidget);
+    expect(find.textContaining('today'), findsNothing);
+  });
+
+  testWidgets('iOS: choosing new apps keeps the groups already ticked', (
+    tester,
+  ) async {
+    const screenTime = MethodChannel('focustrace/screen_time');
+    final messenger =
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+    messenger.setMockMethodCallHandler(screenTime, (call) async {
+      switch (call.method) {
+        case 'authorizationStatus':
+        case 'requestAuthorization':
+          return 'approved';
+        case 'pickSelection':
+          return {
+            'selectionId': 'new',
+            'appKey': 'ios-sel:new',
+            'appCount': 2,
+            'categoryCount': 0,
+            'webDomainCount': 0,
+          };
+      }
+      return null;
+    });
+    addTearDown(() => messenger.setMockMethodCallHandler(screenTime, null));
+    final settings = _Settings()
+      ..routines.add(
+        const BlockRoutine(
+          id: 'r',
+          name: 'Evening',
+          dailyLimitMinutes: 90,
+          isEnabled: true,
+          apps: [RoutineApp(appKey: 'ios-sel:a', appName: 'Social')],
+        ),
+      );
+    const games = AppUsageSummary(
+      appName: 'Games',
+      packageName: 'ios-sel:b',
+      totalDurationSeconds: 0,
+      percentageOfTotal: 0,
+    );
+    await tester.pumpWidget(
+      harness(
+        const RoutineDetailsScreen(routineId: 'r', appCandidates: [games]),
+        overrides: [
+          usagePlatformProvider.overrideWithValue(UsagePlatform.ios),
+          restrictionsViewModelProvider.overrideWith((ref) {
+            final vm = RestrictionsViewModel(
+              settingsRepository: settings,
+              platformDataSource: _Platform(),
+              platform: UsagePlatform.ios,
+            );
+            vm.load();
+            return vm;
+          }),
+          installedAppsProvider.overrideWith((ref) async => []),
+        ],
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Add apps'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Games'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Choose new apps'));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const ValueKey('selection-name-field')),
+      'Reading',
+    );
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey('selection-name-confirm')));
+    await tester.pumpAndSettle();
+
+    expect(settings.routines.single.apps.map((app) => app.appKey), [
+      'ios-sel:a',
+      'ios-sel:b',
+      'ios-sel:new',
+    ]);
+  });
 
   testWidgets('every active reason for an app is listed', (tester) async {
     late List<String> reasons;

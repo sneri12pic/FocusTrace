@@ -16,6 +16,7 @@ import '../widgets/app_category_widgets.dart';
 import '../widgets/trend_color.dart';
 import '../widgets/usage_calendar.dart';
 import '../widgets/usage_details_charts.dart';
+import 'ios_selection_usage_screen.dart';
 import 'restriction_editor_sheet.dart';
 
 class UsageDetailsScreen extends ConsumerWidget {
@@ -25,6 +26,13 @@ class UsageDetailsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    if (PlatformCapabilities.forPlatform(request.platform).nativeUsageReports) {
+      // iOS: the numbers exist only in Screen Time's report extension.
+      return IosSelectionUsageScreen(
+        appKey: request.summary.appKey,
+        appName: request.summary.appName,
+      );
+    }
     final state = ref.watch(appUsageDetailsViewModelProvider(request));
     final overrides =
         ref.watch(appCategoriesViewModelProvider).asData?.value ??
