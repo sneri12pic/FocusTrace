@@ -72,14 +72,21 @@ struct UsageBuckets: Equatable {
     seconds = Array(repeating: 0, count: starts.count)
   }
 
-  /// The 24 hours of the day that contains `day` (fewer or more on a DST day
-  /// would shift the clock face, so it is always 24 clock hours).
+  /// The 24 clock hours of the day that contains `day`. Each bucket starts at
+  /// its wall-clock hour, so on a DST day the buckets still match the clock
+  /// face: an hour the clock skips is an empty bucket (it starts where the
+  /// next one does), and an hour the clock repeats is one bucket of two hours.
   static func hourly(day: Date, calendar: Calendar = .current) -> UsageBuckets {
     let start = calendar.startOfDay(for: day)
-    let starts = (0..<24).map { hour in
-      calendar.date(byAdding: .hour, value: hour, to: start) ?? start.addingTimeInterval(Double(hour) * 3600)
-    }
     let end = calendar.date(byAdding: .day, value: 1, to: start) ?? start.addingTimeInterval(86_400)
+    var starts = [start]
+    for hour in 1..<24 {
+      let found = calendar.nextDate(
+        after: start, matching: DateComponents(hour: hour, minute: 0, second: 0),
+        matchingPolicy: .nextTime, repeatedTimePolicy: .first, direction: .forward)
+      let previous = starts[starts.count - 1]
+      starts.append(min(max(found ?? end, previous), end))
+    }
     return UsageBuckets(starts: starts, end: end)
   }
 

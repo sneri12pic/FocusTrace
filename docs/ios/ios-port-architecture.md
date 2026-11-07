@@ -95,11 +95,11 @@ Runner-only Swift (UIKit, Flutter): `Runner/FocusTraceChannels.swift`,
 
 | Channel | Method | Behaviour |
 | --- | --- | --- |
-| `focustrace/usage` | `syncRestrictions(json)` | `RestrictionSync.apply`: every removed or changed rule must pass the change guard, else `RESTRICTION_LOCKED` and nothing is stored (as Android). A limit or routine whose thresholds changed forgets that it was reached today. Then unreferenced selections older than a day are dropped, shields reconciled, monitoring updated. |
+| `focustrace/usage` | `syncRestrictions(json)` | `RestrictionSync.apply`: every removed or changed rule must pass the change guard, else `RESTRICTION_LOCKED` and nothing is stored (as Android). A limit, routine or member cap whose thresholds changed, or that is no longer in the configuration (deleted, routine paused), forgets that it was reached today. Then unreferenced selections older than a day are dropped, shields reconciled, monitoring updated. |
 | | `readRestrictionConfiguration` | The JSON last stored, verbatim (or null). |
 | | `requestRestrictionChange({appKey, type})` | Guard with `request: true`; "allowed" / "cooldown" / "hard"; "allowed" when no such rule. |
 | | `hasNotificationsPermission`, `requestNotificationsPermission` | `UNUserNotificationCenter` (alert, sound); also stored in the App Group for the shield. |
-| | `takeRestrictionEvents` | Block events the shield extension recorded, then forgotten. |
+| | `takeRestrictionEvents` | Block events the shield extension recorded, then forgotten (only those returned; both sides hold the `events` App Group file lock). |
 | | `setAppLocale(tag?)` | `AppleLanguages` = [tag] in the app's standard defaults (removed for null): system UI (pickers, permission sheets) follows from the next launch. Also `report.locale` in the App Group texts (`setAppLanguage`), so shield, reports and widget format dates in the app language at once; reloads the widget. |
 | | `readReachedLimits` | `{appKey: seconds}` for daily-limit rules the monitor recorded as reached today; seconds = the limit. |
 | `focustrace/screen_time` | `authorizationStatus`, `requestAuthorization` | `AuthorizationCenter`, `.individual`; "notDetermined" / "denied" / "approved". |
@@ -123,13 +123,22 @@ Every other `focustrace/usage` method answers `notImplemented`;
   verbatim), `ft.selection.<id>` / `ft.selectionCreated.<id>`,
   `ft.shield.rules` (rule keys shielded now), `ft.shield.stores`,
   `ft.events`, `ft.shield.strings`, `ft.notifications.authorized`, the
-  guard's `ft.change:<appKey>:<type>:rule|ready`, and for usage thresholds
+  guard's `ft.change:<appKey>:<type>:rule|ready`,
+  `ft.restrictions.generation` (bumped by every sync and selection write),
+  `ft.shield.displayed` (encoded app/web-domain token -> block keys the block
+  screen listed, newest 200), and for usage thresholds
   `ft.limits.reached` (block key -> day it was reached), `ft.limits.notices`
   (notices posted today) and `ft.monitor.plans` (signature per monitored
   activity).
+- Cross-process read-modify-write sequences hold an exclusive `flock` on
+  `ft.<name>.lock` in the App Group container (`AppGroup.withLock`): `shields`
+  (reconcile) and `events` (record/take block events).
 - Routine members and preferred limits refer to selections by the same
   `ios-sel:<uuid>` app keys; such a selection is kept while any rule, routine
-  or preferred limit refers to it.
+  or preferred limit refers to it. Dart sends only enabled routines with a
+  limit, so it also sends `routineAppKeys` (every routine's `ios-sel:` keys,
+  paused ones included; only when non-empty, Android ignores it), which keeps
+  a paused routine's selections for when it is turned on again.
 - `preferredLimits: [{limitMinutes, apps}]` (wire format of the
   preferred-usage work, Android `PreferredLimit`) is decoded and planned when
   present and re-encoded only when non-empty. Dart on develop does not send it.
@@ -152,7 +161,10 @@ Every other `focustrace/usage` method answers `notImplemented`;
   extension runs it on `intervalDidStart`, `intervalWillEndWarning` and
   `intervalDidEnd`, evaluating 30 s ahead because callbacks may come slightly
   early (so the 00:00 start also lifts yesterday's reached limits), and on
-  `eventDidReachThreshold`.
+  `eventDidReachThreshold`. The app and the monitor may reconcile at once:
+  the `shields` lock serializes them, and a reconcile that sees
+  `ft.restrictions.generation` change while applying runs again (at most
+  three passes), so shields from an older configuration never stay.
 - `ScheduleMapper` makes sure the monitor wakes at every boundary:
   block-now = one non-repeating interval from now to `untilMs`; schedule = one
   daily interval, split into `start-23:59` and `00:00-end` over midnight.
@@ -180,10 +192,12 @@ Every other `focustrace/usage` method answers `notImplemented`;
   day, as on Android (the editor sets no weekdays for them; Kotlin ignores
   them). Members whose app key is not an `ios-sel:` selection are ignored.
 - Notifications are posted by the monitor extension, at most once per
-  activity and event per day (a restarted activity re-reports passed
-  thresholds), with one identifier per activity so a newer notice replaces the
-  previous one. Without permission iOS drops them; blocking never depends on
-  them.
+  activity, event and limit minutes per day (a restarted activity re-reports
+  passed thresholds; a limit raised the same day warns again, as Android's
+  key holds the limit), with one identifier per activity so a newer notice
+  replaces the previous one. No warning is posted for a limit or routine
+  already reached today, and the reached event removes a delivered warning.
+  Without permission iOS drops them; blocking never depends on them.
 - Activity budget: at most 20 activities, in this order: block-now rules
   (soonest end first), daily limits and routines, schedules whose weekday is
   today (or that block now), other schedules, preferred limits. The order is
@@ -209,7 +223,10 @@ Every other `focustrace/usage` method answers `notImplemented`;
   host app, so the secondary button ("Unblock in FocusTrace") is offered only
   for Easy/Moderate rules and routines and only when notifications are
   allowed; it posts a local notification that opens FocusTrace, then closes
-  the app.
+  the app. The action extension gets only the app's (or web domain's) token,
+  which is in no selection when the app was shielded through a picked
+  category, so it uses the blocks the block screen recorded for that token
+  (`ft.shield.displayed`) and falls back to matching selections.
 
 ### Flutter
 
@@ -253,10 +270,18 @@ Every other `focustrace/usage` method answers `notImplemented`;
   apps), `appDetail` (totals and dial for today, or totals and day bars; 6
   apps of the group). Each scene builds a `UsageSnapshot` (at most 60 apps
   for today, 8 or 6 elsewhere; no images beyond `Label(token)`).
+  Hourly buckets start at each wall-clock hour (`UsageBuckets.hourly`): on a
+  DST day an hour the clock skips is an empty bucket and a repeated hour is
+  one bucket, so there are always 24. Hour bars scale to at least 60 minutes,
+  more when iPhone and iPad together used more in an hour. The day's pickups
+  include pickups without app activity
+  (`totalPickupsWithoutApplicationActivity`), which no app row shows.
 - Colours are hard-coded in `ReportPalette.swift` from Flutter's theme
   (light and dark). Texts: Dart sends `report.*` keys (and `report.locale`)
   in the `setShieldStrings` map; the extension reads them from the App Group
-  (`ReportStrings`), English otherwise. Durations use templates of the
+  (`ReportStrings`), English otherwise. A report sends them once per locale,
+  and the next report sends them again when that failed
+  (`syncShieldStrings` returns whether iOS stored them). Durations use templates of the
   `compactDuration` ARB strings.
 - Flutter (`PlatformCapabilities.nativeUsageReports`, iOS):
   `IosUsageReportView` gives each report a fixed height
