@@ -1717,4 +1717,72 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get settingsClearDataHealth =>
       'Health Connect import turns off and imported workouts are deleted. Nothing in Health Connect changes.';
+
+  @override
+  String get screenTimeAccessTitle => 'Screen Time';
+
+  @override
+  String get screenTimeAccessSubtitle => 'To block the apps you choose';
+
+  @override
+  String get onboardingScreenTimeBody =>
+      'FocusTrace uses Screen Time to block the apps you choose.\nEverything stays on your device.';
+
+  @override
+  String get onboardingScreenTimeHint =>
+      'iOS Settings controls this permission, under Screen Time.';
+
+  @override
+  String get rxScreenTimeNeededTitle => 'Allow Screen Time';
+
+  @override
+  String get rxScreenTimeNeededBody =>
+      'FocusTrace needs Screen Time access to block apps on this iPhone.';
+
+  @override
+  String get rxPickerDone => 'Done';
+
+  @override
+  String get rxNameAppsTitle => 'Name these apps';
+
+  @override
+  String get rxNameAppsHint => 'For example, Social media';
+
+  @override
+  String rxSelectionCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count apps, categories or websites chosen',
+      one: '1 app, category or website chosen',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String shieldBlockNowUntil(String time) {
+    return 'Temporary block until $time';
+  }
+
+  @override
+  String shieldScheduleUntil(String time) {
+    return 'Blocked by schedule until $time';
+  }
+
+  @override
+  String get shieldDailyLimit => 'Daily app limit reached';
+
+  @override
+  String get shieldRestricted => 'This app is restricted right now.';
+
+  @override
+  String get shieldLeave => 'Leave';
+
+  @override
+  String get shieldUnblockInApp => 'Unblock in FocusTrace';
+
+  @override
+  String shieldNotificationBody(String name) {
+    return 'Open FocusTrace to change $name.';
+  }
 }

@@ -1,0 +1,89 @@
+{
+  "version": 3,
+  "rules": [
+    {
+      "appKey": "ios-sel:0f8fad5b-d9cb-469f-a165-70867728950e",
+      "appName": "Social",
+      "type": "blockNow",
+      "difficulty": "easy",
+      "weekdays": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "untilMs": 1793995200000
+    },
+    {
+      "appKey": "ios-sel:7c9e6679-7425-40de-944b-e07fc1f90ae7",
+      "appName": "Evenings",
+      "type": "schedule",
+      "difficulty": "moderate",
+      "weekdays": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "startMinute": 1320,
+      "endMinute": 420
+    },
+    {
+      "appKey": "ios-sel:7c9e6679-7425-40de-944b-e07fc1f90ae7",
+      "appName": "Evenings",
+      "type": "blockNow",
+      "difficulty": "hard",
+      "weekdays": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "untilMs": 1793998800000
+    },
+    {
+      "appKey": "com.example.video",
+      "appName": "Video",
+      "type": "dailyLimit",
+      "difficulty": "easy",
+      "weekdays": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "limitMinutes": 45
+    }
+  ],
+  "routines": [
+    {
+      "id": "routine-1",
+      "name": "Study",
+      "isEnabled": true,
+      "dailyLimitMinutes": 60,
+      "apps": [
+        {
+          "appKey": "com.example.chat",
+          "appName": "Chat",
+          "isIncludedInLimit": true
+        },
+        {
+          "appKey": "com.example.game",
+          "appName": "Game",
+          "isIncludedInLimit": false,
+          "limitMinutes": 15
+        }
+      ]
+    }
+  ]
+}

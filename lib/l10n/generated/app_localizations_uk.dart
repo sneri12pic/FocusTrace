@@ -1741,4 +1741,74 @@ class AppLocalizationsUk extends AppLocalizations {
   @override
   String get settingsClearDataHealth =>
       'Імпорт із Health Connect вимкнеться, а імпортовані тренування буде видалено. У Health Connect нічого не зміниться.';
+
+  @override
+  String get screenTimeAccessTitle => 'Екранний час';
+
+  @override
+  String get screenTimeAccessSubtitle => 'Щоб блокувати вибрані застосунки';
+
+  @override
+  String get onboardingScreenTimeBody =>
+      'FocusTrace використовує Екранний час, щоб блокувати вибрані вами застосунки.\nУсе залишається на вашому пристрої.';
+
+  @override
+  String get onboardingScreenTimeHint =>
+      'Цим дозволом керують у Параметрах iOS, у розділі «Екранний час».';
+
+  @override
+  String get rxScreenTimeNeededTitle => 'Дозволити Екранний час';
+
+  @override
+  String get rxScreenTimeNeededBody =>
+      'FocusTrace потрібен доступ до Екранного часу, щоб блокувати застосунки на цьому iPhone.';
+
+  @override
+  String get rxPickerDone => 'Готово';
+
+  @override
+  String get rxNameAppsTitle => 'Назвіть ці застосунки';
+
+  @override
+  String get rxNameAppsHint => 'Наприклад, Соцмережі';
+
+  @override
+  String rxSelectionCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Вибрано $count застосунку, категорії або сайту',
+      many: 'Вибрано $count застосунків, категорій або сайтів',
+      few: 'Вибрано $count застосунки, категорії або сайти',
+      one: 'Вибрано $count застосунок, категорію або сайт',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String shieldBlockNowUntil(String time) {
+    return 'Тимчасове блокування до $time';
+  }
+
+  @override
+  String shieldScheduleUntil(String time) {
+    return 'Заблоковано розкладом до $time';
+  }
+
+  @override
+  String get shieldDailyLimit => 'Денний ліміт застосунку вичерпано';
+
+  @override
+  String get shieldRestricted => 'Цей застосунок зараз обмежено.';
+
+  @override
+  String get shieldLeave => 'Вийти';
+
+  @override
+  String get shieldUnblockInApp => 'Розблокувати у FocusTrace';
+
+  @override
+  String shieldNotificationBody(String name) {
+    return 'Відкрийте FocusTrace, щоб змінити «$name».';
+  }
 }

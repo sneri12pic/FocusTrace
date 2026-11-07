@@ -168,3 +168,10 @@ jobs:
 
       - name: Check embedded extensions (Release)
         run: bash tool/ios/check_embedded_extensions.sh build/ios/iphoneos/Runner.app
+
+      # Pure-Foundation FocusTraceKit logic (rule JSON from Dart, change guard,
+      # schedule mapping) compiled with swiftc and run on the macOS host. Runs
+      # even when the app build failed, so both kinds of error show at once.
+      - name: FocusTraceKit unit tests
+        if: ${{ !cancelled() }}
+        run: bash tool/ios/run_kit_tests.sh

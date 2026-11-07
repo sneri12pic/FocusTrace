@@ -2936,6 +2936,108 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Health Connect import turns off and imported workouts are deleted. Nothing in Health Connect changes.'**
   String get settingsClearDataHealth;
+
+  /// No description provided for @screenTimeAccessTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Screen Time'**
+  String get screenTimeAccessTitle;
+
+  /// No description provided for @screenTimeAccessSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'To block the apps you choose'**
+  String get screenTimeAccessSubtitle;
+
+  /// No description provided for @onboardingScreenTimeBody.
+  ///
+  /// In en, this message translates to:
+  /// **'FocusTrace uses Screen Time to block the apps you choose.\nEverything stays on your device.'**
+  String get onboardingScreenTimeBody;
+
+  /// No description provided for @onboardingScreenTimeHint.
+  ///
+  /// In en, this message translates to:
+  /// **'iOS Settings controls this permission, under Screen Time.'**
+  String get onboardingScreenTimeHint;
+
+  /// No description provided for @rxScreenTimeNeededTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Allow Screen Time'**
+  String get rxScreenTimeNeededTitle;
+
+  /// No description provided for @rxScreenTimeNeededBody.
+  ///
+  /// In en, this message translates to:
+  /// **'FocusTrace needs Screen Time access to block apps on this iPhone.'**
+  String get rxScreenTimeNeededBody;
+
+  /// No description provided for @rxPickerDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get rxPickerDone;
+
+  /// No description provided for @rxNameAppsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Name these apps'**
+  String get rxNameAppsTitle;
+
+  /// No description provided for @rxNameAppsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'For example, Social media'**
+  String get rxNameAppsHint;
+
+  /// No description provided for @rxSelectionCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{1 app, category or website chosen} other{{count} apps, categories or websites chosen}}'**
+  String rxSelectionCount(int count);
+
+  /// No description provided for @shieldBlockNowUntil.
+  ///
+  /// In en, this message translates to:
+  /// **'Temporary block until {time}'**
+  String shieldBlockNowUntil(String time);
+
+  /// No description provided for @shieldScheduleUntil.
+  ///
+  /// In en, this message translates to:
+  /// **'Blocked by schedule until {time}'**
+  String shieldScheduleUntil(String time);
+
+  /// No description provided for @shieldDailyLimit.
+  ///
+  /// In en, this message translates to:
+  /// **'Daily app limit reached'**
+  String get shieldDailyLimit;
+
+  /// No description provided for @shieldRestricted.
+  ///
+  /// In en, this message translates to:
+  /// **'This app is restricted right now.'**
+  String get shieldRestricted;
+
+  /// No description provided for @shieldLeave.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave'**
+  String get shieldLeave;
+
+  /// No description provided for @shieldUnblockInApp.
+  ///
+  /// In en, this message translates to:
+  /// **'Unblock in FocusTrace'**
+  String get shieldUnblockInApp;
+
+  /// No description provided for @shieldNotificationBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Open FocusTrace to change {name}.'**
+  String shieldNotificationBody(String name);
 }
 
 class _AppLocalizationsDelegate

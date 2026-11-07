@@ -72,6 +72,8 @@ Acceptance criteria:
   its buttons.
 - Friction Easy / Moderate / Hard enforced through the existing Dart change
   guard before any rule is relaxed.
+- Routines are shared daily allowances (usage thresholds), so they move to
+  phase 3 with daily limits; on iOS they are hidden until then.
 
 Acceptance criteria:
 - On a device with the Family Controls entitlement: authorize, pick apps, block
@@ -82,7 +84,9 @@ Acceptance criteria:
 
 ### Phase 3 - Daily limits and nudges
 
-- Daily limits as `DeviceActivityEvent` thresholds; the monitor shields the
+- Turn on `PlatformCapabilities.dailyLimits` for iOS (daily-limit rules and
+  routines in the UI).
+- Daily limits and routine allowances as `DeviceActivityEvent` thresholds; the monitor shields the
   selection when the limit is reached and clears it at the interval end.
 - Preferred-time nudges as local notifications from monitor threshold events:
   at limit - 5 min, at the limit, and every 10 min after.
@@ -118,7 +122,9 @@ Acceptance criteria:
 
 ## Remaining work
 
-- Phases 0 and 2-5.
+- Phase 2 is implemented and builds in CI; its device acceptance criteria are
+  unverified until a signed build runs on an iPhone.
+- Phases 3-5.
 - Request the Family Controls (Distribution) entitlement from Apple for the app
   and every extension bundle id before any TestFlight build.
 - Configure an Apple developer team, App Group and provisioning profiles; CI
