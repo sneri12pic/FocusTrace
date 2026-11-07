@@ -43,6 +43,7 @@
 		5AB5CA61F09CA08EE01CFBB7 /* ShieldStrings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4748CBFB6E8C2838D824C0F0 /* ShieldStrings.swift */; };
 		610E77B3B51E29AC4507F9AF /* ScheduleMapper.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA906AAECBD75B8D0CC273C6 /* ScheduleMapper.swift */; };
 		666C9375A809057A7E76EDAB /* ShieldStrings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4748CBFB6E8C2838D824C0F0 /* ShieldStrings.swift */; };
+		67B7342A6E316DAABA2A4B5D /* HealthKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 76C11A1526865E5963C79357 /* HealthKit.framework */; };
 		68CCF0231A36EBF3E4910CD0 /* ActivityPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = B584FBF48BE69438DDBF808E /* ActivityPicker.swift */; };
 		6A7632E8D41A55DCA796BF63 /* ManagedSettings.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 95414351C224FB56BB7A4837 /* ManagedSettings.framework */; };
 		7071B7BAAB9628E7C5095605 /* FocusTraceMonitor.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 1BD718F0B9BDFBA135922FEE /* FocusTraceMonitor.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
@@ -74,6 +75,7 @@
 		9B0749777BBD5B8B459174E0 /* UserNotifications.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 52A561A13169B19FBC9B0709 /* UserNotifications.framework */; };
 		9F5AC10DDE66502FA2AA5056 /* ScreenTimeEnforcement.swift in Sources */ = {isa = PBXBuildFile; fileRef = 333AD47E9D19D41C67695AAF /* ScreenTimeEnforcement.swift */; };
 		A00E8361921B752540C7F41A /* AppGroup.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2581795C0F161196D581851 /* AppGroup.swift */; };
+		A264F7B96C75B29C48263361 /* HealthKitBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7FAE71678E6EA4E0B564869 /* HealthKitBridge.swift */; };
 		A72B52390D18893A42D7080E /* RestrictionChangeGuard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0AFE2BFCC75FFD15DD82C162 /* RestrictionChangeGuard.swift */; };
 		AAD52FDA6BF0C892D08FBC30 /* ShieldPlanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46AF1036CF8F3E2FF5E5D730 /* ShieldPlanner.swift */; };
 		AE1D476BF976629D5EDB760D /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D58C53DEE0698941A56D7864 /* SwiftUI.framework */; };
@@ -96,6 +98,7 @@
 		DD3515A6D9F911DC4F859958 /* ShieldPlanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46AF1036CF8F3E2FF5E5D730 /* ShieldPlanner.swift */; };
 		DDC16E77E561CF8877B71168 /* UsageReportView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0B927013645EFD684948F00 /* UsageReportView.swift */; };
 		E06AFEBEE910A6BD825DD5DD /* ScreenTimeEnforcement.swift in Sources */ = {isa = PBXBuildFile; fileRef = 333AD47E9D19D41C67695AAF /* ScreenTimeEnforcement.swift */; };
+		E362DB4081A0A598B16D1C19 /* WorkoutStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 09838D5EE3BFA697A5BED45C /* WorkoutStore.swift */; };
 		E38625D7D4A71AE18F50EB97 /* Charts.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 965B01B217B5B6A91ABDF18B /* Charts.framework */; };
 		ECC5E249AFEAD8E4DF128E6E /* RestrictionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 868903C0DADEE95D09478E6B /* RestrictionStore.swift */; };
 		EDDB2173D43F1BF048D2D44A /* ReportPalette.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1C7AD053B985B2C5CAD280A /* ReportPalette.swift */; };
@@ -182,6 +185,7 @@
 		0620FA72C111AAB9532C88FB /* Runner.entitlements */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.entitlements; path = Runner.entitlements; sourceTree = "<group>"; };
 		0689780013F7A45B48346388 /* FamilyControls.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = FamilyControls.framework; path = System/Library/Frameworks/FamilyControls.framework; sourceTree = SDKROOT; };
 		08D9BAABC697FBD7215ADEA3 /* FocusTraceShieldAction.entitlements */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.entitlements; path = FocusTraceShieldAction.entitlements; sourceTree = "<group>"; };
+		09838D5EE3BFA697A5BED45C /* WorkoutStore.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WorkoutStore.swift; sourceTree = "<group>"; };
 		0AFE2BFCC75FFD15DD82C162 /* RestrictionChangeGuard.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RestrictionChangeGuard.swift; sourceTree = "<group>"; };
 		0DF0DEEFA51E755EF5219460 /* FocusTraceReport.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = FocusTraceReport.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		1396C92A82B64AE4F4555BF1 /* FocusTraceChannels.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FocusTraceChannels.swift; sourceTree = "<group>"; };
@@ -207,6 +211,7 @@
 		74858FAD1ED2DC5600515810 /* Runner-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Runner-Bridging-Header.h"; sourceTree = "<group>"; };
 		74858FAE1ED2DC5600515810 /* AppDelegate.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		7549BF834F72932C73B599B4 /* ShieldActionExtension.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ShieldActionExtension.swift; sourceTree = "<group>"; };
+		76C11A1526865E5963C79357 /* HealthKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = HealthKit.framework; path = System/Library/Frameworks/HealthKit.framework; sourceTree = SDKROOT; };
 		7AFA3C8E1D35360C0083082E /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = Release.xcconfig; path = Flutter/Release.xcconfig; sourceTree = "<group>"; };
 		7B366F9FF577D35D2DD655B2 /* DeviceActivityMonitorExtension.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = DeviceActivityMonitorExtension.swift; sourceTree = "<group>"; };
 		817FAF7650D0A2881AC7C0B7 /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
@@ -235,6 +240,7 @@
 		E13DB7956F9A510ED25B2EED /* UsageEvents.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = UsageEvents.swift; sourceTree = "<group>"; };
 		E515D74D1F55D1D37296E2A6 /* Extension.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; path = Extension.xcconfig; sourceTree = "<group>"; };
 		E70B2A9CD9FBB9EB1EFF9B76 /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		E7FAE71678E6EA4E0B564869 /* HealthKitBridge.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = HealthKitBridge.swift; sourceTree = "<group>"; };
 		F7AC6DD443D1C935EE745F9D /* RestrictionModels.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RestrictionModels.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -282,6 +288,7 @@
 				07130BA798FA99128B2B8196 /* DeviceActivity.framework in Frameworks */,
 				2A28B35853260CB7DBE5CF36 /* SwiftUI.framework in Frameworks */,
 				8CF7AE25B716DC511BD854FB /* UserNotifications.framework in Frameworks */,
+				67B7342A6E316DAABA2A4B5D /* HealthKit.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -309,6 +316,7 @@
 				D58C53DEE0698941A56D7864 /* SwiftUI.framework */,
 				52A561A13169B19FBC9B0709 /* UserNotifications.framework */,
 				965B01B217B5B6A91ABDF18B /* Charts.framework */,
+				76C11A1526865E5963C79357 /* HealthKit.framework */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
@@ -407,6 +415,8 @@
 				B584FBF48BE69438DDBF808E /* ActivityPicker.swift */,
 				D96E51221C5EF3F7890A35ED /* SelectionIconsView.swift */,
 				A0B927013645EFD684948F00 /* UsageReportView.swift */,
+				09838D5EE3BFA697A5BED45C /* WorkoutStore.swift */,
+				E7FAE71678E6EA4E0B564869 /* HealthKitBridge.swift */,
 			);
 			path = Runner;
 			sourceTree = "<group>";
@@ -764,6 +774,8 @@
 				8B7EDB028DB3D88444CE26C6 /* UsageEvents.swift in Sources */,
 				DDC16E77E561CF8877B71168 /* UsageReportView.swift in Sources */,
 				7C0CE8273114A03640AC2506 /* UsageReportModels.swift in Sources */,
+				E362DB4081A0A598B16D1C19 /* WorkoutStore.swift in Sources */,
+				A264F7B96C75B29C48263361 /* HealthKitBridge.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

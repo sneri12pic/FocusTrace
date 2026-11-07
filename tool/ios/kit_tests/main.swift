@@ -674,5 +674,67 @@ do {
   expectEqual(store.reportStrings.text("totalTime"), "Gesamtzeit", "report texts from the App Group")
 }
 
+// MARK: - Apple Health workouts (Runner/WorkoutStore.swift)
+
+do {
+  let directory = FileManager.default.temporaryDirectory
+    .appendingPathComponent("focustrace-kit-\(UUID().uuidString)")
+  let file = directory.appendingPathComponent("workouts.json")
+  let defaults = freshDefaults()
+  let store = WorkoutStore(defaults: defaults, fileURL: file)
+  func workout(_ id: String, start: Int64, title: String? = nil) -> StoredWorkout {
+    StoredWorkout(
+      id: id, sourceBundle: "com.hevy", sourceName: "Hevy", activityType: 50,
+      category: "strength", title: title, startMillis: start, endMillis: start + 3_600_000)
+  }
+  expect(store.upsert(workout("a", start: 1_000)), "new workout counts")
+  expect(!store.upsert(workout("a", start: 1_000)), "unchanged workout does not count")
+  expect(store.upsert(workout("a", start: 1_000, title: "Push")), "changed workout counts")
+  store.upsert(workout("b", start: 5_000))
+  store.upsert(workout("c", start: 9_000))
+  expectEqual(store.workouts().map(\.id), ["c", "b", "a"], "newest first")
+  expectEqual(store.workouts(limit: 2).count, 2, "limit")
+  expectEqual(
+    store.deleteMissing(fromMillis: 4_000, toMillis: 10_000, keep: ["c"]), 1,
+    "stale workout in the window removed")
+  expectEqual(store.workouts().map(\.id), ["c", "a"], "outside the window kept")
+  try? store.save()
+  let reloaded = WorkoutStore(defaults: defaults, fileURL: file)
+  expectEqual(reloaded.workouts().map(\.id), ["c", "a"], "saved to disk")
+  expectEqual(reloaded.workouts().last?.title, "Push", "title kept")
+
+  reloaded.enabled = true
+  reloaded.anchorData = Data([1, 2])
+  reloaded.recordAttempt(outcome: "failed", importedCount: 0, nowMillis: 10)
+  expectEqual(reloaded.lastSuccessMillis, 0, "a failure is not a success")
+  reloaded.recordAttempt(outcome: "imported", importedCount: 2, nowMillis: 20)
+  expectEqual(reloaded.lastSuccessMillis, 20, "success time")
+  let status = reloaded.status(available: true, requestAnswered: true)
+  expectEqual(status["sdkStatus"] as? String, "available", "status availability")
+  expectEqual(status["enabled"] as? Bool, true, "status enabled")
+  expectEqual(status["readGranted"] as? Bool, true, "answered sheet counts as granted")
+  expectEqual(status["lastOutcome"] as? String, "imported", "status outcome")
+  expectEqual(status["lastImportedCount"] as? Int, 2, "status count")
+  expectEqual(status["workoutCount"] as? Int, 2, "status workouts")
+  expectEqual((status["lastSuccessMillis"] as? NSNumber)?.int64Value, 20, "status success millis")
+  let unavailable = reloaded.status(available: false, requestAnswered: true)
+  expectEqual(unavailable["sdkStatus"] as? String, "unavailable", "unavailable device")
+  expectEqual(unavailable["readGranted"] as? Bool, false, "nothing granted without Health")
+
+  let row = WorkoutStore.channelMap(workout("x", start: 7, title: ""))
+  expectEqual(row["sourcePackage"] as? String, "com.hevy", "source bundle")
+  expectEqual(row["category"] as? String, "strength", "category")
+  expect(row["title"] == nil, "empty title left out")
+  expectEqual((row["endMillis"] as? NSNumber)?.int64Value, 3_600_007, "end millis")
+
+  reloaded.clearImported()
+  expectEqual(reloaded.workoutCount, 0, "cleared")
+  expect(reloaded.anchorData == nil, "anchor forgotten, next import reconciles 30 days")
+  expectEqual(reloaded.lastSuccessMillis, 0, "import state cleared")
+  expect(reloaded.enabled, "settings stay")
+  expect(!FileManager.default.fileExists(atPath: file.path), "file removed")
+  try? FileManager.default.removeItem(at: directory)
+}
+
 print("\(checks - failures)/\(checks) checks passed")
 exit(failures == 0 ? 0 : 1)

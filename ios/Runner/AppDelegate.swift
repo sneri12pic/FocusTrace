@@ -12,6 +12,8 @@ import UIKit
       FocusTraceChannels.shared.register(with: registrar) { [weak self] in
         self?.topViewController()
       }
+      // Workouts from Apple Health (the iOS side of focustrace/health_connect).
+      HealthKitBridge.shared.register(with: registrar.messenger())
       // Usage screens drawn by the FocusTraceReport extension.
       registrar.register(UsageReportFactory(), withId: "focustrace/usage_report")
     }

@@ -45,11 +45,11 @@ EXTENSIONKIT_TYPE = 'com.apple.product-type.extensionkit-extension'
 
 # Runner links these so later phases can call FamilyControls / ManagedSettings /
 # DeviceActivity from the method channels without further project edits.
-RUNNER_FRAMEWORKS = %w[FamilyControls ManagedSettings DeviceActivity SwiftUI UserNotifications].freeze
+RUNNER_FRAMEWORKS = %w[FamilyControls ManagedSettings DeviceActivity SwiftUI UserNotifications HealthKit].freeze
 
 # Runner's own Swift files besides AppDelegate.swift (which Flutter created).
 RUNNER_SOURCES = %w[FocusTraceChannels.swift ActivityPicker.swift SelectionIconsView.swift
-                    UsageReportView.swift].freeze
+                    UsageReportView.swift WorkoutStore.swift HealthKitBridge.swift].freeze
 
 # Every target compiles all of FocusTraceKit, so every extension also links
 # FamilyControls, ManagedSettings and DeviceActivity.
