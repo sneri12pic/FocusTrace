@@ -6,3 +6,18 @@ FocusTrace - Google Play screenshots (1080x2340 PNG), in order:
 4. 04-schedule-editor.png    - Schedule distraction-free periods
 5. 05-blocked-screen.png     - Pause distracting apps when needed
 6. 06-settings-privacy.png   - Your usage data stays on your device
+
+FocusTrace - App Store screenshots (iOS), same order and captions, adapted
+to what iOS shows. Not captured yet: they need a signed build on an iPhone
+(6.9" 1320x2868 and 6.5" 1284x2778 PNG). On iOS:
+
+1. Dashboard          - See where your screen time goes
+                        (Apple's Screen Time report drawn inside FocusTrace)
+2. Usage details      - Understand how you spend your time
+                        (per group of apps you picked, not per installed app)
+3. Daily limit editor - Set daily limits that fit your routine
+4. Schedule editor    - Schedule distraction-free periods
+5. Block screen       - Pause distracting apps when needed
+                        (the system Screen Time shield in FocusTrace colours)
+6. Settings, privacy  - Your usage data stays on your device
+                        (usage never leaves Screen Time; no cloud sync on iOS)

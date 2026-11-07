@@ -9,10 +9,10 @@ lives in `ios-port-progress.md`.
 
 ## Scope
 
-- An iOS Runner app (Flutter host, Swift) plus four extensions:
+- An iOS Runner app (Flutter host, Swift) plus five extensions:
   `FocusTraceMonitor` (DeviceActivityMonitor), `FocusTraceShield`
   (ShieldConfiguration), `FocusTraceShieldAction` (ShieldActionDelegate),
-  `FocusTraceReport` (DeviceActivityReport).
+  `FocusTraceReport` (DeviceActivityReport), `FocusTraceWidget` (WidgetKit).
 - Shared Swift code in `ios/FocusTraceKit/`, compiled into every target: App
   Group rule store, shield controller, schedule mapper, and Codable models that
   mirror the JSON of `lib/src/domain/models/restriction_rule.dart`.
@@ -29,7 +29,8 @@ lives in `ios-port-progress.md`.
   the platform limits in the architecture document).
 - Parental / child-device mode (`.child` authorization). FocusTrace authorizes
   `.individual` only.
-- Cloud sync changes. iOS reuses whatever the backend-sync stage ships.
+- Cloud sync on iOS: the backend syncs usage history, which iOS cannot export
+  (see the architecture's Cloud sync section). `server/` is not changed here.
 - Rewriting Dart features for iOS beyond the capability gating in phase 0.
 
 ## Phases
@@ -122,29 +123,53 @@ Acceptance criteria:
 - Home and usage-detail screens show the report view on iOS with matching date
   filters; nothing in Flutter or SQLite depends on iOS usage numbers.
 
-### Phase 5 - Extras and release
+### Phase 5 - Extras and release (implemented; device and Apple steps open)
 
-- HealthKit workouts (iOS counterpart of Health Connect).
-- WidgetKit status widget reading the App Group.
-- Backup export/import through the share sheet.
-- Settings and rules sync once backend sync is available.
-- TestFlight distribution.
+- HealthKit workouts through the shared `focustrace/health_connect` contract,
+  "Apple Health" texts on iOS. Done.
+- Backup export/import through the Files pickers, carrying picked app groups.
+  Done.
+- In-app language mirrored to iOS (`AppleLanguages`, extensions' locale).
+  Done.
+- WidgetKit restriction status widget reading the App Group. Done.
+- Settings and rules sync: not possible with the current server (usage-only);
+  documented, `cloudSync` stays off.
+- Release prep: icon, launch screen, privacy manifests, Health usage string,
+  manual TestFlight workflow, `ios-release-checklist.md`. Done; signing,
+  entitlements approval and upload are the account owner's steps.
 
 Acceptance criteria:
 - Distribution entitlement for Family Controls granted by Apple for the app and
-  all extensions.
+  the four Screen Time extensions.
 - TestFlight build installed and smoke-tested on a physical device.
 
 ## Remaining work
 
-- Phases 2-4 are implemented and build in CI; their device acceptance
+- Phases 2-5 are implemented and build in CI; their device acceptance
   criteria are unverified until a signed build runs on an iPhone.
+- Device verification still open (iPhone, iOS 16 and 17.4+):
+  - Screen Time: authorization, picker, block now, weekday schedule with the
+    app killed, daily limit and routine thresholds, warnings and nudges,
+    shield texts, reports (phases 2-4 lists in the progress document).
+  - Apple Health: the permission sheet, first 30-day import, a workout added
+    or deleted in Health showing up on the next import, background delivery
+    with FocusTrace closed, the access hint after denying.
+  - Backups: export to Files / iCloud Drive and import back; import of an
+    Android backup (iOS-less rules stay unenforced); import on a second iPhone
+    (do restored app groups shield the same apps?).
+  - Language: system pickers and permission sheets in the app language after
+    a relaunch; shield/report/widget dates at once.
+  - Widget: small and medium layouts, refresh at schedule boundaries and
+    after a limit is reached with the app closed.
+  - Launch screen and icon on device; App Store validation of the privacy
+    manifests.
 - Preferred usage time on iOS: Dart sends `preferredLimits` only after the
   preferred-usage work merges; it must then also let iOS pick apps for a
   preferred limit (category limits need an installed-app list iOS does not
   have).
-- Phase 5.
-- Request the Family Controls (Distribution) entitlement from Apple for the app
-  and every extension bundle id before any TestFlight build.
-- Configure an Apple developer team, App Group and provisioning profiles; CI
-  builds without code signing until then.
+- Account owner steps (`ios-release-checklist.md`): Apple Developer Program,
+  six App IDs and the App Group, Family Controls (Distribution) for the five
+  Screen Time bundle ids, HealthKit capability, signing team, App Store
+  Connect record and privacy label, TestFlight secrets. CI builds without code
+  signing until then.
+- Cloud sync for iOS needs a server-side settings/rules sync first.

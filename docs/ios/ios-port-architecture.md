@@ -13,11 +13,12 @@ All targets live in `ios/Runner.xcodeproj`.
 | `FocusTraceShield` | app-extension | `com.stepandemianenko.focustrace.shield` | Shield look (`com.apple.ManagedSettingsUI.shield-configuration-service`) |
 | `FocusTraceShieldAction` | app-extension | `com.stepandemianenko.focustrace.shieldaction` | Shield buttons (`com.apple.ManagedSettings.shield-action-service`) |
 | `FocusTraceReport` | extensionkit-extension | `com.stepandemianenko.focustrace.report` | DeviceActivityReport (`com.apple.deviceactivityui.report-extension`) |
+| `FocusTraceWidget` | app-extension | `com.stepandemianenko.focustrace.widget` | WidgetKit home screen widget (`com.apple.widgetkit-extension`, `@main WidgetBundle`, no principal class) |
 
-- The three app extensions declare `NSExtensionPointIdentifier` and
-  `NSExtensionPrincipalClass` (`$(PRODUCT_MODULE_NAME).<Class>`) under
-  `NSExtension` and are embedded by Runner's "Embed Foundation Extensions" phase
-  (PlugIns/).
+- The three Screen Time app extensions declare `NSExtensionPointIdentifier`
+  and `NSExtensionPrincipalClass` (`$(PRODUCT_MODULE_NAME).<Class>`) under
+  `NSExtension`; the widget declares only the extension point. All four are
+  embedded by Runner's "Embed Foundation Extensions" phase (PlugIns/).
 - `FocusTraceReport` follows Xcode's own Device Activity Report template: an
   ExtensionKit extension with an `@main DeviceActivityReportExtension`, the
   extension point under `EXAppExtensionAttributes`, embedded by "Embed
@@ -37,18 +38,24 @@ All targets live in `ios/Runner.xcodeproj`.
   `FLUTTER_BUILD_NUMBER` give every extension the app's version. Extensions
   never link Flutter or pods and set `APPLICATION_EXTENSION_API_ONLY = YES`.
 - Every target has Debug, Release and Profile configurations.
-- System frameworks are linked explicitly. Every target links FamilyControls,
-  ManagedSettings and DeviceActivity (FocusTraceKit uses them); in addition
-  Runner - SwiftUI, UserNotifications; Monitor - UserNotifications; Shield -
-  ManagedSettingsUI; ShieldAction - UserNotifications; Report - SwiftUI,
-  Charts.
+- System frameworks are linked explicitly. Every Screen Time target links
+  FamilyControls, ManagedSettings, DeviceActivity and WidgetKit
+  (FocusTraceKit uses them); in addition Runner - SwiftUI, UserNotifications,
+  HealthKit; Monitor - UserNotifications; Shield - ManagedSettingsUI;
+  ShieldAction - UserNotifications; Report - SwiftUI, Charts. The widget
+  links WidgetKit and SwiftUI only.
+- Every target carries a `PrivacyInfo.xcprivacy` in its resources: no
+  tracking, no collected data, UserDefaults with reasons CA92.1 (own
+  defaults) and 1C8F.1 (App Group). No file-timestamp, boot-time or disk-space
+  API is used by FocusTrace's own code.
 
 ## Shared code: FocusTraceKit
 
 `ios/FocusTraceKit/*.swift` is a plain folder whose files are added to the
-Sources phase of Runner and all four extensions (no framework target). Code
-there must be extension-safe. Every extension therefore also links
-FamilyControls, ManagedSettings and DeviceActivity.
+Sources phase of Runner and every extension (no framework target). Code
+there must be extension-safe. The widget leaves out
+`ScreenTimeEnforcement.swift` (`SCREEN_TIME_KIT_FILES` in the script), so it
+needs neither Screen Time framework nor the Family Controls entitlement.
 
 | File | Frameworks | Contents |
 | --- | --- | --- |
@@ -61,9 +68,15 @@ FamilyControls, ManagedSettings and DeviceActivity.
 | `ShieldPlanner.swift` | Foundation | Shield blocks (rule, routine allowance, routine member cap) and whether each holds |
 | `ShieldStrings.swift` | Foundation | Block screen and notification texts |
 | `UsageReportModels.swift` | Foundation | Report kinds/ranges, hourly/daily buckets, report texts and durations, reached-limit usage |
+| `WidgetStatus.swift` | Foundation | Widget snapshot (active blocks, next schedule, limits reached today), timeline dates, widget texts |
+| `WidgetRefresher.swift` | WidgetKit | `reloadTimelines(ofKind: "FocusTraceWidget")` |
 | `ScreenTimeEnforcement.swift` | FamilyControls, ManagedSettings, DeviceActivity | Selection codec, `ShieldController`, `ActivityScheduler` |
 
-The Foundation-only files are unit-tested without Xcode:
+`RestrictionStore` also holds the backup helpers (`exportSelections`,
+`importSelections`) and `setAppLanguage`.
+
+The Foundation-only files (plus `Runner/WorkoutStore.swift`) are unit-tested
+without Xcode:
 `tool/ios/run_kit_tests.sh` compiles them with `tool/ios/kit_tests/main.swift`
 on the macOS CI host and decodes `test/fixtures/ios_restriction_configuration.json`,
 which `test/ios_restriction_fixture_test.dart` keeps equal to what Dart's
@@ -72,7 +85,8 @@ JSON, so the format is checked in both directions.
 
 Runner-only Swift (UIKit, Flutter): `Runner/FocusTraceChannels.swift`,
 `Runner/ActivityPicker.swift`, `Runner/SelectionIconsView.swift`,
-`Runner/UsageReportView.swift`, listed in
+`Runner/UsageReportView.swift`, `Runner/HealthKitBridge.swift`,
+`Runner/WorkoutStore.swift`, `Runner/DataTransferBridge.swift`, listed in
 `RUNNER_SOURCES` of the project script.
 
 ## Restrictions on iOS
@@ -86,11 +100,14 @@ Runner-only Swift (UIKit, Flutter): `Runner/FocusTraceChannels.swift`,
 | | `requestRestrictionChange({appKey, type})` | Guard with `request: true`; "allowed" / "cooldown" / "hard"; "allowed" when no such rule. |
 | | `hasNotificationsPermission`, `requestNotificationsPermission` | `UNUserNotificationCenter` (alert, sound); also stored in the App Group for the shield. |
 | | `takeRestrictionEvents` | Block events the shield extension recorded, then forgotten. |
+| | `setAppLocale(tag?)` | `AppleLanguages` = [tag] in the app's standard defaults (removed for null): system UI (pickers, permission sheets) follows from the next launch. Also `report.locale` in the App Group texts (`setAppLanguage`), so shield, reports and widget format dates in the app language at once; reloads the widget. |
 | | `readReachedLimits` | `{appKey: seconds}` for daily-limit rules the monitor recorded as reached today; seconds = the limit. |
 | `focustrace/screen_time` | `authorizationStatus`, `requestAuthorization` | `AuthorizationCenter`, `.individual`; "notDetermined" / "denied" / "approved". |
 | | `pickSelection({selectionId?, doneLabel, cancelLabel})` | `FamilyActivityPicker` in a `UIHostingController`; returns `{selectionId, appKey, appCount, categoryCount, webDomainCount}` or null when cancelled or empty. With `selectionId` it edits that selection, refused (`RESTRICTION_LOCKED`) while a rule using it is protected. |
 | | `selectionSummary({selectionId})` | Counts of a stored selection, or null. |
-| | `setShieldStrings({strings})` | Block screen texts from the ARB files. |
+| | `setShieldStrings({strings})` | Block screen, report (`report.*`) and widget (`widget.*`) texts from the ARB files. |
+| | `exportSelections({ids})` | `{id: base64}` of the stored selections (for a backup). |
+| | `importSelections({selections})` | Stores backup selections whose id is a valid key, whose base64 decodes and whose data decodes as a `FamilyActivitySelection`; existing ids are never overwritten. Returns the count added; reconciles shields when any. |
 | platform view `focustrace/selection_icons` | creationParams `{selectionId, maxIcons, iconSize}` | `Label(token)` icons of a selection plus "+N". |
 | platform view `focustrace/usage_report` | creationParams `{context, range, date, selectionId?, dark}` | `DeviceActivityReport` (see Usage reports). Registered in AppDelegate. |
 
@@ -197,8 +214,9 @@ Every other `focustrace/usage` method answers `notImplemented`;
 ### Flutter
 
 - `PlatformCapabilities.ios`: `nativeUsageReports`, `screenTimeAuthorization`, `nativeAppPicker`,
-  `appBlocking`, `dailyLimits`, `notificationsPermission` (no
-  `usageNumbersInFlutter`). Daily limits, routines and the notifications
+  `appBlocking`, `dailyLimits`, `notificationsPermission`, `dataTransfer`,
+  `workoutsImport`, `appleHealth`, `platformLocale` (no
+  `usageNumbersInFlutter`, `cloudSync`, overlays, app list or OS history). Daily limits, routines and the notifications
   permission tile/prompt therefore appear as on Android. Where
   `usageNumbersInFlutter` is off, limit rules and routines show their size
   only: no progress bar, no "used", "left" or "today" numbers (restrictions
@@ -256,13 +274,130 @@ Every other `focustrace/usage` method answers `notImplemented`;
   tiles show "Blocked until" and Unblock now goes through the native guard
   and removes the rule, as on Android.
 
+## Workouts (Apple Health)
+
+`focustrace/health_connect` is answered by `Runner/HealthKitBridge.swift`
+with Android's method names and result maps, so Dart's
+`HealthConnectChannel`, view model and screen are shared.
+
+- Read only: `HKWorkout` (`HKObjectType.workoutType()`), authorization
+  `toShare: []`. `NSHealthShareUsageDescription` in Runner's Info.plist;
+  entitlements `com.apple.developer.healthkit`,
+  `com.apple.developer.healthkit.access` (empty) and
+  `com.apple.developer.healthkit.background-delivery`.
+- Status: `sdkStatus` = available when `HKHealthStore.isHealthDataAvailable()`.
+  HealthKit never reveals whether read access was granted, so `readGranted`
+  means the permission sheet was answered (`getRequestStatusForAuthorization`
+  = `.unnecessary`) and `enable` turns the import on once the sheet returns
+  without error. A denial looks like "no workouts"; the screen shows
+  `appleHealthAccessHint` (where to allow it in the Health app) while on with
+  nothing imported. `backgroundGranted` / `backgroundSupported` = available
+  (no separate permission). The map also carries `store: appleHealth`.
+- Import: `HKAnchoredObjectQuery`. Without a saved anchor it reads the last
+  30 days and deletes local workouts in that window that Health no longer has
+  (Android's reconcile); with one it applies added and deleted samples. The
+  anchor (`NSKeyedArchiver`) is saved only after a run. Workouts written by
+  FocusTrace's own bundle are skipped. One run at a time; callers during a run
+  get its result. Outcomes as Android (`imported`, `noNew`, `unavailable`,
+  `permissionMissing` for HealthKit authorization errors, `failed`).
+- Automatic import: while on, an `HKObserverQuery` is registered at every
+  launch (AppDelegate) with `enableBackgroundDelivery(.hourly)`; it also runs
+  when FocusTrace becomes active, at most every 15 minutes. A background
+  delivery launches the app process (and Flutter's engine) briefly.
+- Storage (`WorkoutStore`): settings and import state in the app's standard
+  UserDefaults (`ft.health.*`), workouts as JSON in Application Support
+  (`focustrace_workouts.json`, excluded from iCloud backup). Not in the App
+  Group, the Flutter database, cloud sync or the portable backup, as on
+  Android. Categories from `HKWorkoutActivityType` (traditional/functional
+  strength, running, walking, cycling, swimming, yoga, else other); title
+  from `HKMetadataKeyWorkoutBrandName`; `exerciseType` is the HealthKit raw
+  value (Dart uses only the category).
+- Flutter: `PlatformCapabilities.workoutsImport` and `appleHealth` on iOS.
+  `HealthStoreTexts` picks the `appleHealth*` ARB variants of every text that
+  names the store (title, intro, data, automatic import, outcomes,
+  unavailable, manage, off note, delete, onboarding, clear-data note).
+
+## Backups
+
+`focustrace/data_transfer` (`Runner/DataTransferBridge.swift`), same
+contract as Android: `saveBackup` writes the JSON to a temporary file and
+presents `UIDocumentPickerViewController(forExporting:asCopy: true)` (true
+when saved, false when cancelled; the temp file is removed);
+`openBackup` presents `forOpeningContentTypes: [.json, .plainText]`, reads
+the file under security-scoped access with `NSFileCoordinator`, refuses files
+over 10 MB or not UTF-8. A second call while a picker is open fails with
+`TRANSFER_IN_PROGRESS`.
+
+Picked app groups: rules, routines and limits refer to `ios-sel:<id>`
+selections stored natively. `DataTransferRepositoryImpl` (given the Screen
+Time channel when `nativeAppPicker`) adds an optional top-level
+`iosSelections: {id: base64}` for every id the backed-up settings mention.
+Format and version are unchanged: Android and older readers ignore unknown
+top-level keys, and a backup without the key imports as before. On import
+the key is validated before anything is written (string ids of
+`[A-Za-z0-9-]`, string values), the tables are imported, then the selections
+are restored (never overwriting one on the device). Ids still missing
+(backups from older versions or another platform) are counted and the
+snackbar asks to choose those groups' apps again; the rules stay. Tokens are
+opaque; whether a selection from another iPhone shields the same apps is
+unverified (see Known platform limits).
+
+## Language
+
+`PlatformCapabilities.platformLocale` on iOS: `setAppLocale` (see Channels).
+Runner's Info.plist lists `CFBundleLocalizations` (en, de, es, fr, ja,
+pt-BR, uk) so system UI is localized and iOS Settings offers a per-app
+language. Flutter itself keeps following the in-app language immediately.
+
+## Home screen widget
+
+`FocusTraceWidget` (small, medium), dark FocusTrace colours (#0E1520,
+#5BC0EB, #A8DDF5). WidgetKit cannot read Screen Time usage, so it shows
+restriction status instead of Android's usage totals: the number and names of
+blocks active now (soonest end first, with its end time), the next schedule
+start within a week, and how many daily limits / routine allowances / member
+caps were reached today, or a prompt when there is no iOS restriction. The
+timeline holds an entry for now and for every block-now end, schedule start
+and end, and midnight within 24 hours (`policy: .atEnd`). The app reloads it
+after `syncRestrictions`, `setAppLocale`, an edited selection and whenever it
+becomes active; the monitor reloads it when a threshold is reached or a
+reconcile changes the shielded set. Texts: `widget.*` in the shield string map
+(English defaults in `WidgetStrings`); times in `report.locale`. Tapping
+opens FocusTrace (no deep link).
+
+## Cloud sync
+
+`cloudSync` stays off on iOS. The backend syncs usage history (daily usage
+per app), which on iOS exists only inside the DeviceActivityReport extension
+sandbox and cannot be exported. Enabling sync for iOS would need a server
+change outside this stage: a sync payload for rules, routines and settings
+(the `restriction_rules` / `block_routines` settings with an app-key namespace
+per platform, since `ios-sel:` selections are device-local opaque tokens) and
+an upload path that does not require usage days. `server/` is unchanged.
+
+## Release
+
+- App icon: every `AppIcon.appiconset` size rendered with Pillow from
+  `docs/brand/quiet-path/android/store-icon-1024.png` (opaque RGB, Quiet Path
+  on #0E1520). Launch screen: #070A10 (Android's splash colour) with the
+  mark from `foreground-1024.png` at 96 pt.
+- Version and build: `$(FLUTTER_BUILD_NAME)` / `$(FLUTTER_BUILD_NUMBER)` from
+  `pubspec.yaml` in the app and every extension.
+- `.github/workflows/ios-testflight.yml`: manual (`workflow_dispatch`) archive
+  with automatic signing and upload through an App Store Connect API key;
+  fails at once without its secrets. Steps for the account owner:
+  `ios-release-checklist.md`.
+
 ## Entitlements and App Group
 
 Each target has `<Target>/<Target>.entitlements` (Runner:
 `Runner/Runner.entitlements`) set through `CODE_SIGN_ENTITLEMENTS`, with:
 
-- `com.apple.developer.family-controls` = true
+- `com.apple.developer.family-controls` = true (not the widget)
 - `com.apple.security.application-groups` = `group.com.stepandemianenko.focustrace`
+- Runner only: `com.apple.developer.healthkit`,
+  `com.apple.developer.healthkit.access` (empty),
+  `com.apple.developer.healthkit.background-delivery`
 
 ## Editing the Xcode project without a Mac
 
@@ -287,8 +422,8 @@ ruby tool/ios/add_extension_targets.rb
 
 Job `ios-build` in `.github/workflows/ci.yml` (macos-15, 40 min): Flutter
 3.32.2, `flutter pub get`, `flutter build ios --debug --no-codesign`, then a
-check that every extension is embedded (PlugIns/ or Extensions/) and does not
-link Flutter (`otool -L`), then the FocusTraceKit unit tests
+check that every extension (including the widget) is embedded (PlugIns/ or
+Extensions/) and does not link Flutter (`otool -L`), then the FocusTraceKit unit tests
 (`tool/ios/run_kit_tests.sh`, also when the build failed). When the build
 fails, a step re-runs `xcodebuild` to list every Swift error. It is the
 only place Swift is compiled; the developer machines are Windows/Linux. Code
@@ -314,6 +449,13 @@ entitlement provisioning.
 - Before iOS 17.4 `DeviceActivityEvent` has no `includesPastActivity`; whether
   use before a restarted activity counts is then up to the system.
 - No Shorts/Reels (in-app content) detection.
+- WidgetKit has no access to usage, so the widget shows restriction status,
+  not Android's usage totals and bubble chart.
+- HealthKit does not tell an app whether read access was granted or later
+  revoked; Android's "access revoked" notice cannot appear on iOS.
+- Picker tokens in a backup are opaque; restoring them on another iPhone may
+  not shield the same apps.
+- `AppleLanguages` takes effect for system UI at the next launch.
 - The Family Controls entitlement works for development builds but needs
   Apple's approval of the Distribution entitlement, per bundle id, before
   TestFlight/App Store.
