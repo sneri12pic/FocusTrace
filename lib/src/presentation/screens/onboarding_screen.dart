@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
+import '../../data/datasources/screen_time_channel.dart';
 import '../../domain/models/app_usage_summary.dart';
 import '../../domain/models/health_connect.dart';
 import '../../domain/models/platform_capabilities.dart';
@@ -76,6 +77,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen>
     // page fills in right after usage access is granted.
     ref.read(dashboardViewModelProvider.notifier).refreshSilently();
     ref.read(restrictionsViewModelProvider.notifier).refreshOverlayPermission();
+    ref.read(screenTimeAuthorizationProvider.notifier).refresh();
   }
 
   void _goTo(int page) {
@@ -505,7 +507,9 @@ class _AccessPage extends ConsumerWidget {
     final asksPermissions =
         capabilities.usageAccessPermission ||
         capabilities.overlayPermission ||
-        capabilities.notificationsPermission;
+        capabilities.notificationsPermission ||
+        capabilities.screenTimeAuthorization;
+    final screenTimeStatus = ref.watch(screenTimeAuthorizationProvider);
     final theme = Theme.of(context);
     final mutedStyle = theme.textTheme.bodyMedium?.copyWith(
       color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
@@ -524,7 +528,9 @@ class _AccessPage extends ConsumerWidget {
         ),
         const SizedBox(height: 8),
         Text(
-          context.l10n.onboardingAccessBody,
+          capabilities.screenTimeAuthorization
+              ? context.l10n.onboardingScreenTimeBody
+              : context.l10n.onboardingAccessBody,
           textAlign: TextAlign.center,
           style: mutedStyle,
         ),
@@ -551,6 +557,20 @@ class _AccessPage extends ConsumerWidget {
             body: context.l10n.onboardingNoPermissionsBody,
           )
         else ...[
+          // iOS: one Screen Time authorization replaces Android's tiles.
+          if (capabilities.screenTimeAuthorization) ...[
+            _PermissionTile(
+              icon: Icons.hourglass_bottom_rounded,
+              title: context.l10n.screenTimeAccessTitle,
+              subtitle: context.l10n.screenTimeAccessSubtitle,
+              isGranted:
+                  screenTimeStatus == ScreenTimeAuthorizationStatus.approved,
+              actionLabel: context.l10n.onboardingAllow,
+              onAllow: () =>
+                  ref.read(screenTimeAuthorizationProvider.notifier).request(),
+            ),
+            const SizedBox(height: 12),
+          ],
           if (capabilities.usageAccessPermission) ...[
             _PermissionTile(
               icon: Icons.insert_chart_outlined,
@@ -602,7 +622,9 @@ class _AccessPage extends ConsumerWidget {
             const SizedBox(width: 6),
             Flexible(
               child: Text(
-                context.l10n.onboardingPermissionsSettingsHint,
+                capabilities.screenTimeAuthorization
+                    ? context.l10n.onboardingScreenTimeHint
+                    : context.l10n.onboardingPermissionsSettingsHint,
                 textAlign: TextAlign.center,
                 style: mutedStyle,
               ),

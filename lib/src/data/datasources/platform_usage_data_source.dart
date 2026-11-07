@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import '../../domain/models/app_usage_interval.dart';
 import '../../domain/models/app_usage_summary.dart';
 import '../../domain/models/os_usage_bucket.dart';
+import '../../domain/models/restriction_event.dart';
 import '../../performance/dashboard_performance.dart';
 
 class ActiveWindowInfo {
@@ -46,6 +47,13 @@ abstract class PlatformUsageDataSource {
 abstract interface class RestrictionChangeDataSource {
   Future<String> requestRestrictionChange(String appKey, String type);
   Future<String?> readRestrictionConfiguration();
+}
+
+/// Block events recorded natively where the native side cannot write to the
+/// app database itself (iOS shield extensions). Android writes them directly.
+abstract interface class NativeRestrictionEventDataSource {
+  /// Returns the events recorded since the last call and forgets them.
+  Future<List<RestrictionEvent>> takeRestrictionEvents();
 }
 
 abstract interface class AppMetadataDataSource {
@@ -363,6 +371,94 @@ class WindowsUsageDataSource implements PlatformUsageDataSource {
       idleSeconds: (row['idleSeconds'] as num?)?.toDouble() ?? 0,
     );
   }
+
+  @override
+  Future<List<AppUsageSummary>> getInstalledApps() async => const [];
+}
+
+/// iOS: restrictions are enforced by Screen Time (Runner's
+/// FocusTraceChannels.swift and the FocusTraceKit extensions). Usage numbers
+/// never reach Flutter on iOS, so every usage method is empty.
+class IosUsageDataSource
+    implements
+        PlatformUsageDataSource,
+        RestrictionChangeDataSource,
+        NativeRestrictionEventDataSource {
+  IosUsageDataSource({
+    MethodChannel channel = const MethodChannel('focustrace/usage'),
+  }) : _channel = channel;
+
+  final MethodChannel _channel;
+
+  /// There is no Usage Access setting; usage is drawn natively (phase 4).
+  @override
+  Future<bool> hasUsageAccess() async => false;
+
+  @override
+  Future<void> openUsageAccessSettings() async {}
+
+  /// Shields need no overlay permission.
+  @override
+  Future<bool> hasOverlayPermission() async => true;
+
+  @override
+  Future<void> openOverlaySettings() async {}
+
+  @override
+  Future<bool> hasNotificationsPermission() async =>
+      await _channel.invokeMethod<bool>('hasNotificationsPermission') ?? false;
+
+  @override
+  Future<bool> requestNotificationsPermission() async =>
+      await _channel.invokeMethod<bool>('requestNotificationsPermission') ??
+      false;
+
+  /// Throws a PlatformException (RESTRICTION_LOCKED) when the change guard
+  /// refuses to relax an active rule, as on Android.
+  @override
+  Future<void> syncRestrictions(String json) =>
+      _channel.invokeMethod<void>('syncRestrictions', json);
+
+  @override
+  Future<String?> readRestrictionConfiguration() =>
+      _channel.invokeMethod<String>('readRestrictionConfiguration');
+
+  @override
+  Future<String> requestRestrictionChange(String appKey, String type) async =>
+      await _channel.invokeMethod<String>('requestRestrictionChange', {
+        'appKey': appKey,
+        'type': type,
+      }) ??
+      'unavailable';
+
+  @override
+  Future<List<RestrictionEvent>> takeRestrictionEvents() async {
+    final rows =
+        await _channel.invokeListMethod<Object?>('takeRestrictionEvents') ??
+        const <Object?>[];
+    return [
+      for (final row in rows.whereType<Map>())
+        if (row['id'] case final String id)
+          if (row['appKey'] case final String appKey)
+            if (row['occurredAtMs'] case final num occurredAtMs)
+              RestrictionEvent(
+                id: id,
+                appKey: appKey,
+                appName: row['appName'] as String? ?? appKey,
+                type: RestrictionEventType.fromWireName(row['type'] as String?),
+                occurredAt: DateTime.fromMillisecondsSinceEpoch(
+                  occurredAtMs.toInt(),
+                ),
+                reason: row['reason'] as String?,
+              ),
+    ];
+  }
+
+  @override
+  Future<List<AppUsageSummary>> getTodayUsageStats() async => const [];
+
+  @override
+  Future<ActiveWindowInfo?> getActiveWindowInfo() async => null;
 
   @override
   Future<List<AppUsageSummary>> getInstalledApps() async => const [];

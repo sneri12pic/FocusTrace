@@ -110,8 +110,26 @@ class RestrictionsViewModel extends StateNotifier<RestrictionsState> {
         isLoading: false,
       );
       await _sync(rules, routines);
+      await _importNativeEvents();
     } catch (error) {
       state = state.copyWith(isLoading: false, errorMessage: error.toString());
+    }
+  }
+
+  /// Moves block events recorded by iOS shield extensions into the app's
+  /// statistics. Android records them directly, so this does nothing there.
+  Future<void> _importNativeEvents() async {
+    final source = _platformDataSource;
+    final reports = _reportRepository;
+    if (source is! NativeRestrictionEventDataSource || reports == null) return;
+    try {
+      final events = await (source as NativeRestrictionEventDataSource)
+          .takeRestrictionEvents();
+      for (final event in events) {
+        await reports.recordRestrictionEvent(event);
+      }
+    } catch (_) {
+      // Statistics are best-effort; enforcement does not depend on them.
     }
   }
 

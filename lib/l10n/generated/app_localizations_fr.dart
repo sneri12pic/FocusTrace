@@ -1750,4 +1750,131 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get settingsClearDataHealth =>
       'L\'import Health Connect est désactivé et les entraînements importés sont supprimés. Rien ne change dans Health Connect.';
+
+  @override
+  String get screenTimeAccessTitle => 'Temps d’écran';
+
+  @override
+  String get screenTimeAccessSubtitle =>
+      'Pour bloquer les apps que vous choisissez';
+
+  @override
+  String get onboardingScreenTimeBody =>
+      'FocusTrace utilise Temps d’écran pour bloquer les apps que vous choisissez.\nTout reste sur votre appareil.';
+
+  @override
+  String get onboardingScreenTimeHint =>
+      'Cette autorisation se gère dans les Réglages iOS, sous Temps d’écran.';
+
+  @override
+  String get rxScreenTimeNeededTitle => 'Autoriser Temps d’écran';
+
+  @override
+  String get rxScreenTimeNeededBody =>
+      'FocusTrace a besoin d’accéder à Temps d’écran pour bloquer des apps sur cet iPhone.';
+
+  @override
+  String get rxPickerDone => 'OK';
+
+  @override
+  String get rxNameAppsTitle => 'Nommez ces apps';
+
+  @override
+  String get rxNameAppsHint => 'Par exemple, Réseaux sociaux';
+
+  @override
+  String rxSelectionCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count apps, catégories ou sites choisis',
+      one: '1 app, catégorie ou site choisi',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String shieldBlockNowUntil(String time) {
+    return 'Blocage temporaire jusqu’à $time';
+  }
+
+  @override
+  String shieldScheduleUntil(String time) {
+    return 'Bloquée par l’horaire jusqu’à $time';
+  }
+
+  @override
+  String get shieldDailyLimit => 'Limite quotidienne de l’app atteinte';
+
+  @override
+  String get shieldRestricted => 'Cette app est restreinte pour le moment.';
+
+  @override
+  String get shieldLeave => 'Quitter';
+
+  @override
+  String get shieldUnblockInApp => 'Débloquer dans FocusTrace';
+
+  @override
+  String shieldNotificationBody(String name) {
+    return 'Ouvrez FocusTrace pour modifier $name.';
+  }
+
+  @override
+  String shieldLimitWarningTitle(String name) {
+    return 'La limite de $name est presque atteinte';
+  }
+
+  @override
+  String shieldRoutineWarningTitle(String name) {
+    return 'La routine $name approche de sa limite';
+  }
+
+  @override
+  String shieldLimitWarningBody(int minutes) {
+    String _temp0 = intl.Intl.pluralLogic(
+      minutes,
+      locale: localeName,
+      other: 'Le blocage commencera dans environ $minutes minutes.',
+      one: 'Le blocage commencera dans environ $minutes minute.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get shieldNudgeTitle => 'Temps d’utilisation souhaité';
+
+  @override
+  String get shieldNudgeReached => 'Vous avez atteint votre temps';
+
+  @override
+  String shieldNudgeMinutesLeft(int minutes) {
+    String _temp0 = intl.Intl.pluralLogic(
+      minutes,
+      locale: localeName,
+      other: 'Encore $minutes min',
+      one: 'Encore $minutes min',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String shieldNudgeMinutesOver(int minutes) {
+    String _temp0 = intl.Intl.pluralLogic(
+      minutes,
+      locale: localeName,
+      other: '$minutes min de plus',
+      one: '$minutes min de plus',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get routinePickNewApps => 'Choisir de nouvelles apps';
+
+  @override
+  String get routineAppIncluded => 'Incluse dans la limite';
+
+  @override
+  String get routineAppExcluded => 'Exclue de la limite';
 }
