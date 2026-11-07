@@ -41,6 +41,10 @@ final class WorkoutStore {
   let defaults: UserDefaults
   let fileURL: URL
   private var cache: [String: StoredWorkout]?
+  /// Bumped by `clearImported`. An import compares it before applying what
+  /// Health answered, so a run that started before a clear cannot write its
+  /// rows and anchor back afterwards.
+  private(set) var generation = 0
 
   init(defaults: UserDefaults, fileURL: URL) {
     self.defaults = defaults
@@ -148,6 +152,7 @@ final class WorkoutStore {
 
   /// Deletes imported workouts and import state; settings stay as they are.
   func clearImported() {
+    generation &+= 1
     rows = [:]
     try? FileManager.default.removeItem(at: fileURL)
     for key in [Key.anchor, Key.lastSuccess, Key.lastAttempt, Key.outcome, Key.count] {

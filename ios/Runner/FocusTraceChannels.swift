@@ -172,6 +172,8 @@ final class FocusTraceChannels: NSObject {
       queue.async {
         let store = RestrictionStore.shared
         store.shieldStrings = ShieldStrings(values: values)
+        // The widget's texts (widget.*) come in the same map.
+        WidgetRefresher.reload()
         Self.reply(result, nil)
       }
     default:

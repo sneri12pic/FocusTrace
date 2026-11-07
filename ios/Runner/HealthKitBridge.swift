@@ -196,8 +196,12 @@ final class HealthKitBridge: NSObject {
       self.queue.async {
         if let outcome = outcome, self.store.enabled {
           try? self.store.save()
-          self.store.recordAttempt(
-            outcome: outcome.name, importedCount: outcome.changed, nowMillis: nowMillis)
+          // A locked device is no attempt: the next foreground import must
+          // not wait the 15 minutes.
+          if outcome.recorded {
+            self.store.recordAttempt(
+              outcome: outcome.name, importedCount: outcome.changed, nowMillis: nowMillis)
+          }
         }
         self.isImporting = false
         let done = self.waiters
@@ -210,10 +214,14 @@ final class HealthKitBridge: NSObject {
   private struct Outcome {
     var name: String
     var changed: Int
+    /// False when the run says nothing about the import (the device was
+    /// locked): it is not recorded as the last attempt.
+    var recorded = true
   }
 
   /// Runs the anchored query and applies it to the store (on `queue`).
-  /// Answers nil when the import was switched off meanwhile.
+  /// Answers nil when the import was switched off or the imported workouts
+  /// were cleared meanwhile.
   private func fetch(now: Date, completion: @escaping (Outcome?) -> Void) {
     guard let sampleType = workoutType as? HKSampleType else {
       completion(Outcome(name: "failed", changed: 0))
@@ -228,12 +236,13 @@ final class HealthKitBridge: NSObject {
     let predicate =
       anchor == nil ? HKQuery.predicateForSamples(withStart: from, end: to, options: []) : nil
     let ownBundle = Bundle.main.bundleIdentifier
+    let generation = store.generation
     let query = HKAnchoredObjectQuery(
       type: sampleType, predicate: predicate, anchor: anchor, limit: HKObjectQueryNoLimit
     ) { [weak self] _, samples, deleted, newAnchor, error in
       guard let self = self else { return }
       self.queue.async {
-        guard self.store.enabled else {
+        guard self.store.enabled, self.store.generation == generation else {
           completion(nil)
           return
         }
@@ -241,7 +250,10 @@ final class HealthKitBridge: NSObject {
           let code = (error as? HKError)?.code
           let denied =
             code == .errorAuthorizationDenied || code == .errorAuthorizationNotDetermined
-          completion(Outcome(name: denied ? "permissionMissing" : "failed", changed: 0))
+          completion(
+            Outcome(
+              name: denied ? "permissionMissing" : "failed", changed: 0,
+              recorded: code != .errorDatabaseInaccessible))
           return
         }
         var changed = 0

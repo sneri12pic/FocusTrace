@@ -34,6 +34,8 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>NSHealthShareUsageDescription</key>
 	<string>FocusTrace reads your workouts (type, name, start and end time, and the app that recorded them) to show them next to your screen time. Nothing is written to Health and workouts stay on this device.</string>
+	<key>NSHealthUpdateUsageDescription</key>
+	<string>FocusTrace only reads workouts and never writes to Health.</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>UILaunchStoryboardName</key>

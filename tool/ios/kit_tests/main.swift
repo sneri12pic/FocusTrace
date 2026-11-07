@@ -866,7 +866,9 @@ do {
   expect(row["title"] == nil, "empty title left out")
   expectEqual((row["endMillis"] as? NSNumber)?.int64Value, 3_600_007, "end millis")
 
+  let generation = reloaded.generation
   reloaded.clearImported()
+  expect(reloaded.generation != generation, "a clear tells a running import to drop its result")
   expectEqual(reloaded.workoutCount, 0, "cleared")
   expect(reloaded.anchorData == nil, "anchor forgotten, next import reconciles 30 days")
   expectEqual(reloaded.lastSuccessMillis, 0, "import state cleared")

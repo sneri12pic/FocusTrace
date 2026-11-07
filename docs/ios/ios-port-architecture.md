@@ -306,7 +306,8 @@ with Android's method names and result maps, so Dart's
 `HealthConnectChannel`, view model and screen are shared.
 
 - Read only: `HKWorkout` (`HKObjectType.workoutType()`), authorization
-  `toShare: []`. `NSHealthShareUsageDescription` in Runner's Info.plist;
+  `toShare: []`. `NSHealthShareUsageDescription` and (never used, expected
+  by review) `NSHealthUpdateUsageDescription` in Runner's Info.plist;
   entitlements `com.apple.developer.healthkit`,
   `com.apple.developer.healthkit.access` (empty) and
   `com.apple.developer.healthkit.background-delivery`.
@@ -324,7 +325,11 @@ with Android's method names and result maps, so Dart's
   anchor (`NSKeyedArchiver`) is saved only after a run. Workouts written by
   FocusTrace's own bundle are skipped. One run at a time; callers during a run
   get its result. Outcomes as Android (`imported`, `noNew`, `unavailable`,
-  `permissionMissing` for HealthKit authorization errors, `failed`).
+  `permissionMissing` for HealthKit authorization errors, `failed`). A run
+  that started before "Delete imported workouts" drops its result
+  (`WorkoutStore.generation`), so the clear sticks. A run that fails because
+  the device is locked (`errorDatabaseInaccessible`) is not recorded as an
+  attempt, so it does not delay the next foreground import.
 - Automatic import: while on, an `HKObserverQuery` is registered at every
   launch (AppDelegate) with `enableBackgroundDelivery(.hourly)`; it also runs
   when FocusTrace becomes active, at most every 15 minutes. A background
@@ -384,7 +389,7 @@ start within a week, and how many daily limits / routine allowances / member
 caps were reached today, or a prompt when there is no iOS restriction. The
 timeline holds an entry for now and for every block-now end, schedule start
 and end, and midnight within 24 hours (`policy: .atEnd`). The app reloads it
-after `syncRestrictions`, `setAppLocale`, an edited selection and whenever it
+after `syncRestrictions`, `setAppLocale`, `setShieldStrings`, an edited selection and whenever it
 becomes active; the monitor reloads it when a threshold is reached or a
 reconcile changes the shielded set. Texts: `widget.*` in the shield string map
 (English defaults in `WidgetStrings`); times in `report.locale`. Tapping

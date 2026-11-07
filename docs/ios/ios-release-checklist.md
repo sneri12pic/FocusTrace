@@ -27,6 +27,10 @@ Register one App ID per bundle id, all explicit (no wildcard):
   it to all six App IDs.
 - HealthKit: only the app reads Health (workouts, read only, no clinical
   records). The entitlements file already asks for background delivery.
+  Runner's Info.plist carries both `NSHealthShareUsageDescription` (what is
+  read) and `NSHealthUpdateUsageDescription` ("FocusTrace only reads workouts
+  and never writes to Health."): App Store review expects the update string
+  from any HealthKit app even when it never writes.
 
 ## 3. Family Controls (Distribution) entitlement
 
