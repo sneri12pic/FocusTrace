@@ -82,7 +82,7 @@ Runner-only Swift (UIKit, Flutter): `Runner/FocusTraceChannels.swift`,
 | | `readRestrictionConfiguration` | The JSON last stored, verbatim (or null). |
 | | `requestRestrictionChange({appKey, type})` | Guard with `request: true`; "allowed" / "cooldown" / "hard"; "allowed" when no such rule. |
 | | `hasNotificationsPermission`, `requestNotificationsPermission` | `UNUserNotificationCenter` (alert, sound); also stored in the App Group for the shield. |
-| | `takeRestrictionEvents` | Block events the shield extension recorded, then forgotten. |
+| | `takeRestrictionEvents` | Block events the shield extension recorded, then forgotten (only those returned; both sides hold the `events` App Group file lock). |
 | `focustrace/screen_time` | `authorizationStatus`, `requestAuthorization` | `AuthorizationCenter`, `.individual`; "notDetermined" / "denied" / "approved". |
 | | `pickSelection({selectionId?, doneLabel, cancelLabel})` | `FamilyActivityPicker` in a `UIHostingController`; returns `{selectionId, appKey, appCount, categoryCount, webDomainCount}` or null when cancelled or empty. With `selectionId` it edits that selection, refused (`RESTRICTION_LOCKED`) while a rule using it is protected. |
 | | `selectionSummary({selectionId})` | Counts of a stored selection, or null. |
@@ -101,10 +101,16 @@ Every other `focustrace/usage` method answers `notImplemented`;
   verbatim), `ft.selection.<id>` / `ft.selectionCreated.<id>`,
   `ft.shield.rules` (rule keys shielded now), `ft.shield.stores`,
   `ft.events`, `ft.shield.strings`, `ft.notifications.authorized`, the
-  guard's `ft.change:<appKey>:<type>:rule|ready`, and for usage thresholds
+  guard's `ft.change:<appKey>:<type>:rule|ready`,
+  `ft.restrictions.generation` (bumped by every sync and selection write),
+  `ft.shield.displayed` (encoded app/web-domain token -> block keys the block
+  screen listed, newest 200), and for usage thresholds
   `ft.limits.reached` (block key -> day it was reached), `ft.limits.notices`
   (notices posted today) and `ft.monitor.plans` (signature per monitored
   activity).
+- Cross-process read-modify-write sequences hold an exclusive `flock` on
+  `ft.<name>.lock` in the App Group container (`AppGroup.withLock`): `shields`
+  (reconcile) and `events` (record/take block events).
 - Routine members and preferred limits refer to selections by the same
   `ios-sel:<uuid>` app keys; such a selection is kept while any rule, routine
   or preferred limit refers to it.
@@ -130,7 +136,10 @@ Every other `focustrace/usage` method answers `notImplemented`;
   extension runs it on `intervalDidStart`, `intervalWillEndWarning` and
   `intervalDidEnd`, evaluating 30 s ahead because callbacks may come slightly
   early (so the 00:00 start also lifts yesterday's reached limits), and on
-  `eventDidReachThreshold`.
+  `eventDidReachThreshold`. The app and the monitor may reconcile at once:
+  the `shields` lock serializes them, and a reconcile that sees
+  `ft.restrictions.generation` change while applying runs again (at most
+  three passes), so shields from an older configuration never stay.
 - `ScheduleMapper` makes sure the monitor wakes at every boundary:
   block-now = one non-repeating interval from now to `untilMs`; schedule = one
   daily interval, split into `start-23:59` and `00:00-end` over midnight.
@@ -187,7 +196,10 @@ Every other `focustrace/usage` method answers `notImplemented`;
   host app, so the secondary button ("Unblock in FocusTrace") is offered only
   for Easy/Moderate rules and routines and only when notifications are
   allowed; it posts a local notification that opens FocusTrace, then closes
-  the app.
+  the app. The action extension gets only the app's (or web domain's) token,
+  which is in no selection when the app was shielded through a picked
+  category, so it uses the blocks the block screen recorded for that token
+  (`ft.shield.displayed`) and falls back to matching selections.
 
 ### Flutter
 

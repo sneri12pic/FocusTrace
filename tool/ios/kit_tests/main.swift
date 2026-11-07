@@ -231,6 +231,47 @@ do {
   expectEqual((events.first?["occurredAtMs"] as? NSNumber)?.int64Value, now.epochMilliseconds, "event time")
   expectEqual(store.takeEvents().count, 0, "taking events empties the queue")
 
+  // Events recorded while the app takes them are never lost.
+  let racing = RestrictionStore(defaults: freshDefaults())
+  let taken = NSMutableArray()
+  let lock = NSLock()
+  DispatchQueue.concurrentPerform(iterations: 200) { index in
+    racing.recordBlocked(
+      appKey: "ios-sel:\(index)", appName: "A", reason: "blockNow", now: now, minimumInterval: 0)
+    if index % 10 == 0 {
+      let events = racing.takeEvents()
+      lock.lock()
+      taken.addObjects(from: events)
+      lock.unlock()
+    }
+  }
+  taken.addObjects(from: racing.takeEvents())
+  let takenIds = Set(taken.compactMap { ($0 as? [String: Any])?["id"] as? String })
+  expectEqual(takenIds.count, 200, "every event recorded during takeEvents is taken once")
+  expectEqual(taken.count, 200, "no event is taken twice")
+
+  expectEqual(AppGroup.withLock("kit-tests") { 7 }, 7, "withLock returns the body's value")
+
+  let generation = store.configurationGeneration
+  store.setSelectionData(Data([4]), id: "kept", now: now)
+  expect(store.configurationGeneration > generation, "an edited selection bumps the generation")
+  let beforeSync = store.configurationGeneration
+  _ = try? RestrictionSync.apply(json: #"{"version":3,"rules":[]}"#, store: store, now: now)
+  expect(store.configurationGeneration > beforeSync, "a sync bumps the generation")
+
+  store.recordDisplayed(ruleKeys: ["ios-sel:a#blockNow"], tokenKey: "app:x", now: now)
+  expectEqual(store.displayedRuleKeys(tokenKey: "app:x"), ["ios-sel:a#blockNow"], "displayed keys")
+  expectEqual(store.displayedRuleKeys(tokenKey: "app:y"), [], "nothing displayed for another token")
+  store.recordDisplayed(ruleKeys: [], tokenKey: "app:x", now: now)
+  expectEqual(store.displayedRuleKeys(tokenKey: "app:x"), [], "a newer display replaces the record")
+  for index in 0..<5 {
+    store.recordDisplayed(
+      ruleKeys: ["k\(index)"], tokenKey: "app:\(index)", now: now.addingTimeInterval(Double(index)),
+      limit: 3)
+  }
+  expectEqual(store.displayedRuleKeys(tokenKey: "app:1"), [], "oldest records are dropped")
+  expectEqual(store.displayedRuleKeys(tokenKey: "app:4"), ["k4"], "newest records are kept")
+
   store.shieldStrings = ShieldStrings(values: ["leave": "Verlassen"])
   expectEqual(store.shieldStrings.text("leave"), "Verlassen", "strings from Flutter")
   expectEqual(store.shieldStrings.text("unblockInApp"), "Unblock in FocusTrace", "English fallback")
