@@ -130,3 +130,41 @@ jobs:
             build/app/outputs/apk/debug/*.apk
           if-no-files-found: warn
           retention-days: 14
+
+  # Swift sources and the Xcode project (edited from Windows/Linux via
+  # tool/ios/add_extension_targets.rb) are only ever compiled here.
+  ios-build:
+    name: iOS debug build (no codesign)
+    runs-on: macos-15
+    timeout-minutes: 40
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.32.2"
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Build iOS app and extensions
+        run: flutter build ios --debug --no-codesign
+
+      # flutter build hides xcodebuild output, so prove the extensions were
+      # built, embedded, declare the expected extension point and do not link
+      # Flutter (also inside an Xcode 16 <Name>.debug.dylib).
+      - name: Check embedded extensions (Debug)
+        run: bash tool/ios/check_embedded_extensions.sh build/ios/iphoneos/Runner.app
+
+      # Release is what TestFlight archives: whole-module optimization, no
+      # debug dylib split, dead-code stripping. Same job, so pub, Pods and
+      # Xcode's derived data of the Debug build are reused.
+      - name: Build iOS app and extensions (Release)
+        run: flutter build ios --release --no-codesign
+
+      - name: Check embedded extensions (Release)
+        run: bash tool/ios/check_embedded_extensions.sh build/ios/iphoneos/Runner.app
