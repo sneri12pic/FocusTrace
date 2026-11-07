@@ -808,7 +808,14 @@ class _AddAppsSheetState extends State<_AddAppsSheet> {
                     onPressed: () async {
                       final app = await widget.pickNew!();
                       if (app != null && context.mounted) {
-                        Navigator.of(context).pop([app]);
+                        // Keep the groups already ticked in the list.
+                        Navigator.of(context).pop([
+                          for (final ticked in widget.apps)
+                            if (_selected.contains(ticked.appKey) &&
+                                ticked.appKey != app.appKey)
+                              ticked,
+                          app,
+                        ]);
                       }
                     },
                     icon: const Icon(Icons.add),

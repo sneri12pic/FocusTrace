@@ -330,18 +330,22 @@ struct RestrictionConfiguration: Codable, Equatable {
   var rules: [RestrictionRule] = []
   var routines: [RoutineLimit] = []
   var preferredLimits: [PreferredLimit] = []
+  /// `ios-sel:` keys of every routine's apps, also of routines that are not
+  /// sent (disabled or without a limit), so their selections are kept.
+  var routineAppKeys: [String] = []
 
   init(
     rules: [RestrictionRule] = [], routines: [RoutineLimit] = [],
-    preferredLimits: [PreferredLimit] = []
+    preferredLimits: [PreferredLimit] = [], routineAppKeys: [String] = []
   ) {
     self.rules = rules
     self.routines = routines
     self.preferredLimits = preferredLimits
+    self.routineAppKeys = routineAppKeys
   }
 
   enum CodingKeys: String, CodingKey {
-    case version, rules, routines, preferredLimits
+    case version, rules, routines, preferredLimits, routineAppKeys
   }
 
   init(from decoder: Decoder) throws {
@@ -350,6 +354,9 @@ struct RestrictionConfiguration: Codable, Equatable {
     routines = (try? c.decode(LossyArray<RoutineLimit>.self, forKey: .routines))?.items ?? []
     preferredLimits =
       (try? c.decode(LossyArray<PreferredLimit>.self, forKey: .preferredLimits))?.items ?? []
+    routineAppKeys = ((try? c.decode([LenientString].self, forKey: .routineAppKeys)) ?? [])
+      .compactMap { $0.value }
+      .filter { !$0.isBlank }
   }
 
   func encode(to encoder: Encoder) throws {
@@ -361,6 +368,9 @@ struct RestrictionConfiguration: Codable, Equatable {
     // byte for byte.
     if !preferredLimits.isEmpty {
       try c.encode(preferredLimits, forKey: .preferredLimits)
+    }
+    if !routineAppKeys.isEmpty {
+      try c.encode(routineAppKeys, forKey: .routineAppKeys)
     }
   }
 

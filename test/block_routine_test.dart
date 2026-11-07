@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:focustrace/focus_trace.dart';
 
@@ -46,6 +48,36 @@ void main() {
     expect(payload, contains('"dailyLimitMinutes":60'));
     expect(payload, contains('"routines"'));
     expect(payload, isNot(contains('"routineBlocks"')));
+  });
+
+  test('picked iOS groups of every routine are listed, also paused ones', () {
+    final payload =
+        jsonDecode(
+              encodeRestrictionConfiguration(const [], const [
+                BlockRoutine(
+                  id: 'paused',
+                  name: 'Paused',
+                  dailyLimitMinutes: 30,
+                  apps: [
+                    RoutineApp(appKey: 'ios-sel:b', appName: 'B'),
+                    RoutineApp(appKey: 'video', appName: 'Video'),
+                  ],
+                ),
+                BlockRoutine(
+                  id: 'no-limit',
+                  name: 'No limit',
+                  isEnabled: true,
+                  apps: [RoutineApp(appKey: 'ios-sel:a', appName: 'A')],
+                ),
+              ]),
+            )
+            as Map;
+    expect(payload['routines'], isEmpty);
+    expect(payload['routineAppKeys'], ['ios-sel:a', 'ios-sel:b']);
+    expect(
+      jsonDecode(encodeRestrictionConfiguration(const [], const [])),
+      isNot(contains('routineAppKeys')),
+    );
   });
 
   test('legacy enabled routine migrates to no limit and disabled', () {

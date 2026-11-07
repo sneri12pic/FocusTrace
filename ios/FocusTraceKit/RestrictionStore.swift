@@ -83,8 +83,9 @@ struct RestrictionStore {
       .sorted()
   }
 
-  /// Drops selections no rule or routine refers to. A selection younger than
-  /// `grace` is kept: it may belong to a rule the user is still editing.
+  /// Drops selections no rule, routine (enabled or not: `routineAppKeys`) or
+  /// preferred limit refers to. A selection younger than `grace` is kept: it
+  /// may belong to a rule the user is still editing.
   func removeUnreferencedSelections(now: Date = Date(), grace: TimeInterval = 86_400) {
     let config = configuration
     var referenced = Set(config.rules.compactMap { $0.selectionId })
@@ -93,6 +94,7 @@ struct RestrictionStore {
         referenced.insert(String(app.appKey.dropFirst(iosSelectionKeyPrefix.count)))
       }
     }
+    referenced.formUnion(config.routineAppKeys.compactMap(UsageEvents.selectionId(of:)))
     for preferred in config.preferredLimits {
       referenced.formUnion(preferred.appKeys.compactMap(UsageEvents.selectionId(of:)))
     }
@@ -315,8 +317,24 @@ enum RestrictionSync {
       else { continue }
       remeasuredRoutines.insert(routine.id)
     }
+    // A reached flag whose limit, routine or member cap is gone (deleted, or a
+    // routine paused: disabled routines are not sent) is forgotten too, so a
+    // limit recreated on the same key or a routine turned on again the same
+    // day is measured afresh instead of staying blocked.
+    var current = Set<String>()
+    for rule in next where rule.type == .dailyLimit && rule.selectionId != nil {
+      current.insert(rule.key)
+    }
+    for routine in nextConfiguration.routines {
+      current.insert(UsageEvents.routineKey(routine.id))
+      for member in routine.cappedApps {
+        guard let id = UsageEvents.selectionId(of: member.appKey) else { continue }
+        current.insert(UsageEvents.routineAppKey(routine.id, selectionId: id))
+      }
+    }
     store.clearReached { key in
-      remeasured.contains(key)
+      !current.contains(key)
+        || remeasured.contains(key)
         || remeasuredRoutines.contains { id in
           key == UsageEvents.routineKey(id) || key.hasPrefix("routineApp:\(id):")
         }

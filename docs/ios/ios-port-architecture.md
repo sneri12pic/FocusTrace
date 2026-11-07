@@ -78,7 +78,7 @@ Runner-only Swift (UIKit, Flutter): `Runner/FocusTraceChannels.swift`,
 
 | Channel | Method | Behaviour |
 | --- | --- | --- |
-| `focustrace/usage` | `syncRestrictions(json)` | `RestrictionSync.apply`: every removed or changed rule must pass the change guard, else `RESTRICTION_LOCKED` and nothing is stored (as Android). A limit or routine whose thresholds changed forgets that it was reached today. Then unreferenced selections older than a day are dropped, shields reconciled, monitoring updated. |
+| `focustrace/usage` | `syncRestrictions(json)` | `RestrictionSync.apply`: every removed or changed rule must pass the change guard, else `RESTRICTION_LOCKED` and nothing is stored (as Android). A limit, routine or member cap whose thresholds changed, or that is no longer in the configuration (deleted, routine paused), forgets that it was reached today. Then unreferenced selections older than a day are dropped, shields reconciled, monitoring updated. |
 | | `readRestrictionConfiguration` | The JSON last stored, verbatim (or null). |
 | | `requestRestrictionChange({appKey, type})` | Guard with `request: true`; "allowed" / "cooldown" / "hard"; "allowed" when no such rule. |
 | | `hasNotificationsPermission`, `requestNotificationsPermission` | `UNUserNotificationCenter` (alert, sound); also stored in the App Group for the shield. |
@@ -113,7 +113,10 @@ Every other `focustrace/usage` method answers `notImplemented`;
   (reconcile) and `events` (record/take block events).
 - Routine members and preferred limits refer to selections by the same
   `ios-sel:<uuid>` app keys; such a selection is kept while any rule, routine
-  or preferred limit refers to it.
+  or preferred limit refers to it. Dart sends only enabled routines with a
+  limit, so it also sends `routineAppKeys` (every routine's `ios-sel:` keys,
+  paused ones included; only when non-empty, Android ignores it), which keeps
+  a paused routine's selections for when it is turned on again.
 - `preferredLimits: [{limitMinutes, apps}]` (wire format of the
   preferred-usage work, Android `PreferredLimit`) is decoded and planned when
   present and re-encoded only when non-empty. Dart on develop does not send it.
@@ -167,10 +170,12 @@ Every other `focustrace/usage` method answers `notImplemented`;
   day, as on Android (the editor sets no weekdays for them; Kotlin ignores
   them). Members whose app key is not an `ios-sel:` selection are ignored.
 - Notifications are posted by the monitor extension, at most once per
-  activity and event per day (a restarted activity re-reports passed
-  thresholds), with one identifier per activity so a newer notice replaces the
-  previous one. Without permission iOS drops them; blocking never depends on
-  them.
+  activity, event and limit minutes per day (a restarted activity re-reports
+  passed thresholds; a limit raised the same day warns again, as Android's
+  key holds the limit), with one identifier per activity so a newer notice
+  replaces the previous one. No warning is posted for a limit or routine
+  already reached today, and the reached event removes a delivered warning.
+  Without permission iOS drops them; blocking never depends on them.
 - Activity budget: at most 20 activities, in this order: block-now rules
   (soonest end first), daily limits and routines, schedules whose weekday is
   today (or that block now), other schedules, preferred limits. The order is

@@ -90,7 +90,8 @@ final fixtureRoutines = [
       ),
     ],
   ),
-  // Disabled routines are not sent.
+  // Disabled routines are not sent, but their picked groups are listed in
+  // routineAppKeys so iOS keeps those selections (Reading is used only here).
   const BlockRoutine(
     id: 'routine-3',
     name: 'Paused',
@@ -99,6 +100,10 @@ final fixtureRoutines = [
       RoutineApp(
         appKey: 'ios-sel:0f8fad5b-d9cb-469f-a165-70867728950e',
         appName: 'Social',
+      ),
+      RoutineApp(
+        appKey: 'ios-sel:5d0c7a3e-1f2b-4c6d-8e9f-0a1b2c3d4e5f',
+        appName: 'Reading',
       ),
     ],
   ),
