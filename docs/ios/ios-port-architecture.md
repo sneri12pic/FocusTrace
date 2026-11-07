@@ -163,8 +163,8 @@ Every other `focustrace/usage` method answers `notImplemented`;
   `createIosRestriction` (authorize, picker, name dialog, usual editor) and
   draws selection icons through `SelectionIcons` (letter avatar elsewhere).
 - Shield texts come from the ARB files (`shield*` keys), sent by
-  `syncShieldStrings` when the restrictions screen's locale changes and before
-  each pick; English defaults live in `ShieldStrings.swift`.
+  `syncShieldStrings` when the restrictions screen's locale changes (a locale
+  counts as sent only once iOS stored the texts) and before each pick; English defaults live in `ShieldStrings.swift`.
 
 ## Entitlements and App Group
 

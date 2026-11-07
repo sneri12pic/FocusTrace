@@ -251,8 +251,9 @@ Future<String?> showSelectionNameDialog(
   );
 }
 
-/// Pushes the block screen's texts to iOS in the app's language.
-Future<void> syncShieldStrings(BuildContext context, WidgetRef ref) async {
+/// Pushes the block screen's texts to iOS in the app's language. True when
+/// iOS stored them.
+Future<bool> syncShieldStrings(BuildContext context, WidgetRef ref) async {
   final l = context.l10n;
   const time = '{time}';
   const name = '{name}';
@@ -266,9 +267,11 @@ Future<void> syncShieldStrings(BuildContext context, WidgetRef ref) async {
       'unblockInApp': l.shieldUnblockInApp,
       'notificationBody': l.shieldNotificationBody(name),
     });
+    return true;
   } catch (error) {
     // The shield falls back to English.
     debugPrint('Shield strings not sent: $error');
+    return false;
   }
 }
 
