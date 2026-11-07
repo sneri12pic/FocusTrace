@@ -1,6 +1,7 @@
 import '../../application/services/usage_aggregation_service.dart';
 import '../../domain/models/app_usage_summary.dart';
 import '../../domain/models/daily_app_usage.dart';
+import '../../domain/models/platform_capabilities.dart';
 import '../../domain/models/usage_session.dart';
 import '../../domain/repositories/usage_repository.dart';
 import '../datasources/focus_trace_local_data_source.dart';
@@ -15,11 +16,13 @@ class UsageRepositoryImpl implements UsageRepository, AppMetadataRepository {
     UsageAggregationService aggregationService =
         const UsageAggregationService(),
   }) : _platform = platform,
+       _capabilities = PlatformCapabilities.forPlatform(platform),
        _localDataSource = localDataSource,
        _platformDataSource = platformDataSource,
        _aggregationService = aggregationService;
 
   final UsagePlatform _platform;
+  final PlatformCapabilities _capabilities;
   final FocusTraceLocalDataSource _localDataSource;
   final PlatformUsageDataSource _platformDataSource;
   final UsageAggregationService _aggregationService;
@@ -120,7 +123,7 @@ class UsageRepositoryImpl implements UsageRepository, AppMetadataRepository {
   Future<List<AppUsageSummary>> _withCurrentMetadata(
     List<AppUsageSummary> stored,
   ) async {
-    if (_platform != UsagePlatform.android || stored.isEmpty) {
+    if (!_capabilities.installedAppList || stored.isEmpty) {
       return _aggregationService.withPercentages(stored);
     }
 
@@ -183,7 +186,7 @@ class UsageRepositoryImpl implements UsageRepository, AppMetadataRepository {
     DateTime date, {
     int limit = 3,
   }) async {
-    if (_platform != UsagePlatform.windows) {
+    if (!_capabilities.activeWindowTracking) {
       // Android summaries come from the OS; no per-session rows exist.
       return const <UsageSession>[];
     }

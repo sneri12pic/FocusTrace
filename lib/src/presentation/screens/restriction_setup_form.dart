@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
+import '../../data/datasources/screen_time_channel.dart';
 import '../../domain/models/app_usage_summary.dart';
 import '../../domain/models/restriction_rule.dart';
 import '../localization/app_localizations_x.dart';
 import '../widgets/app_category_widgets.dart';
 import '../widgets/app_icon_avatar.dart';
+import '../widgets/selection_icons.dart';
 import '../widgets/trend_color.dart';
 import '../widgets/usage_calendar.dart';
 import 'restriction_editor_sheet.dart';
@@ -21,6 +23,7 @@ class RestrictionSetupForm extends StatefulWidget {
     this.averageSeconds,
     this.scrollController,
     this.scheduleUsage,
+    this.allowDailyLimit = true,
   });
   final String appKey, appName;
   final RestrictionRule? existing, initial;
@@ -32,13 +35,21 @@ class RestrictionSetupForm extends StatefulWidget {
 
   /// This app's recent usage per quarter-hour, drawn under the schedule.
   final List<int>? scheduleUsage;
+
+  /// Whether the platform can enforce daily limits (not iOS before phase 3).
+  final bool allowDailyLimit;
   @override
   State<RestrictionSetupForm> createState() => _RestrictionSetupFormState();
 }
 
 class _RestrictionSetupFormState extends State<RestrictionSetupForm> {
   RestrictionRule? get seed => widget.initial ?? widget.existing;
-  late RestrictionRuleType type = seed?.type ?? RestrictionRuleType.dailyLimit;
+  late RestrictionRuleType type =
+      seed?.type ??
+      (widget.allowDailyLimit
+          ? RestrictionRuleType.dailyLimit
+          : RestrictionRuleType.schedule);
+  bool get isSelection => isIosSelectionKey(widget.appKey);
   late RestrictionDifficulty difficulty =
       seed?.difficulty ?? RestrictionDifficulty.easy;
   late int minutes = seed?.limitMinutes ?? 90;
@@ -75,11 +86,18 @@ class _RestrictionSetupFormState extends State<RestrictionSetupForm> {
       padding: const EdgeInsets.fromLTRB(20, 16, 8, 8),
       child: Row(
         children: [
-          AppIconAvatar(
-            appName: widget.appName,
-            iconBytes: widget.iconBytes,
-            size: 48,
-          ),
+          if (isSelection)
+            SelectionIcons(
+              appKey: widget.appKey,
+              appName: widget.appName,
+              size: 40,
+            )
+          else
+            AppIconAvatar(
+              appName: widget.appName,
+              iconBytes: widget.iconBytes,
+              size: 48,
+            ),
           const SizedBox(width: 14),
           Expanded(
             child: Column(
@@ -94,18 +112,20 @@ class _RestrictionSetupFormState extends State<RestrictionSetupForm> {
                     fontWeight: FontWeight.w700,
                   ),
                 ),
-                // The app's category, shown and changeable here too.
-                Padding(
-                  padding: const EdgeInsets.only(top: 6),
-                  child: AppCategoryTag(
-                    AppUsageSummary(
-                      appName: widget.appName,
-                      packageName: widget.appKey,
-                      totalDurationSeconds: 0,
-                      percentageOfTotal: 0,
+                // The app's category, shown and changeable here too. An iOS
+                // selection is a group of apps with no single category.
+                if (!isSelection)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 6),
+                    child: AppCategoryTag(
+                      AppUsageSummary(
+                        appName: widget.appName,
+                        packageName: widget.appKey,
+                        totalDurationSeconds: 0,
+                        percentageOfTotal: 0,
+                      ),
                     ),
                   ),
-                ),
                 if (widget.averageSeconds != null)
                   Text(
                     l.rxAverageApp(
@@ -148,11 +168,13 @@ class _RestrictionSetupFormState extends State<RestrictionSetupForm> {
                       selected: type,
                       onSelected: (t) => setState(() => type = t),
                       options: [
-                        (
-                          RestrictionRuleType.dailyLimit,
-                          Icons.hourglass_bottom_rounded,
-                          l.rxDailyLimit,
-                        ),
+                        if (widget.allowDailyLimit ||
+                            type == RestrictionRuleType.dailyLimit)
+                          (
+                            RestrictionRuleType.dailyLimit,
+                            Icons.hourglass_bottom_rounded,
+                            l.rxDailyLimit,
+                          ),
                         (
                           RestrictionRuleType.schedule,
                           Icons.calendar_month_outlined,

@@ -5,11 +5,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
+import '../../data/datasources/screen_time_channel.dart';
 import '../../domain/models/app_usage_summary.dart';
 import '../../domain/models/block_routine.dart';
+import '../../domain/models/platform_capabilities.dart';
 import '../../domain/models/restriction_rule.dart';
 import '../../domain/models/usage_item.dart';
-import '../../domain/models/usage_session.dart';
 import '../../domain/repositories/usage_repository.dart';
 import '../localization/app_localizations_x.dart';
 import '../providers.dart';
@@ -17,7 +18,9 @@ import '../widgets/app_category_widgets.dart';
 import '../widgets/app_icon_avatar.dart';
 import '../widgets/trend_color.dart';
 import '../widgets/restriction_discovery.dart';
+import '../widgets/selection_icons.dart';
 import '../view_models/restriction_insights.dart';
+import 'ios_selection_usage_screen.dart';
 import 'restriction_editor_sheet.dart';
 import 'routine_editor_sheet.dart';
 import 'routine_details_screen.dart';
@@ -78,12 +81,42 @@ final restrictedAppIconsProvider = FutureProvider.autoDispose
       }
     });
 
+/// iOS: the app groups a routine can hold are the ones picked in Apple's
+/// picker, under the names the user gave them (rules first, then groups only
+/// routines use). iOS never lists installed apps.
+@visibleForTesting
+List<AppUsageSummary> iosRoutineCandidates(
+  List<RestrictionRule> rules,
+  List<BlockRoutine> routines,
+) {
+  final byKey = <String, AppUsageSummary>{};
+  void add(String appKey, String appName) => byKey.putIfAbsent(
+    appKey,
+    () => AppUsageSummary(
+      appName: appName,
+      packageName: appKey,
+      totalDurationSeconds: 0,
+      percentageOfTotal: 0,
+    ),
+  );
+  for (final rule in rules) {
+    if (isIosSelectionKey(rule.appKey)) add(rule.appKey, rule.appName);
+  }
+  for (final routine in routines) {
+    for (final app in routine.apps) {
+      if (isIosSelectionKey(app.appKey)) add(app.appKey, app.appName);
+    }
+  }
+  return byKey.values.toList();
+}
+
 class RestrictionsScreen extends ConsumerWidget {
   const RestrictionsScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(restrictionsViewModelProvider);
+    final capabilities = PlatformCapabilities.forPlatform(state.platform);
     final viewModel = ref.read(restrictionsViewModelProvider.notifier);
     final dashboardState = ref.watch(dashboardViewModelProvider);
     final summaries = dashboardState.summaries;
@@ -92,6 +125,10 @@ class RestrictionsScreen extends ConsumerWidget {
         ref.watch(installedAppsProvider).valueOrNull ?? const [];
     final appCandidates = _mergeAppCandidates(summaries, installedApps);
     final appsByKey = {for (final app in appCandidates) app.appKey: app};
+    // What routines can hold: picked groups on iOS, installed apps elsewhere.
+    final routineCandidates = capabilities.nativeAppPicker
+        ? iosRoutineCandidates(state.rules, state.routines)
+        : appCandidates;
     final restrictedKeys = {
       for (final rule in state.rules) rule.appKey,
       for (final routine in state.routines)
@@ -131,13 +168,17 @@ class RestrictionsScreen extends ConsumerWidget {
       for (final app in state.todayUsage) app.appKey: app.totalDurationSeconds,
     };
 
-    void chooseApp({bool search = false}) => _chooseAppAndCreateRule(
-      context,
-      ref,
-      apps: appCandidates,
-      rules: state.rules,
-      search: search,
-    );
+    // iOS picks apps in Apple's picker; elsewhere from the app list.
+    void chooseApp({bool search = false}) => capabilities.nativeAppPicker
+        ? createIosRestriction(context, ref)
+        : _chooseAppAndCreateRule(
+            context,
+            ref,
+            apps: appCandidates,
+            rules: state.rules,
+            search: search,
+          );
+    final screenTimeStatus = ref.watch(screenTimeAuthorizationProvider);
     final theme = Theme.of(context);
     return Scaffold(
       appBar: AppBar(
@@ -157,7 +198,7 @@ class RestrictionsScreen extends ConsumerWidget {
           padding: const EdgeInsets.fromLTRB(16, 4, 16, 48),
           children: [
             // Permission and platform problems stay at the very top.
-            if (state.platform == UsagePlatform.android &&
+            if (capabilities.overlayPermission &&
                 !state.hasOverlayPermission) ...[
               _OverlayPermissionCard(
                 onOpenSettings: viewModel.openOverlaySettings,
@@ -165,7 +206,19 @@ class RestrictionsScreen extends ConsumerWidget {
               ),
               const SizedBox(height: 12),
             ],
-            if (state.platform != UsagePlatform.android) ...[
+            if (capabilities.screenTimeAuthorization) ...[
+              const _ShieldStringsSync(),
+              if (screenTimeStatus !=
+                  ScreenTimeAuthorizationStatus.approved) ...[
+                _ScreenTimeCard(
+                  onAllow: () => ref
+                      .read(screenTimeAuthorizationProvider.notifier)
+                      .request(),
+                ),
+                const SizedBox(height: 12),
+              ],
+            ],
+            if (!capabilities.appBlocking) ...[
               _InfoCard(
                 title: context.l10n.restrictionsPlatformStatusTitle,
                 body: context.l10n.restrictionsPlatformStatusBody,
@@ -235,7 +288,21 @@ class RestrictionsScreen extends ConsumerWidget {
                     summary: routineAppsByKey[rule.appKey]?.copyWith(
                       totalDurationSeconds: todayUsageByKey[rule.appKey] ?? 0,
                     ),
+                    showUsage: capabilities.usageNumbersInFlutter,
                     isSaving: state.isSaving,
+                    // iOS: usage of a picked group is a native report.
+                    onShowUsage:
+                        capabilities.nativeUsageReports &&
+                            isIosSelectionKey(rule.appKey)
+                        ? () => Navigator.of(context).push<void>(
+                            MaterialPageRoute(
+                              builder: (context) => IosSelectionUsageScreen(
+                                appKey: rule.appKey,
+                                appName: rule.appName,
+                              ),
+                            ),
+                          )
+                        : null,
                     onUnblockNow: () async {
                       if (!await confirmRestrictionChange(
                         context,
@@ -287,42 +354,51 @@ class RestrictionsScreen extends ConsumerWidget {
                   ),
               ],
             ],
-            const SizedBox(height: 28),
-            ChooseAppsSection(onSearch: () => chooseApp(search: true)),
-            const SizedBox(height: 24),
-            const BusiestHoursCard(),
-            const SizedBox(height: 28),
-            _SectionTitle(
-              title: context.l10n.restrictionsRoutinesTitle,
-              action: Tooltip(
-                message: context.l10n.restrictionsAddRoutine,
-                child: TextButton.icon(
-                  onPressed: () => _createRoutine(context, ref, appCandidates),
-                  icon: const Icon(Icons.add),
-                  label: Text(context.l10n.rxCreate),
-                ),
-              ),
-            ),
-            if (state.routines.isEmpty)
-              _InfoCard(
-                title: context.l10n.restrictionsRoutinesEmptyTitle,
-                body: context.l10n.restrictionsRoutinesEmptyBody,
-              )
-            else
-              for (final routine in state.routines)
-                _RoutineTile(
-                  routine: routine,
-                  appsByKey: routineAppsByKey,
-                  usageSeconds: routine.usageSeconds(todayUsageByKey),
-                  isSaving: state.isSaving,
-                  onToggle: (enabled) =>
-                      viewModel.setRoutineEnabled(routine, enabled),
-                  onTap: () => _openRoutineDetails(
-                    context,
-                    routine: routine,
-                    apps: appCandidates,
+            // Both rank apps and hours by usage Flutter does not have on iOS
+            // (it would read as zero); "Add" opens Apple's picker there.
+            if (!capabilities.nativeUsageReports) ...[
+              const SizedBox(height: 28),
+              ChooseAppsSection(onSearch: () => chooseApp(search: true)),
+              const SizedBox(height: 24),
+              const BusiestHoursCard(),
+            ],
+            // Routines are shared daily allowances.
+            if (capabilities.dailyLimits) ...[
+              const SizedBox(height: 28),
+              _SectionTitle(
+                title: context.l10n.restrictionsRoutinesTitle,
+                action: Tooltip(
+                  message: context.l10n.restrictionsAddRoutine,
+                  child: TextButton.icon(
+                    onPressed: () =>
+                        _createRoutine(context, ref, routineCandidates),
+                    icon: const Icon(Icons.add),
+                    label: Text(context.l10n.rxCreate),
                   ),
                 ),
+              ),
+              if (state.routines.isEmpty)
+                _InfoCard(
+                  title: context.l10n.restrictionsRoutinesEmptyTitle,
+                  body: context.l10n.restrictionsRoutinesEmptyBody,
+                )
+              else
+                for (final routine in state.routines)
+                  _RoutineTile(
+                    routine: routine,
+                    appsByKey: routineAppsByKey,
+                    usageSeconds: routine.usageSeconds(todayUsageByKey),
+                    showUsage: capabilities.usageNumbersInFlutter,
+                    isSaving: state.isSaving,
+                    onToggle: (enabled) =>
+                        viewModel.setRoutineEnabled(routine, enabled),
+                    onTap: () => _openRoutineDetails(
+                      context,
+                      routine: routine,
+                      apps: routineCandidates,
+                    ),
+                  ),
+            ],
             const SizedBox(height: 14),
           ],
         ),
@@ -349,7 +425,14 @@ class RestrictionsScreen extends ConsumerWidget {
     WidgetRef ref,
     List<AppUsageSummary> apps,
   ) async {
-    final routine = await showRoutineEditor(context, apps: apps);
+    final capabilities = ref.read(platformCapabilitiesProvider);
+    final routine = await showRoutineEditor(
+      context,
+      apps: apps,
+      pickNewApps: capabilities.nativeAppPicker
+          ? () => pickIosAppGroup(context, ref)
+          : null,
+    );
     if (routine == null || !context.mounted) {
       return;
     }
@@ -579,11 +662,15 @@ class _RoutineTile extends StatelessWidget {
     required this.isSaving,
     required this.onToggle,
     required this.onTap,
+    this.showUsage = true,
   });
 
   final BlockRoutine routine;
   final Map<String, AppUsageSummary> appsByKey;
   final int usageSeconds;
+
+  /// False where usage never reaches Flutter (iOS): the limit only.
+  final bool showUsage;
   final bool isSaving;
   final ValueChanged<bool> onToggle;
   final VoidCallback onTap;
@@ -638,7 +725,9 @@ class _RoutineTile extends StatelessWidget {
                           style: muted,
                         ),
                         Text(
-                          limit == null
+                          limit == null && !showUsage
+                              ? l.routineNoDailyLimit
+                              : limit == null
                               ? l.routineUsageOnly(
                                   l.compactDuration(
                                     Duration(seconds: usageSeconds),
@@ -667,7 +756,7 @@ class _RoutineTile extends StatelessWidget {
                   const Icon(Icons.chevron_right),
                 ],
               ),
-              if (limit != null && routine.isEnabled)
+              if (limit != null && routine.isEnabled && showUsage)
                 Padding(
                   padding: const EdgeInsets.only(top: 12, right: 8),
                   child: Column(
@@ -855,10 +944,20 @@ class _RestrictionRuleTile extends StatelessWidget {
     required this.onUnblockNow,
     required this.onTap,
     required this.onDelete,
+    this.showUsage = true,
+    this.onShowUsage,
   });
+
+  /// Opens the rule's usage report (iOS picked groups); no menu entry when
+  /// null.
+  final VoidCallback? onShowUsage;
 
   final RestrictionRule rule;
   final AppUsageSummary? summary;
+
+  /// False where usage never reaches Flutter (iOS): a limit shows its size
+  /// only, never time used or left.
+  final bool showUsage;
   final bool isSaving;
   final VoidCallback onUnblockNow;
   final VoidCallback onTap;
@@ -885,6 +984,7 @@ class _RestrictionRuleTile extends StatelessWidget {
       l.rxHard,
     ][rule.difficulty.index];
     final isLimit =
+        showUsage &&
         rule.type == RestrictionRuleType.dailyLimit &&
         (rule.limitMinutes ?? 0) > 0;
     // Hard rules cannot be unblocked or removed while they block, so the
@@ -911,11 +1011,18 @@ class _RestrictionRuleTile extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  AppIconAvatar(
-                    appName: rule.appName,
-                    iconBytes: summary?.iconBytes,
-                    size: 36,
-                  ),
+                  if (isIosSelectionKey(rule.appKey))
+                    SelectionIcons(
+                      appKey: rule.appKey,
+                      appName: rule.appName,
+                      size: 30,
+                    )
+                  else
+                    AppIconAvatar(
+                      appName: rule.appName,
+                      iconBytes: summary?.iconBytes,
+                      size: 36,
+                    ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Column(
@@ -977,9 +1084,16 @@ class _RestrictionRuleTile extends StatelessWidget {
                     onSelected: (action) => switch (action) {
                       'edit' => onTap(),
                       'unblock' => onUnblockNow(),
+                      'usage' => onShowUsage?.call(),
                       _ => onDelete(),
                     },
                     itemBuilder: (context) => [
+                      if (onShowUsage != null)
+                        PopupMenuItem(
+                          key: const ValueKey('rule-usage-menu-item'),
+                          value: 'usage',
+                          child: Text(l.iosUsageMenuItem),
+                        ),
                       PopupMenuItem(value: 'edit', child: Text(l.rxEdit)),
                       if (isBlocked && !locked)
                         PopupMenuItem(
@@ -1071,6 +1185,9 @@ class _RestrictionRuleTile extends StatelessWidget {
       );
     }
     switch (rule.type) {
+      case RestrictionRuleType.dailyLimit when !showUsage:
+        // Screen Time enforces it; the time left is not known here.
+        return ('', theme.colorScheme.primary);
       case RestrictionRuleType.dailyLimit:
         final left = (rule.limitMinutes ?? 0) * 60 - usageSeconds;
         return (
@@ -1191,6 +1308,68 @@ class _LimitProgress extends StatelessWidget {
       ),
     );
   }
+}
+
+/// iOS: blocking needs the user's Screen Time authorization.
+class _ScreenTimeCard extends StatelessWidget {
+  const _ScreenTimeCard({required this.onAllow});
+
+  final VoidCallback onAllow;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Card(
+      key: const ValueKey('screen-time-card'),
+      elevation: 0,
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              context.l10n.rxScreenTimeNeededTitle,
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(context.l10n.rxScreenTimeNeededBody),
+            const SizedBox(height: 12),
+            FilledButton(
+              onPressed: onAllow,
+              child: Text(context.l10n.onboardingAllow),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Keeps the iOS block screen's texts in the app's current language.
+class _ShieldStringsSync extends ConsumerStatefulWidget {
+  const _ShieldStringsSync();
+
+  @override
+  ConsumerState<_ShieldStringsSync> createState() => _ShieldStringsSyncState();
+}
+
+class _ShieldStringsSyncState extends ConsumerState<_ShieldStringsSync> {
+  Locale? _sent;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final locale = Localizations.localeOf(context);
+    if (locale == _sent) return;
+    _sent = locale;
+    syncShieldStrings(context, ref);
+  }
+
+  @override
+  Widget build(BuildContext context) => const SizedBox.shrink();
 }
 
 class _OverlayPermissionCard extends StatelessWidget {

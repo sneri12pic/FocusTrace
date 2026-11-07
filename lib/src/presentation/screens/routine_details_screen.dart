@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../domain/models/app_usage_summary.dart';
 import '../../domain/models/block_routine.dart';
+import '../../domain/models/platform_capabilities.dart';
 import '../../domain/models/restriction_rule.dart';
 import '../localization/app_localizations_x.dart';
 import '../providers.dart';
@@ -127,6 +128,8 @@ class _RoutineDetailsScreenState extends ConsumerState<RoutineDetailsScreen>
       for (final app in state.todayUsage) app.appKey: app.totalDurationSeconds,
     };
     final usedSeconds = routine.usageSeconds(usageByKey);
+    final capabilities = PlatformCapabilities.forPlatform(state.platform);
+    final showUsage = capabilities.usageNumbersInFlutter;
 
     return Scaffold(
       appBar: AppBar(
@@ -173,6 +176,7 @@ class _RoutineDetailsScreenState extends ConsumerState<RoutineDetailsScreen>
             _UsageCard(
               routine: routine,
               usedSeconds: usedSeconds,
+              showUsage: showUsage,
               isSaving: state.isSaving,
               onToggle: (value) => _toggleLimit(routine, value),
               onEditLimit: () => _editLimit(routine),
@@ -196,7 +200,13 @@ class _RoutineDetailsScreenState extends ConsumerState<RoutineDetailsScreen>
                 FilledButton.tonalIcon(
                   onPressed: state.isSaving
                       ? null
-                      : () => _addApp(routine, summariesByKey.values.toList()),
+                      : () => _addApp(
+                          routine,
+                          summariesByKey.values.toList(),
+                          pickNew: capabilities.nativeAppPicker
+                              ? () => pickIosAppGroup(context, ref)
+                              : null,
+                        ),
                   icon: const Icon(Icons.add),
                   label: Text(context.l10n.routineAddApps),
                 ),
@@ -216,7 +226,7 @@ class _RoutineDetailsScreenState extends ConsumerState<RoutineDetailsScreen>
                 key: ValueKey(app.appKey),
                 app: app,
                 summary: summariesByKey[app.appKey],
-                usageSeconds: usageByKey[app.appKey] ?? 0,
+                usageSeconds: showUsage ? usageByKey[app.appKey] ?? 0 : null,
                 reasons: appBlockReasons(
                   context,
                   appKey: app.appKey,
@@ -298,8 +308,9 @@ class _RoutineDetailsScreenState extends ConsumerState<RoutineDetailsScreen>
 
   Future<void> _addApp(
     BlockRoutine routine,
-    List<AppUsageSummary> candidates,
-  ) async {
+    List<AppUsageSummary> candidates, {
+    Future<AppUsageSummary?> Function()? pickNew,
+  }) async {
     final existingKeys = routine.apps.map((app) => app.appKey).toSet();
     final available = candidates
         .where((app) => !existingKeys.contains(app.appKey))
@@ -308,7 +319,7 @@ class _RoutineDetailsScreenState extends ConsumerState<RoutineDetailsScreen>
       context: context,
       isScrollControlled: true,
       backgroundColor: const Color(0xFF0D111A),
-      builder: (context) => _AddAppsSheet(apps: available),
+      builder: (context) => _AddAppsSheet(apps: available, pickNew: pickNew),
     );
     if (selected == null || selected.isEmpty || !mounted) return;
     await _save(
@@ -459,10 +470,14 @@ class _UsageCard extends StatelessWidget {
     required this.onToggle,
     required this.onEditLimit,
     this.onRemoveLimit,
+    this.showUsage = true,
   });
 
   final BlockRoutine routine;
   final int usedSeconds;
+
+  /// False where usage never reaches Flutter (iOS): the limit, not the use.
+  final bool showUsage;
   final bool isSaving;
   final ValueChanged<bool> onToggle;
   final VoidCallback onEditLimit;
@@ -476,7 +491,8 @@ class _UsageCard extends StatelessWidget {
     final progress = limitSeconds == 0
         ? 0.0
         : (usedSeconds / limitSeconds).clamp(0.0, 1.0);
-    final exhausted = limitSeconds > 0 && usedSeconds >= limitSeconds;
+    final exhausted =
+        showUsage && limitSeconds > 0 && usedSeconds >= limitSeconds;
     final status = limitMinutes == null
         ? context.l10n.routineNoDailyLimit
         : !routine.canEnforceLimit
@@ -498,7 +514,9 @@ class _UsageCard extends StatelessWidget {
               children: [
                 Expanded(
                   child: Text(
-                    context.l10n.routineUsageToday,
+                    showUsage
+                        ? context.l10n.routineUsageToday
+                        : context.l10n.routineDailyLimit,
                     style: theme.textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.w700,
                     ),
@@ -514,7 +532,13 @@ class _UsageCard extends StatelessWidget {
               ],
             ),
             Text(
-              context.l10n.compactDuration(Duration(seconds: usedSeconds)),
+              showUsage
+                  ? context.l10n.compactDuration(Duration(seconds: usedSeconds))
+                  : limitMinutes == null
+                  ? context.l10n.routineNoDailyLimit
+                  : context.l10n.compactDuration(
+                      Duration(minutes: limitMinutes),
+                    ),
               style: theme.textTheme.headlineMedium?.copyWith(
                 color: theme.colorScheme.primary,
                 fontWeight: FontWeight.w800,
@@ -522,7 +546,7 @@ class _UsageCard extends StatelessWidget {
             ),
             const SizedBox(height: 4),
             Text(status),
-            if (limitMinutes != null) ...[
+            if (limitMinutes != null && showUsage) ...[
               const SizedBox(height: 12),
               LinearProgressIndicator(value: progress),
               const SizedBox(height: 8),
@@ -589,7 +613,9 @@ class _RoutineAppRow extends StatelessWidget {
 
   final RoutineApp app;
   final AppUsageSummary? summary;
-  final int usageSeconds;
+
+  /// Null where usage never reaches Flutter (iOS).
+  final int? usageSeconds;
   final List<String> reasons;
   final bool isSaving;
   final VoidCallback onOpen;
@@ -601,7 +627,10 @@ class _RoutineAppRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final l = context.l10n;
     final theme = Theme.of(context);
-    final usage = l.compactDuration(Duration(seconds: usageSeconds));
+    final seconds = usageSeconds;
+    final usage = seconds == null
+        ? null
+        : l.compactDuration(Duration(seconds: seconds));
     final blocked = trendColor(theme, isFlat: false, isIncrease: true);
     return Card(
       elevation: 0,
@@ -644,9 +673,15 @@ class _RoutineAppRow extends StatelessWidget {
                                     style: theme.textTheme.titleMedium,
                                   ),
                                   Text(
-                                    app.isIncludedInLimit
-                                        ? l.routineAppUsage(usage)
-                                        : l.routineAppUsageExcluded(usage),
+                                    switch ((usage, app.isIncludedInLimit)) {
+                                      (null, true) => l.routineAppIncluded,
+                                      (null, false) => l.routineAppExcluded,
+                                      (final usage?, true) => l.routineAppUsage(
+                                        usage,
+                                      ),
+                                      (final usage?, false) =>
+                                        l.routineAppUsageExcluded(usage),
+                                    },
                                     style: theme.textTheme.bodySmall?.copyWith(
                                       color: theme.colorScheme.onSurfaceVariant,
                                     ),
@@ -720,9 +755,12 @@ class _RoutineAppRow extends StatelessWidget {
 }
 
 class _AddAppsSheet extends StatefulWidget {
-  const _AddAppsSheet({required this.apps});
+  const _AddAppsSheet({required this.apps, this.pickNew});
 
   final List<AppUsageSummary> apps;
+
+  /// iOS: choose a new group in Apple's picker; it is added at once.
+  final Future<AppUsageSummary?> Function()? pickNew;
 
   @override
   State<_AddAppsSheet> createState() => _AddAppsSheetState();
@@ -761,6 +799,23 @@ class _AddAppsSheetState extends State<_AddAppsSheet> {
                 ],
               ),
             ),
+            if (widget.pickNew != null)
+              Align(
+                alignment: AlignmentDirectional.centerStart,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  child: TextButton.icon(
+                    onPressed: () async {
+                      final app = await widget.pickNew!();
+                      if (app != null && context.mounted) {
+                        Navigator.of(context).pop([app]);
+                      }
+                    },
+                    icon: const Icon(Icons.add),
+                    label: Text(context.l10n.routinePickNewApps),
+                  ),
+                ),
+              ),
             Expanded(
               child: RoutineAppPicker(
                 apps: widget.apps,
