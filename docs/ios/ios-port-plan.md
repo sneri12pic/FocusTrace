@@ -111,9 +111,12 @@ Acceptance criteria:
 
 ### Phase 4 - Usage screens
 
-- `FocusTraceReport` scenes (daily total, per-app, hourly) rendered in SwiftUI.
-- Embedded in Flutter screens through a `UiKitView` platform view hosting
-  `DeviceActivityReport`.
+- `FocusTraceReport` scenes (today, hourly, week, month, appDetail) rendered
+  in SwiftUI with Swift Charts.
+- Embedded in Flutter screens (dashboard, Reports, usage details of a picked
+  group) through a `UiKitView` platform view hosting `DeviceActivityReport`.
+- Reached daily limits shown as blocked in Flutter, with Unblock now through
+  the guard (follow-up from phase 3).
 
 Acceptance criteria:
 - Home and usage-detail screens show the report view on iOS with matching date
@@ -134,13 +137,13 @@ Acceptance criteria:
 
 ## Remaining work
 
-- Phases 2 and 3 are implemented and build in CI; their device acceptance
+- Phases 2-4 are implemented and build in CI; their device acceptance
   criteria are unverified until a signed build runs on an iPhone.
 - Preferred usage time on iOS: Dart sends `preferredLimits` only after the
   preferred-usage work merges; it must then also let iOS pick apps for a
   preferred limit (category limits need an installed-app list iOS does not
   have).
-- Phases 4-5.
+- Phase 5.
 - Request the Family Controls (Distribution) entitlement from Apple for the app
   and every extension bundle id before any TestFlight build.
 - Configure an Apple developer team, App Group and provisioning profiles; CI

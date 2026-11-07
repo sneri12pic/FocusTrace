@@ -40,7 +40,8 @@ All targets live in `ios/Runner.xcodeproj`.
 - System frameworks are linked explicitly. Every target links FamilyControls,
   ManagedSettings and DeviceActivity (FocusTraceKit uses them); in addition
   Runner - SwiftUI, UserNotifications; Monitor - UserNotifications; Shield -
-  ManagedSettingsUI; ShieldAction - UserNotifications; Report - SwiftUI.
+  ManagedSettingsUI; ShieldAction - UserNotifications; Report - SwiftUI,
+  Charts.
 
 ## Shared code: FocusTraceKit
 
@@ -59,6 +60,7 @@ FamilyControls, ManagedSettings and DeviceActivity.
 | `UsageEvents.swift` | Foundation | Usage-threshold activities (limits, routines, preferred usage), reached keys, notification texts |
 | `ShieldPlanner.swift` | Foundation | Shield blocks (rule, routine allowance, routine member cap) and whether each holds |
 | `ShieldStrings.swift` | Foundation | Block screen and notification texts |
+| `UsageReportModels.swift` | Foundation | Report kinds/ranges, hourly/daily buckets, report texts and durations, reached-limit usage |
 | `ScreenTimeEnforcement.swift` | FamilyControls, ManagedSettings, DeviceActivity | Selection codec, `ShieldController`, `ActivityScheduler` |
 
 The Foundation-only files are unit-tested without Xcode:
@@ -69,7 +71,8 @@ which `test/ios_restriction_fixture_test.dart` keeps equal to what Dart's
 JSON, so the format is checked in both directions.
 
 Runner-only Swift (UIKit, Flutter): `Runner/FocusTraceChannels.swift`,
-`Runner/ActivityPicker.swift`, `Runner/SelectionIconsView.swift`, listed in
+`Runner/ActivityPicker.swift`, `Runner/SelectionIconsView.swift`,
+`Runner/UsageReportView.swift`, listed in
 `RUNNER_SOURCES` of the project script.
 
 ## Restrictions on iOS
@@ -83,11 +86,13 @@ Runner-only Swift (UIKit, Flutter): `Runner/FocusTraceChannels.swift`,
 | | `requestRestrictionChange({appKey, type})` | Guard with `request: true`; "allowed" / "cooldown" / "hard"; "allowed" when no such rule. |
 | | `hasNotificationsPermission`, `requestNotificationsPermission` | `UNUserNotificationCenter` (alert, sound); also stored in the App Group for the shield. |
 | | `takeRestrictionEvents` | Block events the shield extension recorded, then forgotten. |
+| | `readReachedLimits` | `{appKey: seconds}` for daily-limit rules the monitor recorded as reached today; seconds = the limit. |
 | `focustrace/screen_time` | `authorizationStatus`, `requestAuthorization` | `AuthorizationCenter`, `.individual`; "notDetermined" / "denied" / "approved". |
 | | `pickSelection({selectionId?, doneLabel, cancelLabel})` | `FamilyActivityPicker` in a `UIHostingController`; returns `{selectionId, appKey, appCount, categoryCount, webDomainCount}` or null when cancelled or empty. With `selectionId` it edits that selection, refused (`RESTRICTION_LOCKED`) while a rule using it is protected. |
 | | `selectionSummary({selectionId})` | Counts of a stored selection, or null. |
 | | `setShieldStrings({strings})` | Block screen texts from the ARB files. |
 | platform view `focustrace/selection_icons` | creationParams `{selectionId, maxIcons, iconSize}` | `Label(token)` icons of a selection plus "+N". |
+| platform view `focustrace/usage_report` | creationParams `{context, range, date, selectionId?, dark}` | `DeviceActivityReport` (see Usage reports). Registered in AppDelegate. |
 
 Every other `focustrace/usage` method answers `notImplemented`;
 `IosUsageDataSource` never calls them (usage methods return empty / false).
@@ -191,7 +196,7 @@ Every other `focustrace/usage` method answers `notImplemented`;
 
 ### Flutter
 
-- `PlatformCapabilities.ios`: `screenTimeAuthorization`, `nativeAppPicker`,
+- `PlatformCapabilities.ios`: `nativeUsageReports`, `screenTimeAuthorization`, `nativeAppPicker`,
   `appBlocking`, `dailyLimits`, `notificationsPermission` (no
   `usageNumbersInFlutter`). Daily limits, routines and the notifications
   permission tile/prompt therefore appear as on Android. Where
@@ -212,6 +217,44 @@ Every other `focustrace/usage` method answers `notImplemented`;
   screen's locale changes and before each pick; texts with a number are sent
   pluralized per count (`limitWarningBody.1-5`, `nudgeLeft.1-5`,
   `nudgeOver.10-120`). English defaults live in `ShieldStrings.swift`.
+
+## Usage reports
+
+- Usage numbers exist only in `FocusTraceReport`. The host
+  (`Runner/UsageReportView.swift`) maps creationParams to
+  `DeviceActivityReport(Context(context), filter:)`: `range` today = hourly
+  segments of the day of `date`, week/month = daily segments of the 7/30
+  days ending with it; `users: .all`, devices iPhone and iPad; with
+  `selectionId` the filter holds that selection's apps, categories and web
+  domains (a missing or empty selection shows "no data", never all usage).
+  `dark` sets the hosting controller's interface style.
+- Scenes (`UsageReportKind`, same names on both sides): `today` (24 hourly
+  dial slices, tap for an hour; pickups, notifications, most active time;
+  "Current list" with category chips, 10 apps), `hourly` (hour bars),
+  `week`/`month` (total, daily average, active days; day bars; 8 most used
+  apps), `appDetail` (totals and dial for today, or totals and day bars; 6
+  apps of the group). Each scene builds a `UsageSnapshot` (at most 60 apps
+  for today, 8 or 6 elsewhere; no images beyond `Label(token)`).
+- Colours are hard-coded in `ReportPalette.swift` from Flutter's theme
+  (light and dark). Texts: Dart sends `report.*` keys (and `report.locale`)
+  in the `setShieldStrings` map; the extension reads them from the App Group
+  (`ReportStrings`), English otherwise. Durations use templates of the
+  `compactDuration` ARB strings.
+- Flutter (`PlatformCapabilities.nativeUsageReports`, iOS):
+  `IosUsageReportView` gives each report a fixed height
+  (`IosUsageReportView.heightFor`, kept in step with the SwiftUI layouts;
+  Dynamic Type capped at Large there) and `IosUsageReportGate` shows a
+  Screen Time card until authorized. Dashboard: today + hourly for the
+  selected day (header without the tracked total). Reports: Weekly/Monthly
+  only, native report plus the restriction activity card. Usage details:
+  `IosSelectionUsageScreen` (Today / 7 days / A month) for `ios-sel:` keys,
+  opened from a rule's "Usage" menu entry or a routine member. The
+  restrictions screen hides "Choose apps to limit" and busiest hours.
+  Taps inside a report cannot navigate Flutter.
+- Reached limits: `RestrictionsViewModel` adds `readReachedLimits` to
+  today's usage (`withReachedLimits`) and to `unblockAppNow`, so limit
+  tiles show "Blocked until" and Unblock now goes through the native guard
+  and removes the rule, as on Android.
 
 ## Entitlements and App Group
 
@@ -246,7 +289,8 @@ Job `ios-build` in `.github/workflows/ci.yml` (macos-15, 40 min): Flutter
 3.32.2, `flutter pub get`, `flutter build ios --debug --no-codesign`, then a
 check that every extension is embedded (PlugIns/ or Extensions/) and does not
 link Flutter (`otool -L`), then the FocusTraceKit unit tests
-(`tool/ios/run_kit_tests.sh`, also when the build failed). It is the
+(`tool/ios/run_kit_tests.sh`, also when the build failed). When the build
+fails, a step re-runs `xcodebuild` to list every Swift error. It is the
 only place Swift is compiled; the developer machines are Windows/Linux. Code
 signing is off, so the build proves compilation and project wiring, not
 entitlement provisioning.
