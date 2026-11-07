@@ -725,6 +725,40 @@ do {
   expectEqual(hours.peakIndex, 0, "busiest hour")
   expectEqual(hours.activeCount, 2, "two active hours")
 
+  // DST days in Berlin: buckets follow the wall clock, still 24 of them.
+  var berlin = Calendar(identifier: .gregorian)
+  berlin.timeZone = TimeZone(identifier: "Europe/Berlin")!
+  func utcDate(_ month: Int, _ day: Int, _ hour: Int, _ minute: Int = 0) -> Date {
+    date(day, hour, minute, month: month)
+  }
+  // 2026-03-29: 02:00 CET jumps to 03:00 CEST; the day has 23 hours.
+  var spring = UsageBuckets.hourly(day: utcDate(3, 29, 10), calendar: berlin)
+  expectEqual(spring.starts.count, 24, "spring DST day: 24 buckets")
+  expectEqual(spring.starts.first, utcDate(3, 28, 23), "spring: starts at local midnight")
+  expectEqual(spring.end, utcDate(3, 29, 22), "spring: ends at the next local midnight")
+  expectEqual(spring.starts[2], spring.starts[3], "spring: the skipped 02:00 hour is empty")
+  expectEqual(spring.starts[3], utcDate(3, 29, 1), "spring: 03:00 CEST")
+  expectEqual(spring.starts[13], utcDate(3, 29, 11), "spring: 13:00 CEST")
+  expectEqual(
+    (0..<24).filter { $0 != 2 }.map { berlin.component(.hour, from: spring.starts[$0]) },
+    (0..<24).filter { $0 != 2 }, "spring: every bucket starts on its clock hour")
+  spring.add(600, at: utcDate(3, 29, 1, 30))
+  expectEqual(spring.seconds[3], 600, "spring: 03:30 CEST is in the 03:00 bucket")
+  expectEqual(spring.seconds[2], 0, "spring: nothing in the skipped hour")
+  // 2026-10-25: 03:00 CEST falls back to 02:00 CET; the day has 25 hours.
+  var autumn = UsageBuckets.hourly(day: utcDate(10, 25, 10), calendar: berlin)
+  expectEqual(autumn.starts.count, 24, "autumn DST day: 24 buckets")
+  expectEqual(autumn.starts.first, utcDate(10, 24, 22), "autumn: starts at local midnight")
+  expectEqual(autumn.end, utcDate(10, 25, 23), "autumn: ends at the next local midnight")
+  expectEqual(autumn.starts[2], utcDate(10, 25, 0), "autumn: first 02:00 (CEST)")
+  expectEqual(autumn.starts[3], utcDate(10, 25, 2), "autumn: 03:00 CET")
+  expectEqual(autumn.starts[13], utcDate(10, 25, 12), "autumn: 13:00 CET")
+  autumn.add(300, at: utcDate(10, 25, 0, 30))
+  autumn.add(400, at: utcDate(10, 25, 1, 30))
+  autumn.add(500, at: utcDate(10, 25, 2, 30))
+  expectEqual(autumn.seconds[2], 700, "autumn: both 02:00 hours are one bucket")
+  expectEqual(autumn.seconds[3], 500, "autumn: 03:00 CET")
+
   var days = UsageBuckets.daily(interval: week, calendar: utc)
   expectEqual(days.starts.count, 7, "seven days")
   days.add(3600, at: date(6, 0, 0))

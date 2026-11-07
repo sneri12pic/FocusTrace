@@ -392,7 +392,9 @@ struct HourlyBars: View {
       .cornerRadius(3)
     }
     .chartYAxis(.hidden)
-    .chartYScale(domain: 0...60)
+    // An hour holds up to 60 minutes per device; iPhone and iPad (or the
+    // repeated hour of a DST day) together can exceed it.
+    .chartYScale(domain: 0...max(60, buckets.maximum / 60))
     .chartXScale(domain: (buckets.starts.first ?? buckets.end)...buckets.end)
     .chartXAxis {
       AxisMarks(values: .stride(by: .hour, count: 6)) { _ in

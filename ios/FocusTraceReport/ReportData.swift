@@ -65,6 +65,9 @@ struct UsageSnapshot {
     var appIndex: [AnyHashable: Int] = [:]
     var categories: [ReportCategory] = []
     var categoryIndex: [AnyHashable: Int] = [:]
+    // Pickups that led to no app (the phone unlocked and put away again)
+    // count toward the day's pickups, not toward any app.
+    var unattributedPickups = 0
 
     for await data in results {
       if interval == nil {
@@ -85,6 +88,7 @@ struct UsageSnapshot {
       for await segment in data.activitySegments {
         segments.append(
           (segment.dateInterval.start, segment.dateInterval.duration, segment.totalActivityDuration))
+        unattributedPickups += segment.totalPickupsWithoutApplicationActivity
         for await categoryActivity in segment.categories {
           let category = categoryActivity.category
           let categoryName = category.localizedDisplayName ?? ""
@@ -152,7 +156,7 @@ struct UsageSnapshot {
       apps: ranked.shown,
       hiddenApps: ranked.hidden,
       categories: kind == .today ? rankedCategories.shown : [],
-      pickups: apps.reduce(0) { $0 + $1.pickups },
+      pickups: apps.reduce(unattributedPickups) { $0 + $1.pickups },
       notifications: apps.reduce(0) { $0 + $1.notifications },
       strings: RestrictionStore.shared.reportStrings)
   }

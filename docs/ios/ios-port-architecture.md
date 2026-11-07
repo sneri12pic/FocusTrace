@@ -252,10 +252,18 @@ Every other `focustrace/usage` method answers `notImplemented`;
   apps), `appDetail` (totals and dial for today, or totals and day bars; 6
   apps of the group). Each scene builds a `UsageSnapshot` (at most 60 apps
   for today, 8 or 6 elsewhere; no images beyond `Label(token)`).
+  Hourly buckets start at each wall-clock hour (`UsageBuckets.hourly`): on a
+  DST day an hour the clock skips is an empty bucket and a repeated hour is
+  one bucket, so there are always 24. Hour bars scale to at least 60 minutes,
+  more when iPhone and iPad together used more in an hour. The day's pickups
+  include pickups without app activity
+  (`totalPickupsWithoutApplicationActivity`), which no app row shows.
 - Colours are hard-coded in `ReportPalette.swift` from Flutter's theme
   (light and dark). Texts: Dart sends `report.*` keys (and `report.locale`)
   in the `setShieldStrings` map; the extension reads them from the App Group
-  (`ReportStrings`), English otherwise. Durations use templates of the
+  (`ReportStrings`), English otherwise. A report sends them once per locale,
+  and the next report sends them again when that failed
+  (`syncShieldStrings` returns whether iOS stored them). Durations use templates of the
   `compactDuration` ARB strings.
 - Flutter (`PlatformCapabilities.nativeUsageReports`, iOS):
   `IosUsageReportView` gives each report a fixed height

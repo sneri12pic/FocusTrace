@@ -117,7 +117,8 @@ class IosUsageReportView extends ConsumerWidget {
   }
 }
 
-/// Sends the native texts (block screen and reports) once per locale.
+/// Sends the native texts (block screen and reports) once per locale; a send
+/// that failed is tried again by the next report built.
 class _ReportStringsSync extends ConsumerStatefulWidget {
   const _ReportStringsSync();
 
@@ -127,14 +128,18 @@ class _ReportStringsSync extends ConsumerStatefulWidget {
 
 class _ReportStringsSyncState extends ConsumerState<_ReportStringsSync> {
   static Locale? _sent;
+  static Locale? _sending;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     final locale = Localizations.localeOf(context);
-    if (locale == _sent) return;
-    _sent = locale;
-    syncShieldStrings(context, ref);
+    if (locale == _sent || locale == _sending) return;
+    _sending = locale;
+    syncShieldStrings(context, ref).then((sent) {
+      if (_sending == locale) _sending = null;
+      if (sent) _sent = locale;
+    });
   }
 
   @override

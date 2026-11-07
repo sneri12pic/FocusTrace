@@ -305,8 +305,8 @@ Map<String, String> reportStrings(BuildContext context) {
 }
 
 /// Pushes the block screen's and usage reports' texts to iOS in the app's
-/// language.
-Future<void> syncShieldStrings(BuildContext context, WidgetRef ref) async {
+/// language. True when iOS stored them.
+Future<bool> syncShieldStrings(BuildContext context, WidgetRef ref) async {
   final l = context.l10n;
   const time = '{time}';
   const name = '{name}';
@@ -337,9 +337,11 @@ Future<void> syncShieldStrings(BuildContext context, WidgetRef ref) async {
       // The usage report extension reads its texts from the same map.
       ...reportStrings(context),
     });
+    return true;
   } catch (error) {
     // The shield falls back to English.
     debugPrint('Shield strings not sent: $error');
+    return false;
   }
 }
 
