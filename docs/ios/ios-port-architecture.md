@@ -80,10 +80,15 @@ ruby tool/ios/add_extension_targets.rb
 
 Job `ios-build` in `.github/workflows/ci.yml` (macos-15, 40 min): Flutter
 3.32.2, `flutter pub get`, `flutter build ios --debug --no-codesign`, then a
-check that every extension is embedded (PlugIns/ or Extensions/), declares
-the expected extension point (`plutil -extract`: `NSExtension` or, for the
-report, `EXAppExtensionAttributes`) and that no Mach-O file in its bundle
-(main binary and an Xcode 16 `*.debug.dylib`) links Flutter (`otool -L`). It is the
+check (`tool/ios/check_embedded_extensions.sh`) that every extension is
+embedded (PlugIns/ or Extensions/), declares the expected extension point
+(`plutil -extract`: `NSExtension` or, for the report,
+`EXAppExtensionAttributes`) and that no Mach-O file in its bundle (main binary
+and an Xcode 16 `*.debug.dylib`) links Flutter (`otool -L`). Then, in the same
+job (pub, Pods and derived data reused), `flutter build ios --release
+--no-codesign` and the same check on the Release Runner.app (no debug dylib
+split there, so it covers the main binary). The job keeps its name "iOS debug
+build (no codesign)" so required status checks stay valid. It is the
 only place Swift is compiled; the developer machines are Windows/Linux. Code
 signing is off, so the build proves compilation and project wiring, not
 entitlement provisioning.
