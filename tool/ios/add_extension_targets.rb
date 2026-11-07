@@ -14,11 +14,13 @@
 #
 # What it manages (see docs/ios/ios-port-architecture.md):
 #   * project-wide IPHONEOS_DEPLOYMENT_TARGET = 16.0
-#   * Runner: entitlements file, FocusTraceKit sources, system frameworks,
-#     extension dependencies and embed phases (placed before "Thin Binary")
+#   * Runner: entitlements file, its own Swift sources (RUNNER_SOURCES),
+#     FocusTraceKit sources, system frameworks, extension dependencies and
+#     embed phases (placed before "Thin Binary")
 #   * FocusTraceMonitor / FocusTraceShield / FocusTraceShieldAction /
-#     FocusTraceReport extension targets with Info.plist, entitlements,
-#     FocusTraceKit sources and system frameworks
+#     FocusTraceReport / FocusTraceWidget extension targets with Info.plist,
+#     entitlements, FocusTraceKit sources and system frameworks
+#   * a PrivacyInfo.xcprivacy in every target's resources
 #
 # Flutter's xcconfigs (Flutter/Debug.xcconfig, Flutter/Release.xcconfig) stay on
 # Runner only. Extensions use Config/Extension.xcconfig, which includes only
@@ -44,7 +46,21 @@ EXTENSIONKIT_TYPE = 'com.apple.product-type.extensionkit-extension'
 
 # Runner links these so later phases can call FamilyControls / ManagedSettings /
 # DeviceActivity from the method channels without further project edits.
-RUNNER_FRAMEWORKS = %w[FamilyControls ManagedSettings DeviceActivity].freeze
+RUNNER_FRAMEWORKS = %w[FamilyControls ManagedSettings DeviceActivity SwiftUI UserNotifications HealthKit
+                       WidgetKit].freeze
+
+# Runner's own Swift files besides AppDelegate.swift (which Flutter created).
+RUNNER_SOURCES = %w[FocusTraceChannels.swift ActivityPicker.swift SelectionIconsView.swift
+                    UsageReportView.swift WorkoutStore.swift HealthKitBridge.swift
+                    DataTransferBridge.swift].freeze
+
+# FocusTraceKit files that need the Screen Time frameworks; extensions with
+# `screen_time: false` (the widget) compile every other kit file only.
+SCREEN_TIME_KIT_FILES = %w[ScreenTimeEnforcement.swift].freeze
+
+# Every Screen Time target compiles all of FocusTraceKit, so it also links
+# FamilyControls, ManagedSettings and DeviceActivity, and WidgetKit
+# (WidgetRefresher). The widget compiles only the Foundation part.
 
 EXTENSIONS = [
   {
@@ -55,7 +71,7 @@ EXTENSIONS = [
     extension_point: 'com.apple.deviceactivity.monitor-extension',
     principal_class: 'DeviceActivityMonitorExtension',
     sources: %w[DeviceActivityMonitorExtension.swift],
-    frameworks: %w[DeviceActivity ManagedSettings FamilyControls]
+    frameworks: %w[DeviceActivity ManagedSettings FamilyControls UserNotifications WidgetKit]
   },
   {
     name: 'FocusTraceShield',
@@ -65,7 +81,7 @@ EXTENSIONS = [
     extension_point: 'com.apple.ManagedSettingsUI.shield-configuration-service',
     principal_class: 'ShieldConfigurationExtension',
     sources: %w[ShieldConfigurationExtension.swift],
-    frameworks: %w[ManagedSettings ManagedSettingsUI]
+    frameworks: %w[ManagedSettings ManagedSettingsUI FamilyControls DeviceActivity WidgetKit]
   },
   {
     name: 'FocusTraceShieldAction',
@@ -75,7 +91,7 @@ EXTENSIONS = [
     extension_point: 'com.apple.ManagedSettings.shield-action-service',
     principal_class: 'ShieldActionExtension',
     sources: %w[ShieldActionExtension.swift],
-    frameworks: %w[ManagedSettings]
+    frameworks: %w[ManagedSettings FamilyControls DeviceActivity UserNotifications WidgetKit]
   },
   {
     # DeviceActivityReport extensions are ExtensionKit extensions (as in Xcode's
@@ -87,8 +103,22 @@ EXTENSIONS = [
     product_type: EXTENSIONKIT_TYPE,
     extension_point: 'com.apple.deviceactivityui.report-extension',
     principal_class: nil,
-    sources: %w[FocusTraceReportExtension.swift],
-    frameworks: %w[DeviceActivity SwiftUI]
+    sources: %w[FocusTraceReportExtension.swift ReportData.swift ReportViews.swift ReportPalette.swift],
+    frameworks: %w[DeviceActivity SwiftUI Charts FamilyControls ManagedSettings WidgetKit]
+  },
+  {
+    # Home screen widget: restriction status from the App Group. No Screen
+    # Time APIs, so no Family Controls entitlement; WidgetKit's @main bundle,
+    # so no principal class.
+    name: 'FocusTraceWidget',
+    bundle_suffix: 'widget',
+    display_name: 'FocusTrace',
+    product_type: APP_EXTENSION_TYPE,
+    extension_point: 'com.apple.widgetkit-extension',
+    principal_class: nil,
+    screen_time: false,
+    sources: %w[FocusTraceWidget.swift],
+    frameworks: %w[WidgetKit SwiftUI]
   }
 ].freeze
 
@@ -104,11 +134,9 @@ def plist_header
   XML
 end
 
-def entitlements_xml
-  plist_header + <<~XML
-    <dict>
-    \t<key>com.apple.developer.family-controls</key>
-    \t<true/>
+def entitlements_xml(family_controls: true)
+  family = family_controls ? "\t<key>com.apple.developer.family-controls</key>\n\t<true/>\n" : ''
+  plist_header + "<dict>\n" + family + <<~XML
     \t<key>com.apple.security.application-groups</key>
     \t<array>
     \t\t<string>#{APP_GROUP}</string>
@@ -129,15 +157,17 @@ def extension_info_plist_xml(ext)
         \t</dict>
       XML
     else
-      <<~XML
-        \t<key>NSExtension</key>
-        \t<dict>
-        \t\t<key>NSExtensionPointIdentifier</key>
-        \t\t<string>#{ext[:extension_point]}</string>
-        \t\t<key>NSExtensionPrincipalClass</key>
-        \t\t<string>$(PRODUCT_MODULE_NAME).#{ext[:principal_class]}</string>
-        \t</dict>
-      XML
+      principal =
+        if ext[:principal_class]
+          "\t\t<key>NSExtensionPrincipalClass</key>\n" \
+            "\t\t<string>$(PRODUCT_MODULE_NAME).#{ext[:principal_class]}</string>\n"
+        else
+          ''
+        end
+      "\t<key>NSExtension</key>\n\t<dict>\n" \
+        "\t\t<key>NSExtensionPointIdentifier</key>\n" \
+        "\t\t<string>#{ext[:extension_point]}</string>\n" +
+        principal + "\t</dict>\n"
     end
 
   plist_header + <<~XML + extension_block + "</dict>\n</plist>\n"
@@ -161,6 +191,43 @@ def extension_info_plist_xml(ext)
     \t<key>CFBundleVersion</key>
     \t<string>$(FLUTTER_BUILD_NUMBER)</string>
   XML
+end
+
+# Privacy manifest of every target. FocusTrace (and every extension through
+# FocusTraceKit) reads and writes UserDefaults: its own (CA92.1) and the App
+# Group suite shared by the app and its extensions (1C8F.1). It tracks nothing
+# and collects nothing: usage, rules and workouts stay on the device.
+def privacy_manifest_xml
+  plist_header + <<~XML
+    <dict>
+    \t<key>NSPrivacyTracking</key>
+    \t<false/>
+    \t<key>NSPrivacyTrackingDomains</key>
+    \t<array/>
+    \t<key>NSPrivacyCollectedDataTypes</key>
+    \t<array/>
+    \t<key>NSPrivacyAccessedAPITypes</key>
+    \t<array>
+    \t\t<dict>
+    \t\t\t<key>NSPrivacyAccessedAPIType</key>
+    \t\t\t<string>NSPrivacyAccessedAPICategoryUserDefaults</string>
+    \t\t\t<key>NSPrivacyAccessedAPITypeReasons</key>
+    \t\t\t<array>
+    \t\t\t\t<string>CA92.1</string>
+    \t\t\t\t<string>1C8F.1</string>
+    \t\t\t</array>
+    \t\t</dict>
+    \t</array>
+    </dict>
+    </plist>
+  XML
+end
+
+def ensure_privacy_manifest(target, group, folder)
+  write_if_missing("#{folder}/PrivacyInfo.xcprivacy", privacy_manifest_xml)
+  ref = find_or_create_file(group, 'PrivacyInfo.xcprivacy')
+  ref.last_known_file_type = 'text.xml'
+  ensure_build_file(target.resources_build_phase, ref)
 end
 
 def write_if_missing(relative_path, content)
@@ -280,7 +347,8 @@ end
 
 def configure_extension(project, ext, kit_refs, extension_xcconfig_ref)
   write_if_missing("#{ext[:name]}/Info.plist", extension_info_plist_xml(ext))
-  write_if_missing("#{ext[:name]}/#{ext[:name]}.entitlements", entitlements_xml)
+  screen_time = ext.fetch(:screen_time, true)
+  write_if_missing("#{ext[:name]}/#{ext[:name]}.entitlements", entitlements_xml(family_controls: screen_time))
 
   target = find_or_create_extension_target(project, ext)
   target.product_type = ext[:product_type]
@@ -296,7 +364,12 @@ def configure_extension(project, ext, kit_refs, extension_xcconfig_ref)
   end
   find_or_create_file(group, 'Info.plist')
   find_or_create_file(group, "#{ext[:name]}.entitlements")
-  kit_refs.each { |ref| ensure_build_file(target.source_build_phase, ref) }
+  ensure_privacy_manifest(target, group, ext[:name])
+  kit_refs.each do |ref|
+    next if !screen_time && SCREEN_TIME_KIT_FILES.include?(ref.path)
+
+    ensure_build_file(target.source_build_phase, ref)
+  end
   ensure_frameworks(project, target, ext[:frameworks])
   target
 end
@@ -362,8 +435,12 @@ find_or_create_file(runner_group, 'Runner.entitlements')
 runner.build_configuration_list.build_configurations.each do |config|
   config.build_settings['CODE_SIGN_ENTITLEMENTS'] = 'Runner/Runner.entitlements'
 end
+RUNNER_SOURCES.each do |source|
+  ensure_build_file(runner.source_build_phase, find_or_create_file(runner_group, source))
+end
 kit_refs.each { |ref| ensure_build_file(runner.source_build_phase, ref) }
 ensure_frameworks(project, runner, RUNNER_FRAMEWORKS)
+ensure_privacy_manifest(runner, runner_group, 'Runner')
 
 # Extensions.
 app_extension_phase = nil

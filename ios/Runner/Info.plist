@@ -4,6 +4,16 @@
 <dict>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
+	<key>CFBundleLocalizations</key>
+	<array>
+		<string>en</string>
+		<string>de</string>
+		<string>es</string>
+		<string>fr</string>
+		<string>ja</string>
+		<string>pt-BR</string>
+		<string>uk</string>
+	</array>
 	<key>CFBundleDisplayName</key>
 	<string>FocusTrace</string>
 	<key>CFBundleExecutable</key>
@@ -22,6 +32,10 @@
 	<string>????</string>
 	<key>CFBundleVersion</key>
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
+	<key>NSHealthShareUsageDescription</key>
+	<string>FocusTrace reads your workouts (type, name, start and end time, and the app that recorded them) to show them next to your screen time. Nothing is written to Health and workouts stay on this device.</string>
+	<key>NSHealthUpdateUsageDescription</key>
+	<string>FocusTrace only reads workouts and never writes to Health.</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>UILaunchStoryboardName</key>

@@ -4,6 +4,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../domain/models/app_language.dart';
 import '../localization/app_localizations_x.dart';
+import '../localization/health_store_texts.dart';
 import '../providers.dart';
 import '../view_models/settings_view_model.dart';
 import '../widgets/sync_account_card.dart';
@@ -314,7 +315,11 @@ class SettingsScreen extends ConsumerWidget {
       paragraphs: [
         l10n.settingsClearDataDeletes,
         if (syncSupported) l10n.settingsClearDataKeepsSync,
-        if (healthConnectSupported) l10n.settingsClearDataHealth,
+        if (healthConnectSupported)
+          HealthStoreTexts(
+            l10n,
+            appleHealth: ref.read(platformCapabilitiesProvider).appleHealth,
+          ).clearDataNote,
         l10n.settingsClearDataKeeps,
       ],
       confirmLabel: l10n.settingsClearLocalData,
@@ -397,9 +402,12 @@ class SettingsScreen extends ConsumerWidget {
     if (!context.mounted) {
       return;
     }
+    final message = result.missingAppGroups > 0
+        ? context.l10n.settingsImportMissingAppGroups(result.missingAppGroups)
+        : context.l10n.settingsImportSuccess;
     ScaffoldMessenger.of(
       context,
-    ).showSnackBar(SnackBar(content: Text(context.l10n.settingsImportSuccess)));
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 }
 
@@ -415,7 +423,12 @@ class _HealthConnectTile extends ConsumerWidget {
       child: ListTile(
         key: const ValueKey('settings-health-connect'),
         leading: const Icon(Icons.fitness_center),
-        title: Text(l10n.healthConnectTitle),
+        title: Text(
+          HealthStoreTexts(
+            l10n,
+            appleHealth: ref.watch(platformCapabilitiesProvider).appleHealth,
+          ).title,
+        ),
         subtitle: Text(
           status.enabled
               ? l10n.healthConnectSettingsOn(status.workoutCount)

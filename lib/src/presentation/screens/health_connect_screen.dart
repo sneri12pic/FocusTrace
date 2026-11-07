@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../../../l10n/generated/app_localizations.dart';
 import '../../domain/models/health_connect.dart';
 import '../localization/app_localizations_x.dart';
+import '../localization/health_store_texts.dart';
 import '../providers.dart';
 
 /// Settings for the optional Health Connect workout import, and the imported
@@ -45,6 +46,8 @@ class _HealthConnectScreenState extends ConsumerState<HealthConnectScreen>
     final viewModel = ref.read(healthConnectViewModelProvider.notifier);
     final status = state.status;
     final l10n = context.l10n;
+    final appleHealth = ref.watch(platformCapabilitiesProvider).appleHealth;
+    final store = HealthStoreTexts(l10n, appleHealth: appleHealth);
     final theme = Theme.of(context);
     final muted = theme.textTheme.bodyMedium?.copyWith(
       color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
@@ -54,17 +57,17 @@ class _HealthConnectScreenState extends ConsumerState<HealthConnectScreen>
     final canImport = available && status.enabled && status.readGranted;
 
     return Scaffold(
-      appBar: AppBar(title: Text(l10n.healthConnectTitle)),
+      appBar: AppBar(title: Text(store.title)),
       body: state.isLoading
           ? const Center(child: CircularProgressIndicator())
           : ListView(
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 40),
               children: [
-                Text(l10n.healthConnectIntro, style: muted),
+                Text(store.intro, style: muted),
                 const SizedBox(height: 16),
                 if (status.availability ==
                     HealthConnectAvailability.unavailable)
-                  _Notice(text: l10n.healthConnectUnavailable)
+                  _Notice(text: store.unavailable)
                 else if (status.availability ==
                     HealthConnectAvailability.updateRequired)
                   _Notice(
@@ -94,7 +97,7 @@ class _HealthConnectScreenState extends ConsumerState<HealthConnectScreen>
                             title: Text(l10n.healthConnectAutoImport),
                             subtitle: Text(
                               status.backgroundSupported
-                                  ? l10n.healthConnectAutoImportBody
+                                  ? store.autoImportBody
                                   : l10n.healthConnectAutoImportUnsupported,
                             ),
                             value:
@@ -107,7 +110,7 @@ class _HealthConnectScreenState extends ConsumerState<HealthConnectScreen>
                           const Divider(height: 1),
                           Padding(
                             padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-                            child: _StatusLines(status: status),
+                            child: _StatusLines(status: status, store: store),
                           ),
                           Padding(
                             padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
@@ -136,6 +139,12 @@ class _HealthConnectScreenState extends ConsumerState<HealthConnectScreen>
                       ],
                     ),
                   ),
+                  if (appleHealth &&
+                      status.enabled &&
+                      status.workoutCount == 0) ...[
+                    const SizedBox(height: 12),
+                    _Notice(text: l10n.appleHealthAccessHint),
+                  ],
                   if (status.accessRevoked) ...[
                     const SizedBox(height: 12),
                     _Notice(
@@ -156,7 +165,7 @@ class _HealthConnectScreenState extends ConsumerState<HealthConnectScreen>
                     elevation: 0,
                     child: ListTile(
                       leading: const Icon(Icons.admin_panel_settings_outlined),
-                      title: Text(l10n.healthConnectManage),
+                      title: Text(store.manage),
                       trailing: const Icon(Icons.open_in_new),
                       onTap: viewModel.openPermissionSettings,
                     ),
@@ -165,7 +174,7 @@ class _HealthConnectScreenState extends ConsumerState<HealthConnectScreen>
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 4),
                     child: Text(
-                      l10n.healthConnectOffNote,
+                      store.offNote,
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: theme.colorScheme.onSurface.withValues(
                           alpha: 0.7,
@@ -182,7 +191,7 @@ class _HealthConnectScreenState extends ConsumerState<HealthConnectScreen>
                   ),
                 ),
                 const SizedBox(height: 6),
-                Text(l10n.healthConnectDataBody, style: muted),
+                Text(store.dataBody, style: muted),
                 if (available) ...[
                   const SizedBox(height: 20),
                   Text(
@@ -233,11 +242,15 @@ class _HealthConnectScreenState extends ConsumerState<HealthConnectScreen>
 
   Future<void> _confirmDelete(BuildContext context) async {
     final l10n = context.l10n;
+    final store = HealthStoreTexts(
+      l10n,
+      appleHealth: ref.read(platformCapabilitiesProvider).appleHealth,
+    );
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: Text(l10n.healthConnectDeleteTitle),
-        content: Text(l10n.healthConnectDeleteBody),
+        content: Text(store.deleteBody),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
@@ -258,9 +271,10 @@ class _HealthConnectScreenState extends ConsumerState<HealthConnectScreen>
 
 /// Last success and what the last attempt ended with, failures in red.
 class _StatusLines extends StatelessWidget {
-  const _StatusLines({required this.status});
+  const _StatusLines({required this.status, required this.store});
 
   final HealthConnectStatus status;
+  final HealthStoreTexts store;
 
   @override
   Widget build(BuildContext context) {
@@ -275,10 +289,9 @@ class _StatusLines extends StatelessWidget {
         status.lastImportedCount,
       ),
       HealthConnectOutcome.noNew => l10n.healthConnectOutcomeNoNew,
-      HealthConnectOutcome.unavailable || HealthConnectOutcome.updateRequired =>
-        l10n.healthConnectOutcomeUnavailable,
-      HealthConnectOutcome.permissionMissing =>
-        l10n.healthConnectOutcomePermission,
+      HealthConnectOutcome.unavailable ||
+      HealthConnectOutcome.updateRequired => store.outcomeUnavailable,
+      HealthConnectOutcome.permissionMissing => store.outcomePermission,
       HealthConnectOutcome.backgroundPermissionMissing =>
         l10n.healthConnectOutcomeBackground,
       HealthConnectOutcome.failed => l10n.healthConnectOutcomeFailed,

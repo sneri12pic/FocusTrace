@@ -5,10 +5,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
+import '../../data/datasources/screen_time_channel.dart';
 import '../../domain/models/app_usage_summary.dart';
 import '../../domain/models/health_connect.dart';
 import '../../domain/models/platform_capabilities.dart';
 import '../localization/app_localizations_x.dart';
+import '../localization/health_store_texts.dart';
 import '../providers.dart';
 import 'home_shell.dart';
 import 'restriction_editor_sheet.dart';
@@ -76,6 +78,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen>
     // page fills in right after usage access is granted.
     ref.read(dashboardViewModelProvider.notifier).refreshSilently();
     ref.read(restrictionsViewModelProvider.notifier).refreshOverlayPermission();
+    ref.read(screenTimeAuthorizationProvider.notifier).refresh();
   }
 
   void _goTo(int page) {
@@ -505,7 +508,9 @@ class _AccessPage extends ConsumerWidget {
     final asksPermissions =
         capabilities.usageAccessPermission ||
         capabilities.overlayPermission ||
-        capabilities.notificationsPermission;
+        capabilities.notificationsPermission ||
+        capabilities.screenTimeAuthorization;
+    final screenTimeStatus = ref.watch(screenTimeAuthorizationProvider);
     final theme = Theme.of(context);
     final mutedStyle = theme.textTheme.bodyMedium?.copyWith(
       color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
@@ -524,7 +529,9 @@ class _AccessPage extends ConsumerWidget {
         ),
         const SizedBox(height: 8),
         Text(
-          context.l10n.onboardingAccessBody,
+          capabilities.screenTimeAuthorization
+              ? context.l10n.onboardingScreenTimeBody
+              : context.l10n.onboardingAccessBody,
           textAlign: TextAlign.center,
           style: mutedStyle,
         ),
@@ -551,6 +558,20 @@ class _AccessPage extends ConsumerWidget {
             body: context.l10n.onboardingNoPermissionsBody,
           )
         else ...[
+          // iOS: one Screen Time authorization replaces Android's tiles.
+          if (capabilities.screenTimeAuthorization) ...[
+            _PermissionTile(
+              icon: Icons.hourglass_bottom_rounded,
+              title: context.l10n.screenTimeAccessTitle,
+              subtitle: context.l10n.screenTimeAccessSubtitle,
+              isGranted:
+                  screenTimeStatus == ScreenTimeAuthorizationStatus.approved,
+              actionLabel: context.l10n.onboardingAllow,
+              onAllow: () =>
+                  ref.read(screenTimeAuthorizationProvider.notifier).request(),
+            ),
+            const SizedBox(height: 12),
+          ],
           if (capabilities.usageAccessPermission) ...[
             _PermissionTile(
               icon: Icons.insert_chart_outlined,
@@ -602,7 +623,9 @@ class _AccessPage extends ConsumerWidget {
             const SizedBox(width: 6),
             Flexible(
               child: Text(
-                context.l10n.onboardingPermissionsSettingsHint,
+                capabilities.screenTimeAuthorization
+                    ? context.l10n.onboardingScreenTimeHint
+                    : context.l10n.onboardingPermissionsSettingsHint,
                 textAlign: TextAlign.center,
                 style: mutedStyle,
               ),
@@ -625,6 +648,10 @@ class _HealthConnectPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(healthConnectViewModelProvider);
     final status = state.status;
+    final store = HealthStoreTexts(
+      context.l10n,
+      appleHealth: ref.watch(platformCapabilitiesProvider).appleHealth,
+    );
     final theme = Theme.of(context);
     final mutedStyle = theme.textTheme.bodyMedium?.copyWith(
       color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
@@ -633,12 +660,12 @@ class _HealthConnectPage extends ConsumerWidget {
     if (state.isLoading) {
       note = null;
     } else if (status.availability == HealthConnectAvailability.unavailable) {
-      note = context.l10n.healthConnectUnavailable;
+      note = store.unavailable;
     } else if (status.availability ==
         HealthConnectAvailability.updateRequired) {
       note = context.l10n.healthConnectUpdateRequired;
     } else if (status.enabled) {
-      note = context.l10n.onboardingHealthConnected;
+      note = store.onboardingConnected;
     } else if (state.attemptedEnable) {
       note = context.l10n.onboardingHealthDenied;
     } else {
@@ -658,7 +685,7 @@ class _HealthConnectPage extends ConsumerWidget {
         ),
         const SizedBox(height: 8),
         Text(
-          context.l10n.onboardingHealthBody,
+          store.onboardingBody,
           textAlign: TextAlign.center,
           style: mutedStyle,
         ),
@@ -680,10 +707,7 @@ class _HealthConnectPage extends ConsumerWidget {
         ),
         if (note != null) ...[
           const SizedBox(height: 28),
-          _OnboardingInfoCard(
-            title: context.l10n.healthConnectTitle,
-            body: note,
-          ),
+          _OnboardingInfoCard(title: store.title, body: note),
         ],
       ],
     );
@@ -717,7 +741,10 @@ class _HealthConnectCta extends ConsumerWidget {
       children: [
         _GradientButton(
           key: const ValueKey('onboarding-health-connect'),
-          label: context.l10n.onboardingHealthConnect,
+          label: HealthStoreTexts(
+            context.l10n,
+            appleHealth: ref.watch(platformCapabilitiesProvider).appleHealth,
+          ).onboardingConnect,
           onPressed: canConnect
               ? () => ref.read(healthConnectViewModelProvider.notifier).enable()
               : null,

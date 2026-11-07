@@ -68,7 +68,7 @@ void main() {
     });
   });
 
-  test('Android locale data source sends the persisted BCP-47 tag', () async {
+  test('locale data source sends the persisted BCP-47 tag', () async {
     const channel = MethodChannel('test/focustrace_locale');
     final calls = <MethodCall>[];
     final messenger =
@@ -78,7 +78,7 @@ void main() {
       return null;
     });
     addTearDown(() => messenger.setMockMethodCallHandler(channel, null));
-    final dataSource = AndroidPlatformLocaleDataSource(channel: channel);
+    final dataSource = MethodChannelPlatformLocaleDataSource(channel: channel);
 
     await dataSource.applyLanguage(AppLanguage.portugueseBrazil);
     await dataSource.applyLanguage(AppLanguage.system);

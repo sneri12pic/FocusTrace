@@ -2936,6 +2936,366 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Health Connect import turns off and imported workouts are deleted. Nothing in Health Connect changes.'**
   String get settingsClearDataHealth;
+
+  /// No description provided for @screenTimeAccessTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Screen Time'**
+  String get screenTimeAccessTitle;
+
+  /// No description provided for @screenTimeAccessSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'To block the apps you choose'**
+  String get screenTimeAccessSubtitle;
+
+  /// No description provided for @onboardingScreenTimeBody.
+  ///
+  /// In en, this message translates to:
+  /// **'FocusTrace uses Screen Time to block the apps you choose.\nEverything stays on your device.'**
+  String get onboardingScreenTimeBody;
+
+  /// No description provided for @onboardingScreenTimeHint.
+  ///
+  /// In en, this message translates to:
+  /// **'iOS Settings controls this permission, under Screen Time.'**
+  String get onboardingScreenTimeHint;
+
+  /// No description provided for @rxScreenTimeNeededTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Allow Screen Time'**
+  String get rxScreenTimeNeededTitle;
+
+  /// No description provided for @rxScreenTimeNeededBody.
+  ///
+  /// In en, this message translates to:
+  /// **'FocusTrace needs Screen Time access to block apps on this iPhone.'**
+  String get rxScreenTimeNeededBody;
+
+  /// No description provided for @rxPickerDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get rxPickerDone;
+
+  /// No description provided for @rxNameAppsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Name these apps'**
+  String get rxNameAppsTitle;
+
+  /// No description provided for @rxNameAppsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'For example, Social media'**
+  String get rxNameAppsHint;
+
+  /// No description provided for @rxSelectionCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{1 app, category or website chosen} other{{count} apps, categories or websites chosen}}'**
+  String rxSelectionCount(int count);
+
+  /// No description provided for @shieldBlockNowUntil.
+  ///
+  /// In en, this message translates to:
+  /// **'Temporary block until {time}'**
+  String shieldBlockNowUntil(String time);
+
+  /// No description provided for @shieldScheduleUntil.
+  ///
+  /// In en, this message translates to:
+  /// **'Blocked by schedule until {time}'**
+  String shieldScheduleUntil(String time);
+
+  /// No description provided for @shieldDailyLimit.
+  ///
+  /// In en, this message translates to:
+  /// **'Daily app limit reached'**
+  String get shieldDailyLimit;
+
+  /// No description provided for @shieldRestricted.
+  ///
+  /// In en, this message translates to:
+  /// **'This app is restricted right now.'**
+  String get shieldRestricted;
+
+  /// No description provided for @shieldLeave.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave'**
+  String get shieldLeave;
+
+  /// No description provided for @shieldUnblockInApp.
+  ///
+  /// In en, this message translates to:
+  /// **'Unblock in FocusTrace'**
+  String get shieldUnblockInApp;
+
+  /// No description provided for @shieldNotificationBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Open FocusTrace to change {name}.'**
+  String shieldNotificationBody(String name);
+
+  /// No description provided for @shieldLimitWarningTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} limit almost reached'**
+  String shieldLimitWarningTitle(String name);
+
+  /// No description provided for @shieldRoutineWarningTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} routine limit almost reached'**
+  String shieldRoutineWarningTitle(String name);
+
+  /// No description provided for @shieldLimitWarningBody.
+  ///
+  /// In en, this message translates to:
+  /// **'{minutes, plural, one{Blocking starts in about {minutes} minute.} other{Blocking starts in about {minutes} minutes.}}'**
+  String shieldLimitWarningBody(int minutes);
+
+  /// No description provided for @shieldNudgeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Preferred usage time'**
+  String get shieldNudgeTitle;
+
+  /// No description provided for @shieldNudgeReached.
+  ///
+  /// In en, this message translates to:
+  /// **'You\'ve reached your time'**
+  String get shieldNudgeReached;
+
+  /// No description provided for @shieldNudgeMinutesLeft.
+  ///
+  /// In en, this message translates to:
+  /// **'{minutes, plural, one{{minutes} min left} other{{minutes} min left}}'**
+  String shieldNudgeMinutesLeft(int minutes);
+
+  /// No description provided for @shieldNudgeMinutesOver.
+  ///
+  /// In en, this message translates to:
+  /// **'{minutes, plural, one{{minutes} min over} other{{minutes} min over}}'**
+  String shieldNudgeMinutesOver(int minutes);
+
+  /// No description provided for @routinePickNewApps.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose new apps'**
+  String get routinePickNewApps;
+
+  /// No description provided for @routineAppIncluded.
+  ///
+  /// In en, this message translates to:
+  /// **'Included in limit'**
+  String get routineAppIncluded;
+
+  /// No description provided for @routineAppExcluded.
+  ///
+  /// In en, this message translates to:
+  /// **'Excluded from limit'**
+  String get routineAppExcluded;
+
+  /// No description provided for @iosReportPickups.
+  ///
+  /// In en, this message translates to:
+  /// **'Pickups'**
+  String get iosReportPickups;
+
+  /// No description provided for @iosReportNotifications.
+  ///
+  /// In en, this message translates to:
+  /// **'Notifications'**
+  String get iosReportNotifications;
+
+  /// No description provided for @iosReportTapHour.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap an hour to see its time'**
+  String get iosReportTapHour;
+
+  /// No description provided for @iosReportMoreApps.
+  ///
+  /// In en, this message translates to:
+  /// **'+{count} more'**
+  String iosReportMoreApps(String count);
+
+  /// No description provided for @iosReportNoData.
+  ///
+  /// In en, this message translates to:
+  /// **'No Screen Time data for this period yet.'**
+  String get iosReportNoData;
+
+  /// No description provided for @iosReportGroupApps.
+  ///
+  /// In en, this message translates to:
+  /// **'Apps in this group'**
+  String get iosReportGroupApps;
+
+  /// No description provided for @iosUsageAccessBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Allow Screen Time so FocusTrace can show how you use this iPhone. The numbers stay inside iOS.'**
+  String get iosUsageAccessBody;
+
+  /// No description provided for @iosUsageMenuItem.
+  ///
+  /// In en, this message translates to:
+  /// **'Usage'**
+  String get iosUsageMenuItem;
+
+  /// No description provided for @appleHealthTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Apple Health'**
+  String get appleHealthTitle;
+
+  /// No description provided for @appleHealthIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'Import your workouts from apps like Hevy through Apple Health. It\'s optional and off by default. Tracking, limits and blocking never depend on it.'**
+  String get appleHealthIntro;
+
+  /// No description provided for @appleHealthDataBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Only workouts: the kind of workout, its name, when it started and ended, and which app recorded it. Nothing else, such as heart rate, routes or sets, is read, and FocusTrace writes nothing to Apple Health. Imported workouts stay on this device: sync doesn\'t upload them and backups don\'t include them.'**
+  String get appleHealthDataBody;
+
+  /// No description provided for @appleHealthAutoImportBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Checks for new workouts in the background about once an hour and whenever you open FocusTrace. Apps save to Apple Health on their own schedule, so a workout can take a while to show up.'**
+  String get appleHealthAutoImportBody;
+
+  /// No description provided for @appleHealthOutcomeUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Last check failed: Apple Health isn\'t available'**
+  String get appleHealthOutcomeUnavailable;
+
+  /// No description provided for @appleHealthOutcomePermission.
+  ///
+  /// In en, this message translates to:
+  /// **'Last check failed: access to workouts is off in Apple Health'**
+  String get appleHealthOutcomePermission;
+
+  /// No description provided for @appleHealthUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Apple Health isn\'t available on this device.'**
+  String get appleHealthUnavailable;
+
+  /// No description provided for @appleHealthManage.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage access in the Health app'**
+  String get appleHealthManage;
+
+  /// No description provided for @appleHealthAccessHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Apple Health doesn\'t tell apps whether access was allowed. If your workouts don\'t appear, open the Health app, then Sharing, Apps, FocusTrace, and turn on Workouts.'**
+  String get appleHealthAccessHint;
+
+  /// No description provided for @appleHealthOffNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Turning this off stops every read and automatic import. It doesn\'t remove FocusTrace\'s access or change anything in Apple Health; manage that in the Health app. Workouts already imported stay on this device until you delete them.'**
+  String get appleHealthOffNote;
+
+  /// No description provided for @appleHealthDeleteBody.
+  ///
+  /// In en, this message translates to:
+  /// **'This removes the workouts FocusTrace copied to this device. Nothing in Apple Health or the apps that recorded them changes.'**
+  String get appleHealthDeleteBody;
+
+  /// No description provided for @onboardingAppleHealthBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Optional. Import workouts from apps like Hevy through Apple Health. FocusTrace only reads workouts and keeps them on this device. You can change this anytime in Settings.'**
+  String get onboardingAppleHealthBody;
+
+  /// No description provided for @onboardingAppleHealthConnect.
+  ///
+  /// In en, this message translates to:
+  /// **'Connect Apple Health'**
+  String get onboardingAppleHealthConnect;
+
+  /// No description provided for @onboardingAppleHealthConnected.
+  ///
+  /// In en, this message translates to:
+  /// **'Connected. Your workouts are in Settings, under Apple Health.'**
+  String get onboardingAppleHealthConnected;
+
+  /// No description provided for @settingsClearDataAppleHealth.
+  ///
+  /// In en, this message translates to:
+  /// **'Apple Health import turns off and imported workouts are deleted. Nothing in Apple Health changes.'**
+  String get settingsClearDataAppleHealth;
+
+  /// No description provided for @settingsImportMissingAppGroups.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{Backup imported. 1 group of apps isn\'t on this iPhone: open its restriction and choose the apps again.} other{Backup imported. {count} groups of apps aren\'t on this iPhone: open their restrictions and choose the apps again.}}'**
+  String settingsImportMissingAppGroups(int count);
+
+  /// No description provided for @iosWidgetGalleryName.
+  ///
+  /// In en, this message translates to:
+  /// **'Restriction status'**
+  String get iosWidgetGalleryName;
+
+  /// No description provided for @iosWidgetGalleryDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'What FocusTrace is blocking now and what\'s next.'**
+  String get iosWidgetGalleryDescription;
+
+  /// No description provided for @iosWidgetBlockingNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Blocking now'**
+  String get iosWidgetBlockingNow;
+
+  /// No description provided for @iosWidgetNothingBlocked.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing blocked right now'**
+  String get iosWidgetNothingBlocked;
+
+  /// No description provided for @iosWidgetUntil.
+  ///
+  /// In en, this message translates to:
+  /// **'until {time}'**
+  String iosWidgetUntil(String time);
+
+  /// No description provided for @iosWidgetNextBlock.
+  ///
+  /// In en, this message translates to:
+  /// **'Next block'**
+  String get iosWidgetNextBlock;
+
+  /// No description provided for @iosWidgetNoUpcoming.
+  ///
+  /// In en, this message translates to:
+  /// **'No upcoming blocks'**
+  String get iosWidgetNoUpcoming;
+
+  /// No description provided for @iosWidgetLimitsReached.
+  ///
+  /// In en, this message translates to:
+  /// **'Limits reached today'**
+  String get iosWidgetLimitsReached;
+
+  /// No description provided for @iosWidgetNoRestrictions.
+  ///
+  /// In en, this message translates to:
+  /// **'Open FocusTrace to choose apps to block'**
+  String get iosWidgetNoRestrictions;
 }
 
 class _AppLocalizationsDelegate

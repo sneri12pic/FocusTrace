@@ -6,8 +6,13 @@ abstract class PlatformLocaleDataSource {
   Future<void> applyLanguage(AppLanguage language);
 }
 
-class AndroidPlatformLocaleDataSource implements PlatformLocaleDataSource {
-  AndroidPlatformLocaleDataSource({
+/// `setAppLocale` on `focustrace/usage`. Android stores the language for its
+/// native texts and widget; iOS sets the app's `AppleLanguages` (system
+/// pickers and sheets follow from the next launch) and the extensions'
+/// language. Null means the device language.
+class MethodChannelPlatformLocaleDataSource
+    implements PlatformLocaleDataSource {
+  MethodChannelPlatformLocaleDataSource({
     MethodChannel channel = const MethodChannel('focustrace/usage'),
   }) : _channel = channel;
 

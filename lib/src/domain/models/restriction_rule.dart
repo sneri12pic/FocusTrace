@@ -272,10 +272,22 @@ String encodeRules(List<RestrictionRule> rules) {
   });
 }
 
+/// The configuration synced to the platform. Only enabled routines with a
+/// limit are enforced, so only those are sent in `routines`.
+///
+/// `routineAppKeys` lists the iOS picked-group keys (`ios-sel:`) of every
+/// routine, enabled or not, so iOS keeps the stored app selections of a paused
+/// routine for when it is turned on again. Written only when non-empty;
+/// Android ignores it.
 String encodeRestrictionConfiguration(
   List<RestrictionRule> rules,
   List<BlockRoutine> routines,
 ) {
+  final routineAppKeys = {
+    for (final routine in routines)
+      for (final app in routine.apps)
+        if (app.appKey.startsWith(_iosSelectionKeyPrefix)) app.appKey,
+  }.toList()..sort();
   return jsonEncode({
     'version': 3,
     'rules': rules.map((rule) => rule.toJson()).toList(),
@@ -283,8 +295,12 @@ String encodeRestrictionConfiguration(
         .where((routine) => routine.isEnabled && routine.canEnforceLimit)
         .map((routine) => routine.toJson())
         .toList(),
+    if (routineAppKeys.isNotEmpty) 'routineAppKeys': routineAppKeys,
   });
 }
+
+/// Same as `iosSelectionKeyPrefix` in the data layer's Screen Time channel.
+const _iosSelectionKeyPrefix = 'ios-sel:';
 
 List<RestrictionRule> decodeRules(String? rawValue) {
   if (rawValue == null || rawValue.isEmpty) {

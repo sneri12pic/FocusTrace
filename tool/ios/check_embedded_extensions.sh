@@ -32,5 +32,6 @@ done <<'LIST'
 PlugIns/FocusTraceMonitor NSExtension.NSExtensionPointIdentifier com.apple.deviceactivity.monitor-extension
 PlugIns/FocusTraceShield NSExtension.NSExtensionPointIdentifier com.apple.ManagedSettingsUI.shield-configuration-service
 PlugIns/FocusTraceShieldAction NSExtension.NSExtensionPointIdentifier com.apple.ManagedSettings.shield-action-service
+PlugIns/FocusTraceWidget NSExtension.NSExtensionPointIdentifier com.apple.widgetkit-extension
 Extensions/FocusTraceReport EXAppExtensionAttributes.EXExtensionPointIdentifier com.apple.deviceactivityui.report-extension
 LIST
