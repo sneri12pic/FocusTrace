@@ -18,10 +18,12 @@ struct RestrictionStore {
 
   private enum Key {
     static let configuration = "ft.restrictions.json"
+    static let configurationGeneration = "ft.restrictions.generation"
     static let selectionPrefix = "ft.selection."
     static let selectionCreatedPrefix = "ft.selectionCreated."
     static let shieldedRules = "ft.shield.rules"
     static let shieldStores = "ft.shield.stores"
+    static let shieldDisplayed = "ft.shield.displayed"
     static let events = "ft.events"
     static let lastEventPrefix = "ft.events.last."
     static let shieldStrings = "ft.shield.strings"
@@ -40,6 +42,18 @@ struct RestrictionStore {
     RestrictionConfiguration.parse(configurationJSON)
   }
 
+  /// Bumped whenever what the shields depend on changes (a synced
+  /// configuration, an edited selection). A reconcile that sees it change
+  /// while applying shields starts over, so a reconcile in another process
+  /// that read the old configuration cannot leave its shields in place.
+  var configurationGeneration: Int {
+    defaults.integer(forKey: Key.configurationGeneration)
+  }
+
+  func bumpConfigurationGeneration() {
+    defaults.set(configurationGeneration &+ 1, forKey: Key.configurationGeneration)
+  }
+
   // MARK: Selections
 
   func selectionData(id: String) -> Data? {
@@ -51,6 +65,7 @@ struct RestrictionStore {
     if defaults.object(forKey: Key.selectionCreatedPrefix + id) == nil {
       defaults.set(now.timeIntervalSince1970, forKey: Key.selectionCreatedPrefix + id)
     }
+    bumpConfigurationGeneration()
   }
 
   func removeSelection(id: String) {
@@ -97,6 +112,34 @@ struct RestrictionStore {
     nonmutating set { defaults.set(newValue.sorted(), forKey: Key.shieldStores) }
   }
 
+  /// Remembers which rule keys the block screen listed for one shielded app
+  /// or web domain (`tokenKey`, its encoded token), so the shield action can
+  /// find them even when the app is shielded through a picked category (the
+  /// action extension gets only the app's token, which no selection names).
+  /// Keeps the `limit` most recent tokens.
+  func recordDisplayed(
+    ruleKeys: [String], tokenKey: String, now: Date = Date(), limit: Int = 200
+  ) {
+    var records = defaults.dictionary(forKey: Key.shieldDisplayed) ?? [:]
+    records[tokenKey] = ["keys": ruleKeys, "at": now.timeIntervalSince1970]
+    if records.count > limit {
+      let oldest = records.sorted {
+        (($0.value as? [String: Any])?["at"] as? Double ?? 0)
+          < (($1.value as? [String: Any])?["at"] as? Double ?? 0)
+      }
+      for (key, _) in oldest.prefix(records.count - limit) {
+        records.removeValue(forKey: key)
+      }
+    }
+    defaults.set(records, forKey: Key.shieldDisplayed)
+  }
+
+  /// The rule keys the block screen last listed for `tokenKey` (empty if none).
+  func displayedRuleKeys(tokenKey: String) -> [String] {
+    let record = defaults.dictionary(forKey: Key.shieldDisplayed)?[tokenKey] as? [String: Any]
+    return record?["keys"] as? [String] ?? []
+  }
+
   // MARK: Block events
 
   /// Records that a shield was shown, at most once a minute per rule, the way
@@ -105,32 +148,47 @@ struct RestrictionStore {
     appKey: String, appName: String, reason: String, now: Date = Date(),
     minimumInterval: TimeInterval = 60
   ) {
-    let lastKey = Key.lastEventPrefix + appKey
-    let last = defaults.double(forKey: lastKey)
-    if last > 0 && now.timeIntervalSince1970 - last < minimumInterval { return }
-    defaults.set(now.timeIntervalSince1970, forKey: lastKey)
-    var events = pendingEvents
-    events.append([
-      "id": "ios-blocked:\(now.epochMilliseconds):\(UUID().uuidString)",
-      "appKey": appKey,
-      "appName": appName,
-      "type": "blocked",
-      "reason": reason,
-      "occurredAtMs": NSNumber(value: now.epochMilliseconds),
-    ])
-    // Bounded so a device that never opens the app cannot grow it forever.
-    defaults.set(Array(events.suffix(500)), forKey: Key.events)
+    // The shield extension appends while the app may be taking events.
+    AppGroup.withLock("events") {
+      let lastKey = Key.lastEventPrefix + appKey
+      let last = defaults.double(forKey: lastKey)
+      if last > 0 && now.timeIntervalSince1970 - last < minimumInterval { return }
+      defaults.set(now.timeIntervalSince1970, forKey: lastKey)
+      var events = pendingEvents
+      events.append([
+        "id": "ios-blocked:\(now.epochMilliseconds):\(UUID().uuidString)",
+        "appKey": appKey,
+        "appName": appName,
+        "type": "blocked",
+        "reason": reason,
+        "occurredAtMs": NSNumber(value: now.epochMilliseconds),
+      ])
+      // Bounded so a device that never opens the app cannot grow it forever.
+      defaults.set(Array(events.suffix(500)), forKey: Key.events)
+    }
   }
 
   var pendingEvents: [[String: Any]] {
     (defaults.array(forKey: Key.events) as? [[String: Any]]) ?? []
   }
 
-  /// Returns and forgets the recorded events.
+  /// Returns and forgets the recorded events. Only the events returned are
+  /// removed: one recorded meanwhile stays for the next call.
   func takeEvents() -> [[String: Any]] {
-    let events = pendingEvents
-    defaults.removeObject(forKey: Key.events)
-    return events
+    AppGroup.withLock("events") {
+      let events = pendingEvents
+      let taken = Set(events.compactMap { $0["id"] as? String })
+      let remaining = pendingEvents.filter { event in
+        guard let id = event["id"] as? String else { return false }
+        return !taken.contains(id)
+      }
+      if remaining.isEmpty {
+        defaults.removeObject(forKey: Key.events)
+      } else {
+        defaults.set(remaining, forKey: Key.events)
+      }
+      return events
+    }
   }
 
   // MARK: Strings and flags written by the app
@@ -175,6 +233,7 @@ enum RestrictionSync {
     }
     store.configurationJSON = json
     changed.forEach(guardian.clear)
+    store.bumpConfigurationGeneration()
     return changed
   }
 

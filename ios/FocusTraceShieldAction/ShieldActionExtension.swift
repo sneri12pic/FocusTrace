@@ -17,7 +17,10 @@ class ShieldActionExtension: ShieldActionDelegate {
     for application: ApplicationToken,
     completionHandler: @escaping (ShieldActionResponse) -> Void
   ) {
-    respond(to: action, completionHandler: completionHandler) {
+    respond(
+      to: action, tokenKey: SelectionCodec.tokenKey(application),
+      completionHandler: completionHandler
+    ) {
       $0.contains(application: application)
     }
   }
@@ -27,7 +30,10 @@ class ShieldActionExtension: ShieldActionDelegate {
     for webDomain: WebDomainToken,
     completionHandler: @escaping (ShieldActionResponse) -> Void
   ) {
-    respond(to: action, completionHandler: completionHandler) {
+    respond(
+      to: action, tokenKey: SelectionCodec.tokenKey(webDomain),
+      completionHandler: completionHandler
+    ) {
       $0.contains(webDomain: webDomain)
     }
   }
@@ -37,13 +43,17 @@ class ShieldActionExtension: ShieldActionDelegate {
     for category: ActivityCategoryToken,
     completionHandler: @escaping (ShieldActionResponse) -> Void
   ) {
-    respond(to: action, completionHandler: completionHandler) {
+    respond(to: action, tokenKey: nil, completionHandler: completionHandler) {
       $0.contains(category: category)
     }
   }
 
+  /// `tokenKey` is the shielded app's or web domain's key: the rules the
+  /// block screen listed for it are used first, because an app shielded
+  /// through a picked category is in no selection's application tokens.
   private func respond(
     to action: ShieldAction,
+    tokenKey: String?,
     completionHandler: @escaping (ShieldActionResponse) -> Void,
     matches: (FamilyActivitySelection) -> Bool
   ) {
@@ -51,7 +61,12 @@ class ShieldActionExtension: ShieldActionDelegate {
     case .secondaryButtonPressed:
       let store = RestrictionStore.shared
       let shielded = store.shieldedRuleKeys
-      let rule = store.configuration.rules.first { rule in
+      let rules = store.configuration.rules
+      let displayed = Set(tokenKey.map { store.displayedRuleKeys(tokenKey: $0) } ?? [])
+      let recorded =
+        rules.first { displayed.contains($0.key) && shielded.contains($0.key) }
+        ?? rules.first { displayed.contains($0.key) }
+      let rule = recorded ?? rules.first { rule in
         guard shielded.contains(rule.key), let id = rule.selectionId,
           let selection = store.selection(id: id)
         else { return false }

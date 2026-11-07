@@ -80,7 +80,7 @@ Runner-only Swift (UIKit, Flutter): `Runner/FocusTraceChannels.swift`,
 | | `readRestrictionConfiguration` | The JSON last stored, verbatim (or null). |
 | | `requestRestrictionChange({appKey, type})` | Guard with `request: true`; "allowed" / "cooldown" / "hard"; "allowed" when no such rule. |
 | | `hasNotificationsPermission`, `requestNotificationsPermission` | `UNUserNotificationCenter`; also stored in the App Group for the shield. |
-| | `takeRestrictionEvents` | Block events the shield extension recorded, then forgotten. |
+| | `takeRestrictionEvents` | Block events the shield extension recorded, then forgotten (only those returned; both sides hold the `events` App Group file lock). |
 | `focustrace/screen_time` | `authorizationStatus`, `requestAuthorization` | `AuthorizationCenter`, `.individual`; "notDetermined" / "denied" / "approved". |
 | | `pickSelection({selectionId?, doneLabel, cancelLabel})` | `FamilyActivityPicker` in a `UIHostingController`; returns `{selectionId, appKey, appCount, categoryCount, webDomainCount}` or null when cancelled or empty. With `selectionId` it edits that selection, refused (`RESTRICTION_LOCKED`) while a rule using it is protected. |
 | | `selectionSummary({selectionId})` | Counts of a stored selection, or null. |
@@ -98,8 +98,14 @@ Every other `focustrace/usage` method answers `notImplemented`;
 - App Group keys (`RestrictionStore`): `ft.restrictions.json` (Dart's JSON,
   verbatim), `ft.selection.<id>` / `ft.selectionCreated.<id>`,
   `ft.shield.rules` (rule keys shielded now), `ft.shield.stores`,
-  `ft.events`, `ft.shield.strings`, `ft.notifications.authorized`, and the
-  guard's `ft.change:<appKey>:<type>:rule|ready`.
+  `ft.events`, `ft.shield.strings`, `ft.notifications.authorized`,
+  `ft.restrictions.generation` (bumped by every sync and selection write),
+  `ft.shield.displayed` (encoded app/web-domain token -> rule keys the block
+  screen listed, newest 200), and the guard's
+  `ft.change:<appKey>:<type>:rule|ready`.
+- Cross-process read-modify-write sequences hold an exclusive `flock` on
+  `ft.<name>.lock` in the App Group container (`AppGroup.withLock`): `shields`
+  (reconcile) and `events` (record/take block events).
 
 ### Enforcement
 
@@ -112,7 +118,11 @@ Every other `focustrace/usage` method answers `notImplemented`;
   belong to the start day) and applies or clears each store. The app runs it
   after every sync and whenever it becomes active; the monitor extension runs
   it on `intervalDidStart`, `intervalWillEndWarning` and `intervalDidEnd`,
-  evaluating 30 s ahead because callbacks may come slightly early.
+  evaluating 30 s ahead because callbacks may come slightly early. The app and
+  the monitor may reconcile at once: the `shields` lock serializes them, and a
+  reconcile that sees `ft.restrictions.generation` change while applying runs
+  again (at most three passes), so shields from an older configuration never
+  stay.
 - `ScheduleMapper` only makes sure the monitor wakes at every boundary:
   block-now = one non-repeating interval from now to `untilMs`; schedule = one
   daily interval, split into `start-23:59` and `00:00-end` over midnight.
@@ -134,7 +144,14 @@ Every other `focustrace/usage` method answers `notImplemented`;
 - `FocusTraceShieldAction`: primary closes the app. A shield cannot open the
   host app, so the secondary button ("Unblock in FocusTrace") is offered only
   for Easy/Moderate rules and only when notifications are allowed; it posts a
-  local notification that opens FocusTrace, then closes the app.
+  local notification that opens FocusTrace, then closes the app. The action
+  extension gets only the app's (or web domain's) token, which is in no
+  selection when the app was shielded through a picked category, so it uses
+  the rules the block screen recorded for that token (`ft.shield.displayed`)
+  and falls back to matching selections.
+- Phase 2 leaves `notificationsPermission` off on iOS, so Flutter never asks
+  for the permission and the secondary button does not appear until phase 3
+  turns it on.
 
 ### Flutter
 

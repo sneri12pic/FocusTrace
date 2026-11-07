@@ -16,6 +16,22 @@ enum SelectionCodec {
   static func decode(_ data: Data) -> FamilyActivitySelection? {
     try? JSONDecoder().decode(FamilyActivitySelection.self, from: data)
   }
+
+  /// A stable string for one app or web domain token, the key under which the
+  /// block screen records what it listed (`RestrictionStore.recordDisplayed`).
+  static func tokenKey(_ token: ApplicationToken) -> String? {
+    tokenKey(prefix: "app:", token)
+  }
+
+  static func tokenKey(_ token: WebDomainToken) -> String? {
+    tokenKey(prefix: "web:", token)
+  }
+
+  private static func tokenKey<T: Encodable>(prefix: String, _ token: T) -> String? {
+    let encoder = JSONEncoder()
+    encoder.outputFormatting = [.sortedKeys]
+    return (try? encoder.encode(token)).map { prefix + $0.base64EncodedString() }
+  }
 }
 
 extension RestrictionStore {
@@ -60,11 +76,27 @@ enum ShieldController {
   /// Re-evaluates every rule at `now + tolerance` and makes the shields match.
   /// The monitor passes a small tolerance because DeviceActivity may wake it a
   /// moment before an interval boundary.
+  ///
+  /// The app and the monitor extension may reconcile at the same time. A file
+  /// lock in the App Group serializes them, and a reconcile that sees the
+  /// configuration generation change while it applied shields runs again, so
+  /// shields computed from an older configuration never stay in place.
   @discardableResult
   static func reconcile(
     store: RestrictionStore = .shared, now: Date = Date(), tolerance: TimeInterval = 0
   ) -> Set<String> {
-    let at = now.addingTimeInterval(tolerance)
+    AppGroup.withLock("shields") {
+      var shielded = Set<String>()
+      for _ in 0..<3 {
+        let generation = store.configurationGeneration
+        shielded = applyShields(store: store, at: now.addingTimeInterval(tolerance))
+        if store.configurationGeneration == generation { break }
+      }
+      return shielded
+    }
+  }
+
+  private static func applyShields(store: RestrictionStore, at: Date) -> Set<String> {
     var shielded = Set<String>()
     var names = Set<String>()
     for rule in store.configuration.rules {
