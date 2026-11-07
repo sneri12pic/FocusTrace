@@ -255,6 +255,94 @@ void main() {
     });
   }
 
+  test('iOS routines hold the groups picked for rules and routines', () {
+    final candidates = iosRoutineCandidates(
+      const [
+        RestrictionRule(
+          appKey: 'ios-sel:a',
+          appName: 'Social',
+          type: RestrictionRuleType.schedule,
+          startMinute: 60,
+          endMinute: 120,
+        ),
+        RestrictionRule(
+          appKey: 'ios-sel:a',
+          appName: 'Social',
+          type: RestrictionRuleType.dailyLimit,
+          limitMinutes: 30,
+        ),
+        RestrictionRule(
+          appKey: 'com.android.app',
+          appName: 'Imported',
+          type: RestrictionRuleType.dailyLimit,
+          limitMinutes: 30,
+        ),
+      ],
+      const [
+        BlockRoutine(
+          id: 'r',
+          name: 'Evening',
+          apps: [
+            RoutineApp(appKey: 'ios-sel:b', appName: 'Games'),
+            RoutineApp(appKey: 'ios-sel:a', appName: 'Social'),
+          ],
+        ),
+      ],
+    );
+    expect(candidates.map((c) => '${c.appKey}=${c.appName}'), [
+      'ios-sel:a=Social',
+      'ios-sel:b=Games',
+    ]);
+    expect(candidates.every((c) => c.totalDurationSeconds == 0), isTrue);
+  });
+
+  testWidgets('iOS routine details show the limit, never usage', (
+    tester,
+  ) async {
+    final settings = _Settings()
+      ..routines.add(
+        const BlockRoutine(
+          id: 'r',
+          name: 'Evening',
+          dailyLimitMinutes: 90,
+          isEnabled: true,
+          apps: [
+            RoutineApp(appKey: 'ios-sel:a', appName: 'Social'),
+            RoutineApp(
+              appKey: 'ios-sel:b',
+              appName: 'Games',
+              isIncludedInLimit: false,
+            ),
+          ],
+        ),
+      );
+    await tester.pumpWidget(
+      harness(
+        const RoutineDetailsScreen(routineId: 'r', appCandidates: []),
+        overrides: [
+          restrictionsViewModelProvider.overrideWith((ref) {
+            final vm = RestrictionsViewModel(
+              settingsRepository: settings,
+              platformDataSource: _Platform(),
+              platform: UsagePlatform.ios,
+            );
+            vm.load();
+            return vm;
+          }),
+          installedAppsProvider.overrideWith((ref) async => []),
+        ],
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Daily shared limit'), findsOneWidget);
+    expect(find.text('1h 30m'), findsOneWidget);
+    expect(find.text('Counted usage today'), findsNothing);
+    expect(find.byType(LinearProgressIndicator), findsNothing);
+    expect(find.text('Included in limit'), findsOneWidget);
+    expect(find.text('Excluded from limit'), findsOneWidget);
+    expect(find.textContaining('today'), findsNothing);
+  });
+
   testWidgets('every active reason for an app is listed', (tester) async {
     late List<String> reasons;
     final now = DateTime(2026, 10, 23, 15);

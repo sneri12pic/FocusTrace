@@ -1,8 +1,11 @@
+import 'dart:math' as math;
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/datasources/platform_usage_data_source.dart';
 import '../../domain/models/app_usage_summary.dart';
 import '../../domain/models/block_routine.dart';
+import '../../domain/models/platform_capabilities.dart';
 import '../../domain/models/restriction_rule.dart';
 import '../../domain/models/restriction_event.dart';
 import '../../domain/models/usage_session.dart';
@@ -24,10 +27,11 @@ class RestrictionsState {
   });
 
   factory RestrictionsState.initial(UsagePlatform platform) {
+    final capabilities = PlatformCapabilities.forPlatform(platform);
     return RestrictionsState(
       platform: platform,
-      hasOverlayPermission: platform != UsagePlatform.android,
-      hasNotificationsPermission: platform != UsagePlatform.android,
+      hasOverlayPermission: !capabilities.overlayPermission,
+      hasNotificationsPermission: !capabilities.notificationsPermission,
       isLoading: true,
     );
   }
@@ -108,8 +112,26 @@ class RestrictionsViewModel extends StateNotifier<RestrictionsState> {
         isLoading: false,
       );
       await _sync(rules, routines);
+      await _importNativeEvents();
     } catch (error) {
       state = state.copyWith(isLoading: false, errorMessage: error.toString());
+    }
+  }
+
+  /// Moves block events recorded by iOS shield extensions into the app's
+  /// statistics. Android records them directly, so this does nothing there.
+  Future<void> _importNativeEvents() async {
+    final source = _platformDataSource;
+    final reports = _reportRepository;
+    if (source is! NativeRestrictionEventDataSource || reports == null) return;
+    try {
+      final events = await (source as NativeRestrictionEventDataSource)
+          .takeRestrictionEvents();
+      for (final event in events) {
+        await reports.recordRestrictionEvent(event);
+      }
+    } catch (_) {
+      // Statistics are best-effort; enforcement does not depend on them.
     }
   }
 
@@ -217,13 +239,17 @@ class RestrictionsViewModel extends StateNotifier<RestrictionsState> {
       final fresh = _usageRepository == null
           ? null
           : await _usageRepository.getTodaySummaries();
-      final usage = fresh == null
+      final measured = fresh == null
           ? usageSecondsToday
           : fresh
                     .where((a) => a.appKey == appKey)
                     .firstOrNull
                     ?.totalDurationSeconds ??
                 0;
+      // iOS: a limit the monitor found reached counts as used up, like
+      // Android's measured usage.
+      final reached = await _readReachedLimits();
+      final usage = math.max(measured, reached[appKey] ?? 0);
       final checkedAt = now ?? DateTime.now();
       final blockingRules = currentRules
           .where(
@@ -324,6 +350,14 @@ class RestrictionsViewModel extends StateNotifier<RestrictionsState> {
   }
 
   Future<List<AppUsageSummary>> _loadTodayUsage() async {
+    final (measured, reached) = await (
+      _loadMeasuredUsage(),
+      _readReachedLimits(),
+    ).wait;
+    return withReachedLimits(measured, reached);
+  }
+
+  Future<List<AppUsageSummary>> _loadMeasuredUsage() async {
     final usageRepository = _usageRepository;
     if (usageRepository == null) {
       return const <AppUsageSummary>[];
@@ -332,6 +366,19 @@ class RestrictionsViewModel extends StateNotifier<RestrictionsState> {
       return await usageRepository.getTodaySummaries();
     } catch (_) {
       return const <AppUsageSummary>[];
+    }
+  }
+
+  /// Reached daily limits where usage does not reach Flutter (iOS); empty
+  /// elsewhere.
+  Future<Map<String, int>> _readReachedLimits() async {
+    final source = _platformDataSource;
+    if (source is! ReachedLimitDataSource) return const {};
+    try {
+      return await (source as ReachedLimitDataSource).readReachedLimits();
+    } catch (_) {
+      // Unknown means not reached: Screen Time still enforces the limit.
+      return const {};
     }
   }
 
@@ -356,4 +403,36 @@ class RestrictionsViewModel extends StateNotifier<RestrictionsState> {
       encodeRestrictionConfiguration(rules, routines),
     );
   }
+}
+
+/// Today's usage rows with each reached limit's usage ([reached], by app key)
+/// raised to at least that much, adding a row where none exists. iOS reports
+/// a reached limit as usage equal to the limit, so rules show "Blocked until"
+/// and offer "Unblock now" as on Android.
+List<AppUsageSummary> withReachedLimits(
+  List<AppUsageSummary> usage,
+  Map<String, int> reached,
+) {
+  if (reached.isEmpty) return usage;
+  final rows = [
+    for (final row in usage)
+      if (reached[row.appKey] case final seconds?
+          when seconds > row.totalDurationSeconds)
+        row.copyWith(totalDurationSeconds: seconds)
+      else
+        row,
+  ];
+  final known = {for (final row in usage) row.appKey};
+  for (final MapEntry(:key, :value) in reached.entries) {
+    if (known.contains(key)) continue;
+    rows.add(
+      AppUsageSummary(
+        appName: key,
+        packageName: key,
+        totalDurationSeconds: value,
+        percentageOfTotal: 0,
+      ),
+    );
+  }
+  return rows;
 }

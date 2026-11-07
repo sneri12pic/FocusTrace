@@ -1717,4 +1717,258 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get settingsClearDataHealth =>
       'Health Connect import turns off and imported workouts are deleted. Nothing in Health Connect changes.';
+
+  @override
+  String get screenTimeAccessTitle => 'Screen Time';
+
+  @override
+  String get screenTimeAccessSubtitle => 'To block the apps you choose';
+
+  @override
+  String get onboardingScreenTimeBody =>
+      'FocusTrace uses Screen Time to block the apps you choose.\nEverything stays on your device.';
+
+  @override
+  String get onboardingScreenTimeHint =>
+      'iOS Settings controls this permission, under Screen Time.';
+
+  @override
+  String get rxScreenTimeNeededTitle => 'Allow Screen Time';
+
+  @override
+  String get rxScreenTimeNeededBody =>
+      'FocusTrace needs Screen Time access to block apps on this iPhone.';
+
+  @override
+  String get rxPickerDone => 'Done';
+
+  @override
+  String get rxNameAppsTitle => 'Name these apps';
+
+  @override
+  String get rxNameAppsHint => 'For example, Social media';
+
+  @override
+  String rxSelectionCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count apps, categories or websites chosen',
+      one: '1 app, category or website chosen',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String shieldBlockNowUntil(String time) {
+    return 'Temporary block until $time';
+  }
+
+  @override
+  String shieldScheduleUntil(String time) {
+    return 'Blocked by schedule until $time';
+  }
+
+  @override
+  String get shieldDailyLimit => 'Daily app limit reached';
+
+  @override
+  String get shieldRestricted => 'This app is restricted right now.';
+
+  @override
+  String get shieldLeave => 'Leave';
+
+  @override
+  String get shieldUnblockInApp => 'Unblock in FocusTrace';
+
+  @override
+  String shieldNotificationBody(String name) {
+    return 'Open FocusTrace to change $name.';
+  }
+
+  @override
+  String shieldLimitWarningTitle(String name) {
+    return '$name limit almost reached';
+  }
+
+  @override
+  String shieldRoutineWarningTitle(String name) {
+    return '$name routine limit almost reached';
+  }
+
+  @override
+  String shieldLimitWarningBody(int minutes) {
+    String _temp0 = intl.Intl.pluralLogic(
+      minutes,
+      locale: localeName,
+      other: 'Blocking starts in about $minutes minutes.',
+      one: 'Blocking starts in about $minutes minute.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get shieldNudgeTitle => 'Preferred usage time';
+
+  @override
+  String get shieldNudgeReached => 'You\'ve reached your time';
+
+  @override
+  String shieldNudgeMinutesLeft(int minutes) {
+    String _temp0 = intl.Intl.pluralLogic(
+      minutes,
+      locale: localeName,
+      other: '$minutes min left',
+      one: '$minutes min left',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String shieldNudgeMinutesOver(int minutes) {
+    String _temp0 = intl.Intl.pluralLogic(
+      minutes,
+      locale: localeName,
+      other: '$minutes min over',
+      one: '$minutes min over',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get routinePickNewApps => 'Choose new apps';
+
+  @override
+  String get routineAppIncluded => 'Included in limit';
+
+  @override
+  String get routineAppExcluded => 'Excluded from limit';
+
+  @override
+  String get iosReportPickups => 'Pickups';
+
+  @override
+  String get iosReportNotifications => 'Notifications';
+
+  @override
+  String get iosReportTapHour => 'Tap an hour to see its time';
+
+  @override
+  String iosReportMoreApps(String count) {
+    return '+$count more';
+  }
+
+  @override
+  String get iosReportNoData => 'No Screen Time data for this period yet.';
+
+  @override
+  String get iosReportGroupApps => 'Apps in this group';
+
+  @override
+  String get iosUsageAccessBody =>
+      'Allow Screen Time so FocusTrace can show how you use this iPhone. The numbers stay inside iOS.';
+
+  @override
+  String get iosUsageMenuItem => 'Usage';
+
+  @override
+  String get appleHealthTitle => 'Apple Health';
+
+  @override
+  String get appleHealthIntro =>
+      'Import your workouts from apps like Hevy through Apple Health. It\'s optional and off by default. Tracking, limits and blocking never depend on it.';
+
+  @override
+  String get appleHealthDataBody =>
+      'Only workouts: the kind of workout, its name, when it started and ended, and which app recorded it. Nothing else, such as heart rate, routes or sets, is read, and FocusTrace writes nothing to Apple Health. Imported workouts stay on this device: sync doesn\'t upload them and backups don\'t include them.';
+
+  @override
+  String get appleHealthAutoImportBody =>
+      'Checks for new workouts in the background about once an hour and whenever you open FocusTrace. Apps save to Apple Health on their own schedule, so a workout can take a while to show up.';
+
+  @override
+  String get appleHealthOutcomeUnavailable =>
+      'Last check failed: Apple Health isn\'t available';
+
+  @override
+  String get appleHealthOutcomePermission =>
+      'Last check failed: access to workouts is off in Apple Health';
+
+  @override
+  String get appleHealthUnavailable =>
+      'Apple Health isn\'t available on this device.';
+
+  @override
+  String get appleHealthManage => 'Manage access in the Health app';
+
+  @override
+  String get appleHealthAccessHint =>
+      'Apple Health doesn\'t tell apps whether access was allowed. If your workouts don\'t appear, open the Health app, then Sharing, Apps, FocusTrace, and turn on Workouts.';
+
+  @override
+  String get appleHealthOffNote =>
+      'Turning this off stops every read and automatic import. It doesn\'t remove FocusTrace\'s access or change anything in Apple Health; manage that in the Health app. Workouts already imported stay on this device until you delete them.';
+
+  @override
+  String get appleHealthDeleteBody =>
+      'This removes the workouts FocusTrace copied to this device. Nothing in Apple Health or the apps that recorded them changes.';
+
+  @override
+  String get onboardingAppleHealthBody =>
+      'Optional. Import workouts from apps like Hevy through Apple Health. FocusTrace only reads workouts and keeps them on this device. You can change this anytime in Settings.';
+
+  @override
+  String get onboardingAppleHealthConnect => 'Connect Apple Health';
+
+  @override
+  String get onboardingAppleHealthConnected =>
+      'Connected. Your workouts are in Settings, under Apple Health.';
+
+  @override
+  String get settingsClearDataAppleHealth =>
+      'Apple Health import turns off and imported workouts are deleted. Nothing in Apple Health changes.';
+
+  @override
+  String settingsImportMissingAppGroups(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          'Backup imported. $count groups of apps aren\'t on this iPhone: open their restrictions and choose the apps again.',
+      one:
+          'Backup imported. 1 group of apps isn\'t on this iPhone: open its restriction and choose the apps again.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get iosWidgetGalleryName => 'Restriction status';
+
+  @override
+  String get iosWidgetGalleryDescription =>
+      'What FocusTrace is blocking now and what\'s next.';
+
+  @override
+  String get iosWidgetBlockingNow => 'Blocking now';
+
+  @override
+  String get iosWidgetNothingBlocked => 'Nothing blocked right now';
+
+  @override
+  String iosWidgetUntil(String time) {
+    return 'until $time';
+  }
+
+  @override
+  String get iosWidgetNextBlock => 'Next block';
+
+  @override
+  String get iosWidgetNoUpcoming => 'No upcoming blocks';
+
+  @override
+  String get iosWidgetLimitsReached => 'Limits reached today';
+
+  @override
+  String get iosWidgetNoRestrictions =>
+      'Open FocusTrace to choose apps to block';
 }

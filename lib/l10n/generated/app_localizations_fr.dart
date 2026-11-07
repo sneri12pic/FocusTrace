@@ -1750,4 +1750,260 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get settingsClearDataHealth =>
       'L\'import Health Connect est désactivé et les entraînements importés sont supprimés. Rien ne change dans Health Connect.';
+
+  @override
+  String get screenTimeAccessTitle => 'Temps d’écran';
+
+  @override
+  String get screenTimeAccessSubtitle =>
+      'Pour bloquer les apps que vous choisissez';
+
+  @override
+  String get onboardingScreenTimeBody =>
+      'FocusTrace utilise Temps d’écran pour bloquer les apps que vous choisissez.\nTout reste sur votre appareil.';
+
+  @override
+  String get onboardingScreenTimeHint =>
+      'Cette autorisation se gère dans les Réglages iOS, sous Temps d’écran.';
+
+  @override
+  String get rxScreenTimeNeededTitle => 'Autoriser Temps d’écran';
+
+  @override
+  String get rxScreenTimeNeededBody =>
+      'FocusTrace a besoin d’accéder à Temps d’écran pour bloquer des apps sur cet iPhone.';
+
+  @override
+  String get rxPickerDone => 'OK';
+
+  @override
+  String get rxNameAppsTitle => 'Nommez ces apps';
+
+  @override
+  String get rxNameAppsHint => 'Par exemple, Réseaux sociaux';
+
+  @override
+  String rxSelectionCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count apps, catégories ou sites choisis',
+      one: '1 app, catégorie ou site choisi',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String shieldBlockNowUntil(String time) {
+    return 'Blocage temporaire jusqu’à $time';
+  }
+
+  @override
+  String shieldScheduleUntil(String time) {
+    return 'Bloquée par l’horaire jusqu’à $time';
+  }
+
+  @override
+  String get shieldDailyLimit => 'Limite quotidienne de l’app atteinte';
+
+  @override
+  String get shieldRestricted => 'Cette app est restreinte pour le moment.';
+
+  @override
+  String get shieldLeave => 'Quitter';
+
+  @override
+  String get shieldUnblockInApp => 'Débloquer dans FocusTrace';
+
+  @override
+  String shieldNotificationBody(String name) {
+    return 'Ouvrez FocusTrace pour modifier $name.';
+  }
+
+  @override
+  String shieldLimitWarningTitle(String name) {
+    return 'La limite de $name est presque atteinte';
+  }
+
+  @override
+  String shieldRoutineWarningTitle(String name) {
+    return 'La routine $name approche de sa limite';
+  }
+
+  @override
+  String shieldLimitWarningBody(int minutes) {
+    String _temp0 = intl.Intl.pluralLogic(
+      minutes,
+      locale: localeName,
+      other: 'Le blocage commencera dans environ $minutes minutes.',
+      one: 'Le blocage commencera dans environ $minutes minute.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get shieldNudgeTitle => 'Temps d’utilisation souhaité';
+
+  @override
+  String get shieldNudgeReached => 'Vous avez atteint votre temps';
+
+  @override
+  String shieldNudgeMinutesLeft(int minutes) {
+    String _temp0 = intl.Intl.pluralLogic(
+      minutes,
+      locale: localeName,
+      other: 'Encore $minutes min',
+      one: 'Encore $minutes min',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String shieldNudgeMinutesOver(int minutes) {
+    String _temp0 = intl.Intl.pluralLogic(
+      minutes,
+      locale: localeName,
+      other: '$minutes min de plus',
+      one: '$minutes min de plus',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get routinePickNewApps => 'Choisir de nouvelles apps';
+
+  @override
+  String get routineAppIncluded => 'Incluse dans la limite';
+
+  @override
+  String get routineAppExcluded => 'Exclue de la limite';
+
+  @override
+  String get iosReportPickups => 'Activations';
+
+  @override
+  String get iosReportNotifications => 'Notifications';
+
+  @override
+  String get iosReportTapHour => 'Touchez une heure pour voir son temps';
+
+  @override
+  String iosReportMoreApps(String count) {
+    return '+$count de plus';
+  }
+
+  @override
+  String get iosReportNoData =>
+      'Pas encore de données Temps d’écran pour cette période.';
+
+  @override
+  String get iosReportGroupApps => 'Apps de ce groupe';
+
+  @override
+  String get iosUsageAccessBody =>
+      'Autorisez Temps d’écran pour que FocusTrace montre comment vous utilisez cet iPhone. Les chiffres restent dans iOS.';
+
+  @override
+  String get iosUsageMenuItem => 'Utilisation';
+
+  @override
+  String get appleHealthTitle => 'Apple Health';
+
+  @override
+  String get appleHealthIntro =>
+      'Importez vos entraînements depuis des apps comme Hevy via Apple Health. C\'est facultatif et désactivé par défaut. Le suivi, les limites et les blocages n\'en dépendent jamais.';
+
+  @override
+  String get appleHealthDataBody =>
+      'Uniquement les entraînements : le type d\'entraînement, son nom, son début et sa fin, et l\'app qui l\'a enregistré. Rien d\'autre, comme la fréquence cardiaque, les parcours ou les séries, et FocusTrace n\'écrit rien dans Apple Health. Les entraînements importés restent sur cet appareil : la synchronisation ne les envoie pas et les sauvegardes ne les incluent pas.';
+
+  @override
+  String get appleHealthAutoImportBody =>
+      'Recherche de nouveaux entraînements en arrière-plan environ une fois par heure et à chaque ouverture de FocusTrace. Les apps enregistrent dans Apple Health à leur rythme, un entraînement peut donc mettre du temps à apparaître.';
+
+  @override
+  String get appleHealthOutcomeUnavailable =>
+      'Échec de la dernière vérification : Apple Health n\'est pas disponible';
+
+  @override
+  String get appleHealthOutcomePermission =>
+      'Échec de la dernière vérification : l\'accès aux entraînements est désactivé dans Apple Health';
+
+  @override
+  String get appleHealthUnavailable =>
+      'Apple Health n\'est pas disponible sur cet appareil.';
+
+  @override
+  String get appleHealthManage => 'Gérer l\'accès dans l\'app Santé';
+
+  @override
+  String get appleHealthAccessHint =>
+      'Apple Health n\'indique pas aux apps si l\'accès a été autorisé. Si vos entraînements n\'apparaissent pas, ouvrez l\'app Santé, puis Partage, Apps, FocusTrace, et activez Entraînements.';
+
+  @override
+  String get appleHealthOffNote =>
+      'Désactiver arrête toute lecture et tout import automatique. Cela ne retire pas l\'accès de FocusTrace et ne change rien dans Apple Health ; gérez cela dans l\'app Santé. Les entraînements déjà importés restent sur cet appareil jusqu\'à ce que vous les supprimiez.';
+
+  @override
+  String get appleHealthDeleteBody =>
+      'Cela retire les entraînements que FocusTrace a copiés sur cet appareil. Rien ne change dans Apple Health ni dans les apps qui les ont enregistrés.';
+
+  @override
+  String get onboardingAppleHealthBody =>
+      'Facultatif. Importez des entraînements depuis des apps comme Hevy via Apple Health. FocusTrace ne lit que les entraînements et les garde sur cet appareil. Vous pouvez changer cela à tout moment dans les réglages.';
+
+  @override
+  String get onboardingAppleHealthConnect => 'Connecter Apple Health';
+
+  @override
+  String get onboardingAppleHealthConnected =>
+      'Connecté. Vos entraînements sont dans les réglages, sous Apple Health.';
+
+  @override
+  String get settingsClearDataAppleHealth =>
+      'L\'import Apple Health est désactivé et les entraînements importés sont supprimés. Rien ne change dans Apple Health.';
+
+  @override
+  String settingsImportMissingAppGroups(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          'Sauvegarde importée. $count groupes d\'apps ne sont pas sur cet iPhone : ouvrez leurs restrictions et choisissez à nouveau les apps.',
+      one:
+          'Sauvegarde importée. 1 groupe d\'apps n\'est pas sur cet iPhone : ouvrez sa restriction et choisissez à nouveau les apps.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get iosWidgetGalleryName => 'État des restrictions';
+
+  @override
+  String get iosWidgetGalleryDescription =>
+      'Ce que FocusTrace bloque maintenant et ce qui vient ensuite.';
+
+  @override
+  String get iosWidgetBlockingNow => 'Bloqué maintenant';
+
+  @override
+  String get iosWidgetNothingBlocked => 'Rien n\'est bloqué pour l\'instant';
+
+  @override
+  String iosWidgetUntil(String time) {
+    return 'jusqu\'à $time';
+  }
+
+  @override
+  String get iosWidgetNextBlock => 'Prochain blocage';
+
+  @override
+  String get iosWidgetNoUpcoming => 'Aucun blocage à venir';
+
+  @override
+  String get iosWidgetLimitsReached => 'Limites atteintes aujourd\'hui';
+
+  @override
+  String get iosWidgetNoRestrictions =>
+      'Ouvrez FocusTrace pour choisir les apps à bloquer';
 }

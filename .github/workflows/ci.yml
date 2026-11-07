@@ -130,3 +130,58 @@ jobs:
             build/app/outputs/apk/debug/*.apk
           if-no-files-found: warn
           retention-days: 14
+
+  # Swift sources and the Xcode project (edited from Windows/Linux via
+  # tool/ios/add_extension_targets.rb) are only ever compiled here.
+  ios-build:
+    name: iOS debug build (no codesign)
+    runs-on: macos-15
+    timeout-minutes: 40
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.32.2"
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Build iOS app and extensions
+        run: flutter build ios --debug --no-codesign
+
+      # flutter build shows only the first Swift error; list them all.
+      - name: Show every Swift compiler error
+        if: ${{ failure() }}
+        run: |
+          xcodebuild -workspace ios/Runner.xcworkspace -scheme Runner \
+            -configuration Debug -sdk iphoneos -destination 'generic/platform=iOS' \
+            CODE_SIGNING_ALLOWED=NO build 2>&1 | grep -E 'error:' | sort -u | head -100 || true
+
+      # flutter build hides xcodebuild output, so prove the extensions were
+      # built, embedded where iOS looks for them, and do not link Flutter.
+      - name: Check embedded extensions
+        run: |
+          app=build/ios/iphoneos/Runner.app
+          for ext in PlugIns/FocusTraceMonitor PlugIns/FocusTraceShield \
+                     PlugIns/FocusTraceShieldAction PlugIns/FocusTraceWidget \
+                     Extensions/FocusTraceReport; do
+            bundle="$app/$ext.appex"
+            name=$(basename "$ext")
+            test -f "$bundle/$name" || { echo "::error::missing $bundle/$name"; exit 1; }
+            plutil -p "$bundle/Info.plist" | grep -E 'CFBundleIdentifier|CFBundleShortVersionString|PointIdentifier'
+            if otool -L "$bundle/$name" | grep -q Flutter; then
+              echo "::error::$name links Flutter"; exit 1
+            fi
+          done
+
+      # Pure-Foundation FocusTraceKit logic (rule JSON from Dart, change guard,
+      # schedule mapping) compiled with swiftc and run on the macOS host. Runs
+      # even when the app build failed, so both kinds of error show at once.
+      - name: FocusTraceKit unit tests
+        if: ${{ !cancelled() }}
+        run: bash tool/ios/run_kit_tests.sh

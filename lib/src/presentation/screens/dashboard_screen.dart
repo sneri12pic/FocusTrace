@@ -2,11 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
-import '../../domain/models/usage_session.dart';
+import '../../domain/models/platform_capabilities.dart';
 import '../../performance/dashboard_performance.dart';
 import '../localization/app_localizations_x.dart';
 import '../providers.dart';
 import '../view_models/dashboard_view_model.dart';
+import '../widgets/ios_usage_report_view.dart';
 import '../widgets/permission_card.dart';
 import '../widgets/tracking_status_banner.dart';
 import 'usage_bubble_screen.dart';
@@ -40,12 +41,19 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
       ref
           .read(dashboardViewModelProvider.notifier)
           .loadTodayUsage(showLoading: false);
+      if (ref.read(platformCapabilitiesProvider).nativeUsageReports) {
+        // iOS: a daily limit may have been reached while away.
+        ref.read(restrictionsViewModelProvider.notifier).refreshRoutineUsage();
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final dashboardState = ref.watch(dashboardViewModelProvider);
+    final capabilities = PlatformCapabilities.forPlatform(
+      dashboardState.platform,
+    );
     final dashboardViewModel = ref.read(dashboardViewModelProvider.notifier);
     final trackingState = ref.watch(trackingViewModelProvider);
     final trackingViewModel = ref.read(trackingViewModelProvider.notifier);
@@ -68,6 +76,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
               child: _DayHeader(
                 state: dashboardState,
                 viewModel: dashboardViewModel,
+                // iOS draws the day's total in its native report.
+                showsTrackedTotal: !capabilities.nativeUsageReports,
               ),
             ),
             if (dashboardState.isRefreshing)
@@ -93,70 +103,87 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                     primary: true,
                     padding: const EdgeInsets.all(16),
                     children: [
-                      if (dashboardState.summaries.isNotEmpty) ...[
-                        UsageBubbleScreen(
-                          summaries: dashboardState.summaries,
-                          trendsByAppKey: dashboardState.trendsByAppKey,
-                          isToday: dashboardState.isToday,
-                        ),
-                        const SizedBox(height: 12),
-                      ],
-                      PermissionCard(
-                        platform: dashboardState.platform,
-                        hasUsageAccess: dashboardState.hasUsageAccess,
-                        onOpenSettings:
-                            dashboardViewModel.openPermissionSettings,
-                        onRecheck: dashboardViewModel.checkPermission,
-                      ),
-                      if (dashboardState.platform == UsagePlatform.windows) ...[
-                        const SizedBox(height: 12),
-                        TrackingStatusBanner(status: trackingState.status),
-                        const SizedBox(height: 12),
-                        _TrackingControls(
-                          isTracking: trackingState.status.isTracking,
-                          isBusy: trackingState.isBusy,
-                          onStart: () async {
-                            await trackingViewModel.startTracking();
-                            await dashboardViewModel.refresh();
-                          },
-                          onStop: () async {
-                            await trackingViewModel.stopTracking();
-                            await dashboardViewModel.refresh();
-                          },
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          context.l10n.trackingRunsWhileOpen,
-                          style: Theme.of(context).textTheme.bodySmall,
-                          textAlign: TextAlign.center,
-                        ),
-                      ],
-                      if (dashboardState.platform != UsagePlatform.android &&
-                          dashboardState.platform != UsagePlatform.windows) ...[
-                        const SizedBox(height: 12),
-                        const _UnsupportedPanel(),
-                      ],
-                      const SizedBox(height: 16),
-                      if (dashboardState.errorMessage != null)
-                        _ErrorPanel(
-                          message: context.l10n.commonUnexpectedError,
-                          onRetry: dashboardViewModel.refresh,
+                      // iOS: usage exists only inside Screen Time's report
+                      // extension, so its views replace the Flutter ones.
+                      if (capabilities.nativeUsageReports)
+                        IosUsageReportGate(
+                          children: [
+                            IosUsageReportView(
+                              kind: IosUsageReportKind.today,
+                              date: dashboardState.selectedDate,
+                            ),
+                            const SizedBox(height: 12),
+                            IosUsageReportView(
+                              kind: IosUsageReportKind.hourly,
+                              date: dashboardState.selectedDate,
+                            ),
+                          ],
                         )
-                      else if (dashboardState.isLoading &&
-                          dashboardState.summaries.isEmpty)
-                        const _LoadingPanel()
-                      else if (dashboardState.summaries.isEmpty)
-                        _EmptyPanel(
-                          isToday: dashboardState.isToday,
-                          isUsageUnavailable:
-                              dashboardState.showsUsageUnavailable,
+                      else ...[
+                        if (dashboardState.summaries.isNotEmpty) ...[
+                          UsageBubbleScreen(
+                            summaries: dashboardState.summaries,
+                            trendsByAppKey: dashboardState.trendsByAppKey,
+                            isToday: dashboardState.isToday,
+                          ),
+                          const SizedBox(height: 12),
+                        ],
+                        PermissionCard(
+                          platform: dashboardState.platform,
+                          hasUsageAccess: dashboardState.hasUsageAccess,
+                          onOpenSettings:
+                              dashboardViewModel.openPermissionSettings,
+                          onRecheck: dashboardViewModel.checkPermission,
                         ),
-                      if (dashboardState.refreshErrorMessage != null) ...[
-                        const SizedBox(height: 12),
-                        _ErrorPanel(
-                          message: context.l10n.commonUnexpectedError,
-                          onRetry: dashboardViewModel.refresh,
-                        ),
+                        if (capabilities.activeWindowTracking) ...[
+                          const SizedBox(height: 12),
+                          TrackingStatusBanner(status: trackingState.status),
+                          const SizedBox(height: 12),
+                          _TrackingControls(
+                            isTracking: trackingState.status.isTracking,
+                            isBusy: trackingState.isBusy,
+                            onStart: () async {
+                              await trackingViewModel.startTracking();
+                              await dashboardViewModel.refresh();
+                            },
+                            onStop: () async {
+                              await trackingViewModel.stopTracking();
+                              await dashboardViewModel.refresh();
+                            },
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            context.l10n.trackingRunsWhileOpen,
+                            style: Theme.of(context).textTheme.bodySmall,
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
+                        if (!capabilities.usageNumbersInFlutter) ...[
+                          const SizedBox(height: 12),
+                          const _UnsupportedPanel(),
+                        ],
+                        const SizedBox(height: 16),
+                        if (dashboardState.errorMessage != null)
+                          _ErrorPanel(
+                            message: context.l10n.commonUnexpectedError,
+                            onRetry: dashboardViewModel.refresh,
+                          )
+                        else if (dashboardState.isLoading &&
+                            dashboardState.summaries.isEmpty)
+                          const _LoadingPanel()
+                        else if (dashboardState.summaries.isEmpty)
+                          _EmptyPanel(
+                            isToday: dashboardState.isToday,
+                            isUsageUnavailable:
+                                dashboardState.showsUsageUnavailable,
+                          ),
+                        if (dashboardState.refreshErrorMessage != null) ...[
+                          const SizedBox(height: 12),
+                          _ErrorPanel(
+                            message: context.l10n.commonUnexpectedError,
+                            onRetry: dashboardViewModel.refresh,
+                          ),
+                        ],
                       ],
                     ],
                   ),
@@ -172,10 +199,17 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
 
 /// `<  Today · tracked 2h 15m  >` — steps through daily usage snapshots.
 class _DayHeader extends StatelessWidget {
-  const _DayHeader({required this.state, required this.viewModel});
+  const _DayHeader({
+    required this.state,
+    required this.viewModel,
+    this.showsTrackedTotal = true,
+  });
 
   final DashboardState state;
   final DashboardViewModel viewModel;
+
+  /// False on iOS, where Flutter does not know the total.
+  final bool showsTrackedTotal;
 
   String _title(BuildContext context) {
     switch (state.dayOffset) {
@@ -223,7 +257,7 @@ class _DayHeader extends StatelessWidget {
                   ),
                 ),
                 // An unmeasured day has no duration; the panel explains it.
-                if (!state.showsUsageUnavailable)
+                if (showsTrackedTotal && !state.showsUsageUnavailable)
                   Text(
                     context.l10n.dashboardDayTracked(
                       context.l10n.compactDuration(
