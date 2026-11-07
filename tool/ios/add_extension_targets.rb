@@ -18,8 +18,9 @@
 #     FocusTraceKit sources, system frameworks, extension dependencies and
 #     embed phases (placed before "Thin Binary")
 #   * FocusTraceMonitor / FocusTraceShield / FocusTraceShieldAction /
-#     FocusTraceReport extension targets with Info.plist, entitlements,
-#     FocusTraceKit sources and system frameworks
+#     FocusTraceReport / FocusTraceWidget extension targets with Info.plist,
+#     entitlements, FocusTraceKit sources and system frameworks
+#   * a PrivacyInfo.xcprivacy in every target's resources
 #
 # Flutter's xcconfigs (Flutter/Debug.xcconfig, Flutter/Release.xcconfig) stay on
 # Runner only. Extensions use Config/Extension.xcconfig, which includes only
@@ -192,6 +193,43 @@ def extension_info_plist_xml(ext)
   XML
 end
 
+# Privacy manifest of every target. FocusTrace (and every extension through
+# FocusTraceKit) reads and writes UserDefaults: its own (CA92.1) and the App
+# Group suite shared by the app and its extensions (1C8F.1). It tracks nothing
+# and collects nothing: usage, rules and workouts stay on the device.
+def privacy_manifest_xml
+  plist_header + <<~XML
+    <dict>
+    \t<key>NSPrivacyTracking</key>
+    \t<false/>
+    \t<key>NSPrivacyTrackingDomains</key>
+    \t<array/>
+    \t<key>NSPrivacyCollectedDataTypes</key>
+    \t<array/>
+    \t<key>NSPrivacyAccessedAPITypes</key>
+    \t<array>
+    \t\t<dict>
+    \t\t\t<key>NSPrivacyAccessedAPIType</key>
+    \t\t\t<string>NSPrivacyAccessedAPICategoryUserDefaults</string>
+    \t\t\t<key>NSPrivacyAccessedAPITypeReasons</key>
+    \t\t\t<array>
+    \t\t\t\t<string>CA92.1</string>
+    \t\t\t\t<string>1C8F.1</string>
+    \t\t\t</array>
+    \t\t</dict>
+    \t</array>
+    </dict>
+    </plist>
+  XML
+end
+
+def ensure_privacy_manifest(target, group, folder)
+  write_if_missing("#{folder}/PrivacyInfo.xcprivacy", privacy_manifest_xml)
+  ref = find_or_create_file(group, 'PrivacyInfo.xcprivacy')
+  ref.last_known_file_type = 'text.xml'
+  ensure_build_file(target.resources_build_phase, ref)
+end
+
 def write_if_missing(relative_path, content)
   path = File.join(IOS_DIR, relative_path)
   return if File.exist?(path)
@@ -326,6 +364,7 @@ def configure_extension(project, ext, kit_refs, extension_xcconfig_ref)
   end
   find_or_create_file(group, 'Info.plist')
   find_or_create_file(group, "#{ext[:name]}.entitlements")
+  ensure_privacy_manifest(target, group, ext[:name])
   kit_refs.each do |ref|
     next if !screen_time && SCREEN_TIME_KIT_FILES.include?(ref.path)
 
@@ -401,6 +440,7 @@ RUNNER_SOURCES.each do |source|
 end
 kit_refs.each { |ref| ensure_build_file(runner.source_build_phase, ref) }
 ensure_frameworks(project, runner, RUNNER_FRAMEWORKS)
+ensure_privacy_manifest(runner, runner_group, 'Runner')
 
 # Extensions.
 app_extension_phase = nil
