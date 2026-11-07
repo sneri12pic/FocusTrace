@@ -1318,7 +1318,9 @@ class _ScreenTimeCard extends StatelessWidget {
   }
 }
 
-/// Keeps the iOS block screen's texts in the app's current language.
+/// Keeps the iOS block screen's texts in the app's current language. A
+/// locale counts as sent only once iOS stored the texts, so a failed send is
+/// tried again at the next dependency change.
 class _ShieldStringsSync extends ConsumerStatefulWidget {
   const _ShieldStringsSync();
 
@@ -1328,14 +1330,18 @@ class _ShieldStringsSync extends ConsumerStatefulWidget {
 
 class _ShieldStringsSyncState extends ConsumerState<_ShieldStringsSync> {
   Locale? _sent;
+  Locale? _sending;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     final locale = Localizations.localeOf(context);
-    if (locale == _sent) return;
-    _sent = locale;
-    syncShieldStrings(context, ref);
+    if (locale == _sent || locale == _sending) return;
+    _sending = locale;
+    syncShieldStrings(context, ref).then((sent) {
+      if (_sending == locale) _sending = null;
+      if (sent) _sent = locale;
+    });
   }
 
   @override

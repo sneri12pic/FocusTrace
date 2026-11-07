@@ -269,8 +269,9 @@ Future<String?> showSelectionNameDialog(
   );
 }
 
-/// Pushes the block screen's texts to iOS in the app's language.
-Future<void> syncShieldStrings(BuildContext context, WidgetRef ref) async {
+/// Pushes the block screen's texts to iOS in the app's language. True when
+/// iOS stored them.
+Future<bool> syncShieldStrings(BuildContext context, WidgetRef ref) async {
   final l = context.l10n;
   const time = '{time}';
   const name = '{name}';
@@ -299,9 +300,11 @@ Future<void> syncShieldStrings(BuildContext context, WidgetRef ref) async {
       for (var minutes = 10; minutes <= 120; minutes += 10)
         'nudgeOver.$minutes': l.shieldNudgeMinutesOver(minutes),
     });
+    return true;
   } catch (error) {
     // The shield falls back to English.
     debugPrint('Shield strings not sent: $error');
+    return false;
   }
 }
 
