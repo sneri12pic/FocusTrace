@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../domain/models/platform_capabilities.dart';
 import '../../domain/models/tracking_status.dart';
 import '../../domain/models/usage_session.dart';
 import '../localization/app_localizations_x.dart';
@@ -53,7 +54,9 @@ class TrackingStatusBanner extends StatelessWidget {
   }
 
   String _labelFor(BuildContext context, TrackingStatus status) {
-    if (status.platform == UsagePlatform.windows) {
+    if (PlatformCapabilities.forPlatform(
+      status.platform,
+    ).activeWindowTracking) {
       return status.isTracking
           ? context.l10n.trackingWindowsRunning
           : context.l10n.trackingWindowsIdle;

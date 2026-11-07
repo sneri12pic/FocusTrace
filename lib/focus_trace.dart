@@ -23,6 +23,7 @@ export 'src/domain/models/app_language.dart';
 export 'src/domain/models/app_usage_interval.dart';
 export 'src/domain/models/restriction_rule.dart';
 export 'src/domain/models/os_usage_bucket.dart';
+export 'src/domain/models/platform_capabilities.dart';
 export 'src/domain/models/restriction_event.dart';
 export 'src/domain/models/sync_usage.dart';
 export 'src/domain/models/tracking_status.dart';
