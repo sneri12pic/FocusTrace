@@ -261,8 +261,11 @@ ruby tool/ios/add_extension_targets.rb
 
 Job `ios-build` in `.github/workflows/ci.yml` (macos-15, 40 min): Flutter
 3.32.2, `flutter pub get`, `flutter build ios --debug --no-codesign`, then a
-check that every extension is embedded (PlugIns/ or Extensions/) and does not
-link Flutter (`otool -L`), then the FocusTraceKit unit tests
+check that every extension is embedded (PlugIns/ or Extensions/), declares
+the expected extension point (`plutil -extract`: `NSExtension` or, for the
+report, `EXAppExtensionAttributes`) and that no Mach-O file in its bundle
+(main binary and an Xcode 16 `*.debug.dylib`) links Flutter (`otool -L`),
+then the FocusTraceKit unit tests
 (`tool/ios/run_kit_tests.sh`, also when the build failed). It is the
 only place Swift is compiled; the developer machines are Windows/Linux. Code
 signing is off, so the build proves compilation and project wiring, not
