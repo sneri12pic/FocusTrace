@@ -8,9 +8,15 @@
 
 /* Begin PBXBuildFile section */
 		01BF23576239815640C1CBD4 /* ManagedSettingsUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C30494B92AD430E73FC3B25A /* ManagedSettingsUI.framework */; };
+		03564CAAB3CFDD5C12646280 /* ShieldStrings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4748CBFB6E8C2838D824C0F0 /* ShieldStrings.swift */; };
 		036CB0DF44B708859ECE75E7 /* UsageReportModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6527E7DE13C35588E9C527D4 /* UsageReportModels.swift */; };
 		05B1B846EF6C940CB27E7A8B /* AppGroup.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2581795C0F161196D581851 /* AppGroup.swift */; };
 		07130BA798FA99128B2B8196 /* DeviceActivity.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 675954F2963577E2EA4D4700 /* DeviceActivity.framework */; };
+		0A9C260C07E285AC7A92737C /* WidgetRefresher.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7061584EC8CEC434670C118 /* WidgetRefresher.swift */; };
+		0B7BF135F7CAA043F0210056 /* ShieldPlanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46AF1036CF8F3E2FF5E5D730 /* ShieldPlanner.swift */; };
+		0D67E166DA83AAEDAFD4063E /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C67A58105E780257D18A8962 /* WidgetKit.framework */; };
+		1052E30E99B1A24E991A5B85 /* FocusTraceWidget.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 88D5532DEAA587D494589A23 /* FocusTraceWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		105E503E9C4B808B91934627 /* DataTransferBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 56EBD33AFFBABB0BEED64EA5 /* DataTransferBridge.swift */; };
 		13E80B6C91A83420E9A16628 /* ShieldStrings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4748CBFB6E8C2838D824C0F0 /* ShieldStrings.swift */; };
 		1498D2341E8E89220040F4C2 /* GeneratedPluginRegistrant.m in Sources */ = {isa = PBXBuildFile; fileRef = 1498D2331E8E89220040F4C2 /* GeneratedPluginRegistrant.m */; };
 		159713C0CAE0181EC7CC6639 /* UsageEvents.swift in Sources */ = {isa = PBXBuildFile; fileRef = E13DB7956F9A510ED25B2EED /* UsageEvents.swift */; };
@@ -20,10 +26,12 @@
 		2555D99034AE8F76145E9931 /* ManagedSettings.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 95414351C224FB56BB7A4837 /* ManagedSettings.framework */; };
 		2A28B35853260CB7DBE5CF36 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D58C53DEE0698941A56D7864 /* SwiftUI.framework */; };
 		2B41E67B3BA9A46BF2B7951D /* UsageReportModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6527E7DE13C35588E9C527D4 /* UsageReportModels.swift */; };
+		2B4B0FAE56BC54D759BFC42B /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C67A58105E780257D18A8962 /* WidgetKit.framework */; };
 		2B63F41D8941FC71484DA703 /* ManagedSettings.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 95414351C224FB56BB7A4837 /* ManagedSettings.framework */; };
 		2E9591D15F57477FED077099 /* ReportData.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6C46E22803BD18C68720C1A /* ReportData.swift */; };
 		30232D9238B3179916ED9EDD /* UsageReportModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6527E7DE13C35588E9C527D4 /* UsageReportModels.swift */; };
 		31B6B725E69CDF5959E8C1BE /* RestrictionChangeGuard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0AFE2BFCC75FFD15DD82C162 /* RestrictionChangeGuard.swift */; };
+		32B6CF75D9C5A80683EE9AF7 /* RestrictionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 868903C0DADEE95D09478E6B /* RestrictionStore.swift */; };
 		331C808B294A63AB00263BE5 /* RunnerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 331C807B294A618700263BE5 /* RunnerTests.swift */; };
 		3345CCEEC068352343E9A2A6 /* RestrictionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 868903C0DADEE95D09478E6B /* RestrictionStore.swift */; };
 		3361B7224218EF039CE5FB53 /* FamilyControls.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 0689780013F7A45B48346388 /* FamilyControls.framework */; };
@@ -31,7 +39,10 @@
 		37F397B23E0051877CEC957E /* RestrictionChangeGuard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0AFE2BFCC75FFD15DD82C162 /* RestrictionChangeGuard.swift */; };
 		3B3967161E833CAA004F5970 /* AppFrameworkInfo.plist in Resources */ = {isa = PBXBuildFile; fileRef = 3B3967151E833CAA004F5970 /* AppFrameworkInfo.plist */; };
 		3BCC4B6C49A6223865467379 /* ScheduleMapper.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA906AAECBD75B8D0CC273C6 /* ScheduleMapper.swift */; };
+		400789335A672945961ABECF /* WidgetRefresher.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7061584EC8CEC434670C118 /* WidgetRefresher.swift */; };
 		40F911BC97933281BAEC6BFE /* UsageEvents.swift in Sources */ = {isa = PBXBuildFile; fileRef = E13DB7956F9A510ED25B2EED /* UsageEvents.swift */; };
+		45FC7CB299EB6922603BFBA8 /* WidgetStatus.swift in Sources */ = {isa = PBXBuildFile; fileRef = 320894603C27B29EF835EB58 /* WidgetStatus.swift */; };
+		47FE292789C3D61B076FB7DA /* WidgetStatus.swift in Sources */ = {isa = PBXBuildFile; fileRef = 320894603C27B29EF835EB58 /* WidgetStatus.swift */; };
 		4B1BC70C95D1736D2C9F2258 /* RestrictionChangeGuard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0AFE2BFCC75FFD15DD82C162 /* RestrictionChangeGuard.swift */; };
 		4C91418CEDD67950A6E4BFB7 /* ShieldConfigurationExtension.swift in Sources */ = {isa = PBXBuildFile; fileRef = D5731229F598926AC4EB10D5 /* ShieldConfigurationExtension.swift */; };
 		4DF351495CC2147B11F57B11 /* FamilyControls.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 0689780013F7A45B48346388 /* FamilyControls.framework */; };
@@ -41,22 +52,32 @@
 		5A033B363B3B4D6CBEBE75F1 /* UsageEvents.swift in Sources */ = {isa = PBXBuildFile; fileRef = E13DB7956F9A510ED25B2EED /* UsageEvents.swift */; };
 		5AA003BACB5DC773B2562915 /* RestrictionChangeGuard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0AFE2BFCC75FFD15DD82C162 /* RestrictionChangeGuard.swift */; };
 		5AB5CA61F09CA08EE01CFBB7 /* ShieldStrings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4748CBFB6E8C2838D824C0F0 /* ShieldStrings.swift */; };
+		5D0501822838928A54D6C71D /* WidgetStatus.swift in Sources */ = {isa = PBXBuildFile; fileRef = 320894603C27B29EF835EB58 /* WidgetStatus.swift */; };
+		5E7A2636390DA6978E671500 /* FocusTraceWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0DD3368C6B2FF72ED98A27F5 /* FocusTraceWidget.swift */; };
 		610E77B3B51E29AC4507F9AF /* ScheduleMapper.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA906AAECBD75B8D0CC273C6 /* ScheduleMapper.swift */; };
+		633A8097020CF2CBB8041FD7 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C67A58105E780257D18A8962 /* WidgetKit.framework */; };
+		65B5C33317F77D9AD15D0D08 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C67A58105E780257D18A8962 /* WidgetKit.framework */; };
 		666C9375A809057A7E76EDAB /* ShieldStrings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4748CBFB6E8C2838D824C0F0 /* ShieldStrings.swift */; };
 		67B7342A6E316DAABA2A4B5D /* HealthKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 76C11A1526865E5963C79357 /* HealthKit.framework */; };
 		68CCF0231A36EBF3E4910CD0 /* ActivityPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = B584FBF48BE69438DDBF808E /* ActivityPicker.swift */; };
 		6A7632E8D41A55DCA796BF63 /* ManagedSettings.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 95414351C224FB56BB7A4837 /* ManagedSettings.framework */; };
 		7071B7BAAB9628E7C5095605 /* FocusTraceMonitor.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 1BD718F0B9BDFBA135922FEE /* FocusTraceMonitor.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		73E367BABCA121FA9CE4E03F /* UsageEvents.swift in Sources */ = {isa = PBXBuildFile; fileRef = E13DB7956F9A510ED25B2EED /* UsageEvents.swift */; };
 		7426FB7E0B5DB457F73268AB /* ManagedSettings.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 95414351C224FB56BB7A4837 /* ManagedSettings.framework */; };
 		74858FAF1ED2DC5600515810 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74858FAE1ED2DC5600515810 /* AppDelegate.swift */; };
+		74D6F045C2CDFC556AEBE6FF /* RestrictionModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7AC6DD443D1C935EE745F9D /* RestrictionModels.swift */; };
 		76841D34613E6DF96FAF9886 /* FocusTraceReportExtension.swift in Sources */ = {isa = PBXBuildFile; fileRef = 54DC707BD8A77324ABB05DE7 /* FocusTraceReportExtension.swift */; };
 		79433E6C238CA92566A3E849 /* RestrictionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 868903C0DADEE95D09478E6B /* RestrictionStore.swift */; };
 		7B4AC81FF7E8878A1E26EF64 /* FocusTraceShield.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 3DB92D4C611A8EFFF9917236 /* FocusTraceShield.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		7C0CE8273114A03640AC2506 /* UsageReportModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6527E7DE13C35588E9C527D4 /* UsageReportModels.swift */; };
+		7E1ABCF9805AC6FCD3FA551A /* RestrictionChangeGuard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0AFE2BFCC75FFD15DD82C162 /* RestrictionChangeGuard.swift */; };
 		7FBC3A44348412737FDFF3D8 /* RestrictionModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7AC6DD443D1C935EE745F9D /* RestrictionModels.swift */; };
+		864D3AD125200D6A51B3DC0F /* UsageReportModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6527E7DE13C35588E9C527D4 /* UsageReportModels.swift */; };
 		867B37E64DEAC6D14F262032 /* FamilyControls.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 0689780013F7A45B48346388 /* FamilyControls.framework */; };
 		87055042B2D15617A2D9699E /* ManagedSettings.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 95414351C224FB56BB7A4837 /* ManagedSettings.framework */; };
 		8707CFFAFAF6CE8E3BBA8A6A /* ShieldActionExtension.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7549BF834F72932C73B599B4 /* ShieldActionExtension.swift */; };
+		887E72177B07D062E58F2FE0 /* WidgetRefresher.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7061584EC8CEC434670C118 /* WidgetRefresher.swift */; };
+		89931D59E76016660E728FB9 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D58C53DEE0698941A56D7864 /* SwiftUI.framework */; };
 		8A32DA53FB80DCB32AFBED7D /* FocusTraceReport.appex in Embed ExtensionKit Extensions */ = {isa = PBXBuildFile; fileRef = 0DF0DEEFA51E755EF5219460 /* FocusTraceReport.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		8B7EDB028DB3D88444CE26C6 /* UsageEvents.swift in Sources */ = {isa = PBXBuildFile; fileRef = E13DB7956F9A510ED25B2EED /* UsageEvents.swift */; };
 		8C83ABD93E4D6EBDA6D427A8 /* SelectionIconsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D96E51221C5EF3F7890A35ED /* SelectionIconsView.swift */; };
@@ -77,9 +98,13 @@
 		A00E8361921B752540C7F41A /* AppGroup.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2581795C0F161196D581851 /* AppGroup.swift */; };
 		A264F7B96C75B29C48263361 /* HealthKitBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7FAE71678E6EA4E0B564869 /* HealthKitBridge.swift */; };
 		A72B52390D18893A42D7080E /* RestrictionChangeGuard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0AFE2BFCC75FFD15DD82C162 /* RestrictionChangeGuard.swift */; };
+		A944447C9A10006C7BCEAE6C /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C67A58105E780257D18A8962 /* WidgetKit.framework */; };
 		AAD52FDA6BF0C892D08FBC30 /* ShieldPlanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46AF1036CF8F3E2FF5E5D730 /* ShieldPlanner.swift */; };
+		AC8E6CE276FBE07499309E69 /* ScheduleMapper.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA906AAECBD75B8D0CC273C6 /* ScheduleMapper.swift */; };
 		AE1D476BF976629D5EDB760D /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D58C53DEE0698941A56D7864 /* SwiftUI.framework */; };
 		B216D4DF73ED3B2646A1DE63 /* ScheduleMapper.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA906AAECBD75B8D0CC273C6 /* ScheduleMapper.swift */; };
+		B3C38C29FD3108E86A17E7F7 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C67A58105E780257D18A8962 /* WidgetKit.framework */; };
+		B8D7BAC40CDC592FCD041B1C /* WidgetRefresher.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7061584EC8CEC434670C118 /* WidgetRefresher.swift */; };
 		B8F295A9EBD5843C6D79F9CA /* FocusTraceShieldAction.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 6F97B3A782580F692B48CDB8 /* FocusTraceShieldAction.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		BD5AB89FD6DE72FD20896C48 /* ShieldStrings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4748CBFB6E8C2838D824C0F0 /* ShieldStrings.swift */; };
 		C7099E0F52B7E447CB520882 /* DeviceActivityMonitorExtension.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B366F9FF577D35D2DD655B2 /* DeviceActivityMonitorExtension.swift */; };
@@ -91,6 +116,7 @@
 		D168DC7BE93220813871083E /* ScheduleMapper.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA906AAECBD75B8D0CC273C6 /* ScheduleMapper.swift */; };
 		D1AC3C244FEDCA622CD584C0 /* RestrictionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 868903C0DADEE95D09478E6B /* RestrictionStore.swift */; };
 		D23C3EF2C8CC8707EBA0791C /* ShieldStrings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4748CBFB6E8C2838D824C0F0 /* ShieldStrings.swift */; };
+		D3AD9ED0A61AEA6FBD39B951 /* WidgetStatus.swift in Sources */ = {isa = PBXBuildFile; fileRef = 320894603C27B29EF835EB58 /* WidgetStatus.swift */; };
 		D3D69A4B3F89F717BD9E28BD /* UsageEvents.swift in Sources */ = {isa = PBXBuildFile; fileRef = E13DB7956F9A510ED25B2EED /* UsageEvents.swift */; };
 		D7F88B9CBCE5611E680F7723 /* FamilyControls.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 0689780013F7A45B48346388 /* FamilyControls.framework */; };
 		D85D378A86B9FA6926C5C316 /* UserNotifications.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 52A561A13169B19FBC9B0709 /* UserNotifications.framework */; };
@@ -100,10 +126,15 @@
 		E06AFEBEE910A6BD825DD5DD /* ScreenTimeEnforcement.swift in Sources */ = {isa = PBXBuildFile; fileRef = 333AD47E9D19D41C67695AAF /* ScreenTimeEnforcement.swift */; };
 		E362DB4081A0A598B16D1C19 /* WorkoutStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 09838D5EE3BFA697A5BED45C /* WorkoutStore.swift */; };
 		E38625D7D4A71AE18F50EB97 /* Charts.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 965B01B217B5B6A91ABDF18B /* Charts.framework */; };
+		E6A84CC0FD16A7C660F70E15 /* WidgetRefresher.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7061584EC8CEC434670C118 /* WidgetRefresher.swift */; };
+		E94EF6835CC935CF2DC4B88C /* AppGroup.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2581795C0F161196D581851 /* AppGroup.swift */; };
+		E993C8AB627335BA7C18C0A9 /* WidgetStatus.swift in Sources */ = {isa = PBXBuildFile; fileRef = 320894603C27B29EF835EB58 /* WidgetStatus.swift */; };
 		ECC5E249AFEAD8E4DF128E6E /* RestrictionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 868903C0DADEE95D09478E6B /* RestrictionStore.swift */; };
 		EDDB2173D43F1BF048D2D44A /* ReportPalette.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1C7AD053B985B2C5CAD280A /* ReportPalette.swift */; };
 		EE6FD9DBAD1548EE748E892A /* ShieldPlanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46AF1036CF8F3E2FF5E5D730 /* ShieldPlanner.swift */; };
+		F18674322531CBDF10694F67 /* WidgetStatus.swift in Sources */ = {isa = PBXBuildFile; fileRef = 320894603C27B29EF835EB58 /* WidgetStatus.swift */; };
 		F1DC810AA7CA4F34D3F2A51B /* FamilyControls.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 0689780013F7A45B48346388 /* FamilyControls.framework */; };
+		FB6DFE34AE31756CFAAA9F64 /* WidgetRefresher.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7061584EC8CEC434670C118 /* WidgetRefresher.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -113,6 +144,13 @@
 			proxyType = 1;
 			remoteGlobalIDString = 40772C9DF59AB27A19B343FC;
 			remoteInfo = FocusTraceShield;
+		};
+		1879A2CA74E1D68FB0EC06AD /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 97C146E61CF9000F007C117D /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 552D4B6E711A834D073621BC;
+			remoteInfo = FocusTraceWidget;
 		};
 		331C8085294A63A400263BE5 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -154,6 +192,7 @@
 				7071B7BAAB9628E7C5095605 /* FocusTraceMonitor.appex in Embed Foundation Extensions */,
 				7B4AC81FF7E8878A1E26EF64 /* FocusTraceShield.appex in Embed Foundation Extensions */,
 				B8F295A9EBD5843C6D79F9CA /* FocusTraceShieldAction.appex in Embed Foundation Extensions */,
+				1052E30E99B1A24E991A5B85 /* FocusTraceWidget.appex in Embed Foundation Extensions */,
 			);
 			name = "Embed Foundation Extensions";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -187,6 +226,7 @@
 		08D9BAABC697FBD7215ADEA3 /* FocusTraceShieldAction.entitlements */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.entitlements; path = FocusTraceShieldAction.entitlements; sourceTree = "<group>"; };
 		09838D5EE3BFA697A5BED45C /* WorkoutStore.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WorkoutStore.swift; sourceTree = "<group>"; };
 		0AFE2BFCC75FFD15DD82C162 /* RestrictionChangeGuard.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RestrictionChangeGuard.swift; sourceTree = "<group>"; };
+		0DD3368C6B2FF72ED98A27F5 /* FocusTraceWidget.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FocusTraceWidget.swift; sourceTree = "<group>"; };
 		0DF0DEEFA51E755EF5219460 /* FocusTraceReport.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = FocusTraceReport.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		1396C92A82B64AE4F4555BF1 /* FocusTraceChannels.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FocusTraceChannels.swift; sourceTree = "<group>"; };
 		1498D2321E8E86230040F4C2 /* GeneratedPluginRegistrant.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = GeneratedPluginRegistrant.h; sourceTree = "<group>"; };
@@ -194,6 +234,7 @@
 		18EFB64187E538A030429B81 /* FocusTraceMonitor.entitlements */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.entitlements; path = FocusTraceMonitor.entitlements; sourceTree = "<group>"; };
 		1BD718F0B9BDFBA135922FEE /* FocusTraceMonitor.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = FocusTraceMonitor.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		288C8E3DE92C81C257BF150E /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		320894603C27B29EF835EB58 /* WidgetStatus.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WidgetStatus.swift; sourceTree = "<group>"; };
 		3252553DCBAAC743D2D2E303 /* FocusTraceReport.entitlements */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.entitlements; path = FocusTraceReport.entitlements; sourceTree = "<group>"; };
 		331C807B294A618700263BE5 /* RunnerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunnerTests.swift; sourceTree = "<group>"; };
 		331C8081294A63A400263BE5 /* RunnerTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = RunnerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -205,6 +246,7 @@
 		4B38755B93FE1BF129E71CB6 /* FocusTraceShield.entitlements */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.entitlements; path = FocusTraceShield.entitlements; sourceTree = "<group>"; };
 		52A561A13169B19FBC9B0709 /* UserNotifications.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = UserNotifications.framework; path = System/Library/Frameworks/UserNotifications.framework; sourceTree = SDKROOT; };
 		54DC707BD8A77324ABB05DE7 /* FocusTraceReportExtension.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FocusTraceReportExtension.swift; sourceTree = "<group>"; };
+		56EBD33AFFBABB0BEED64EA5 /* DataTransferBridge.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = DataTransferBridge.swift; sourceTree = "<group>"; };
 		6527E7DE13C35588E9C527D4 /* UsageReportModels.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = UsageReportModels.swift; sourceTree = "<group>"; };
 		675954F2963577E2EA4D4700 /* DeviceActivity.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = DeviceActivity.framework; path = System/Library/Frameworks/DeviceActivity.framework; sourceTree = SDKROOT; };
 		6F97B3A782580F692B48CDB8 /* FocusTraceShieldAction.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = FocusTraceShieldAction.appex; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -216,6 +258,7 @@
 		7B366F9FF577D35D2DD655B2 /* DeviceActivityMonitorExtension.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = DeviceActivityMonitorExtension.swift; sourceTree = "<group>"; };
 		817FAF7650D0A2881AC7C0B7 /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		868903C0DADEE95D09478E6B /* RestrictionStore.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RestrictionStore.swift; sourceTree = "<group>"; };
+		88D5532DEAA587D494589A23 /* FocusTraceWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = FocusTraceWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		95414351C224FB56BB7A4837 /* ManagedSettings.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = ManagedSettings.framework; path = System/Library/Frameworks/ManagedSettings.framework; sourceTree = SDKROOT; };
 		965B01B217B5B6A91ABDF18B /* Charts.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Charts.framework; path = System/Library/Frameworks/Charts.framework; sourceTree = SDKROOT; };
 		9740EEB21CF90195004384FC /* Debug.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; name = Debug.xcconfig; path = Flutter/Debug.xcconfig; sourceTree = "<group>"; };
@@ -233,15 +276,19 @@
 		BA906AAECBD75B8D0CC273C6 /* ScheduleMapper.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ScheduleMapper.swift; sourceTree = "<group>"; };
 		C1C7AD053B985B2C5CAD280A /* ReportPalette.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ReportPalette.swift; sourceTree = "<group>"; };
 		C30494B92AD430E73FC3B25A /* ManagedSettingsUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = ManagedSettingsUI.framework; path = System/Library/Frameworks/ManagedSettingsUI.framework; sourceTree = SDKROOT; };
+		C67A58105E780257D18A8962 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
 		D44FD244EE2CA029A83F2192 /* ReportViews.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ReportViews.swift; sourceTree = "<group>"; };
 		D5731229F598926AC4EB10D5 /* ShieldConfigurationExtension.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ShieldConfigurationExtension.swift; sourceTree = "<group>"; };
 		D58C53DEE0698941A56D7864 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
 		D96E51221C5EF3F7890A35ED /* SelectionIconsView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SelectionIconsView.swift; sourceTree = "<group>"; };
 		E13DB7956F9A510ED25B2EED /* UsageEvents.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = UsageEvents.swift; sourceTree = "<group>"; };
+		E4FB12C7CE007FA76574510F /* FocusTraceWidget.entitlements */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.entitlements; path = FocusTraceWidget.entitlements; sourceTree = "<group>"; };
 		E515D74D1F55D1D37296E2A6 /* Extension.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; path = Extension.xcconfig; sourceTree = "<group>"; };
+		E7061584EC8CEC434670C118 /* WidgetRefresher.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WidgetRefresher.swift; sourceTree = "<group>"; };
 		E70B2A9CD9FBB9EB1EFF9B76 /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		E7FAE71678E6EA4E0B564869 /* HealthKitBridge.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = HealthKitBridge.swift; sourceTree = "<group>"; };
 		F7AC6DD443D1C935EE745F9D /* RestrictionModels.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RestrictionModels.swift; sourceTree = "<group>"; };
+		FBD5B8F6B4DF57A2C0DF4679 /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -253,6 +300,16 @@
 				01BF23576239815640C1CBD4 /* ManagedSettingsUI.framework in Frameworks */,
 				D7F88B9CBCE5611E680F7723 /* FamilyControls.framework in Frameworks */,
 				1EA163F813BF9BC30B244994 /* DeviceActivity.framework in Frameworks */,
+				633A8097020CF2CBB8041FD7 /* WidgetKit.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		3B928E2709A593D522558FED /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				0D67E166DA83AAEDAFD4063E /* WidgetKit.framework in Frameworks */,
+				89931D59E76016660E728FB9 /* SwiftUI.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -265,6 +322,7 @@
 				3361B7224218EF039CE5FB53 /* FamilyControls.framework in Frameworks */,
 				6A7632E8D41A55DCA796BF63 /* ManagedSettings.framework in Frameworks */,
 				E38625D7D4A71AE18F50EB97 /* Charts.framework in Frameworks */,
+				A944447C9A10006C7BCEAE6C /* WidgetKit.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -276,6 +334,7 @@
 				4DF351495CC2147B11F57B11 /* FamilyControls.framework in Frameworks */,
 				5309A78AC5AF903EBAD48EDA /* DeviceActivity.framework in Frameworks */,
 				9B0749777BBD5B8B459174E0 /* UserNotifications.framework in Frameworks */,
+				B3C38C29FD3108E86A17E7F7 /* WidgetKit.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -289,6 +348,7 @@
 				2A28B35853260CB7DBE5CF36 /* SwiftUI.framework in Frameworks */,
 				8CF7AE25B716DC511BD854FB /* UserNotifications.framework in Frameworks */,
 				67B7342A6E316DAABA2A4B5D /* HealthKit.framework in Frameworks */,
+				2B4B0FAE56BC54D759BFC42B /* WidgetKit.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -300,6 +360,7 @@
 				87055042B2D15617A2D9699E /* ManagedSettings.framework in Frameworks */,
 				F1DC810AA7CA4F34D3F2A51B /* FamilyControls.framework in Frameworks */,
 				D85D378A86B9FA6926C5C316 /* UserNotifications.framework in Frameworks */,
+				65B5C33317F77D9AD15D0D08 /* WidgetKit.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -317,6 +378,7 @@
 				52A561A13169B19FBC9B0709 /* UserNotifications.framework */,
 				965B01B217B5B6A91ABDF18B /* Charts.framework */,
 				76C11A1526865E5963C79357 /* HealthKit.framework */,
+				C67A58105E780257D18A8962 /* WidgetKit.framework */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
@@ -340,6 +402,17 @@
 			path = FocusTraceShieldAction;
 			sourceTree = "<group>";
 		};
+		6C82CA979F90F38EE8BDC870 /* FocusTraceWidget */ = {
+			isa = PBXGroup;
+			children = (
+				0DD3368C6B2FF72ED98A27F5 /* FocusTraceWidget.swift */,
+				FBD5B8F6B4DF57A2C0DF4679 /* Info.plist */,
+				E4FB12C7CE007FA76574510F /* FocusTraceWidget.entitlements */,
+			);
+			name = FocusTraceWidget;
+			path = FocusTraceWidget;
+			sourceTree = "<group>";
+		};
 		7DA27FAA3DD9B0E5FD8715BD /* FocusTraceKit */ = {
 			isa = PBXGroup;
 			children = (
@@ -353,6 +426,8 @@
 				46AF1036CF8F3E2FF5E5D730 /* ShieldPlanner.swift */,
 				E13DB7956F9A510ED25B2EED /* UsageEvents.swift */,
 				6527E7DE13C35588E9C527D4 /* UsageReportModels.swift */,
+				E7061584EC8CEC434670C118 /* WidgetRefresher.swift */,
+				320894603C27B29EF835EB58 /* WidgetStatus.swift */,
 			);
 			name = FocusTraceKit;
 			path = FocusTraceKit;
@@ -380,6 +455,7 @@
 				A529A1B0E75784864F28BDE0 /* FocusTraceShield */,
 				469CE498182618FCEDF61E85 /* FocusTraceShieldAction */,
 				C3565E8B98062FB6CA73EC72 /* FocusTraceReport */,
+				6C82CA979F90F38EE8BDC870 /* FocusTraceWidget */,
 				331C8082294A63A400263BE5 /* RunnerTests */,
 				143111B0F358DC6116D599E7 /* Frameworks */,
 				97C146EF1CF9000F007C117D /* Products */,
@@ -395,6 +471,7 @@
 				3DB92D4C611A8EFFF9917236 /* FocusTraceShield.appex */,
 				6F97B3A782580F692B48CDB8 /* FocusTraceShieldAction.appex */,
 				0DF0DEEFA51E755EF5219460 /* FocusTraceReport.appex */,
+				88D5532DEAA587D494589A23 /* FocusTraceWidget.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -417,6 +494,7 @@
 				A0B927013645EFD684948F00 /* UsageReportView.swift */,
 				09838D5EE3BFA697A5BED45C /* WorkoutStore.swift */,
 				E7FAE71678E6EA4E0B564869 /* HealthKitBridge.swift */,
+				56EBD33AFFBABB0BEED64EA5 /* DataTransferBridge.swift */,
 			);
 			path = Runner;
 			sourceTree = "<group>";
@@ -520,6 +598,23 @@
 			productReference = 3DB92D4C611A8EFFF9917236 /* FocusTraceShield.appex */;
 			productType = "com.apple.product-type.app-extension";
 		};
+		552D4B6E711A834D073621BC /* FocusTraceWidget */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = FB0A4BF6E0F46F32F5980F4A /* Build configuration list for PBXNativeTarget "FocusTraceWidget" */;
+			buildPhases = (
+				56D728FC6F8B429B28CCF229 /* Sources */,
+				3B928E2709A593D522558FED /* Frameworks */,
+				595AFB1BD3C16B3B770C3A7E /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = FocusTraceWidget;
+			productName = FocusTraceWidget;
+			productReference = 88D5532DEAA587D494589A23 /* FocusTraceWidget.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 		726C21AACA6FE4CC1C80C131 /* FocusTraceShieldAction */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 6231DED376F86311F1A82619 /* Build configuration list for PBXNativeTarget "FocusTraceShieldAction" */;
@@ -574,6 +669,7 @@
 				2106C77C572AD12F243A374F /* PBXTargetDependency */,
 				EF8CC455B3C11A6C730208B7 /* PBXTargetDependency */,
 				2F9B2FC327409DBB30E43895 /* PBXTargetDependency */,
+				10B034255BBD713EA9AE283B /* PBXTargetDependency */,
 			);
 			name = Runner;
 			productName = Runner;
@@ -619,6 +715,7 @@
 				40772C9DF59AB27A19B343FC /* FocusTraceShield */,
 				726C21AACA6FE4CC1C80C131 /* FocusTraceShieldAction */,
 				809FFF5019154CFCB9ED9CAB /* FocusTraceReport */,
+				552D4B6E711A834D073621BC /* FocusTraceWidget */,
 			);
 		};
 /* End PBXProject section */
@@ -632,6 +729,13 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		331C807F294A63A400263BE5 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		595AFB1BD3C16B3B770C3A7E /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -722,6 +826,8 @@
 				4E98A1F055906B50427AD627 /* ShieldPlanner.swift in Sources */,
 				D3D69A4B3F89F717BD9E28BD /* UsageEvents.swift in Sources */,
 				036CB0DF44B708859ECE75E7 /* UsageReportModels.swift in Sources */,
+				400789335A672945961ABECF /* WidgetRefresher.swift in Sources */,
+				45FC7CB299EB6922603BFBA8 /* WidgetStatus.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -730,6 +836,25 @@
 			buildActionMask = 2147483647;
 			files = (
 				331C808B294A63AB00263BE5 /* RunnerTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		56D728FC6F8B429B28CCF229 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				5E7A2636390DA6978E671500 /* FocusTraceWidget.swift in Sources */,
+				E94EF6835CC935CF2DC4B88C /* AppGroup.swift in Sources */,
+				7E1ABCF9805AC6FCD3FA551A /* RestrictionChangeGuard.swift in Sources */,
+				74D6F045C2CDFC556AEBE6FF /* RestrictionModels.swift in Sources */,
+				32B6CF75D9C5A80683EE9AF7 /* RestrictionStore.swift in Sources */,
+				AC8E6CE276FBE07499309E69 /* ScheduleMapper.swift in Sources */,
+				0B7BF135F7CAA043F0210056 /* ShieldPlanner.swift in Sources */,
+				03564CAAB3CFDD5C12646280 /* ShieldStrings.swift in Sources */,
+				73E367BABCA121FA9CE4E03F /* UsageEvents.swift in Sources */,
+				864D3AD125200D6A51B3DC0F /* UsageReportModels.swift in Sources */,
+				FB6DFE34AE31756CFAAA9F64 /* WidgetRefresher.swift in Sources */,
+				5D0501822838928A54D6C71D /* WidgetStatus.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -751,6 +876,8 @@
 				1B47321E6CFAD3D96930E238 /* ReportViews.swift in Sources */,
 				EDDB2173D43F1BF048D2D44A /* ReportPalette.swift in Sources */,
 				2B41E67B3BA9A46BF2B7951D /* UsageReportModels.swift in Sources */,
+				B8D7BAC40CDC592FCD041B1C /* WidgetRefresher.swift in Sources */,
+				E993C8AB627335BA7C18C0A9 /* WidgetStatus.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -776,6 +903,9 @@
 				7C0CE8273114A03640AC2506 /* UsageReportModels.swift in Sources */,
 				E362DB4081A0A598B16D1C19 /* WorkoutStore.swift in Sources */,
 				A264F7B96C75B29C48263361 /* HealthKitBridge.swift in Sources */,
+				105E503E9C4B808B91934627 /* DataTransferBridge.swift in Sources */,
+				887E72177B07D062E58F2FE0 /* WidgetRefresher.swift in Sources */,
+				47FE292789C3D61B076FB7DA /* WidgetStatus.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -794,6 +924,8 @@
 				AAD52FDA6BF0C892D08FBC30 /* ShieldPlanner.swift in Sources */,
 				5A033B363B3B4D6CBEBE75F1 /* UsageEvents.swift in Sources */,
 				C7EE65F34D583348D6671E0A /* UsageReportModels.swift in Sources */,
+				0A9C260C07E285AC7A92737C /* WidgetRefresher.swift in Sources */,
+				F18674322531CBDF10694F67 /* WidgetStatus.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -812,12 +944,20 @@
 				EE6FD9DBAD1548EE748E892A /* ShieldPlanner.swift in Sources */,
 				159713C0CAE0181EC7CC6639 /* UsageEvents.swift in Sources */,
 				30232D9238B3179916ED9EDD /* UsageReportModels.swift in Sources */,
+				E6A84CC0FD16A7C660F70E15 /* WidgetRefresher.swift in Sources */,
+				D3AD9ED0A61AEA6FBD39B951 /* WidgetStatus.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
+		10B034255BBD713EA9AE283B /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = FocusTraceWidget;
+			target = 552D4B6E711A834D073621BC /* FocusTraceWidget */;
+			targetProxy = 1879A2CA74E1D68FB0EC06AD /* PBXContainerItemProxy */;
+		};
 		110F211795F20EDCCCED2901 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			name = FocusTraceMonitor;
@@ -961,6 +1101,37 @@
 				VALIDATE_PRODUCT = YES;
 			};
 			name = Release;
+		};
+		1DD07D7D6F24368F97BC7A3A /* Profile */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = E515D74D1F55D1D37296E2A6 /* Extension.xcconfig */;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_ENTITLEMENTS = FocusTraceWidget/FocusTraceWidget.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_BITCODE = NO;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = FocusTraceWidget/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.stepandemianenko.focustrace.widget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Profile;
 		};
 		249021D3217E4FDB00AE95B9 /* Profile */ = {
 			isa = XCBuildConfiguration;
@@ -1195,6 +1366,68 @@
 					"@executable_path/../../Frameworks",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.stepandemianenko.focustrace.monitor;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VALIDATE_PRODUCT = NO;
+			};
+			name = Debug;
+		};
+		79588F5ABDA28C092052E674 /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = E515D74D1F55D1D37296E2A6 /* Extension.xcconfig */;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_ENTITLEMENTS = FocusTraceWidget/FocusTraceWidget.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_BITCODE = NO;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = FocusTraceWidget/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.stepandemianenko.focustrace.widget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		7F81C8807C21D9FE6CEDFDFE /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = E515D74D1F55D1D37296E2A6 /* Extension.xcconfig */;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_ENTITLEMENTS = FocusTraceWidget/FocusTraceWidget.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_BITCODE = NO;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = FocusTraceWidget/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.stepandemianenko.focustrace.widget;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
 				SKIP_INSTALL = YES;
@@ -1587,6 +1820,16 @@
 				97C147061CF9000F007C117D /* Debug */,
 				97C147071CF9000F007C117D /* Release */,
 				249021D4217E4FDB00AE95B9 /* Profile */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		FB0A4BF6E0F46F32F5980F4A /* Build configuration list for PBXNativeTarget "FocusTraceWidget" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				7F81C8807C21D9FE6CEDFDFE /* Debug */,
+				79588F5ABDA28C092052E674 /* Release */,
+				1DD07D7D6F24368F97BC7A3A /* Profile */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

@@ -43,7 +43,10 @@ final class FocusTraceChannels: NSObject {
   /// A block may have started or ended while FocusTrace was in the background
   /// and the monitor was not woken (e.g. more rules than monitored activities).
   @objc private func didBecomeActive() {
-    queue.async { RestrictionEnforcer.refresh() }
+    queue.async {
+      RestrictionEnforcer.refresh()
+      WidgetRefresher.reload()
+    }
   }
 
   // MARK: focustrace/usage
@@ -58,6 +61,7 @@ final class FocusTraceChannels: NSObject {
           try RestrictionSync.apply(json: json, store: store)
           store.removeUnreferencedSelections()
           RestrictionEnforcer.refresh(store: store)
+          WidgetRefresher.reload()
           Self.reply(result, nil)
         } catch let locked as RestrictionSync.Locked {
           Self.reply(
@@ -86,6 +90,21 @@ final class FocusTraceChannels: NSObject {
       // (= the limit) by app key; Flutter shows them as blocked, as Android.
       queue.async {
         Self.reply(result, store.reachedLimitUsage().mapValues { NSNumber(value: $0) })
+      }
+    case "setAppLocale":
+      // AppleLanguages for this app: system pickers, sheets and permission
+      // prompts follow the in-app language from the next launch (iOS reads
+      // it at startup). Null returns to the device language.
+      let tag = (call.arguments as? String).flatMap { $0.isBlank ? nil : $0 }
+      if let tag = tag {
+        UserDefaults.standard.set([tag], forKey: "AppleLanguages")
+      } else {
+        UserDefaults.standard.removeObject(forKey: "AppleLanguages")
+      }
+      queue.async {
+        store.setAppLanguage(tag)
+        WidgetRefresher.reload()
+        Self.reply(result, nil)
       }
     case "hasNotificationsPermission":
       UNUserNotificationCenter.current().getNotificationSettings { settings in
@@ -136,6 +155,17 @@ final class FocusTraceChannels: NSObject {
       queue.async {
         let summary = RestrictionStore.shared.selection(id: id).map { Self.summary(id: id, $0) }
         Self.reply(result, summary)
+      }
+    case "exportSelections":
+      let ids = (args["ids"] as? [Any] ?? []).compactMap { $0 as? String }
+      queue.async { Self.reply(result, RestrictionStore.shared.exportSelections(ids: ids)) }
+    case "importSelections":
+      let encoded = (args["selections"] as? [String: Any] ?? [:]).compactMapValues { $0 as? String }
+      queue.async {
+        let store = RestrictionStore.shared
+        let added = store.importSelections(encoded) { SelectionCodec.decode($0) != nil }
+        if added > 0 { RestrictionEnforcer.refresh(store: store) }
+        Self.reply(result, added)
       }
     case "setShieldStrings":
       let values = (args["strings"] as? [String: Any] ?? [:]).compactMapValues { $0 as? String }
@@ -193,7 +223,10 @@ final class FocusTraceChannels: NSObject {
         return
       }
       if existingId != nil {
-        self?.queue.async { RestrictionEnforcer.refresh(store: store) }
+        self?.queue.async {
+          RestrictionEnforcer.refresh(store: store)
+          WidgetRefresher.reload()
+        }
       }
       result(Self.summary(id: id, selection))
     }

@@ -17,6 +17,7 @@ swiftc -O -o "$out" \
   "$kit/UsageEvents.swift" \
   "$kit/ShieldPlanner.swift" \
   "$kit/UsageReportModels.swift" \
+  "$kit/WidgetStatus.swift" \
   "$root/ios/Runner/WorkoutStore.swift" \
   "$root/tool/ios/kit_tests/main.swift"
 "$out" "$root/test/fixtures/ios_restriction_configuration.json"

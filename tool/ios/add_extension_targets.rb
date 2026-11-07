@@ -45,14 +45,21 @@ EXTENSIONKIT_TYPE = 'com.apple.product-type.extensionkit-extension'
 
 # Runner links these so later phases can call FamilyControls / ManagedSettings /
 # DeviceActivity from the method channels without further project edits.
-RUNNER_FRAMEWORKS = %w[FamilyControls ManagedSettings DeviceActivity SwiftUI UserNotifications HealthKit].freeze
+RUNNER_FRAMEWORKS = %w[FamilyControls ManagedSettings DeviceActivity SwiftUI UserNotifications HealthKit
+                       WidgetKit].freeze
 
 # Runner's own Swift files besides AppDelegate.swift (which Flutter created).
 RUNNER_SOURCES = %w[FocusTraceChannels.swift ActivityPicker.swift SelectionIconsView.swift
-                    UsageReportView.swift WorkoutStore.swift HealthKitBridge.swift].freeze
+                    UsageReportView.swift WorkoutStore.swift HealthKitBridge.swift
+                    DataTransferBridge.swift].freeze
 
-# Every target compiles all of FocusTraceKit, so every extension also links
-# FamilyControls, ManagedSettings and DeviceActivity.
+# FocusTraceKit files that need the Screen Time frameworks; extensions with
+# `screen_time: false` (the widget) compile every other kit file only.
+SCREEN_TIME_KIT_FILES = %w[ScreenTimeEnforcement.swift].freeze
+
+# Every Screen Time target compiles all of FocusTraceKit, so it also links
+# FamilyControls, ManagedSettings and DeviceActivity, and WidgetKit
+# (WidgetRefresher). The widget compiles only the Foundation part.
 
 EXTENSIONS = [
   {
@@ -63,7 +70,7 @@ EXTENSIONS = [
     extension_point: 'com.apple.deviceactivity.monitor-extension',
     principal_class: 'DeviceActivityMonitorExtension',
     sources: %w[DeviceActivityMonitorExtension.swift],
-    frameworks: %w[DeviceActivity ManagedSettings FamilyControls UserNotifications]
+    frameworks: %w[DeviceActivity ManagedSettings FamilyControls UserNotifications WidgetKit]
   },
   {
     name: 'FocusTraceShield',
@@ -73,7 +80,7 @@ EXTENSIONS = [
     extension_point: 'com.apple.ManagedSettingsUI.shield-configuration-service',
     principal_class: 'ShieldConfigurationExtension',
     sources: %w[ShieldConfigurationExtension.swift],
-    frameworks: %w[ManagedSettings ManagedSettingsUI FamilyControls DeviceActivity]
+    frameworks: %w[ManagedSettings ManagedSettingsUI FamilyControls DeviceActivity WidgetKit]
   },
   {
     name: 'FocusTraceShieldAction',
@@ -83,7 +90,7 @@ EXTENSIONS = [
     extension_point: 'com.apple.ManagedSettings.shield-action-service',
     principal_class: 'ShieldActionExtension',
     sources: %w[ShieldActionExtension.swift],
-    frameworks: %w[ManagedSettings FamilyControls DeviceActivity UserNotifications]
+    frameworks: %w[ManagedSettings FamilyControls DeviceActivity UserNotifications WidgetKit]
   },
   {
     # DeviceActivityReport extensions are ExtensionKit extensions (as in Xcode's
@@ -96,7 +103,21 @@ EXTENSIONS = [
     extension_point: 'com.apple.deviceactivityui.report-extension',
     principal_class: nil,
     sources: %w[FocusTraceReportExtension.swift ReportData.swift ReportViews.swift ReportPalette.swift],
-    frameworks: %w[DeviceActivity SwiftUI Charts FamilyControls ManagedSettings]
+    frameworks: %w[DeviceActivity SwiftUI Charts FamilyControls ManagedSettings WidgetKit]
+  },
+  {
+    # Home screen widget: restriction status from the App Group. No Screen
+    # Time APIs, so no Family Controls entitlement; WidgetKit's @main bundle,
+    # so no principal class.
+    name: 'FocusTraceWidget',
+    bundle_suffix: 'widget',
+    display_name: 'FocusTrace',
+    product_type: APP_EXTENSION_TYPE,
+    extension_point: 'com.apple.widgetkit-extension',
+    principal_class: nil,
+    screen_time: false,
+    sources: %w[FocusTraceWidget.swift],
+    frameworks: %w[WidgetKit SwiftUI]
   }
 ].freeze
 
@@ -112,11 +133,9 @@ def plist_header
   XML
 end
 
-def entitlements_xml
-  plist_header + <<~XML
-    <dict>
-    \t<key>com.apple.developer.family-controls</key>
-    \t<true/>
+def entitlements_xml(family_controls: true)
+  family = family_controls ? "\t<key>com.apple.developer.family-controls</key>\n\t<true/>\n" : ''
+  plist_header + "<dict>\n" + family + <<~XML
     \t<key>com.apple.security.application-groups</key>
     \t<array>
     \t\t<string>#{APP_GROUP}</string>
@@ -137,15 +156,17 @@ def extension_info_plist_xml(ext)
         \t</dict>
       XML
     else
-      <<~XML
-        \t<key>NSExtension</key>
-        \t<dict>
-        \t\t<key>NSExtensionPointIdentifier</key>
-        \t\t<string>#{ext[:extension_point]}</string>
-        \t\t<key>NSExtensionPrincipalClass</key>
-        \t\t<string>$(PRODUCT_MODULE_NAME).#{ext[:principal_class]}</string>
-        \t</dict>
-      XML
+      principal =
+        if ext[:principal_class]
+          "\t\t<key>NSExtensionPrincipalClass</key>\n" \
+            "\t\t<string>$(PRODUCT_MODULE_NAME).#{ext[:principal_class]}</string>\n"
+        else
+          ''
+        end
+      "\t<key>NSExtension</key>\n\t<dict>\n" \
+        "\t\t<key>NSExtensionPointIdentifier</key>\n" \
+        "\t\t<string>#{ext[:extension_point]}</string>\n" +
+        principal + "\t</dict>\n"
     end
 
   plist_header + <<~XML + extension_block + "</dict>\n</plist>\n"
@@ -288,7 +309,8 @@ end
 
 def configure_extension(project, ext, kit_refs, extension_xcconfig_ref)
   write_if_missing("#{ext[:name]}/Info.plist", extension_info_plist_xml(ext))
-  write_if_missing("#{ext[:name]}/#{ext[:name]}.entitlements", entitlements_xml)
+  screen_time = ext.fetch(:screen_time, true)
+  write_if_missing("#{ext[:name]}/#{ext[:name]}.entitlements", entitlements_xml(family_controls: screen_time))
 
   target = find_or_create_extension_target(project, ext)
   target.product_type = ext[:product_type]
@@ -304,7 +326,11 @@ def configure_extension(project, ext, kit_refs, extension_xcconfig_ref)
   end
   find_or_create_file(group, 'Info.plist')
   find_or_create_file(group, "#{ext[:name]}.entitlements")
-  kit_refs.each { |ref| ensure_build_file(target.source_build_phase, ref) }
+  kit_refs.each do |ref|
+    next if !screen_time && SCREEN_TIME_KIT_FILES.include?(ref.path)
+
+    ensure_build_file(target.source_build_phase, ref)
+  end
   ensure_frameworks(project, target, ext[:frameworks])
   target
 end

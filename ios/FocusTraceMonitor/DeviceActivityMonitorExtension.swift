@@ -41,6 +41,7 @@ class DeviceActivityMonitorExtension: DeviceActivityMonitor {
     if let key = UsageEvents.reachedKey(activity: activity.rawValue, event: event.rawValue) {
       store.markReached(key, at: now)
       ShieldController.reconcile(store: store, now: now)
+      WidgetRefresher.reload()
     }
     guard
       let notice = UsageEvents.notice(
@@ -51,8 +52,12 @@ class DeviceActivityMonitorExtension: DeviceActivityMonitor {
     post(notice)
   }
 
+  /// Also redraws the home screen widget when the shields changed.
   private func reconcile() {
-    ShieldController.reconcile(store: .shared, now: Date(), tolerance: Self.tolerance)
+    let store = RestrictionStore.shared
+    let before = store.shieldedRuleKeys
+    let after = ShieldController.reconcile(store: store, now: Date(), tolerance: Self.tolerance)
+    if after != before { WidgetRefresher.reload() }
   }
 
   /// Without notification permission iOS drops the request; blocking does not

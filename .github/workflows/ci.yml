@@ -168,7 +168,8 @@ jobs:
         run: |
           app=build/ios/iphoneos/Runner.app
           for ext in PlugIns/FocusTraceMonitor PlugIns/FocusTraceShield \
-                     PlugIns/FocusTraceShieldAction Extensions/FocusTraceReport; do
+                     PlugIns/FocusTraceShieldAction PlugIns/FocusTraceWidget \
+                     Extensions/FocusTraceReport; do
             bundle="$app/$ext.appex"
             name=$(basename "$ext")
             test -f "$bundle/$name" || { echo "::error::missing $bundle/$name"; exit 1; }

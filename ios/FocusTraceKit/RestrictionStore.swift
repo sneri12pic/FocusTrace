@@ -89,6 +89,55 @@ struct RestrictionStore {
     }
   }
 
+  // MARK: Backups
+
+  /// Selection ids are lowercase UUIDs; a backup may only name such keys.
+  static func isValidSelectionId(_ id: String) -> Bool {
+    !id.isEmpty && id.count <= 64
+      && id.allSatisfy { $0.isASCII && ($0.isLetter || $0.isNumber || $0 == "-") }
+  }
+
+  /// The stored selections with these ids, base64-encoded for a backup.
+  func exportSelections(ids: [String]) -> [String: String] {
+    var result: [String: String] = [:]
+    for id in ids where Self.isValidSelectionId(id) {
+      if let data = selectionData(id: id) { result[id] = data.base64EncodedString() }
+    }
+    return result
+  }
+
+  /// Restores selections from a backup. Existing selections are kept (one
+  /// may belong to a protected rule); entries with a bad id, bad base64 or
+  /// data `isValid` rejects are skipped. Returns how many were added.
+  @discardableResult
+  func importSelections(
+    _ encoded: [String: String], now: Date = Date(), isValid: (Data) -> Bool
+  ) -> Int {
+    var added = 0
+    for (id, text) in encoded.sorted(by: { $0.key < $1.key }) {
+      guard Self.isValidSelectionId(id), selectionData(id: id) == nil,
+        let data = Data(base64Encoded: text), !data.isEmpty, isValid(data)
+      else { continue }
+      setSelectionData(data, id: id, now: now)
+      added += 1
+    }
+    return added
+  }
+
+  // MARK: Language
+
+  /// The app's language (BCP-47) for the extensions' dates and texts; nil
+  /// follows the device. Shield and report texts arrive separately from Dart.
+  func setAppLanguage(_ tag: String?) {
+    var values = shieldStrings.values
+    if let tag = tag, !tag.isBlank {
+      values["report.locale"] = tag
+    } else {
+      values.removeValue(forKey: "report.locale")
+    }
+    shieldStrings = ShieldStrings(values: values)
+  }
+
   // MARK: Shield state
 
   /// `RestrictionRule.key`s whose shield is applied right now.

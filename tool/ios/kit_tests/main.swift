@@ -736,5 +736,94 @@ do {
   try? FileManager.default.removeItem(at: directory)
 }
 
+// MARK: - Backups, language and the home screen widget
+
+do {
+  let store = RestrictionStore(defaults: freshDefaults())
+  store.setSelectionData(Data([1, 2, 3]), id: "aaaa-1", now: date(2, 9, 0))
+  store.setSelectionData(Data([9]), id: "bbbb-2", now: date(2, 9, 0))
+  expectEqual(
+    store.exportSelections(ids: ["aaaa-1", "missing", "../etc"]), ["aaaa-1": "AQID"],
+    "only stored selections with valid ids are exported")
+  expect(RestrictionStore.isValidSelectionId("0f8fad5b-d9cb-469f-a165-70867728950e"), "uuid id")
+  expect(!RestrictionStore.isValidSelectionId("a/b"), "no path separators")
+  expect(!RestrictionStore.isValidSelectionId(""), "no empty id")
+
+  let other = RestrictionStore(defaults: freshDefaults())
+  other.setSelectionData(Data([7]), id: "bbbb-2")
+  let added = other.importSelections(
+    ["aaaa-1": "AQID", "bbbb-2": "AQID", "cccc-3": "not base64!", "dddd-4": "AAAA", "x/y": "AQID"],
+    now: date(3, 9, 0), isValid: { $0 != Data([0, 0, 0]) })
+  expectEqual(added, 1, "one new, valid selection added")
+  expectEqual(other.selectionData(id: "aaaa-1"), Data([1, 2, 3]), "restored data")
+  expectEqual(other.selectionData(id: "bbbb-2"), Data([7]), "an existing selection is kept")
+  expect(other.selectionData(id: "dddd-4") == nil, "data the codec rejects is skipped")
+  expectEqual(other.selectionIds, ["aaaa-1", "bbbb-2"], "nothing else stored")
+
+  store.shieldStrings = ShieldStrings(values: ["leave": "Verlassen", "report.locale": "de"])
+  store.setAppLanguage("ja")
+  expectEqual(store.reportStrings.localeIdentifier, "ja", "extensions follow the app language")
+  expectEqual(store.shieldStrings.text("leave"), "Verlassen", "texts untouched")
+  store.setAppLanguage(nil)
+  expectEqual(store.reportStrings.localeIdentifier, nil, "device language again")
+
+  let strings = WidgetStrings(sharedValues: [
+    "widget.blockingNow": "Jetzt gesperrt", "widget.until": "bis {time}", "leave": "x",
+  ])
+  expectEqual(strings.text("blockingNow"), "Jetzt gesperrt", "translated widget text")
+  expectEqual(strings.text("nextBlock"), "Next block", "English fallback")
+  expectEqual(strings.until("15:00"), "bis 15:00", "time filled in")
+  expectEqual(strings.values["leave"], nil, "shield texts are not widget texts")
+}
+
+do {
+  // Monday 2026-11-02, 10:00 UTC.
+  let now = date(2, 10, 0)
+  let json = """
+    {"version":3,"rules":[
+    {"appKey":"ios-sel:s","appName":"Social","type":"blockNow","untilMs":\(date(2, 11, 30).epochMilliseconds)},
+    {"appKey":"ios-sel:w","appName":"Work","type":"schedule","startMinute":540,"endMinute":720,"weekdays":[1,2,3,4,5]},
+    {"appKey":"ios-sel:e","appName":"Evenings","type":"schedule","startMinute":1260,"endMinute":420,"weekdays":[1,2,3,4,5]},
+    {"appKey":"ios-sel:k","appName":"Weekend","type":"schedule","startMinute":600,"endMinute":660,"weekdays":[6]},
+    {"appKey":"ios-sel:g","appName":"Games","type":"dailyLimit","limitMinutes":30},
+    {"appKey":"com.android.app","appName":"Android","type":"schedule","startMinute":600,"endMinute":700}],
+    "routines":[{"id":"r1","name":"Study","isEnabled":true,"dailyLimitMinutes":60,
+    "apps":[{"appKey":"ios-sel:g","appName":"Games","isIncludedInLimit":true,"limitMinutes":20}]}]}
+    """
+  let config = RestrictionConfiguration.parse(json)
+  let reached: Set<String> = ["ios-sel:g#dailyLimit", "routineApp:r1:g"]
+  let snapshot = WidgetStatus.snapshot(
+    configuration: config, at: now, isReached: { reached.contains($0) }, calendar: utc)
+  expectEqual(
+    snapshot.activeNames, ["Social", "Work", "Games"],
+    "active blocks, soonest end first, each name once")
+  expectEqual(snapshot.activeUntil, date(2, 11, 30), "soonest end")
+  expectEqual(snapshot.limitsReached, 2, "daily limit and member cap reached")
+  expectEqual(snapshot.next?.name, "Evenings", "next schedule")
+  expectEqual(snapshot.next?.start, date(2, 21, 0), "next start today")
+  expect(snapshot.hasRestrictions, "has restrictions")
+
+  let friday = WidgetStatus.nextSchedule(configuration: config, after: date(6, 22, 0), calendar: utc)
+  expectEqual(friday?.name, "Weekend", "weekday filter skips to Saturday")
+  expectEqual(friday?.start, date(7, 10, 0), "Saturday 10:00")
+
+  let empty = WidgetStatus.snapshot(
+    configuration: RestrictionConfiguration.parse(nil), at: now, isReached: { _ in false },
+    calendar: utc)
+  expect(!empty.hasRestrictions, "no restrictions yet")
+  expect(empty.activeNames.isEmpty && empty.next == nil, "nothing to show")
+
+  let timeline = WidgetStatus.timeline(configuration: config, from: now, calendar: utc)
+  expectEqual(timeline.first, now, "starts now")
+  expect(timeline.contains(date(2, 11, 30)), "block-now end")
+  expect(timeline.contains(date(2, 12, 0)), "schedule end")
+  expect(timeline.contains(date(2, 21, 0)), "schedule start")
+  expect(timeline.contains(date(3, 0, 0)), "midnight lifts reached limits")
+  expect(timeline.contains(date(3, 9, 0)), "tomorrow's start within a day")
+  expect(!timeline.contains(date(2, 10, 0).addingTimeInterval(-60)), "nothing in the past")
+  expect(timeline.allSatisfy { $0 <= now.addingTimeInterval(24 * 3600) }, "one day ahead at most")
+  expectEqual(timeline, timeline.sorted(), "sorted")
+}
+
 print("\(checks - failures)/\(checks) checks passed")
 exit(failures == 0 ? 0 : 1)
