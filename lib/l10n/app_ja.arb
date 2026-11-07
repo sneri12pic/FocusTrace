@@ -953,5 +953,14 @@
   "@shieldNudgeMinutesOver": {"placeholders": {"minutes": {"type": "int"}}},
   "routinePickNewApps": "新しいアプリを選ぶ",
   "routineAppIncluded": "上限に含む",
-  "routineAppExcluded": "上限から除外"
+  "routineAppExcluded": "上限から除外",
+  "iosReportPickups": "持ち上げ回数",
+  "iosReportNotifications": "通知",
+  "iosReportTapHour": "時間帯をタップすると利用時間を表示します",
+  "iosReportMoreApps": "+{count}件",
+  "@iosReportMoreApps": {"placeholders": {"count": {"type": "String"}}},
+  "iosReportNoData": "この期間のスクリーンタイムのデータはまだありません。",
+  "iosReportGroupApps": "このグループのアプリ",
+  "iosUsageAccessBody": "スクリーンタイムを許可すると、FocusTraceがこのiPhoneの使い方を表示できます。数値はiOSの中にとどまります。",
+  "iosUsageMenuItem": "利用状況"
 }

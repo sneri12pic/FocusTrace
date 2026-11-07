@@ -5,6 +5,7 @@ import 'package:focustrace/focus_trace.dart';
 
 Map<String, bool> _fields(PlatformCapabilities c) => {
   'usageNumbersInFlutter': c.usageNumbersInFlutter,
+  'nativeUsageReports': c.nativeUsageReports,
   'usageAccessPermission': c.usageAccessPermission,
   'overlayPermission': c.overlayPermission,
   'notificationsPermission': c.notificationsPermission,
@@ -56,6 +57,7 @@ void main() {
 
   test('iOS describes Screen Time: no numbers or app list in Flutter', () {
     expect(_enabled(UsagePlatform.ios), {
+      'nativeUsageReports',
       'notificationsPermission',
       'screenTimeAuthorization',
       'nativeAppPicker',

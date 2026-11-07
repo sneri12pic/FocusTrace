@@ -953,5 +953,14 @@
   "@shieldNudgeMinutesOver": {"placeholders": {"minutes": {"type": "int"}}},
   "routinePickNewApps": "Вибрати нові застосунки",
   "routineAppIncluded": "Враховується в ліміті",
-  "routineAppExcluded": "Не враховується в ліміті"
+  "routineAppExcluded": "Не враховується в ліміті",
+  "iosReportPickups": "Підняття",
+  "iosReportNotifications": "Сповіщення",
+  "iosReportTapHour": "Торкніться години, щоб побачити її час",
+  "iosReportMoreApps": "+{count} ще",
+  "@iosReportMoreApps": {"placeholders": {"count": {"type": "String"}}},
+  "iosReportNoData": "Даних Екранного часу за цей період ще немає.",
+  "iosReportGroupApps": "Застосунки в цій групі",
+  "iosUsageAccessBody": "Дозвольте Екранний час, щоб FocusTrace показував, як ви користуєтеся цим iPhone. Дані лишаються в iOS.",
+  "iosUsageMenuItem": "Використання"
 }

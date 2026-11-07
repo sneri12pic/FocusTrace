@@ -1,6 +1,9 @@
 import DeviceActivity
 import Foundation
 import ManagedSettings
+// DeviceActivityResults and DeviceActivityData's report types come with
+// DeviceActivity's SwiftUI overlay.
+import SwiftUI
 
 /// One app in a report: its token (drawn with `Label(token)`), name, time,
 /// pickups and notifications over the report's span.

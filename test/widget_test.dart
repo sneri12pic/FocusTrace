@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:focustrace/focus_trace.dart';
 import 'package:focustrace/src/presentation/widgets/app_category_widgets.dart';
+import 'package:focustrace/l10n/generated/app_localizations.dart';
 
 import 'health_connect_test.dart' show FakeHealthConnectChannel;
 
@@ -306,6 +307,9 @@ void main() {
     expect(find.text('Usage Bubbles'), findsOneWidget);
     expect(find.text('Editor'), findsOneWidget);
     expect(find.text('editor.exe'), findsNothing);
+    // Native report views are iOS only.
+    expect(find.byType(IosUsageReportView), findsNothing);
+    expect(find.textContaining('Tracked'), findsOneWidget);
     expect(find.text('Launches: 3'), findsOneWidget);
     expect(find.text('D +50%'), findsOneWidget);
     expect(
@@ -860,6 +864,195 @@ void main() {
       expect(tester.getSize(confirm).height, greaterThanOrEqualTo(48));
     });
   });
+
+  _iosReportTests();
+}
+
+void _iosReportTests() {
+  group('iOS usage reports', () {
+    Widget app(
+      Widget home, {
+      ScreenTimeAuthorizationStatus status =
+          ScreenTimeAuthorizationStatus.approved,
+    }) => ProviderScope(
+      overrides: [
+        usagePlatformProvider.overrideWithValue(UsagePlatform.ios),
+        // Flutter-side numbers exist in these fakes; iOS must not show them.
+        usageRepositoryProvider.overrideWithValue(_FakeUsageRepository()),
+        reportRepositoryProvider.overrideWithValue(_FakeReportRepository()),
+        platformDataSourceProvider.overrideWithValue(_FakePlatformDataSource()),
+        settingsRepositoryProvider.overrideWithValue(_FakeSettingsRepository()),
+        appLanguageRepositoryProvider.overrideWithValue(
+          _FakeAppLanguageRepository(),
+        ),
+        screenTimeAuthorizationProvider.overrideWith(
+          (ref) => _FixedScreenTime(status),
+        ),
+      ],
+      child: MaterialApp(
+        theme: ThemeData(brightness: Brightness.dark, useMaterial3: true),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        locale: const Locale('en'),
+        home: home,
+      ),
+    );
+
+    Future<void> settle(WidgetTester tester) async {
+      await tester.pump();
+      for (var i = 0; i < 3; i++) {
+        await tester.pump(const Duration(seconds: 1));
+      }
+    }
+
+    List<IosUsageReportView> reports(WidgetTester tester) => tester
+        .widgetList<IosUsageReportView>(find.byType(IosUsageReportView))
+        .toList();
+
+    testWidgets('dashboard shows the day and hourly reports, no numbers', (
+      tester,
+    ) async {
+      await tester.pumpWidget(app(const DashboardScreen()));
+      await settle(tester);
+
+      expect(reports(tester).map((r) => r.kind), [
+        IosUsageReportKind.today,
+        IosUsageReportKind.hourly,
+      ]);
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day);
+      expect(
+        reports(tester).first.creationParams(Brightness.dark),
+        allOf(
+          containsPair('context', 'today'),
+          containsPair('range', 'today'),
+          containsPair('date', today.millisecondsSinceEpoch),
+          containsPair('dark', true),
+        ),
+      );
+      expect(
+        tester
+            .getSize(find.byKey(const ValueKey('ios-usage-report-today')))
+            .height,
+        IosUsageReportView.heightFor(
+          IosUsageReportKind.today,
+          IosUsageReportRange.today,
+        ),
+      );
+      // No Flutter usage UI, which would read zero or the wrong numbers.
+      expect(find.textContaining('Tracked'), findsNothing);
+      expect(find.text('Usage Bubbles'), findsNothing);
+      expect(find.byType(SummaryTile), findsNothing);
+      expect(find.textContaining('No usage recorded'), findsNothing);
+      expect(find.textContaining('FocusTrace MVP supports'), findsNothing);
+      expect(find.text('Today'), findsOneWidget);
+
+      // The day header still pages through days.
+      await tester.tap(find.byTooltip('Previous day'));
+      await settle(tester);
+      expect(find.text('Yesterday'), findsOneWidget);
+      expect(
+        reports(
+          tester,
+        ).every((r) => r.date == today.subtract(const Duration(days: 1))),
+        isTrue,
+      );
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('without Screen Time the dashboard asks for it', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        app(
+          const DashboardScreen(),
+          status: ScreenTimeAuthorizationStatus.notDetermined,
+        ),
+      );
+      await settle(tester);
+      expect(
+        find.byKey(const ValueKey('ios-usage-screen-time-card')),
+        findsOneWidget,
+      );
+      expect(find.byType(IosUsageReportView), findsNothing);
+      expect(find.textContaining('Tracked'), findsNothing);
+    });
+
+    testWidgets('reports show the week or month report and restriction '
+        'activity', (tester) async {
+      await tester.pumpWidget(app(const ReportsScreen()));
+      await settle(tester);
+
+      expect(find.text('Weekly'), findsOneWidget);
+      expect(find.text('Monthly'), findsOneWidget);
+      // iOS keeps no year of Screen Time history.
+      expect(find.text('Yearly'), findsNothing);
+      expect(reports(tester).single.kind, IosUsageReportKind.week);
+      expect(find.text('Total usage'), findsNothing);
+      expect(find.text('Usage by time of day'), findsNothing);
+      expect(find.text('Most used apps'), findsNothing);
+
+      await tester.tap(find.text('Monthly'));
+      await settle(tester);
+      expect(reports(tester).single.kind, IosUsageReportKind.month);
+      expect(
+        reports(tester).single.creationParams(Brightness.dark)['range'],
+        'month',
+      );
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('usage details of a picked group are a native report', (
+      tester,
+    ) async {
+      final now = DateTime.now();
+      await tester.pumpWidget(
+        app(
+          UsageDetailsScreen(
+            request: AppUsageDetailsRequest(
+              summary: const AppUsageSummary(
+                appName: 'Social',
+                packageName: 'ios-sel:abc',
+                totalDurationSeconds: 0,
+                percentageOfTotal: 0,
+              ),
+              selectedDate: DateTime(now.year, now.month, now.day),
+              platform: UsagePlatform.ios,
+            ),
+          ),
+        ),
+      );
+      await settle(tester);
+      expect(find.byType(IosSelectionUsageScreen), findsOneWidget);
+      expect(reports(tester).single.selectionId, 'abc');
+      expect(find.text('Social'), findsWidgets);
+      // No Flutter totals or charts ("0m" today).
+      expect(find.text('0m'), findsNothing);
+      expect(find.byKey(const ValueKey('usage-period-total')), findsNothing);
+      await tester.tap(find.text('A month'));
+      await settle(tester);
+      expect(reports(tester).single.effectiveRange, IosUsageReportRange.month);
+      expect(
+        tester
+            .getSize(find.byKey(const ValueKey('ios-usage-report-appDetail')))
+            .height,
+        IosUsageReportView.heightFor(
+          IosUsageReportKind.appDetail,
+          IosUsageReportRange.month,
+        ),
+      );
+    });
+  });
+}
+
+class _FixedScreenTime extends ScreenTimeAuthorizationViewModel {
+  _FixedScreenTime(ScreenTimeAuthorizationStatus status)
+    : super(channel: const ScreenTimeChannel(), isRequired: true) {
+    state = status;
+  }
+
+  @override
+  Future<void> refresh() async {}
 }
 
 class _FakeAppLanguageRepository implements AppLanguageRepository {

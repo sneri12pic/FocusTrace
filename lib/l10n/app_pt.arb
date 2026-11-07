@@ -953,5 +953,14 @@
   "@shieldNudgeMinutesOver": {"placeholders": {"minutes": {"type": "int"}}},
   "routinePickNewApps": "Escolher novos apps",
   "routineAppIncluded": "Incluído no limite",
-  "routineAppExcluded": "Excluído do limite"
+  "routineAppExcluded": "Excluído do limite",
+  "iosReportPickups": "Ativações",
+  "iosReportNotifications": "Notificações",
+  "iosReportTapHour": "Toque numa hora para ver o tempo",
+  "iosReportMoreApps": "+{count} mais",
+  "@iosReportMoreApps": {"placeholders": {"count": {"type": "String"}}},
+  "iosReportNoData": "Ainda não há dados de Tempo de Uso para este período.",
+  "iosReportGroupApps": "Apps neste grupo",
+  "iosUsageAccessBody": "Permita o Tempo de Uso para que o FocusTrace mostre como você usa este iPhone. Os números ficam no iOS.",
+  "iosUsageMenuItem": "Uso"
 }

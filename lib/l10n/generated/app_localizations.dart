@@ -3098,6 +3098,54 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Excluded from limit'**
   String get routineAppExcluded;
+
+  /// No description provided for @iosReportPickups.
+  ///
+  /// In en, this message translates to:
+  /// **'Pickups'**
+  String get iosReportPickups;
+
+  /// No description provided for @iosReportNotifications.
+  ///
+  /// In en, this message translates to:
+  /// **'Notifications'**
+  String get iosReportNotifications;
+
+  /// No description provided for @iosReportTapHour.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap an hour to see its time'**
+  String get iosReportTapHour;
+
+  /// No description provided for @iosReportMoreApps.
+  ///
+  /// In en, this message translates to:
+  /// **'+{count} more'**
+  String iosReportMoreApps(String count);
+
+  /// No description provided for @iosReportNoData.
+  ///
+  /// In en, this message translates to:
+  /// **'No Screen Time data for this period yet.'**
+  String get iosReportNoData;
+
+  /// No description provided for @iosReportGroupApps.
+  ///
+  /// In en, this message translates to:
+  /// **'Apps in this group'**
+  String get iosReportGroupApps;
+
+  /// No description provided for @iosUsageAccessBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Allow Screen Time so FocusTrace can show how you use this iPhone. The numbers stay inside iOS.'**
+  String get iosUsageAccessBody;
+
+  /// No description provided for @iosUsageMenuItem.
+  ///
+  /// In en, this message translates to:
+  /// **'Usage'**
+  String get iosUsageMenuItem;
 }
 
 class _AppLocalizationsDelegate

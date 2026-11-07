@@ -7,6 +7,7 @@ import 'usage_session.dart';
 class PlatformCapabilities {
   const PlatformCapabilities({
     this.usageNumbersInFlutter = false,
+    this.nativeUsageReports = false,
     this.usageAccessPermission = false,
     this.overlayPermission = false,
     this.notificationsPermission = false,
@@ -62,6 +63,7 @@ class PlatformCapabilities {
   /// the monitor extension, which also posts the limit warnings as local
   /// notifications.
   static const ios = PlatformCapabilities(
+    nativeUsageReports: true,
     notificationsPermission: true,
     screenTimeAuthorization: true,
     nativeAppPicker: true,
@@ -73,6 +75,11 @@ class PlatformCapabilities {
 
   /// Per-app usage totals reach Flutter and can be listed and charted.
   final bool usageNumbersInFlutter;
+
+  /// Usage is shown by native report views (iOS DeviceActivityReport through
+  /// the `focustrace/usage_report` platform view) in place of Flutter's
+  /// charts and lists.
+  final bool nativeUsageReports;
 
   /// Usage numbers need Android's Usage Access setting.
   final bool usageAccessPermission;

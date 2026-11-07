@@ -1877,4 +1877,32 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get routineAppExcluded => 'Exclue de la limite';
+
+  @override
+  String get iosReportPickups => 'Activations';
+
+  @override
+  String get iosReportNotifications => 'Notifications';
+
+  @override
+  String get iosReportTapHour => 'Touchez une heure pour voir son temps';
+
+  @override
+  String iosReportMoreApps(String count) {
+    return '+$count de plus';
+  }
+
+  @override
+  String get iosReportNoData =>
+      'Pas encore de données Temps d’écran pour cette période.';
+
+  @override
+  String get iosReportGroupApps => 'Apps de ce groupe';
+
+  @override
+  String get iosUsageAccessBody =>
+      'Autorisez Temps d’écran pour que FocusTrace montre comment vous utilisez cet iPhone. Les chiffres restent dans iOS.';
+
+  @override
+  String get iosUsageMenuItem => 'Utilisation';
 }

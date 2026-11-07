@@ -8,6 +8,8 @@ import '../../domain/models/restriction_event.dart';
 import '../../domain/models/usage_report.dart';
 import '../localization/app_localizations_x.dart';
 import '../providers.dart';
+import '../view_models/reports_view_model.dart';
+import '../widgets/ios_usage_report_view.dart';
 
 class ReportsScreen extends ConsumerWidget {
   const ReportsScreen({super.key});
@@ -16,6 +18,12 @@ class ReportsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(reportsViewModelProvider);
     final viewModel = ref.read(reportsViewModelProvider.notifier);
+    final nativeReports = ref
+        .watch(platformCapabilitiesProvider)
+        .nativeUsageReports;
+    if (nativeReports) {
+      return _IosReportsScreen(state: state, viewModel: viewModel);
+    }
     return Scaffold(
       appBar: AppBar(title: Text(context.l10n.reportsTitle)),
       body: RefreshIndicator(
@@ -69,29 +77,85 @@ class ReportsScreen extends ConsumerWidget {
   }
 }
 
+/// iOS: usage is drawn by the Screen Time report extension (seven or thirty
+/// days, the history iOS keeps); restriction activity is FocusTrace's own
+/// record of shield events, so it stays a Flutter card.
+class _IosReportsScreen extends StatelessWidget {
+  const _IosReportsScreen({required this.state, required this.viewModel});
+
+  final ReportsState state;
+  final ReportsViewModel viewModel;
+
+  @override
+  Widget build(BuildContext context) {
+    final period = state.period == UsageReportPeriod.monthly
+        ? UsageReportPeriod.monthly
+        : UsageReportPeriod.weekly;
+    final report = state.report;
+    return Scaffold(
+      appBar: AppBar(title: Text(context.l10n.reportsTitle)),
+      body: RefreshIndicator(
+        onRefresh: viewModel.load,
+        child: ListView(
+          key: const ValueKey('reports-scroll-view'),
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 40),
+          children: [
+            _PeriodSelector(
+              selected: period,
+              onSelected: viewModel.selectPeriod,
+              periods: const [
+                UsageReportPeriod.weekly,
+                UsageReportPeriod.monthly,
+              ],
+            ),
+            const SizedBox(height: 16),
+            IosUsageReportGate(
+              children: [
+                IosUsageReportView(
+                  kind: period == UsageReportPeriod.monthly
+                      ? IosUsageReportKind.month
+                      : IosUsageReportKind.week,
+                  date: DateTime.now(),
+                ),
+              ],
+            ),
+            if (report != null && !state.isLoading) ...[
+              const SizedBox(height: 12),
+              _RestrictionActivityCard(report: report),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _PeriodSelector extends StatelessWidget {
-  const _PeriodSelector({required this.selected, required this.onSelected});
+  const _PeriodSelector({
+    required this.selected,
+    required this.onSelected,
+    this.periods = UsageReportPeriod.values,
+  });
 
   final UsageReportPeriod selected;
   final ValueChanged<UsageReportPeriod> onSelected;
+  final List<UsageReportPeriod> periods;
 
   @override
   Widget build(BuildContext context) {
     return SegmentedButton<UsageReportPeriod>(
       key: const ValueKey('report-period-selector'),
       segments: [
-        ButtonSegment(
-          value: UsageReportPeriod.weekly,
-          label: Text(context.l10n.reportsWeekly),
-        ),
-        ButtonSegment(
-          value: UsageReportPeriod.monthly,
-          label: Text(context.l10n.reportsMonthly),
-        ),
-        ButtonSegment(
-          value: UsageReportPeriod.yearly,
-          label: Text(context.l10n.reportsYearly),
-        ),
+        for (final period in periods)
+          ButtonSegment(
+            value: period,
+            label: Text(switch (period) {
+              UsageReportPeriod.weekly => context.l10n.reportsWeekly,
+              UsageReportPeriod.monthly => context.l10n.reportsMonthly,
+              UsageReportPeriod.yearly => context.l10n.reportsYearly,
+            }),
+          ),
       ],
       selected: {selected},
       showSelectedIcon: false,

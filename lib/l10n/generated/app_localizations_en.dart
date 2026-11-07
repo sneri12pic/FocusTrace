@@ -1843,4 +1843,31 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get routineAppExcluded => 'Excluded from limit';
+
+  @override
+  String get iosReportPickups => 'Pickups';
+
+  @override
+  String get iosReportNotifications => 'Notifications';
+
+  @override
+  String get iosReportTapHour => 'Tap an hour to see its time';
+
+  @override
+  String iosReportMoreApps(String count) {
+    return '+$count more';
+  }
+
+  @override
+  String get iosReportNoData => 'No Screen Time data for this period yet.';
+
+  @override
+  String get iosReportGroupApps => 'Apps in this group';
+
+  @override
+  String get iosUsageAccessBody =>
+      'Allow Screen Time so FocusTrace can show how you use this iPhone. The numbers stay inside iOS.';
+
+  @override
+  String get iosUsageMenuItem => 'Usage';
 }

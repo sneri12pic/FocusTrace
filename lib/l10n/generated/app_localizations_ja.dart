@@ -1776,4 +1776,31 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get routineAppExcluded => '上限から除外';
+
+  @override
+  String get iosReportPickups => '持ち上げ回数';
+
+  @override
+  String get iosReportNotifications => '通知';
+
+  @override
+  String get iosReportTapHour => '時間帯をタップすると利用時間を表示します';
+
+  @override
+  String iosReportMoreApps(String count) {
+    return '+$count件';
+  }
+
+  @override
+  String get iosReportNoData => 'この期間のスクリーンタイムのデータはまだありません。';
+
+  @override
+  String get iosReportGroupApps => 'このグループのアプリ';
+
+  @override
+  String get iosUsageAccessBody =>
+      'スクリーンタイムを許可すると、FocusTraceがこのiPhoneの使い方を表示できます。数値はiOSの中にとどまります。';
+
+  @override
+  String get iosUsageMenuItem => '利用状況';
 }

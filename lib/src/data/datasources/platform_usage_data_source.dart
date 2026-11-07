@@ -56,6 +56,14 @@ abstract interface class NativeRestrictionEventDataSource {
   Future<List<RestrictionEvent>> takeRestrictionEvents();
 }
 
+/// Daily limits the native side found reached today where usage numbers do
+/// not reach Flutter (iOS: recorded by the DeviceActivity monitor).
+abstract interface class ReachedLimitDataSource {
+  /// Today's usage of each reached limit's app key, equal to its limit, so
+  /// the rule reads as blocked exactly as Android's measured usage would.
+  Future<Map<String, int>> readReachedLimits();
+}
+
 abstract interface class AppMetadataDataSource {
   /// Current metadata for the requested app keys. Missing/uninstalled apps are
   /// omitted.
@@ -383,7 +391,8 @@ class IosUsageDataSource
     implements
         PlatformUsageDataSource,
         RestrictionChangeDataSource,
-        NativeRestrictionEventDataSource {
+        NativeRestrictionEventDataSource,
+        ReachedLimitDataSource {
   IosUsageDataSource({
     MethodChannel channel = const MethodChannel('focustrace/usage'),
   }) : _channel = channel;
@@ -452,6 +461,17 @@ class IosUsageDataSource
                 reason: row['reason'] as String?,
               ),
     ];
+  }
+
+  @override
+  Future<Map<String, int>> readReachedLimits() async {
+    final rows =
+        await _channel.invokeMapMethod<Object?, Object?>('readReachedLimits') ??
+        const <Object?, Object?>{};
+    return {
+      for (final MapEntry(:key, :value) in rows.entries)
+        if (key is String && value is num && value > 0) key: value.toInt(),
+    };
   }
 
   @override

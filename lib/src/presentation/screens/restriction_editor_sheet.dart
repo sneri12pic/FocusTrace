@@ -269,7 +269,43 @@ Future<String?> showSelectionNameDialog(
   );
 }
 
-/// Pushes the block screen's texts to iOS in the app's language.
+/// Texts of the iOS usage reports (ReportStrings in
+/// ios/FocusTraceKit/UsageReportModels.swift), keyed `report.<name>`.
+/// Durations are sent as templates with `{h}` / `{m}` so Swift formats them
+/// as `compactDuration` does.
+Map<String, String> reportStrings(BuildContext context) {
+  final l = context.l10n;
+  // Sentinels no translation contains, replaced by the Swift placeholders.
+  const hours = 9876;
+  const minutes = 5432;
+  String template(String text) =>
+      text.replaceAll('$hours', '{h}').replaceAll('$minutes', '{m}');
+  return {
+    'report.locale': Localizations.localeOf(context).toLanguageTag(),
+    'report.totalTime': l.usageCalendarTotalTime,
+    'report.currentList': l.usageBubblesCurrentList,
+    'report.all': l.appCategoryAll,
+    'report.timeline': l.usageCalendarTimeline,
+    'report.totalUsage': l.reportsTotalUsage,
+    'report.dailyAverage': l.reportsDailyAverage,
+    'report.activeDays': l.reportsActiveDays,
+    'report.topApps': l.reportsTopApps,
+    'report.peakTime': l.reportsPeakTime,
+    'report.pickups': l.iosReportPickups,
+    'report.notifications': l.iosReportNotifications,
+    'report.tapHour': l.iosReportTapHour,
+    'report.moreApps': l.iosReportMoreApps('{count}'),
+    'report.noData': l.iosReportNoData,
+    'report.groupApps': l.iosReportGroupApps,
+    'report.durationLessThanMinute': l.durationLessThanOneMinute,
+    'report.durationM': template(l.durationMinutesShort(minutes)),
+    'report.durationH': template(l.durationHoursShort(hours)),
+    'report.durationHM': template(l.durationHoursMinutesShort(hours, minutes)),
+  };
+}
+
+/// Pushes the block screen's and usage reports' texts to iOS in the app's
+/// language.
 Future<void> syncShieldStrings(BuildContext context, WidgetRef ref) async {
   final l = context.l10n;
   const time = '{time}';
@@ -298,6 +334,8 @@ Future<void> syncShieldStrings(BuildContext context, WidgetRef ref) async {
       },
       for (var minutes = 10; minutes <= 120; minutes += 10)
         'nudgeOver.$minutes': l.shieldNudgeMinutesOver(minutes),
+      // The usage report extension reads its texts from the same map.
+      ...reportStrings(context),
     });
   } catch (error) {
     // The shield falls back to English.

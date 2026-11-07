@@ -475,6 +475,202 @@ void main() {
     expect(find.textContaining('used'), findsNothing);
     expect(tester.takeException(), isNull);
   });
+
+  _reachedLimitTests();
+}
+
+void _reachedLimitTests() {
+  group('reached daily limits on iOS', () {
+    late _Native native;
+    tearDown(() => native.dispose());
+
+    test('the channel answer becomes usage seconds by app key', () async {
+      native = _Native(_usage, {
+        'readReachedLimits': {'ios-sel:a': 5400, 'ios-sel:b': 0, 7: 1},
+      });
+      expect(await IosUsageDataSource().readReachedLimits(), {
+        'ios-sel:a': 5400,
+      });
+    });
+
+    test('reached limits raise or add today usage rows', () {
+      const measured = AppUsageSummary(
+        appName: 'A',
+        packageName: 'a',
+        totalDurationSeconds: 60,
+        percentageOfTotal: 1,
+      );
+      final rows = withReachedLimits([measured], {'a': 600, 'ios-sel:b': 900});
+      expect(rows.map((r) => (r.appKey, r.totalDurationSeconds)), [
+        ('a', 600),
+        ('ios-sel:b', 900),
+      ]);
+      expect(withReachedLimits([measured], const {}), [measured]);
+    });
+  });
+
+  testWidgets('a reached iOS limit is blocked until tomorrow and can be '
+      'unblocked through the guard', (tester) async {
+    final usage = _Native(_usage, {
+      'readRestrictionConfiguration': null,
+      'hasNotificationsPermission': true,
+      'takeRestrictionEvents': const [],
+      'readReachedLimits': {'ios-sel:a': 5400},
+      'requestRestrictionChange': 'allowed',
+    });
+    final screenTime = _Native(_screenTime, {
+      'authorizationStatus': 'approved',
+    });
+    addTearDown(usage.dispose);
+    addTearDown(screenTime.dispose);
+    final settings = _Settings()
+      ..rules.add(
+        const RestrictionRule(
+          appKey: 'ios-sel:a',
+          appName: 'Social',
+          type: RestrictionRuleType.dailyLimit,
+          limitMinutes: 90,
+        ),
+      );
+    final repository = _AnyRepository(const [], const []);
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          usagePlatformProvider.overrideWithValue(UsagePlatform.ios),
+          platformDataSourceProvider.overrideWithValue(IosUsageDataSource()),
+          usageRepositoryProvider.overrideWithValue(repository),
+          reportRepositoryProvider.overrideWithValue(repository),
+          settingsRepositoryProvider.overrideWithValue(repository),
+          restrictionsViewModelProvider.overrideWith(
+            (ref) => RestrictionsViewModel(
+              settingsRepository: settings,
+              platformDataSource: IosUsageDataSource(),
+              usageRepository: repository,
+              platform: UsagePlatform.ios,
+            )..load(),
+          ),
+          restrictionPeriodInsightsProvider.overrideWith(
+            (ref, week) async =>
+                const RestrictionInsights(apps: [], recordedDays: 0, hours: []),
+          ),
+          installedAppsProvider.overrideWith((ref) async => []),
+        ],
+        child: MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          locale: const Locale('en'),
+          home: const RestrictionsScreen(),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+
+    // As Android shows a limit whose usage reached it.
+    expect(find.textContaining('Blocked until'), findsOneWidget);
+    expect(find.textContaining('left today'), findsNothing);
+    expect(find.byType(LinearProgressIndicator), findsNothing);
+    // Ranked usage lists would read as zero on iOS.
+    expect(find.text('Choose apps to limit'), findsNothing);
+
+    await tester.tap(find.byIcon(Icons.more_vert));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('rule-usage-menu-item')), findsOneWidget);
+    await tester.tap(find.text('Unblock now'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Confirm'));
+    await tester.pumpAndSettle();
+
+    expect(usage.argumentsOf('requestRestrictionChange'), [
+      {'appKey': 'ios-sel:a', 'type': 'dailyLimit'},
+    ]);
+    expect(_syncedRules(usage), isEmpty);
+    expect(settings.rules, isEmpty);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('the Usage entry opens the picked group\'s native report', (
+    tester,
+  ) async {
+    final usage = _Native(_usage, {
+      'readRestrictionConfiguration': null,
+      'hasNotificationsPermission': true,
+      'takeRestrictionEvents': const [],
+      'readReachedLimits': const <String, int>{},
+    });
+    final screenTime = _Native(_screenTime, {
+      'authorizationStatus': 'approved',
+    });
+    addTearDown(usage.dispose);
+    addTearDown(screenTime.dispose);
+    final repository = _AnyRepository([
+      const RestrictionRule(
+        appKey: 'ios-sel:abc',
+        appName: 'Social',
+        type: RestrictionRuleType.schedule,
+        startMinute: 60,
+        endMinute: 120,
+      ),
+    ], const []);
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          usagePlatformProvider.overrideWithValue(UsagePlatform.ios),
+          platformDataSourceProvider.overrideWithValue(IosUsageDataSource()),
+          usageRepositoryProvider.overrideWithValue(repository),
+          reportRepositoryProvider.overrideWithValue(repository),
+          settingsRepositoryProvider.overrideWithValue(repository),
+          restrictionPeriodInsightsProvider.overrideWith(
+            (ref, week) async =>
+                const RestrictionInsights(apps: [], recordedDays: 0, hours: []),
+          ),
+          installedAppsProvider.overrideWith((ref) async => []),
+        ],
+        child: MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          locale: const Locale('en'),
+          home: const RestrictionsScreen(),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+    await tester.tap(find.byIcon(Icons.more_vert));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Usage'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(IosSelectionUsageScreen), findsOneWidget);
+    final report = tester.widget<IosUsageReportView>(
+      find.byType(IosUsageReportView),
+    );
+    expect(report.kind, IosUsageReportKind.appDetail);
+    expect(report.selectionId, 'abc');
+    expect(report.effectiveRange, IosUsageReportRange.today);
+
+    await tester.tap(find.text('7 days'));
+    await tester.pumpAndSettle();
+    expect(
+      tester
+          .widget<IosUsageReportView>(find.byType(IosUsageReportView))
+          .creationParams(Brightness.dark),
+      allOf(
+        containsPair('context', 'appDetail'),
+        containsPair('range', 'week'),
+        containsPair('selectionId', 'abc'),
+      ),
+    );
+    // The report texts reach the extension with the shield texts.
+    final strings =
+        (screenTime.argumentsOf('setShieldStrings').last as Map)['strings']
+            as Map;
+    expect(strings['report.totalTime'], 'Total time');
+    expect(strings['report.durationHM'], '{h}h {m}m');
+    expect(strings['report.moreApps'], '+{count} more');
+    expect(strings['report.locale'], 'en');
+    expect(tester.takeException(), isNull);
+  });
 }
 
 class _AnyRepository extends Fake

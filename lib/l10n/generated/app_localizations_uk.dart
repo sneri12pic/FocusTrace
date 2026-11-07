@@ -1875,4 +1875,31 @@ class AppLocalizationsUk extends AppLocalizations {
 
   @override
   String get routineAppExcluded => 'Не враховується в ліміті';
+
+  @override
+  String get iosReportPickups => 'Підняття';
+
+  @override
+  String get iosReportNotifications => 'Сповіщення';
+
+  @override
+  String get iosReportTapHour => 'Торкніться години, щоб побачити її час';
+
+  @override
+  String iosReportMoreApps(String count) {
+    return '+$count ще';
+  }
+
+  @override
+  String get iosReportNoData => 'Даних Екранного часу за цей період ще немає.';
+
+  @override
+  String get iosReportGroupApps => 'Застосунки в цій групі';
+
+  @override
+  String get iosUsageAccessBody =>
+      'Дозвольте Екранний час, щоб FocusTrace показував, як ви користуєтеся цим iPhone. Дані лишаються в iOS.';
+
+  @override
+  String get iosUsageMenuItem => 'Використання';
 }

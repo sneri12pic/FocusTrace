@@ -20,6 +20,7 @@ import '../widgets/trend_color.dart';
 import '../widgets/restriction_discovery.dart';
 import '../widgets/selection_icons.dart';
 import '../view_models/restriction_insights.dart';
+import 'ios_selection_usage_screen.dart';
 import 'restriction_editor_sheet.dart';
 import 'routine_editor_sheet.dart';
 import 'routine_details_screen.dart';
@@ -289,6 +290,19 @@ class RestrictionsScreen extends ConsumerWidget {
                     ),
                     showUsage: capabilities.usageNumbersInFlutter,
                     isSaving: state.isSaving,
+                    // iOS: usage of a picked group is a native report.
+                    onShowUsage:
+                        capabilities.nativeUsageReports &&
+                            isIosSelectionKey(rule.appKey)
+                        ? () => Navigator.of(context).push<void>(
+                            MaterialPageRoute(
+                              builder: (context) => IosSelectionUsageScreen(
+                                appKey: rule.appKey,
+                                appName: rule.appName,
+                              ),
+                            ),
+                          )
+                        : null,
                     onUnblockNow: () async {
                       if (!await confirmRestrictionChange(
                         context,
@@ -340,10 +354,14 @@ class RestrictionsScreen extends ConsumerWidget {
                   ),
               ],
             ],
-            const SizedBox(height: 28),
-            ChooseAppsSection(onSearch: () => chooseApp(search: true)),
-            const SizedBox(height: 24),
-            const BusiestHoursCard(),
+            // Both rank apps and hours by usage Flutter does not have on iOS
+            // (it would read as zero); "Add" opens Apple's picker there.
+            if (!capabilities.nativeUsageReports) ...[
+              const SizedBox(height: 28),
+              ChooseAppsSection(onSearch: () => chooseApp(search: true)),
+              const SizedBox(height: 24),
+              const BusiestHoursCard(),
+            ],
             // Routines are shared daily allowances.
             if (capabilities.dailyLimits) ...[
               const SizedBox(height: 28),
@@ -927,7 +945,12 @@ class _RestrictionRuleTile extends StatelessWidget {
     required this.onTap,
     required this.onDelete,
     this.showUsage = true,
+    this.onShowUsage,
   });
+
+  /// Opens the rule's usage report (iOS picked groups); no menu entry when
+  /// null.
+  final VoidCallback? onShowUsage;
 
   final RestrictionRule rule;
   final AppUsageSummary? summary;
@@ -1061,9 +1084,16 @@ class _RestrictionRuleTile extends StatelessWidget {
                     onSelected: (action) => switch (action) {
                       'edit' => onTap(),
                       'unblock' => onUnblockNow(),
+                      'usage' => onShowUsage?.call(),
                       _ => onDelete(),
                     },
                     itemBuilder: (context) => [
+                      if (onShowUsage != null)
+                        PopupMenuItem(
+                          key: const ValueKey('rule-usage-menu-item'),
+                          value: 'usage',
+                          child: Text(l.iosUsageMenuItem),
+                        ),
                       PopupMenuItem(value: 'edit', child: Text(l.rxEdit)),
                       if (isBlocked && !locked)
                         PopupMenuItem(
