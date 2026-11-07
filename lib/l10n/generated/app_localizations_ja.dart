@@ -1803,4 +1803,99 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get iosUsageMenuItem => '利用状況';
+
+  @override
+  String get appleHealthTitle => 'Apple Health';
+
+  @override
+  String get appleHealthIntro =>
+      'Apple Health を通じて、Hevy などのアプリからワークアウトを取り込みます。任意の機能で、初期設定はオフです。記録、制限、ブロックがこれに依存することはありません。';
+
+  @override
+  String get appleHealthDataBody =>
+      'ワークアウトのみです。ワークアウトの種類、名前、開始と終了の時刻、記録したアプリを読み取ります。心拍数、ルート、セットなどそれ以外は読み取らず、FocusTrace は Apple Health に何も書き込みません。取り込んだワークアウトはこの端末に保存され、同期でアップロードされることもバックアップに含まれることもありません。';
+
+  @override
+  String get appleHealthAutoImportBody =>
+      'バックグラウンドでおよそ1時間ごと、また FocusTrace を開くたびに新しいワークアウトを確認します。各アプリは独自のタイミングで Apple Health に保存するため、表示まで時間がかかることがあります。';
+
+  @override
+  String get appleHealthOutcomeUnavailable => '前回の確認に失敗: Apple Health を利用できません';
+
+  @override
+  String get appleHealthOutcomePermission =>
+      '前回の確認に失敗: Apple Health でワークアウトへのアクセスがオフになっています';
+
+  @override
+  String get appleHealthUnavailable => 'この端末では Apple Health を利用できません。';
+
+  @override
+  String get appleHealthManage => 'ヘルスケアアプリでアクセスを管理';
+
+  @override
+  String get appleHealthAccessHint =>
+      'Apple Health は、アクセスが許可されたかどうかをアプリに伝えません。ワークアウトが表示されない場合は、ヘルスケアアプリで「共有」→「App」→「FocusTrace」を開き、「ワークアウト」をオンにしてください。';
+
+  @override
+  String get appleHealthOffNote =>
+      'オフにすると、すべての読み取りと自動取り込みが止まります。FocusTrace のアクセスが取り消されたり Apple Health 内のデータが変わったりはしないので、ヘルスケアアプリで管理してください。取り込み済みのワークアウトは、削除するまでこの端末に残ります。';
+
+  @override
+  String get appleHealthDeleteBody =>
+      'FocusTrace がこの端末にコピーしたワークアウトを削除します。Apple Health や記録したアプリのデータは変わりません。';
+
+  @override
+  String get onboardingAppleHealthBody =>
+      '任意です。Apple Health を通じて Hevy などのアプリからワークアウトを取り込みます。FocusTrace はワークアウトだけを読み取り、この端末に保存します。設定でいつでも変更できます。';
+
+  @override
+  String get onboardingAppleHealthConnect => 'Apple Health に接続';
+
+  @override
+  String get onboardingAppleHealthConnected =>
+      '接続しました。ワークアウトは設定の Apple Health にあります。';
+
+  @override
+  String get settingsClearDataAppleHealth =>
+      'Apple Health からの取り込みはオフになり、取り込んだワークアウトは削除されます。Apple Health 内のデータは変わりません。';
+
+  @override
+  String settingsImportMissingAppGroups(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          'バックアップを取り込みました。$count 件のアプリグループがこの iPhone にありません。制限を開いてアプリを選び直してください。',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get iosWidgetGalleryName => '制限の状況';
+
+  @override
+  String get iosWidgetGalleryDescription => 'FocusTrace が今ブロックしているものと次の予定。';
+
+  @override
+  String get iosWidgetBlockingNow => 'ブロック中';
+
+  @override
+  String get iosWidgetNothingBlocked => '現在ブロック中のものはありません';
+
+  @override
+  String iosWidgetUntil(String time) {
+    return '$time まで';
+  }
+
+  @override
+  String get iosWidgetNextBlock => '次のブロック';
+
+  @override
+  String get iosWidgetNoUpcoming => '予定されたブロックはありません';
+
+  @override
+  String get iosWidgetLimitsReached => '今日達した制限';
+
+  @override
+  String get iosWidgetNoRestrictions => 'FocusTrace を開いてブロックするアプリを選択';
 }

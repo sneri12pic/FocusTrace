@@ -83,6 +83,27 @@ class ScreenTimeChannel {
         }),
       );
 
+  /// The stored selections with these ids, encoded (base64 of the opaque
+  /// selection data) for a backup. Ids with no stored selection are left out.
+  Future<Map<String, String>> exportSelections(List<String> ids) async {
+    final map = await _channel.invokeMapMethod<String, Object?>(
+      'exportSelections',
+      {'ids': ids},
+    );
+    return {
+      for (final entry in (map ?? const {}).entries)
+        if (entry.value is String) entry.key: entry.value! as String,
+    };
+  }
+
+  /// Restores selections from a backup. A selection already on this device
+  /// is kept (it may belong to a protected rule). Returns how many were added.
+  Future<int> importSelections(Map<String, String> selections) async =>
+      await _channel.invokeMethod<int>('importSelections', {
+        'selections': selections,
+      }) ??
+      0;
+
   /// The block screen's texts, from the app's ARB files.
   Future<void> setShieldStrings(Map<String, String> strings) =>
       _channel.invokeMethod<void>('setShieldStrings', {'strings': strings});

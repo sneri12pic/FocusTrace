@@ -18,6 +18,7 @@ Map<String, bool> _fields(PlatformCapabilities c) => {
   'osHistoryImport': c.osHistoryImport,
   'dataTransfer': c.dataTransfer,
   'workoutsImport': c.workoutsImport,
+  'appleHealth': c.appleHealth,
   'cloudSync': c.cloudSync,
   'platformLocale': c.platformLocale,
 };
@@ -63,6 +64,10 @@ void main() {
       'nativeAppPicker',
       'appBlocking',
       'dailyLimits',
+      'dataTransfer',
+      'workoutsImport',
+      'appleHealth',
+      'platformLocale',
     });
   });
 

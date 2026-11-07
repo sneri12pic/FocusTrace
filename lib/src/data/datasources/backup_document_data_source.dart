@@ -9,8 +9,12 @@ abstract class BackupDocumentDataSource {
   Future<String?> openJson();
 }
 
-class AndroidBackupDocumentDataSource implements BackupDocumentDataSource {
-  AndroidBackupDocumentDataSource({
+/// `focustrace/data_transfer`: Android's `DataTransferDocumentBridge.kt`
+/// (Storage Access Framework) and iOS's `DataTransferBridge.swift` (document
+/// pickers) answer the same two methods.
+class MethodChannelBackupDocumentDataSource
+    implements BackupDocumentDataSource {
+  MethodChannelBackupDocumentDataSource({
     MethodChannel channel = const MethodChannel('focustrace/data_transfer'),
   }) : _channel = channel;
 

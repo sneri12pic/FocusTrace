@@ -304,6 +304,23 @@ Map<String, String> reportStrings(BuildContext context) {
   };
 }
 
+/// Texts of the iOS home screen widget (WidgetStrings in
+/// ios/FocusTraceKit/WidgetStatus.swift), keyed `widget.<name>`.
+Map<String, String> widgetStrings(BuildContext context) {
+  final l = context.l10n;
+  return {
+    'widget.galleryName': l.iosWidgetGalleryName,
+    'widget.galleryDescription': l.iosWidgetGalleryDescription,
+    'widget.blockingNow': l.iosWidgetBlockingNow,
+    'widget.nothingBlocked': l.iosWidgetNothingBlocked,
+    'widget.until': l.iosWidgetUntil('{time}'),
+    'widget.nextBlock': l.iosWidgetNextBlock,
+    'widget.noUpcoming': l.iosWidgetNoUpcoming,
+    'widget.limitsReached': l.iosWidgetLimitsReached,
+    'widget.noRestrictions': l.iosWidgetNoRestrictions,
+  };
+}
+
 /// Pushes the block screen's and usage reports' texts to iOS in the app's
 /// language.
 Future<void> syncShieldStrings(BuildContext context, WidgetRef ref) async {
@@ -334,8 +351,10 @@ Future<void> syncShieldStrings(BuildContext context, WidgetRef ref) async {
       },
       for (var minutes = 10; minutes <= 120; minutes += 10)
         'nudgeOver.$minutes': l.shieldNudgeMinutesOver(minutes),
-      // The usage report extension reads its texts from the same map.
+      // The usage report extension and the home screen widget read their
+      // texts from the same map.
       ...reportStrings(context),
+      ...widgetStrings(context),
     });
   } catch (error) {
     // The shield falls back to English.

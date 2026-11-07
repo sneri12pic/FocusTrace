@@ -10,6 +10,7 @@ import '../../domain/models/app_usage_summary.dart';
 import '../../domain/models/health_connect.dart';
 import '../../domain/models/platform_capabilities.dart';
 import '../localization/app_localizations_x.dart';
+import '../localization/health_store_texts.dart';
 import '../providers.dart';
 import 'home_shell.dart';
 import 'restriction_editor_sheet.dart';
@@ -647,6 +648,10 @@ class _HealthConnectPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(healthConnectViewModelProvider);
     final status = state.status;
+    final store = HealthStoreTexts(
+      context.l10n,
+      appleHealth: ref.watch(platformCapabilitiesProvider).appleHealth,
+    );
     final theme = Theme.of(context);
     final mutedStyle = theme.textTheme.bodyMedium?.copyWith(
       color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
@@ -655,12 +660,12 @@ class _HealthConnectPage extends ConsumerWidget {
     if (state.isLoading) {
       note = null;
     } else if (status.availability == HealthConnectAvailability.unavailable) {
-      note = context.l10n.healthConnectUnavailable;
+      note = store.unavailable;
     } else if (status.availability ==
         HealthConnectAvailability.updateRequired) {
       note = context.l10n.healthConnectUpdateRequired;
     } else if (status.enabled) {
-      note = context.l10n.onboardingHealthConnected;
+      note = store.onboardingConnected;
     } else if (state.attemptedEnable) {
       note = context.l10n.onboardingHealthDenied;
     } else {
@@ -680,7 +685,7 @@ class _HealthConnectPage extends ConsumerWidget {
         ),
         const SizedBox(height: 8),
         Text(
-          context.l10n.onboardingHealthBody,
+          store.onboardingBody,
           textAlign: TextAlign.center,
           style: mutedStyle,
         ),
@@ -702,10 +707,7 @@ class _HealthConnectPage extends ConsumerWidget {
         ),
         if (note != null) ...[
           const SizedBox(height: 28),
-          _OnboardingInfoCard(
-            title: context.l10n.healthConnectTitle,
-            body: note,
-          ),
+          _OnboardingInfoCard(title: store.title, body: note),
         ],
       ],
     );
@@ -739,7 +741,10 @@ class _HealthConnectCta extends ConsumerWidget {
       children: [
         _GradientButton(
           key: const ValueKey('onboarding-health-connect'),
-          label: context.l10n.onboardingHealthConnect,
+          label: HealthStoreTexts(
+            context.l10n,
+            appleHealth: ref.watch(platformCapabilitiesProvider).appleHealth,
+          ).onboardingConnect,
           onPressed: canConnect
               ? () => ref.read(healthConnectViewModelProvider.notifier).enable()
               : null,

@@ -1902,4 +1902,109 @@ class AppLocalizationsUk extends AppLocalizations {
 
   @override
   String get iosUsageMenuItem => 'Використання';
+
+  @override
+  String get appleHealthTitle => 'Apple Health';
+
+  @override
+  String get appleHealthIntro =>
+      'Імпортуйте тренування із застосунків на кшталт Hevy через Apple Health. Це необов\'язково й за замовчуванням вимкнено. Відстеження, ліміти й блокування ніколи від цього не залежать.';
+
+  @override
+  String get appleHealthDataBody =>
+      'Лише тренування: вид тренування, його назву, час початку й завершення та застосунок, який його записав. Нічого іншого, як-от пульс, маршрути чи підходи, і FocusTrace нічого не записує в Apple Health. Імпортовані тренування залишаються на цьому пристрої: синхронізація їх не вивантажує, а резервні копії їх не містять.';
+
+  @override
+  String get appleHealthAutoImportBody =>
+      'Перевіряє нові тренування у фоні приблизно щогодини та щоразу, коли ви відкриваєте FocusTrace. Застосунки зберігають дані в Apple Health за власним розкладом, тож тренування може з\'явитися не одразу.';
+
+  @override
+  String get appleHealthOutcomeUnavailable =>
+      'Остання перевірка не вдалася: Apple Health недоступний';
+
+  @override
+  String get appleHealthOutcomePermission =>
+      'Остання перевірка не вдалася: доступ до тренувань вимкнено в Apple Health';
+
+  @override
+  String get appleHealthUnavailable =>
+      'Apple Health недоступний на цьому пристрої.';
+
+  @override
+  String get appleHealthManage => 'Керувати доступом у застосунку «Здоров\'я»';
+
+  @override
+  String get appleHealthAccessHint =>
+      'Apple Health не повідомляє застосункам, чи дозволено доступ. Якщо тренування не з\'являються, відкрийте застосунок «Здоров\'я», далі «Спільний доступ», «Програми», FocusTrace, і ввімкніть «Тренування».';
+
+  @override
+  String get appleHealthOffNote =>
+      'Вимкнення зупиняє всі читання й автоматичні імпорти. Воно не відкликає доступ FocusTrace і нічого не змінює в Apple Health; керуйте цим у застосунку «Здоров\'я». Уже імпортовані тренування залишаються на цьому пристрої, доки ви їх не видалите.';
+
+  @override
+  String get appleHealthDeleteBody =>
+      'Буде видалено тренування, які FocusTrace скопіював на цей пристрій. В Apple Health і застосунках, що їх записали, нічого не зміниться.';
+
+  @override
+  String get onboardingAppleHealthBody =>
+      'Необов\'язково. Імпортуйте тренування із застосунків на кшталт Hevy через Apple Health. FocusTrace читає лише тренування і зберігає їх на цьому пристрої. Це можна будь-коли змінити в налаштуваннях.';
+
+  @override
+  String get onboardingAppleHealthConnect => 'Підключити Apple Health';
+
+  @override
+  String get onboardingAppleHealthConnected =>
+      'Підключено. Ваші тренування в налаштуваннях, у розділі Apple Health.';
+
+  @override
+  String get settingsClearDataAppleHealth =>
+      'Імпорт з Apple Health вимкнеться, а імпортовані тренування буде видалено. В Apple Health нічого не зміниться.';
+
+  @override
+  String settingsImportMissingAppGroups(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          'Резервну копію імпортовано. $count групи застосунків немає на цьому iPhone: відкрийте їхні обмеження й виберіть застосунки знову.',
+      many:
+          'Резервну копію імпортовано. $count груп застосунків немає на цьому iPhone: відкрийте їхні обмеження й виберіть застосунки знову.',
+      few:
+          'Резервну копію імпортовано. $count групи застосунків немає на цьому iPhone: відкрийте їхні обмеження й виберіть застосунки знову.',
+      one:
+          'Резервну копію імпортовано. 1 групи застосунків немає на цьому iPhone: відкрийте її обмеження й виберіть застосунки знову.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get iosWidgetGalleryName => 'Стан обмежень';
+
+  @override
+  String get iosWidgetGalleryDescription =>
+      'Що FocusTrace блокує зараз і що далі.';
+
+  @override
+  String get iosWidgetBlockingNow => 'Блокується зараз';
+
+  @override
+  String get iosWidgetNothingBlocked => 'Зараз нічого не заблоковано';
+
+  @override
+  String iosWidgetUntil(String time) {
+    return 'до $time';
+  }
+
+  @override
+  String get iosWidgetNextBlock => 'Наступне блокування';
+
+  @override
+  String get iosWidgetNoUpcoming => 'Немає запланованих блокувань';
+
+  @override
+  String get iosWidgetLimitsReached => 'Лімітів досягнуто сьогодні';
+
+  @override
+  String get iosWidgetNoRestrictions =>
+      'Відкрийте FocusTrace, щоб вибрати застосунки для блокування';
 }

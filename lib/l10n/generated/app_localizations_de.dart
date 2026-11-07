@@ -1891,4 +1891,105 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get iosUsageMenuItem => 'Nutzung';
+
+  @override
+  String get appleHealthTitle => 'Apple Health';
+
+  @override
+  String get appleHealthIntro =>
+      'Importiere deine Trainings aus Apps wie Hevy über Apple Health. Das ist optional und standardmäßig aus. Tracking, Limits und Sperren hängen nie davon ab.';
+
+  @override
+  String get appleHealthDataBody =>
+      'Nur Trainings: die Art des Trainings, seinen Namen, Beginn und Ende und welche App es aufgezeichnet hat. Sonst nichts, etwa Herzfrequenz, Routen oder Sätze, und FocusTrace schreibt nichts in Apple Health. Importierte Trainings bleiben auf diesem Gerät: Die Synchronisierung lädt sie nicht hoch und Sicherungen enthalten sie nicht.';
+
+  @override
+  String get appleHealthAutoImportBody =>
+      'Sucht etwa einmal pro Stunde im Hintergrund und bei jedem Öffnen von FocusTrace nach neuen Trainings. Apps speichern nach eigenem Zeitplan in Apple Health, daher kann ein Training eine Weile brauchen, bis es erscheint.';
+
+  @override
+  String get appleHealthOutcomeUnavailable =>
+      'Letzte Prüfung fehlgeschlagen: Apple Health ist nicht verfügbar';
+
+  @override
+  String get appleHealthOutcomePermission =>
+      'Letzte Prüfung fehlgeschlagen: Zugriff auf Trainings ist in Apple Health aus';
+
+  @override
+  String get appleHealthUnavailable =>
+      'Apple Health ist auf diesem Gerät nicht verfügbar.';
+
+  @override
+  String get appleHealthManage => 'Zugriff in der Health-App verwalten';
+
+  @override
+  String get appleHealthAccessHint =>
+      'Apple Health verrät Apps nicht, ob der Zugriff erlaubt wurde. Wenn deine Trainings nicht erscheinen, öffne die Health-App, dann Teilen, Apps, FocusTrace, und schalte Trainings ein.';
+
+  @override
+  String get appleHealthOffNote =>
+      'Ausschalten stoppt jedes Lesen und jeden automatischen Import. Der Zugriff von FocusTrace und alles in Apple Health bleiben unverändert; verwalte das in der Health-App. Bereits importierte Trainings bleiben auf diesem Gerät, bis du sie löschst.';
+
+  @override
+  String get appleHealthDeleteBody =>
+      'Damit werden die Trainings entfernt, die FocusTrace auf dieses Gerät kopiert hat. In Apple Health und den aufzeichnenden Apps ändert sich nichts.';
+
+  @override
+  String get onboardingAppleHealthBody =>
+      'Optional. Importiere Trainings aus Apps wie Hevy über Apple Health. FocusTrace liest nur Trainings und behält sie auf diesem Gerät. Du kannst das jederzeit in den Einstellungen ändern.';
+
+  @override
+  String get onboardingAppleHealthConnect => 'Apple Health verbinden';
+
+  @override
+  String get onboardingAppleHealthConnected =>
+      'Verbunden. Deine Trainings findest du in den Einstellungen unter Apple Health.';
+
+  @override
+  String get settingsClearDataAppleHealth =>
+      'Der Apple-Health-Import wird ausgeschaltet und importierte Trainings werden gelöscht. In Apple Health ändert sich nichts.';
+
+  @override
+  String settingsImportMissingAppGroups(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          'Sicherung importiert. $count App-Gruppen sind nicht auf diesem iPhone: Öffne ihre Einschränkungen und wähle die Apps erneut.',
+      one:
+          'Sicherung importiert. 1 App-Gruppe ist nicht auf diesem iPhone: Öffne ihre Einschränkung und wähle die Apps erneut.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get iosWidgetGalleryName => 'Einschränkungsstatus';
+
+  @override
+  String get iosWidgetGalleryDescription =>
+      'Was FocusTrace gerade sperrt und was als Nächstes kommt.';
+
+  @override
+  String get iosWidgetBlockingNow => 'Jetzt gesperrt';
+
+  @override
+  String get iosWidgetNothingBlocked => 'Gerade ist nichts gesperrt';
+
+  @override
+  String iosWidgetUntil(String time) {
+    return 'bis $time';
+  }
+
+  @override
+  String get iosWidgetNextBlock => 'Nächste Sperre';
+
+  @override
+  String get iosWidgetNoUpcoming => 'Keine anstehenden Sperren';
+
+  @override
+  String get iosWidgetLimitsReached => 'Heute erreichte Limits';
+
+  @override
+  String get iosWidgetNoRestrictions =>
+      'Öffne FocusTrace, um Apps zum Sperren auszuwählen';
 }

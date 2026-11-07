@@ -20,6 +20,7 @@ class PlatformCapabilities {
     this.osHistoryImport = false,
     this.dataTransfer = false,
     this.workoutsImport = false,
+    this.appleHealth = false,
     this.cloudSync = false,
     this.platformLocale = false,
   });
@@ -61,7 +62,9 @@ class PlatformCapabilities {
   /// names or an installed-app list. Rules are enforced by Screen Time
   /// shields; daily limits and routines by DeviceActivity usage thresholds in
   /// the monitor extension, which also posts the limit warnings as local
-  /// notifications.
+  /// notifications. Workouts come from Apple Health, backups go through the
+  /// Files picker and the language is mirrored to iOS. Cloud sync stays off:
+  /// the server syncs usage history, which never leaves Screen Time.
   static const ios = PlatformCapabilities(
     nativeUsageReports: true,
     notificationsPermission: true,
@@ -69,6 +72,10 @@ class PlatformCapabilities {
     nativeAppPicker: true,
     appBlocking: true,
     dailyLimits: true,
+    dataTransfer: true,
+    workoutsImport: true,
+    appleHealth: true,
+    platformLocale: true,
   );
 
   static const none = PlatformCapabilities();
@@ -119,6 +126,10 @@ class PlatformCapabilities {
 
   /// Workouts can be imported from the platform health store.
   final bool workoutsImport;
+
+  /// The health store is Apple Health (HealthKit) rather than Android's
+  /// Health Connect; the channel is the same, the texts name the store.
+  final bool appleHealth;
 
   /// The platform side of optional cloud sync (scheduling, execution) exists.
   final bool cloudSync;

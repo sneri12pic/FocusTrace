@@ -101,7 +101,7 @@ final backupDocumentDataSourceProvider = Provider<BackupDocumentDataSource>((
   ref,
 ) {
   if (ref.watch(dataTransferSupportedProvider)) {
-    return AndroidBackupDocumentDataSource();
+    return MethodChannelBackupDocumentDataSource();
   }
   return const UnsupportedBackupDocumentDataSource();
 });
@@ -110,6 +110,10 @@ final dataTransferRepositoryProvider = Provider<DataTransferRepository>((ref) {
   return DataTransferRepositoryImpl(
     localDataSource: ref.watch(portableLocalDataSourceProvider),
     documentDataSource: ref.watch(backupDocumentDataSourceProvider),
+    // Rules made in Apple's picker refer to app groups stored natively.
+    appGroupSelections: ref.watch(platformCapabilitiesProvider).nativeAppPicker
+        ? ref.watch(screenTimeChannelProvider)
+        : null,
   );
 });
 
@@ -121,7 +125,7 @@ final platformLocaleDataSourceProvider = Provider<PlatformLocaleDataSource>((
   ref,
 ) {
   if (ref.watch(platformCapabilitiesProvider).platformLocale) {
-    return AndroidPlatformLocaleDataSource();
+    return MethodChannelPlatformLocaleDataSource();
   }
   return const NoOpPlatformLocaleDataSource();
 });

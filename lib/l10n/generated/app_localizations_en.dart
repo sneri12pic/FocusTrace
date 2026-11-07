@@ -1870,4 +1870,105 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get iosUsageMenuItem => 'Usage';
+
+  @override
+  String get appleHealthTitle => 'Apple Health';
+
+  @override
+  String get appleHealthIntro =>
+      'Import your workouts from apps like Hevy through Apple Health. It\'s optional and off by default. Tracking, limits and blocking never depend on it.';
+
+  @override
+  String get appleHealthDataBody =>
+      'Only workouts: the kind of workout, its name, when it started and ended, and which app recorded it. Nothing else, such as heart rate, routes or sets, is read, and FocusTrace writes nothing to Apple Health. Imported workouts stay on this device: sync doesn\'t upload them and backups don\'t include them.';
+
+  @override
+  String get appleHealthAutoImportBody =>
+      'Checks for new workouts in the background about once an hour and whenever you open FocusTrace. Apps save to Apple Health on their own schedule, so a workout can take a while to show up.';
+
+  @override
+  String get appleHealthOutcomeUnavailable =>
+      'Last check failed: Apple Health isn\'t available';
+
+  @override
+  String get appleHealthOutcomePermission =>
+      'Last check failed: access to workouts is off in Apple Health';
+
+  @override
+  String get appleHealthUnavailable =>
+      'Apple Health isn\'t available on this device.';
+
+  @override
+  String get appleHealthManage => 'Manage access in the Health app';
+
+  @override
+  String get appleHealthAccessHint =>
+      'Apple Health doesn\'t tell apps whether access was allowed. If your workouts don\'t appear, open the Health app, then Sharing, Apps, FocusTrace, and turn on Workouts.';
+
+  @override
+  String get appleHealthOffNote =>
+      'Turning this off stops every read and automatic import. It doesn\'t remove FocusTrace\'s access or change anything in Apple Health; manage that in the Health app. Workouts already imported stay on this device until you delete them.';
+
+  @override
+  String get appleHealthDeleteBody =>
+      'This removes the workouts FocusTrace copied to this device. Nothing in Apple Health or the apps that recorded them changes.';
+
+  @override
+  String get onboardingAppleHealthBody =>
+      'Optional. Import workouts from apps like Hevy through Apple Health. FocusTrace only reads workouts and keeps them on this device. You can change this anytime in Settings.';
+
+  @override
+  String get onboardingAppleHealthConnect => 'Connect Apple Health';
+
+  @override
+  String get onboardingAppleHealthConnected =>
+      'Connected. Your workouts are in Settings, under Apple Health.';
+
+  @override
+  String get settingsClearDataAppleHealth =>
+      'Apple Health import turns off and imported workouts are deleted. Nothing in Apple Health changes.';
+
+  @override
+  String settingsImportMissingAppGroups(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          'Backup imported. $count groups of apps aren\'t on this iPhone: open their restrictions and choose the apps again.',
+      one:
+          'Backup imported. 1 group of apps isn\'t on this iPhone: open its restriction and choose the apps again.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get iosWidgetGalleryName => 'Restriction status';
+
+  @override
+  String get iosWidgetGalleryDescription =>
+      'What FocusTrace is blocking now and what\'s next.';
+
+  @override
+  String get iosWidgetBlockingNow => 'Blocking now';
+
+  @override
+  String get iosWidgetNothingBlocked => 'Nothing blocked right now';
+
+  @override
+  String iosWidgetUntil(String time) {
+    return 'until $time';
+  }
+
+  @override
+  String get iosWidgetNextBlock => 'Next block';
+
+  @override
+  String get iosWidgetNoUpcoming => 'No upcoming blocks';
+
+  @override
+  String get iosWidgetLimitsReached => 'Limits reached today';
+
+  @override
+  String get iosWidgetNoRestrictions =>
+      'Open FocusTrace to choose apps to block';
 }

@@ -3146,6 +3146,156 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Usage'**
   String get iosUsageMenuItem;
+
+  /// No description provided for @appleHealthTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Apple Health'**
+  String get appleHealthTitle;
+
+  /// No description provided for @appleHealthIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'Import your workouts from apps like Hevy through Apple Health. It\'s optional and off by default. Tracking, limits and blocking never depend on it.'**
+  String get appleHealthIntro;
+
+  /// No description provided for @appleHealthDataBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Only workouts: the kind of workout, its name, when it started and ended, and which app recorded it. Nothing else, such as heart rate, routes or sets, is read, and FocusTrace writes nothing to Apple Health. Imported workouts stay on this device: sync doesn\'t upload them and backups don\'t include them.'**
+  String get appleHealthDataBody;
+
+  /// No description provided for @appleHealthAutoImportBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Checks for new workouts in the background about once an hour and whenever you open FocusTrace. Apps save to Apple Health on their own schedule, so a workout can take a while to show up.'**
+  String get appleHealthAutoImportBody;
+
+  /// No description provided for @appleHealthOutcomeUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Last check failed: Apple Health isn\'t available'**
+  String get appleHealthOutcomeUnavailable;
+
+  /// No description provided for @appleHealthOutcomePermission.
+  ///
+  /// In en, this message translates to:
+  /// **'Last check failed: access to workouts is off in Apple Health'**
+  String get appleHealthOutcomePermission;
+
+  /// No description provided for @appleHealthUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Apple Health isn\'t available on this device.'**
+  String get appleHealthUnavailable;
+
+  /// No description provided for @appleHealthManage.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage access in the Health app'**
+  String get appleHealthManage;
+
+  /// No description provided for @appleHealthAccessHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Apple Health doesn\'t tell apps whether access was allowed. If your workouts don\'t appear, open the Health app, then Sharing, Apps, FocusTrace, and turn on Workouts.'**
+  String get appleHealthAccessHint;
+
+  /// No description provided for @appleHealthOffNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Turning this off stops every read and automatic import. It doesn\'t remove FocusTrace\'s access or change anything in Apple Health; manage that in the Health app. Workouts already imported stay on this device until you delete them.'**
+  String get appleHealthOffNote;
+
+  /// No description provided for @appleHealthDeleteBody.
+  ///
+  /// In en, this message translates to:
+  /// **'This removes the workouts FocusTrace copied to this device. Nothing in Apple Health or the apps that recorded them changes.'**
+  String get appleHealthDeleteBody;
+
+  /// No description provided for @onboardingAppleHealthBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Optional. Import workouts from apps like Hevy through Apple Health. FocusTrace only reads workouts and keeps them on this device. You can change this anytime in Settings.'**
+  String get onboardingAppleHealthBody;
+
+  /// No description provided for @onboardingAppleHealthConnect.
+  ///
+  /// In en, this message translates to:
+  /// **'Connect Apple Health'**
+  String get onboardingAppleHealthConnect;
+
+  /// No description provided for @onboardingAppleHealthConnected.
+  ///
+  /// In en, this message translates to:
+  /// **'Connected. Your workouts are in Settings, under Apple Health.'**
+  String get onboardingAppleHealthConnected;
+
+  /// No description provided for @settingsClearDataAppleHealth.
+  ///
+  /// In en, this message translates to:
+  /// **'Apple Health import turns off and imported workouts are deleted. Nothing in Apple Health changes.'**
+  String get settingsClearDataAppleHealth;
+
+  /// No description provided for @settingsImportMissingAppGroups.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{Backup imported. 1 group of apps isn\'t on this iPhone: open its restriction and choose the apps again.} other{Backup imported. {count} groups of apps aren\'t on this iPhone: open their restrictions and choose the apps again.}}'**
+  String settingsImportMissingAppGroups(int count);
+
+  /// No description provided for @iosWidgetGalleryName.
+  ///
+  /// In en, this message translates to:
+  /// **'Restriction status'**
+  String get iosWidgetGalleryName;
+
+  /// No description provided for @iosWidgetGalleryDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'What FocusTrace is blocking now and what\'s next.'**
+  String get iosWidgetGalleryDescription;
+
+  /// No description provided for @iosWidgetBlockingNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Blocking now'**
+  String get iosWidgetBlockingNow;
+
+  /// No description provided for @iosWidgetNothingBlocked.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing blocked right now'**
+  String get iosWidgetNothingBlocked;
+
+  /// No description provided for @iosWidgetUntil.
+  ///
+  /// In en, this message translates to:
+  /// **'until {time}'**
+  String iosWidgetUntil(String time);
+
+  /// No description provided for @iosWidgetNextBlock.
+  ///
+  /// In en, this message translates to:
+  /// **'Next block'**
+  String get iosWidgetNextBlock;
+
+  /// No description provided for @iosWidgetNoUpcoming.
+  ///
+  /// In en, this message translates to:
+  /// **'No upcoming blocks'**
+  String get iosWidgetNoUpcoming;
+
+  /// No description provided for @iosWidgetLimitsReached.
+  ///
+  /// In en, this message translates to:
+  /// **'Limits reached today'**
+  String get iosWidgetLimitsReached;
+
+  /// No description provided for @iosWidgetNoRestrictions.
+  ///
+  /// In en, this message translates to:
+  /// **'Open FocusTrace to choose apps to block'**
+  String get iosWidgetNoRestrictions;
 }
 
 class _AppLocalizationsDelegate
