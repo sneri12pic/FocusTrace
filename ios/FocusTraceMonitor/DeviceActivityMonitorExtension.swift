@@ -41,12 +41,18 @@ class DeviceActivityMonitorExtension: DeviceActivityMonitor {
     if let key = UsageEvents.reachedKey(activity: activity.rawValue, event: event.rawValue) {
       store.markReached(key, at: now)
       ShieldController.reconcile(store: store, now: now)
+      if event.rawValue == UsageEvents.reached {
+        // "Blocking starts in about 5 minutes" is over once blocking started.
+        UNUserNotificationCenter.current().removeDeliveredNotifications(
+          withIdentifiers: [UsageEvents.warningIdentifier(activity: activity.rawValue)])
+      }
     }
     guard
       let notice = UsageEvents.notice(
         activity: activity.rawValue, event: event.rawValue,
-        configuration: store.configuration, strings: store.shieldStrings),
-      store.claimNotice("\(activity.rawValue)#\(event.rawValue)", at: now)
+        configuration: store.configuration, strings: store.shieldStrings,
+        isReached: { store.isReached($0, at: now) }),
+      store.claimNotice(notice.claimKey, at: now)
     else { return }
     post(notice)
   }

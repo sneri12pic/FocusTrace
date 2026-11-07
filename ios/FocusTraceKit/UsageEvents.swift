@@ -151,34 +151,48 @@ enum UsageEvents {
 
   // MARK: Notifications
 
+  /// The identifier of an activity's limit warning; the reached event
+  /// removes a delivered warning, which no longer applies.
+  static func warningIdentifier(activity: String) -> String {
+    "focustrace.warning." + activity
+  }
+
   /// The notification an event posts, or nil. One identifier per activity,
   /// so a later notice replaces an earlier one instead of piling up.
+  ///
+  /// `isReached` tells whether a block key (`reachedKey`) was reached today:
+  /// a limit already reached (lowered below today's use, so both events fire
+  /// at once) gets no warning.
   static func notice(
     activity: String, event: String, configuration: RestrictionConfiguration,
-    strings: ShieldStrings
+    strings: ShieldStrings, isReached: (String) -> Bool = { _ in false }
   ) -> UsageNotice? {
     if activity.hasPrefix(limitPrefix), event == warning {
       let id = String(activity.dropFirst(limitPrefix.count))
       guard
         let rule = configuration.rules.first(where: {
           $0.type == .dailyLimit && $0.selectionId == id
-        }), let limit = rule.limitMinutes, let at = warningMinute(limit: limit)
+        }), let limit = rule.limitMinutes, let at = warningMinute(limit: limit),
+        !isReached(limitKey(selectionId: id))
       else { return nil }
       return UsageNotice(
-        identifier: "focustrace.warning." + activity,
+        identifier: warningIdentifier(activity: activity),
         title: strings.text("limitWarningTitle").replacingOccurrences(of: "{name}", with: rule.appName),
-        body: strings.counted("limitWarningBody", limit - at))
+        body: strings.counted("limitWarningBody", limit - at),
+        claimKey: claimKey(activity: activity, event: event, limitMinutes: limit))
     }
     if activity.hasPrefix(routinePrefix), event == warning {
       let id = String(activity.dropFirst(routinePrefix.count))
       guard let routine = configuration.routines.first(where: { $0.id == id }),
-        let at = warningMinute(limit: routine.limitMinutes)
+        let at = warningMinute(limit: routine.limitMinutes),
+        !isReached(routineKey(id))
       else { return nil }
       return UsageNotice(
-        identifier: "focustrace.warning." + activity,
+        identifier: warningIdentifier(activity: activity),
         title: strings.text("routineWarningTitle").replacingOccurrences(
           of: "{name}", with: routine.name),
-        body: strings.counted("limitWarningBody", routine.limitMinutes - at))
+        body: strings.counted("limitWarningBody", routine.limitMinutes - at),
+        claimKey: claimKey(activity: activity, event: event, limitMinutes: routine.limitMinutes))
     }
     if activity.hasPrefix(preferredPrefix) {
       let key = String(activity.dropFirst(preferredPrefix.count))
@@ -210,9 +224,17 @@ enum UsageEvents {
       return UsageNotice(
         identifier: "focustrace.nudge." + activity,
         title: names.isEmpty ? title : "\(title) · \(names.joined(separator: ", "))",
-        body: body)
+        body: body,
+        claimKey: claimKey(activity: activity, event: event, limitMinutes: preferred.limitMinutes))
     }
     return nil
+  }
+
+  /// The once-a-day claim of a notice (`RestrictionStore.claimNotice`). It
+  /// holds the limit, as Android's warning key does, so a limit raised later
+  /// the same day warns again before its new end.
+  static func claimKey(activity: String, event: String, limitMinutes: Int) -> String {
+    "\(activity)#\(event)#\(limitMinutes)"
   }
 
   // MARK: Helpers
@@ -251,4 +273,6 @@ struct UsageNotice: Equatable {
   var identifier: String
   var title: String
   var body: String
+  /// Posted at most once a day per claim key.
+  var claimKey: String
 }

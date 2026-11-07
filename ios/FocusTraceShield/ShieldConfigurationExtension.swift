@@ -11,7 +11,10 @@ import UIKit
 /// dark background and sky-blue accent.
 class ShieldConfigurationExtension: ShieldConfigurationDataSource {
   override func configuration(shielding application: Application) -> ShieldConfiguration {
-    configuration(name: application.localizedDisplayName) {
+    configuration(
+      name: application.localizedDisplayName,
+      tokenKey: application.token.flatMap { SelectionCodec.tokenKey($0) }
+    ) {
       $0.contains(application: application.token)
     }
   }
@@ -20,20 +23,25 @@ class ShieldConfigurationExtension: ShieldConfigurationDataSource {
     shielding application: Application,
     in category: ActivityCategory
   ) -> ShieldConfiguration {
-    configuration(name: application.localizedDisplayName) {
+    configuration(
+      name: application.localizedDisplayName,
+      tokenKey: application.token.flatMap { SelectionCodec.tokenKey($0) }
+    ) {
       $0.contains(application: application.token) || $0.contains(category: category.token)
     }
   }
 
   override func configuration(shielding webDomain: WebDomain) -> ShieldConfiguration {
-    configuration(name: webDomain.domain) { $0.contains(webDomain: webDomain.token) }
+    configuration(name: webDomain.domain, tokenKey: webDomain.token.flatMap { SelectionCodec.tokenKey($0) }) {
+      $0.contains(webDomain: webDomain.token)
+    }
   }
 
   override func configuration(
     shielding webDomain: WebDomain,
     in category: ActivityCategory
   ) -> ShieldConfiguration {
-    configuration(name: webDomain.domain) {
+    configuration(name: webDomain.domain, tokenKey: webDomain.token.flatMap { SelectionCodec.tokenKey($0) }) {
       $0.contains(webDomain: webDomain.token) || $0.contains(category: category.token)
     }
   }
@@ -43,8 +51,10 @@ class ShieldConfigurationExtension: ShieldConfigurationDataSource {
   private static let accent = UIColor(red: 91 / 255, green: 192 / 255, blue: 235 / 255, alpha: 1)
   private static let reasonColor = UIColor(red: 219 / 255, green: 226 / 255, blue: 239 / 255, alpha: 1)
 
+  /// `tokenKey` identifies the shielded app or web domain; the rules listed
+  /// are recorded under it for the shield action extension.
   private func configuration(
-    name: String?, matches: (FamilyActivitySelection) -> Bool
+    name: String?, tokenKey: String?, matches: (FamilyActivitySelection) -> Bool
   ) -> ShieldConfiguration {
     let store = RestrictionStore.shared
     let strings = store.shieldStrings
@@ -59,6 +69,9 @@ class ShieldConfigurationExtension: ShieldConfigurationDataSource {
           at: now, usageSecondsToday: store.usageProxy(rule, at: now))
       }
       return strings.reason(for: block, until: until, timeFormatter: formatter)
+    }
+    if let tokenKey = tokenKey {
+      store.recordDisplayed(ruleKeys: blocks.map(\.key), tokenKey: tokenKey, now: now)
     }
     if let first = blocks.first {
       // A routine's statistics belong to the member app that was opened.

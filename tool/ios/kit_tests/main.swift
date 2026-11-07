@@ -59,6 +59,12 @@ do {
   let config = RestrictionConfiguration.parse(fixture)
   expectEqual(config.rules.count, 5, "fixture rule count")
   expectEqual(config.routines.count, 2, "fixture routine count (disabled ones are not sent)")
+  expectEqual(
+    config.routineAppKeys.last, "ios-sel:7c9e6679-7425-40de-944b-e07fc1f90ae7",
+    "picked groups of every routine, also disabled ones")
+  expect(
+    config.routineAppKeys.contains("ios-sel:5d0c7a3e-1f2b-4c6d-8e9f-0a1b2c3d4e5f"),
+    "a group only a paused routine uses is listed")
   let social = config.rules[0]
   expectEqual(social.type, .blockNow, "first rule type")
   expectEqual(social.untilMs, 1_793_995_200_000, "first rule until")
@@ -222,6 +228,15 @@ do {
   store.removeUnreferencedSelections(now: now)
   expectEqual(store.selectionIds, ["kept", "new"], "only old unreferenced selections go")
 
+  // A paused routine's groups arrive only in routineAppKeys and are kept.
+  store.configurationJSON = """
+    {"version":3,"rules":[{"appKey":"ios-sel:kept","appName":"K","type":"blockNow","untilMs":1}],
+     "routines":[],"routineAppKeys":["ios-sel:paused"]}
+    """
+  store.setSelectionData(Data([5]), id: "paused", now: now.addingTimeInterval(-90_000))
+  store.removeUnreferencedSelections(now: now)
+  expectEqual(store.selectionIds, ["kept", "new", "paused"], "a paused routine's selection stays")
+
   store.recordBlocked(appKey: "ios-sel:kept", appName: "K", reason: "blockNow", now: now)
   store.recordBlocked(appKey: "ios-sel:kept", appName: "K", reason: "blockNow", now: now.addingTimeInterval(30))
   store.recordBlocked(appKey: "ios-sel:kept", appName: "K", reason: "blockNow", now: now.addingTimeInterval(61))
@@ -230,6 +245,47 @@ do {
   expectEqual(events.first?["type"] as? String, "blocked", "event type")
   expectEqual((events.first?["occurredAtMs"] as? NSNumber)?.int64Value, now.epochMilliseconds, "event time")
   expectEqual(store.takeEvents().count, 0, "taking events empties the queue")
+
+  // Events recorded while the app takes them are never lost.
+  let racing = RestrictionStore(defaults: freshDefaults())
+  let taken = NSMutableArray()
+  let lock = NSLock()
+  DispatchQueue.concurrentPerform(iterations: 200) { index in
+    racing.recordBlocked(
+      appKey: "ios-sel:\(index)", appName: "A", reason: "blockNow", now: now, minimumInterval: 0)
+    if index % 10 == 0 {
+      let events = racing.takeEvents()
+      lock.lock()
+      taken.addObjects(from: events)
+      lock.unlock()
+    }
+  }
+  taken.addObjects(from: racing.takeEvents())
+  let takenIds = Set(taken.compactMap { ($0 as? [String: Any])?["id"] as? String })
+  expectEqual(takenIds.count, 200, "every event recorded during takeEvents is taken once")
+  expectEqual(taken.count, 200, "no event is taken twice")
+
+  expectEqual(AppGroup.withLock("kit-tests") { 7 }, 7, "withLock returns the body's value")
+
+  let generation = store.configurationGeneration
+  store.setSelectionData(Data([4]), id: "kept", now: now)
+  expect(store.configurationGeneration > generation, "an edited selection bumps the generation")
+  let beforeSync = store.configurationGeneration
+  _ = try? RestrictionSync.apply(json: #"{"version":3,"rules":[]}"#, store: store, now: now)
+  expect(store.configurationGeneration > beforeSync, "a sync bumps the generation")
+
+  store.recordDisplayed(ruleKeys: ["ios-sel:a#blockNow"], tokenKey: "app:x", now: now)
+  expectEqual(store.displayedRuleKeys(tokenKey: "app:x"), ["ios-sel:a#blockNow"], "displayed keys")
+  expectEqual(store.displayedRuleKeys(tokenKey: "app:y"), [], "nothing displayed for another token")
+  store.recordDisplayed(ruleKeys: [], tokenKey: "app:x", now: now)
+  expectEqual(store.displayedRuleKeys(tokenKey: "app:x"), [], "a newer display replaces the record")
+  for index in 0..<5 {
+    store.recordDisplayed(
+      ruleKeys: ["k\(index)"], tokenKey: "app:\(index)", now: now.addingTimeInterval(Double(index)),
+      limit: 3)
+  }
+  expectEqual(store.displayedRuleKeys(tokenKey: "app:1"), [], "oldest records are dropped")
+  expectEqual(store.displayedRuleKeys(tokenKey: "app:4"), ["k4"], "newest records are kept")
 
   store.shieldStrings = ShieldStrings(values: ["leave": "Verlassen"])
   expectEqual(store.shieldStrings.text("leave"), "Verlassen", "strings from Flutter")
@@ -408,6 +464,29 @@ do {
   let routine = UsageEvents.notice(
     activity: "ft.routine.routine-2", event: "warning", configuration: config, strings: english)
   expectEqual(routine?.title, "Downtime routine limit almost reached", "routine warning")
+  expectEqual(
+    warning?.claimKey, "ft.limit.3b241101-e2bb-4255-8caf-4136c566a962#warning#30",
+    "the once-a-day claim holds the limit, so a raised limit warns again")
+  var raised = config
+  if let index = raised.rules.firstIndex(where: { $0.appName == "Games" }) {
+    raised.rules[index].limitMinutes = 45
+  }
+  expect(
+    UsageEvents.notice(
+      activity: "ft.limit.3b241101-e2bb-4255-8caf-4136c566a962", event: "warning",
+      configuration: raised, strings: english)?.claimKey != warning?.claimKey,
+    "a raised limit claims a new warning")
+  expect(
+    UsageEvents.notice(
+      activity: "ft.limit.3b241101-e2bb-4255-8caf-4136c566a962", event: "warning",
+      configuration: config, strings: english,
+      isReached: { $0 == "ios-sel:3b241101-e2bb-4255-8caf-4136c566a962#dailyLimit" }) == nil,
+    "no warning for a limit already reached")
+  expect(
+    UsageEvents.notice(
+      activity: "ft.routine.routine-2", event: "warning", configuration: config, strings: english,
+      isReached: { $0 == "routine:routine-2" }) == nil,
+    "no warning for a routine already reached")
   expect(
     UsageEvents.notice(
       activity: "ft.routine.routine-2", event: "reached", configuration: config, strings: english)
@@ -554,6 +633,32 @@ do {
   let later = now.addingTimeInterval(300)
   expect((try? RestrictionSync.apply(json: json(limit: 60, difficulty: "moderate"), store: easy, now: later, calendar: utc)) != nil, "after the cooldown")
   expect(!easy.isReached(key, at: later, calendar: utc), "a new limit is measured again")
+
+  // A deleted limit recreated on the same key, or a paused routine turned on
+  // again, does not inherit today's reached flag.
+  let gone = RestrictionStore(defaults: freshDefaults())
+  _ = try? RestrictionSync.apply(json: json(limit: 30, difficulty: "easy"), store: gone, now: now, calendar: utc)
+  gone.markReached(key, at: now, calendar: utc)
+  expect((try? RestrictionSync.apply(json: empty, store: gone, now: now, calendar: utc)) != nil, "delete an easy limit")
+  _ = try? RestrictionSync.apply(json: json(limit: 30, difficulty: "easy"), store: gone, now: later, calendar: utc)
+  expect(!gone.isReached(key, at: later, calendar: utc), "a recreated limit starts unreached")
+
+  let routineJSON = """
+    {"version":3,"rules":[],"routines":[{"id":"r","name":"R","isEnabled":true,"dailyLimitMinutes":60,
+     "apps":[{"appKey":"ios-sel:a","appName":"A"},{"appKey":"ios-sel:b","appName":"B","limitMinutes":10}]}]}
+    """
+  let paused = RestrictionStore(defaults: freshDefaults())
+  _ = try? RestrictionSync.apply(json: routineJSON, store: paused, now: now, calendar: utc)
+  paused.markReached(UsageEvents.routineKey("r"), at: now, calendar: utc)
+  paused.markReached(UsageEvents.routineAppKey("r", selectionId: "b"), at: now, calendar: utc)
+  _ = try? RestrictionSync.apply(json: routineJSON, store: paused, now: now, calendar: utc)
+  expect(paused.isReached(UsageEvents.routineKey("r"), at: now, calendar: utc), "unchanged routine stays reached")
+  _ = try? RestrictionSync.apply(json: empty, store: paused, now: now, calendar: utc)
+  _ = try? RestrictionSync.apply(json: routineJSON, store: paused, now: later, calendar: utc)
+  expect(!paused.isReached(UsageEvents.routineKey("r"), at: later, calendar: utc), "a resumed routine starts unreached")
+  expect(
+    !paused.isReached(UsageEvents.routineAppKey("r", selectionId: "b"), at: later, calendar: utc),
+    "its member caps too")
 }
 
 // MARK: - Activity budget
